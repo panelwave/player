@@ -25,8 +25,8 @@ describe('ImageCacheService', () => {
     it('should load an image', async () => {
       const mockUrl = 'https://example.com/image.jpg';
       
-      // Mock fetch
-      spyOn(window, 'fetch').and.returnValue(
+      // Mock fetch - create new Response each time
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -50,7 +50,7 @@ describe('ImageCacheService', () => {
       const mockUrl = 'https://example.com/image.jpg';
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -76,7 +76,7 @@ describe('ImageCacheService', () => {
       const mockUrl = 'https://example.com/image.jpg';
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -118,7 +118,7 @@ describe('ImageCacheService', () => {
       const mockUrl = 'https://example.com/image.jpg';
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -143,7 +143,7 @@ describe('ImageCacheService', () => {
       const mockUrl = 'https://example.com/image.jpg';
       const mockBitmap = { width: 100, height: 100, close: jasmine.createSpy('close') } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -174,7 +174,7 @@ describe('ImageCacheService', () => {
 
       const mockBitmap = { width: 100, height: 100, close: jasmine.createSpy('close') } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -215,7 +215,7 @@ describe('ImageCacheService', () => {
         close: jasmine.createSpy('close') 
       } as any; // 200 * 200 * 4 = 160KB
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -243,7 +243,7 @@ describe('ImageCacheService', () => {
       const mockUrl = 'https://example.com/image.jpg';
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -269,7 +269,7 @@ describe('ImageCacheService', () => {
 
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -294,7 +294,7 @@ describe('ImageCacheService', () => {
       const mockUrl = 'https://example.com/image.jpg';
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
@@ -328,7 +328,7 @@ describe('ImageCacheService', () => {
 
       const mockBitmap = { width: 100, height: 100 } as any;
 
-      spyOn(window, 'fetch').and.returnValue(
+      spyOn(window, 'fetch').and.callFake(() =>
         Promise.resolve(
           new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
             status: 200,
