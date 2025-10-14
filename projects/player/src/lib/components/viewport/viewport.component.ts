@@ -131,6 +131,19 @@ export class ViewportComponent implements OnChanges {
   }
 
   /**
+   * Handle keyboard activation
+   */
+  onKeyboardActivate(event: Event): void {
+    event.preventDefault();
+    // Emit click at center of viewport
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = rect.width / 2;
+    const y = rect.height / 2;
+
+    this.viewportClick.emit({ x, y });
+  }
+
+  /**
    * Handle mouse down for pan
    */
   @HostListener('mousedown', ['$event'])

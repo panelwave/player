@@ -3,7 +3,12 @@
   [class]="getViewModeClass()"
   [class.reduced-motion]="reducedMotion"
   [class.interactive]="interactive"
-  (click)="onViewportClick($event)">
+  role="region"
+  [attr.aria-label]="'Panel viewport'"
+  tabindex="0"
+  (click)="onViewportClick($event)"
+  (keydown.enter)="onKeyboardActivate($event)"
+  (keydown.space)="onKeyboardActivate($event)">
   
   <div 
     class="viewport-content"
@@ -13,11 +18,11 @@
     @if (panel) {
       <div class="panel-container">
         <!-- Layers will be rendered here -->
-        @for (layer of panel.layers; track layer) {
-          <div class="layer" [attr.data-layer-id]="layer.id || 'unknown'">
+        @for (layer of panel.layers; track layer.id) {
+          <div class="layer" [attr.data-layer-id]="layer.id">
             <!-- Layer content rendering will be implemented -->
             <div class="layer-placeholder">
-              Layer: {{ layer.id || 'unnamed' }}
+              Layer: {{ layer.id }}
             </div>
           </div>
         }
