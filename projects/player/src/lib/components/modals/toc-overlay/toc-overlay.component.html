@@ -1,0 +1,88 @@
+@if (visible) {
+  <div class="toc-overlay" (click)="onBackdropClick($event)">
+    <div class="toc-container" role="dialog" aria-modal="true" aria-label="Table of Contents">
+      <!-- Header -->
+      <div class="toc-header">
+        <h2 class="toc-title">Table of Contents</h2>
+        <button
+          class="close-btn"
+          type="button"
+          aria-label="Close table of contents"
+          (click)="onClose()">
+          ✕
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="toc-search">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search chapters..."
+          aria-label="Search chapters"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearchChange()" />
+        <span class="search-icon">🔍</span>
+      </div>
+
+      <!-- Content -->
+      <div class="toc-content">
+        <!-- Chapter list -->
+        <div class="chapter-list" role="list">
+          @for (chapter of filteredChapters; track chapter.id; let i = $index) {
+            <div
+              class="chapter-item"
+              [class.selected]="i === selectedChapterIndex"
+              [class.current]="isCurrentChapter(chapter)"
+              role="listitem"
+              (click)="selectChapter(i)">
+              
+              <!-- Chapter header -->
+              <div class="chapter-header" (click)="navigateToChapter(chapter)">
+                <span class="chapter-number">{{ i + 1 }}</span>
+                <h3 class="chapter-title">{{ getChapterTitle(chapter) }}</h3>
+                @if (isCurrentChapter(chapter)) {
+                  <span class="current-badge">Current</span>
+                }
+              </div>
+
+              <!-- Panel list (if chapter selected) -->
+              @if (i === selectedChapterIndex) {
+                <div class="panel-list" role="list">
+                  @for (panel of getPanels(chapter); track panel.id) {
+                    <button
+                      class="panel-item"
+                      [class.current]="isCurrentPanel(panel)"
+                      type="button"
+                      role="listitem"
+                      (click)="navigateToPanel(chapter, panel)">
+                      <span class="panel-id">{{ panel.id }}</span>
+                      @if (isCurrentPanel(panel)) {
+                        <span class="current-indicator">▶</span>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (filteredChapters.length === 0) {
+            <div class="empty-state">
+              <p>No chapters found matching "{{ searchQuery }}"</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="toc-footer">
+        <p class="footer-hint">
+          <kbd>↑</kbd> <kbd>↓</kbd> Navigate
+          <kbd>Enter</kbd> Select
+          <kbd>Esc</kbd> Close
+        </p>
+      </div>
+    </div>
+  </div>
+}
