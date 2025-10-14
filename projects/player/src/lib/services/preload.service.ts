@@ -170,7 +170,7 @@ export class PreloadService {
   ): void {
     const predictedIndices = this.predict(currentIndex, totalPanels, direction);
 
-    const items = predictedIndices
+    const items: PreloadItem[] = predictedIndices
       .map((index, i) => {
         if (index >= 0 && index < panelUrls.length) {
           const priority: PreloadPriority = i === 0 ? 'high' : i === 1 ? 'medium' : 'low';
@@ -180,7 +180,7 @@ export class PreloadService {
             url: panelUrls[index],
             priority,
             panelId: `${index}`,
-          };
+          } as PreloadItem;
         }
         return null;
       })
