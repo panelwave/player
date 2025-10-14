@@ -85,12 +85,24 @@ export class ViewportComponent implements OnChanges {
    */
   @Output() layerClick = new EventEmitter<{ layerId: string; x: number; y: number }>();
 
-  // Internal state
+  // Internal state - Mouse
   isDragging = false;
   dragStartX = 0;
   dragStartY = 0;
   lastPanX = 0;
   lastPanY = 0;
+
+  // Internal state - Touch
+  isTouching = false;
+  touchStartX = 0;
+  touchStartY = 0;
+  lastTouchPanX = 0;
+  lastTouchPanY = 0;
+  
+  // Pinch zoom state
+  isPinching = false;
+  initialPinchDistance = 0;
+  lastPinchZoom = 1;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['panel']) {
@@ -206,6 +218,103 @@ export class ViewportComponent implements OnChanges {
       panY: this.panY,
       zoom: newZoom,
     });
+  }
+
+  /**
+   * Handle touch start
+   */
+  @HostListener('touchstart', ['$event'])
+  onTouchStart(event: TouchEvent): void {
+    if (event.touches.length === 1) {
+      // Single touch - pan
+      this.isTouching = true;
+      this.isPinching = false;
+      
+      const touch = event.touches[0];
+      this.touchStartX = touch.clientX;
+      this.touchStartY = touch.clientY;
+      this.lastTouchPanX = this.panX;
+      this.lastTouchPanY = this.panY;
+    } else if (event.touches.length === 2) {
+      // Two touches - pinch zoom
+      this.isTouching = false;
+      this.isPinching = true;
+      
+      this.initialPinchDistance = this.getPinchDistance(event.touches);
+      this.lastPinchZoom = this.zoom;
+    }
+  }
+
+  /**
+   * Handle touch move
+   */
+  @HostListener('touchmove', ['$event'])
+  onTouchMove(event: TouchEvent): void {
+    if (this.isTouching && event.touches.length === 1) {
+      // Pan with single touch
+      event.preventDefault();
+      
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - this.touchStartX;
+      const deltaY = touch.clientY - this.touchStartY;
+
+      const newPanX = this.lastTouchPanX + deltaX;
+      const newPanY = this.lastTouchPanY + deltaY;
+
+      this.transformChange.emit({
+        panX: newPanX,
+        panY: newPanY,
+        zoom: this.zoom,
+      });
+    } else if (this.isPinching && event.touches.length === 2) {
+      // Pinch zoom with two touches
+      event.preventDefault();
+      
+      const currentDistance = this.getPinchDistance(event.touches);
+      const scale = currentDistance / this.initialPinchDistance;
+      const newZoom = Math.max(0.1, Math.min(5, this.lastPinchZoom * scale));
+
+      this.transformChange.emit({
+        panX: this.panX,
+        panY: this.panY,
+        zoom: newZoom,
+      });
+    }
+  }
+
+  /**
+   * Handle touch end
+   */
+  @HostListener('touchend', ['$event'])
+  @HostListener('touchcancel', ['$event'])
+  onTouchEnd(event: TouchEvent): void {
+    if (event.touches.length === 0) {
+      this.isTouching = false;
+      this.isPinching = false;
+    } else if (event.touches.length === 1 && this.isPinching) {
+      // Switched from pinch to pan
+      this.isPinching = false;
+      this.isTouching = true;
+      
+      const touch = event.touches[0];
+      this.touchStartX = touch.clientX;
+      this.touchStartY = touch.clientY;
+      this.lastTouchPanX = this.panX;
+      this.lastTouchPanY = this.panY;
+    }
+  }
+
+  /**
+   * Calculate distance between two touch points
+   */
+  private getPinchDistance(touches: TouchList): number {
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   /**

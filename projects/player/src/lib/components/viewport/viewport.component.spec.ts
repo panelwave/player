@@ -283,4 +283,113 @@ describe('ViewportComponent', () => {
       expect(dimensions.height).toBeGreaterThan(0);
     });
   });
+
+  describe('Touch Interactions - Pan', () => {
+    it('should start touch pan on single touch', () => {
+      const touch = { clientX: 100, clientY: 50 } as Touch;
+      const event = { touches: [touch], length: 1 } as unknown as TouchEvent;
+
+      component.onTouchStart(event);
+
+      expect(component.isTouching).toBe(true);
+      expect(component.isPinching).toBe(false);
+      expect(component.touchStartX).toBe(100);
+      expect(component.touchStartY).toBe(50);
+    });
+
+    it('should emit transform change on touch move', () => {
+      spyOn(component.transformChange, 'emit');
+
+      component.isTouching = true;
+      component.touchStartX = 100;
+      component.touchStartY = 100;
+      component.lastTouchPanX = 0;
+      component.lastTouchPanY = 0;
+
+      const touch = { clientX: 150, clientY: 120 } as Touch;
+      const event = {
+        touches: [touch],
+        length: 1,
+        preventDefault: jasmine.createSpy('preventDefault'),
+      } as unknown as TouchEvent;
+
+      component.onTouchMove(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(component.transformChange.emit).toHaveBeenCalledWith({
+        panX: 50,
+        panY: 20,
+        zoom: 1,
+      });
+    });
+
+    it('should stop touching on touch end', () => {
+      component.isTouching = true;
+      const event = { touches: [] } as unknown as TouchEvent;
+
+      component.onTouchEnd(event);
+
+      expect(component.isTouching).toBe(false);
+    });
+  });
+
+  describe('Touch Interactions - Pinch Zoom', () => {
+    it('should start pinch on two touches', () => {
+      const touch1 = { clientX: 100, clientY: 100 } as Touch;
+      const touch2 = { clientX: 200, clientY: 200 } as Touch;
+      const event = { touches: [touch1, touch2], length: 2 } as unknown as TouchEvent;
+
+      component.onTouchStart(event);
+
+      expect(component.isPinching).toBe(true);
+      expect(component.isTouching).toBe(false);
+      expect(component.initialPinchDistance).toBeGreaterThan(0);
+    });
+
+    it('should calculate pinch distance correctly', () => {
+      const touch1 = { clientX: 0, clientY: 0 } as Touch;
+      const touch2 = { clientX: 30, clientY: 40 } as Touch;
+      const touches = [touch1, touch2] as unknown as TouchList;
+
+      const distance = (component as any).getPinchDistance(touches);
+
+      expect(distance).toBe(50); // 3-4-5 triangle
+    });
+
+    it('should emit zoom change on pinch move', () => {
+      spyOn(component.transformChange, 'emit');
+
+      component.isPinching = true;
+      component.initialPinchDistance = 100;
+      component.lastPinchZoom = 1;
+      component.zoom = 1;
+
+      const touch1 = { clientX: 0, clientY: 0 } as Touch;
+      const touch2 = { clientX: 150, clientY: 200 } as Touch;
+      const event = {
+        touches: [touch1, touch2],
+        length: 2,
+        preventDefault: jasmine.createSpy('preventDefault'),
+      } as unknown as TouchEvent;
+
+      component.onTouchMove(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(component.transformChange.emit).toHaveBeenCalled();
+
+      const call = (component.transformChange.emit as jasmine.Spy).calls.mostRecent().args[0];
+      expect(call.zoom).toBeGreaterThan(1); // Should be zoomed in
+    });
+
+    it('should switch from pinch to pan when one finger lifted', () => {
+      component.isPinching = true;
+      const touch = { clientX: 100, clientY: 100 } as Touch;
+      const event = { touches: [touch], length: 1 } as unknown as TouchEvent;
+
+      component.onTouchEnd(event);
+
+      expect(component.isPinching).toBe(false);
+      expect(component.isTouching).toBe(true);
+    });
+  });
 });
