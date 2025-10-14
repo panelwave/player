@@ -53,8 +53,8 @@
                 <!-- Info -->
                 <div class="character-info">
                   <h3 class="character-name">{{ getCharacterName(character) }}</h3>
-                  @if (character.role) {
-                    <p class="character-role">{{ character.role }}</p>
+                  @if (character['role']) {
+                    <p class="character-role">{{ character['role'] }}</p>
                   }
                 </div>
               </button>
