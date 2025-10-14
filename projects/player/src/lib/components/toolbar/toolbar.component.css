@@ -1,0 +1,433 @@
+/**
+ * Toolbar Component Styles
+ */
+
+.toolbar-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7) 70%, transparent);
+  padding: 24px 16px 16px;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+.toolbar-container.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 1400px;
+  margin: 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.toolbar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.toolbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toolbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+/* Toolbar sections */
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.toolbar-left {
+  margin-right: 8px;
+}
+
+.toolbar-center {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.toolbar-right {
+  margin-left: 8px;
+}
+
+.toolbar-social {
+  margin-left: 16px;
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Toolbar button base */
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.toolbar-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(0);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.toolbar-btn:disabled:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Toggle buttons */
+.toolbar-btn.toggle-btn.active {
+  background: rgba(0, 120, 215, 0.8);
+  border-color: rgba(0, 120, 215, 1);
+}
+
+.toolbar-btn.toggle-btn.active:hover {
+  background: rgba(0, 120, 215, 0.9);
+}
+
+/* Icon only buttons */
+.toolbar-btn.icon-only {
+  padding: 8px;
+  min-width: 40px;
+  justify-content: center;
+}
+
+.toolbar-btn.icon-only .btn-label {
+  display: none;
+}
+
+/* Close button */
+.toolbar-btn.close-btn {
+  margin-left: 8px;
+  background: rgba(255, 0, 0, 0.3);
+  border-color: rgba(255, 0, 0, 0.5);
+}
+
+.toolbar-btn.close-btn:hover {
+  background: rgba(255, 0, 0, 0.5);
+  border-color: rgba(255, 0, 0, 0.7);
+}
+
+/* Branch indicator */
+.toolbar-btn.branch-indicator {
+  background: rgba(255, 165, 0, 0.3);
+  border-color: rgba(255, 165, 0, 0.5);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Button icon */
+.btn-icon {
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Button label */
+.btn-label {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Dropdown */
+.toolbar-dropdown {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  min-width: 120px;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.active {
+  background: rgba(0, 120, 215, 0.5);
+  font-weight: 600;
+}
+
+/* Autoplay controls */
+.autoplay-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+.control-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.95);
+}
+
+.control-value {
+  min-width: 40px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive mobile layout */
+@media (max-width: 768px) {
+  .toolbar-container {
+    padding: 16px 8px 8px;
+  }
+
+  .toolbar {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .toolbar-section {
+    gap: 4px;
+  }
+
+  .toolbar-btn {
+    padding: 6px 10px;
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .btn-icon {
+    font-size: 16px;
+  }
+
+  .btn-label {
+    font-size: 11px;
+  }
+
+  /* Hide labels on mobile to save space */
+  .toolbar-center .btn-label,
+  .toolbar-right .btn-label {
+    display: none;
+  }
+
+  .toolbar-btn {
+    padding: 6px 8px;
+    min-width: 36px;
+    justify-content: center;
+  }
+
+  .toolbar-left .toolbar-btn {
+    padding: 6px 10px;
+  }
+
+  .toolbar-left .btn-label {
+    display: inline;
+  }
+
+  .autoplay-controls {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .control-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+
+  .control-value {
+    min-width: 32px;
+    font-size: 11px;
+  }
+
+  .toolbar-social {
+    margin-left: 8px;
+    padding-left: 8px;
+  }
+}
+
+/* Tablet layout */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .toolbar-btn {
+    padding: 7px 11px;
+    min-height: 38px;
+  }
+
+  .btn-icon {
+    font-size: 17px;
+  }
+
+  .btn-label {
+    font-size: 12px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-container,
+  .toolbar-btn,
+  .dropdown-menu,
+  .dropdown-item,
+  .control-btn {
+    transition: none;
+    animation: none;
+  }
+
+  .toolbar-container.visible {
+    animation: none;
+  }
+
+  .toolbar-btn:hover {
+    transform: none;
+  }
+
+  .toolbar-btn.branch-indicator {
+    animation: none;
+  }
+}
+
+/* Focus styles for accessibility */
+.toolbar-btn:focus-visible {
+  outline: 2px solid rgba(0, 120, 215, 0.8);
+  outline-offset: 2px;
+}
+
+.dropdown-item:focus-visible {
+  outline: 2px solid rgba(0, 120, 215, 0.8);
+  outline-offset: -2px;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .toolbar-btn {
+    border-width: 2px;
+  }
+
+  .toolbar-btn.toggle-btn.active {
+    background: rgba(0, 120, 215, 1);
+  }
+}

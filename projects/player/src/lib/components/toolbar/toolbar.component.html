@@ -1,0 +1,263 @@
+<div class="toolbar-container" [class.visible]="visible">
+  <div class="toolbar">
+    <!-- Left section: View and navigation controls -->
+    <div class="toolbar-section toolbar-left">
+      <!-- View toggle (page/panel) -->
+      <button
+        class="toolbar-btn"
+        [class.disabled]="!pageViewAvailable"
+        [disabled]="!pageViewAvailable"
+        type="button"
+        aria-label="Toggle view mode"
+        title="Toggle between page and panel view"
+        (click)="onToggleView()">
+        <span class="btn-icon">{{ viewMode === 'page' ? '▦' : '▢' }}</span>
+        <span class="btn-label">View</span>
+      </button>
+
+      <!-- Language selector -->
+      @if (availableLocales.length > 1) {
+        <div class="toolbar-dropdown">
+          <button
+            class="toolbar-btn"
+            type="button"
+            aria-label="Select language"
+            aria-haspopup="true"
+            [attr.aria-expanded]="showLanguageDropdown"
+            (click)="toggleLanguageDropdown()">
+            <span class="btn-icon">🌐</span>
+            <span class="btn-label">{{ locale }}</span>
+          </button>
+
+          @if (showLanguageDropdown) {
+            <div class="dropdown-menu">
+              @for (lang of availableLocales; track lang) {
+                <button
+                  class="dropdown-item"
+                  [class.active]="lang === locale"
+                  type="button"
+                  (click)="onSelectLocale(lang)">
+                  {{ lang }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Center section: Content controls -->
+    <div class="toolbar-section toolbar-center">
+      <!-- Speech bubbles toggle -->
+      <button
+        class="toolbar-btn toggle-btn"
+        [class.active]="speechEnabled"
+        type="button"
+        aria-label="Toggle speech bubbles"
+        [attr.aria-pressed]="speechEnabled"
+        title="Show/hide speech bubbles"
+        (click)="onToggleSpeech()">
+        <span class="btn-icon">💬</span>
+        <span class="btn-label">Speech</span>
+      </button>
+
+      <!-- Audio toggle -->
+      <button
+        class="toolbar-btn toggle-btn"
+        [class.active]="audioEnabled"
+        type="button"
+        aria-label="Toggle audio"
+        [attr.aria-pressed]="audioEnabled"
+        title="Mute/unmute audio"
+        (click)="onToggleAudio()">
+        <span class="btn-icon">{{ audioEnabled ? '🔊' : '🔇' }}</span>
+        <span class="btn-label">Audio</span>
+      </button>
+
+      <!-- SFX toggle -->
+      <button
+        class="toolbar-btn toggle-btn"
+        [class.active]="sfxEnabled"
+        type="button"
+        aria-label="Toggle sound effects"
+        [attr.aria-pressed]="sfxEnabled"
+        title="Enable/disable sound effects"
+        (click)="onToggleSfx()">
+        <span class="btn-icon">🎵</span>
+        <span class="btn-label">SFX</span>
+      </button>
+
+      <!-- Autoplay control -->
+      <div class="toolbar-dropdown">
+        <button
+          class="toolbar-btn toggle-btn"
+          [class.active]="autoplayEnabled"
+          type="button"
+          aria-label="Toggle autoplay"
+          [attr.aria-pressed]="autoplayEnabled"
+          title="Enable/disable autoplay"
+          (click)="onToggleAutoplay()">
+          <span class="btn-icon">{{ autoplayEnabled ? '⏸️' : '▶️' }}</span>
+          <span class="btn-label">Autoplay</span>
+        </button>
+
+        @if (autoplayEnabled) {
+          <div class="autoplay-controls">
+            <button
+              class="control-btn"
+              type="button"
+              aria-label="Decrease speed"
+              (click)="adjustSecondsPerPanel(-1)">
+              -
+            </button>
+            <span class="control-value">{{ secondsPerPanel }}s</span>
+            <button
+              class="control-btn"
+              type="button"
+              aria-label="Increase speed"
+              (click)="adjustSecondsPerPanel(1)">
+              +
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Thumbnails toggle -->
+      <button
+        class="toolbar-btn toggle-btn"
+        [class.active]="thumbnailsVisible"
+        type="button"
+        aria-label="Toggle thumbnails"
+        [attr.aria-pressed]="thumbnailsVisible"
+        title="Show/hide thumbnail strip"
+        (click)="onToggleThumbnails()">
+        <span class="btn-icon">🖼️</span>
+        <span class="btn-label">Thumbs</span>
+      </button>
+    </div>
+
+    <!-- Right section: Navigation and info controls -->
+    <div class="toolbar-section toolbar-right">
+      <!-- Table of Contents -->
+      <button
+        class="toolbar-btn"
+        type="button"
+        aria-label="Table of contents"
+        title="Open table of contents"
+        (click)="onOpenToc()">
+        <span class="btn-icon">📑</span>
+        <span class="btn-label">ToC</span>
+      </button>
+
+      <!-- Settings -->
+      <button
+        class="toolbar-btn"
+        type="button"
+        aria-label="Settings"
+        title="Open settings"
+        (click)="onOpenSettings()">
+        <span class="btn-icon">⚙️</span>
+        <span class="btn-label">Settings</span>
+      </button>
+
+      <!-- Characters -->
+      <button
+        class="toolbar-btn"
+        type="button"
+        aria-label="Characters"
+        title="View character roster"
+        (click)="onOpenCharacters()">
+        <span class="btn-icon">👥</span>
+        <span class="btn-label">Characters</span>
+      </button>
+
+      <!-- Alternatives (if available) -->
+      @if (hasAlternatives) {
+        <button
+          class="toolbar-btn"
+          type="button"
+          aria-label="Alternative panels"
+          title="Cycle through alternative panels"
+          (click)="onCycleAlternative()">
+          <span class="btn-icon">🔄</span>
+          <span class="btn-label">Alt</span>
+        </button>
+      }
+
+      <!-- Branch indicator (if choices ahead) -->
+      @if (hasBranches) {
+        <button
+          class="toolbar-btn branch-indicator"
+          type="button"
+          aria-label="Choices ahead"
+          title="View upcoming choices"
+          (click)="onShowBranches()">
+          <span class="btn-icon">🔀</span>
+          <span class="btn-label">Choices</span>
+        </button>
+      }
+
+      <!-- Extras -->
+      <button
+        class="toolbar-btn"
+        type="button"
+        aria-label="Extras"
+        title="View bonus content"
+        (click)="onOpenExtras()">
+        <span class="btn-icon">✨</span>
+        <span class="btn-label">Extras</span>
+      </button>
+    </div>
+
+    <!-- Social cluster (rightmost) -->
+    @if (showSocial) {
+      <div class="toolbar-section toolbar-social">
+        <button
+          class="toolbar-btn icon-only"
+          type="button"
+          aria-label="Like"
+          title="Like this content"
+          (click)="onLike()">
+          <span class="btn-icon">❤️</span>
+        </button>
+
+        <button
+          class="toolbar-btn icon-only"
+          type="button"
+          aria-label="Bookmark"
+          title="Bookmark this panel"
+          (click)="onBookmark()">
+          <span class="btn-icon">🔖</span>
+        </button>
+
+        <button
+          class="toolbar-btn icon-only"
+          type="button"
+          aria-label="Share"
+          title="Share this panel"
+          (click)="onShare()">
+          <span class="btn-icon">↗️</span>
+        </button>
+
+        <button
+          class="toolbar-btn icon-only"
+          type="button"
+          aria-label="Comments"
+          title="View comments"
+          (click)="onOpenComments()">
+          <span class="btn-icon">💭</span>
+        </button>
+      </div>
+    }
+
+    <!-- Close button -->
+    <button
+      class="toolbar-btn close-btn"
+      type="button"
+      aria-label="Close toolbar"
+      title="Close toolbar"
+      (click)="onClose()">
+      <span class="btn-icon">✕</span>
+    </button>
+  </div>
+</div>
