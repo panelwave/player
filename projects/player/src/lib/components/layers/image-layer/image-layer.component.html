@@ -1,0 +1,28 @@
+<div class="image-layer-container">
+  <!-- Loading state -->
+  @if (loading && !error) {
+    <div class="image-loading">
+      <div class="loading-spinner"></div>
+      <span class="sr-only">Loading image...</span>
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (error) {
+    <div class="image-error">
+      <div class="error-icon">⚠️</div>
+      <p class="error-message">Failed to load image</p>
+    </div>
+  }
+
+  <!-- Image -->
+  <img
+    [src]="getImageUrl()"
+    [alt]="alt"
+    [loading]="lazy ? 'lazy' : 'eager'"
+    [style.object-fit]="getObjectFitStyle()"
+    [class.hidden]="loading || error"
+    class="image-layer"
+    (load)="onLoad()"
+    (error)="onError($event)" />
+</div>

@@ -1,0 +1,17 @@
+<div class="video-layer-container">
+  <video
+    #videoElement
+    class="video-layer"
+    [src]="getVideoUrl()"
+    [poster]="getPosterUrl()"
+    [autoplay]="autoplay"
+    [loop]="loop"
+    [muted]="muted"
+    [controls]="controls"
+    (play)="onPlay()"
+    (pause)="onPause()"
+    (ended)="onEnded()"
+    (error)="onError($event)">
+    Your browser does not support the video tag.
+  </video>
+</div>

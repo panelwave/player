@@ -1,0 +1,11 @@
+<div class="plugin-layer-container">
+  <iframe
+    #iframeElement
+    class="plugin-iframe"
+    [src]="safeUrl"
+    [attr.sandbox]="sandbox"
+    [attr.allowfullscreen]="allowFullscreen ? true : null"
+    (load)="onLoad()"
+    (error)="onError($event)">
+  </iframe>
+</div>

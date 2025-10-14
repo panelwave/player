@@ -1,0 +1,56 @@
+/**
+ * Text Layer Component Styles
+ */
+
+.text-layer-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Default text styling */
+.text-layer-container {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #000;
+}
+
+/* Support for rich text elements */
+.text-layer-container p {
+  margin: 0 0 1em 0;
+}
+
+.text-layer-container p:last-child {
+  margin-bottom: 0;
+}
+
+.text-layer-container a {
+  color: #0078d7;
+  text-decoration: underline;
+}
+
+.text-layer-container a:hover {
+  color: #005a9e;
+}
+
+.text-layer-container strong,
+.text-layer-container b {
+  font-weight: 700;
+}
+
+.text-layer-container em,
+.text-layer-container i {
+  font-style: italic;
+}
+
+.text-layer-container ul,
+.text-layer-container ol {
+  margin: 0 0 1em 0;
+  padding-left: 2em;
+}
+
+.text-layer-container li {
+  margin-bottom: 0.5em;
+}

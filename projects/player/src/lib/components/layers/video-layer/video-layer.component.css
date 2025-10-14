@@ -1,0 +1,26 @@
+/**
+ * Video Layer Component Styles
+ */
+
+.video-layer-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.video-layer {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+/* Custom controls styling (when browser controls are hidden) */
+.video-layer::-webkit-media-controls {
+  /* Allow default controls */
+}
+
+.video-layer::-webkit-media-controls-panel {
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7));
+}
