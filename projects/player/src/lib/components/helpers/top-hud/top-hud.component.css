@@ -1,0 +1,255 @@
+/**
+ * Top HUD Component Styles
+ */
+
+.top-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), transparent);
+  backdrop-filter: blur(8px);
+  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Left section */
+.hud-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.work-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Center section */
+.hud-center {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.progress-bar-container {
+  width: 100px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0, 120, 215, 0.9), rgba(0, 180, 255, 0.9));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Right section */
+.hud-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-action {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.hud-action:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.hud-action:active {
+  transform: translateY(0);
+}
+
+.hud-action.active {
+  background: rgba(0, 120, 215, 0.3);
+  border-color: rgba(0, 120, 215, 0.5);
+}
+
+.action-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Responsive tablet */
+@media (max-width: 768px) {
+  .top-hud {
+    padding: 12px 20px;
+    gap: 12px;
+  }
+
+  .work-title {
+    font-size: 15px;
+  }
+
+  .chapter-title {
+    font-size: 13px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+  }
+
+  .progress-bar-container {
+    width: 80px;
+  }
+
+  .progress-text {
+    font-size: 11px;
+  }
+
+  .hud-action {
+    width: 36px;
+    height: 36px;
+  }
+
+  .action-icon {
+    font-size: 16px;
+  }
+}
+
+/* Responsive mobile */
+@media (max-width: 480px) {
+  .top-hud {
+    padding: 10px 16px;
+    gap: 8px;
+  }
+
+  .hud-left {
+    gap: 2px;
+  }
+
+  .work-title {
+    font-size: 14px;
+  }
+
+  .chapter-title {
+    font-size: 12px;
+  }
+
+  .panel-title {
+    display: none;
+  }
+
+  .progress-bar-container {
+    width: 60px;
+  }
+
+  .progress-text {
+    font-size: 10px;
+  }
+
+  .hud-right {
+    gap: 6px;
+  }
+
+  .hud-action {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-icon {
+    font-size: 14px;
+  }
+}
+
+/* Focus styles */
+.hud-action:focus-visible {
+  outline: 2px solid rgba(0, 120, 215, 0.8);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .top-hud,
+  .hud-action,
+  .progress-bar {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .top-hud {
+    background: rgba(0, 0, 0, 0.95);
+  }
+
+  .hud-action {
+    border-width: 2px;
+  }
+}

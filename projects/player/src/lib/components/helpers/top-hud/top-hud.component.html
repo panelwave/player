@@ -1,0 +1,59 @@
+@if (visible) {
+  <div class="top-hud">
+    <!-- Left section: Titles -->
+    <div class="hud-left">
+      @if (workTitle) {
+        <h1 class="work-title">{{ workTitle }}</h1>
+      }
+      
+      @if (chapterTitle) {
+        <h2 class="chapter-title">{{ chapterTitle }}</h2>
+      }
+      
+      @if (panelTitle) {
+        <span class="panel-title">{{ panelTitle }}</span>
+      }
+    </div>
+
+    <!-- Center section: Progress -->
+    <div class="hud-center">
+      <div class="progress-info">
+        <span class="progress-text">{{ getProgressText() }}</span>
+        <div class="progress-bar-container">
+          <div class="progress-bar" [style.width.%]="getProgress()"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right section: Actions -->
+    <div class="hud-right">
+      <button
+        class="hud-action"
+        [class.active]="isBookmarked"
+        type="button"
+        aria-label="Bookmark"
+        [attr.aria-pressed]="isBookmarked"
+        (click)="onBookmark()">
+        <span class="action-icon">{{ isBookmarked ? '🔖' : '📑' }}</span>
+      </button>
+
+      <button
+        class="hud-action"
+        [class.active]="isLiked"
+        type="button"
+        aria-label="Like"
+        [attr.aria-pressed]="isLiked"
+        (click)="onLike()">
+        <span class="action-icon">{{ isLiked ? '❤️' : '🤍' }}</span>
+      </button>
+
+      <button
+        class="hud-action"
+        type="button"
+        aria-label="Share"
+        (click)="onShare()">
+        <span class="action-icon">↗️</span>
+      </button>
+    </div>
+  </div>
+}
