@@ -175,7 +175,7 @@ export interface PluginLayer extends Layer {
 /**
  * Layer kind discriminator
  */
-export type LayerKind = 'image' | 'video' | 'text' | 'audio' | 'plugin';
+export type LayerKind = 'image' | 'video' | 'text' | 'audio' | 'plugin' | 'hotspot' | 'button' | 'svg' | 'shape' | 'group';
 
 /**
  * Text styling configuration

@@ -223,7 +223,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       if (this.manifestUrl) {
         await this.loadManifestFromUrl(this.manifestUrl);
       } else if (this.manifest) {
-        this.manifestService.setManifest(this.manifest);
+        await this.manifestService.loadManifestFromObject(this.manifest).toPromise();
       } else {
         throw new Error('No manifest or manifestUrl provided');
       }
@@ -231,7 +231,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       // Initialize entitlement context
       if (this.entitlementAdapter) {
         const context = await this.entitlementAdapter.getContext();
-        this.variableStore.setMultiple(context, 'global');
+        Object.entries(context).forEach(([key, value]) => {
+          this.variableStore.set(key, value, 'global');
+        });
       }
 
       // Set initial locale
@@ -318,11 +320,15 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       this.currentChapter = chapter;
       this.chapterChange.emit(chapter);
 
-      // Get first panel in chapter
-      const firstPanel = this.flowEngine.getFirstPanel(chapterId);
-      if (firstPanel) {
-        this.playerState.setCurrentPanel(firstPanel);
-        this.currentPanel = firstPanel;
+      // Get first panel in chapter from graph entry
+      const entry = this.flowEngine.getEntry(chapter.graph);
+      const firstPanelId = typeof entry === 'string' ? entry : entry[0];
+      if (firstPanelId) {
+        const panelData = this.manifestService.getPanel(firstPanelId);
+        if (panelData) {
+          this.playerState.setCurrentPanel(panelData.panel);
+          this.currentPanel = panelData.panel;
+        }
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -347,16 +353,16 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         throw new Error(`Chapter not found: ${chapterId}`);
       }
 
-      const panel = this.manifestService.getPanel(chapterId, panelId);
-      if (!panel) {
+      const panelData = this.manifestService.getPanel(panelId);
+      if (!panelData) {
         throw new Error(`Panel not found: ${panelId}`);
       }
 
       this.currentChapter = chapter;
-      this.currentPanel = panel;
-      this.playerState.setCurrentPanel(panel);
+      this.currentPanel = panelData.panel;
+      this.playerState.setCurrentPanel(panelData.panel);
 
-      this.panelChange.emit({ panel, chapter });
+      this.panelChange.emit({ panel: panelData.panel, chapter });
     } catch (err) {
       this.handleError(err as Error);
     }
@@ -373,13 +379,18 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.navigationAttempt.emit({ direction: 'next' });
 
     try {
-      const nextPanel = this.flowEngine.getNextPanel(
-        this.currentChapter.id,
-        this.currentPanel.id
+      const context = this.variableStore.createContext(this.currentChapter.id);
+      const currentPanelId = this.getCurrentPanelId();
+      if (!currentPanelId) return;
+
+      const result = this.flowEngine.getNextPanel(
+        this.currentChapter.graph,
+        currentPanelId,
+        context
       );
 
-      if (nextPanel) {
-        await this.navigateToPanel(this.currentChapter.id, nextPanel.id);
+      if (result.nextPanelId) {
+        await this.navigateToPanel(this.currentChapter.id, result.nextPanelId);
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -397,13 +408,17 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.navigationAttempt.emit({ direction: 'previous' });
 
     try {
-      const previousPanel = this.flowEngine.getPreviousPanel(
-        this.currentChapter.id,
-        this.currentPanel.id
+      const currentPanelId = this.getCurrentPanelId();
+      if (!currentPanelId) return;
+
+      const previousPanels = this.flowEngine.getPreviousPanels(
+        this.currentChapter.graph,
+        currentPanelId
       );
 
-      if (previousPanel) {
-        await this.navigateToPanel(this.currentChapter.id, previousPanel.id);
+      if (previousPanels.length > 0) {
+        // Navigate to the first previous panel
+        await this.navigateToPanel(this.currentChapter.id, previousPanels[0]);
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -449,8 +464,24 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   /**
    * Get variable
    */
-  getVariable(key: string): unknown {
-    return this.variableStore.get(key);
+  getVariable(key: string, scope: 'global' | 'chapter' | 'page' | 'session' | 'persistent' = 'session', scopeId?: string): unknown {
+    return this.variableStore.get(key, scope, scopeId);
+  }
+
+  /**
+   * Get current panel ID
+   */
+  private getCurrentPanelId(): string | null {
+    if (!this.currentPanel || !this.currentChapter) return null;
+    
+    // Find the panel ID by searching in the chapter's panels
+    for (const [panelId, panel] of Object.entries(this.currentChapter.panels)) {
+      if (panel === this.currentPanel) {
+        return panelId;
+      }
+    }
+    
+    return null;
   }
 
   /**

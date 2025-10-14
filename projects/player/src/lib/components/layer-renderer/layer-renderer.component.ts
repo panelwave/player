@@ -130,6 +130,62 @@ export class LayerRendererComponent {
   }
 
   /**
+   * Get image alt text
+   */
+  getAltText(): string {
+    const alt = (this.layer as Record<string, unknown>)['alt'];
+    return alt ? String(alt) : '';
+  }
+
+  /**
+   * Get video autoplay setting
+   */
+  getVideoAutoplay(): boolean {
+    const autoplay = (this.layer as Record<string, unknown>)['autoplay'];
+    return autoplay === true;
+  }
+
+  /**
+   * Get video loop setting
+   */
+  getVideoLoop(): boolean {
+    const loop = (this.layer as Record<string, unknown>)['loop'];
+    return loop === true;
+  }
+
+  /**
+   * Get video muted setting
+   */
+  getVideoMuted(): boolean {
+    const muted = (this.layer as Record<string, unknown>)['muted'];
+    return muted === true;
+  }
+
+  /**
+   * Get video controls setting
+   */
+  getVideoControls(): boolean {
+    const controls = (this.layer as Record<string, unknown>)['controls'];
+    return controls === true;
+  }
+
+  /**
+   * Get SVG content
+   */
+  getSvgContent(): string {
+    const svg = (this.layer as Record<string, unknown>)['svg'];
+    return svg ? String(svg) : '';
+  }
+
+  /**
+   * Get shape type
+   */
+  getShapeType(): string {
+    const shape = (this.layer as Record<string, unknown>)['shape'];
+    return shape ? String(shape) : '';
+  }
+
+  /**
    * Get localized text content
    */
   getTextContent(): string {
