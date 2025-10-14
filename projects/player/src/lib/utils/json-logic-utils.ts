@@ -41,7 +41,8 @@ export function evaluateJsonLogic(
   }
 
   try {
-    const result = jsonLogic.apply(logic, context);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = jsonLogic.apply(logic as any, context);
     
     // Convert result to boolean
     return Boolean(result);
@@ -125,7 +126,8 @@ export function validateJsonLogic(
 
   try {
     // Try to apply with empty context to check structure
-    jsonLogic.apply(logic, {});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jsonLogic.apply(logic as any, {});
     return { valid: true };
   } catch (error) {
     if (error instanceof Error) {
@@ -173,8 +175,8 @@ export function extractVariableNames(logic: JsonLogic): string[] {
       // Check for { var: 'varName' } pattern
       const obj = node as Record<string, unknown>;
       
-      if ('var' in obj && typeof obj.var === 'string') {
-        variables.add(obj.var);
+      if ('var' in obj && typeof obj['var'] === 'string') {
+        variables.add(obj['var']);
       }
 
       // Recurse into all properties
@@ -323,8 +325,8 @@ export function evaluateAny(
  */
 export function testJsonLogic(
   logic: JsonLogic,
-  testCases: Array<{ context: VariableContext; expected: boolean; description?: string }>
-): Array<{ passed: boolean; description?: string; actual?: boolean; expected: boolean }> {
+  testCases: { context: VariableContext; expected: boolean; description?: string }[]
+): { passed: boolean; description?: string; actual?: boolean; expected: boolean }[] {
   return testCases.map((testCase) => {
     const actual = evaluateJsonLogic(logic, testCase.context);
     const passed = actual === testCase.expected;
