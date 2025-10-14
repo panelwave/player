@@ -1,0 +1,83 @@
+@if (visible) {
+  <div class="thumbnail-strip">
+    <!-- Close button -->
+    <button
+      class="close-btn"
+      type="button"
+      aria-label="Close thumbnail strip"
+      (click)="onClose()">
+      ✕
+    </button>
+
+    <!-- Scroll container -->
+    <div
+      class="strip-scroll-container"
+      #scrollContainer
+      (scroll)="onScroll($event)">
+      
+      <!-- Content wrapper for virtual scrolling -->
+      <div
+        class="strip-content"
+        [style.width.px]="getTotalWidth()">
+        
+        @for (item of getVisibleItems(); track item.panelId) {
+          <div
+            class="thumbnail-wrapper"
+            [style.left.px]="item.index * (itemWidth + itemGap)"
+            [class.chapter-start]="item.chapterStart">
+            
+            <!-- Chapter separator -->
+            @if (item.chapterStart && item.chapterTitle) {
+              <div class="chapter-separator">
+                <span class="separator-title">{{ item.chapterTitle }}</span>
+              </div>
+            }
+
+            <!-- Thumbnail -->
+            <button
+              class="thumbnail-item"
+              [class.current]="item.isCurrentPanel"
+              [class.current-chapter]="item.isCurrentChapter"
+              [class.locked]="item.isLocked"
+              type="button"
+              [attr.aria-label]="'Panel ' + item.panelId"
+              [attr.aria-current]="item.isCurrentPanel ? 'true' : null"
+              (click)="onNavigate(item)">
+              
+              @if (getThumbnailUrl(item)) {
+                <img
+                  [src]="getThumbnailUrl(item)"
+                  [alt]="'Panel ' + item.panelId"
+                  class="thumbnail-image"
+                  loading="lazy" />
+              } @else {
+                <div class="thumbnail-placeholder">
+                  <span class="placeholder-text">{{ item.panelId }}</span>
+                </div>
+              }
+
+              <!-- Lock overlay -->
+              @if (item.isLocked) {
+                <div class="lock-overlay">
+                  <span class="lock-icon">🔒</span>
+                </div>
+              }
+
+              <!-- Current indicator -->
+              @if (item.isCurrentPanel) {
+                <div class="current-indicator"></div>
+              }
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Navigation hints -->
+    <div class="strip-hints">
+      <kbd>←</kbd> <kbd>→</kbd> Navigate
+      <span class="separator">•</span>
+      <kbd>Esc</kbd> Close
+    </div>
+  </div>
+}
