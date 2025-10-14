@@ -1,0 +1,78 @@
+@if (visible) {
+  <div class="roster-overlay" (click)="onBackdropClick($event)">
+    <div class="roster-container" role="dialog" aria-modal="true" aria-label="Character Roster">
+      <!-- Header -->
+      <div class="roster-header">
+        <h2 class="roster-title">Characters</h2>
+        <button
+          class="close-btn"
+          type="button"
+          aria-label="Close character roster"
+          (click)="onClose()">
+          ✕
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="roster-search">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search characters..."
+          aria-label="Search characters"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearchChange()" />
+        <span class="search-icon">🔍</span>
+      </div>
+
+      <!-- Character grid -->
+      <div class="roster-content">
+        @if (filteredCharacters.length > 0) {
+          <div class="character-grid" role="list">
+            @for (character of filteredCharacters; track character.id) {
+              <button
+                class="character-card"
+                type="button"
+                role="listitem"
+                (click)="selectCharacter(character)">
+                
+                <!-- Avatar -->
+                <div class="character-avatar">
+                  @if (getAvatarUrl(character)) {
+                    <img
+                      [src]="getAvatarUrl(character)"
+                      [alt]="getCharacterName(character)"
+                      class="avatar-image" />
+                  } @else {
+                    <div class="avatar-placeholder">
+                      {{ getInitials(character) }}
+                    </div>
+                  }
+                </div>
+
+                <!-- Info -->
+                <div class="character-info">
+                  <h3 class="character-name">{{ getCharacterName(character) }}</h3>
+                  @if (character.role) {
+                    <p class="character-role">{{ character.role }}</p>
+                  }
+                </div>
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <p>No characters found matching "{{ searchQuery }}"</p>
+          </div>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="roster-footer">
+        <p class="footer-hint">
+          <kbd>Esc</kbd> Close
+        </p>
+      </div>
+    </div>
+  </div>
+}
