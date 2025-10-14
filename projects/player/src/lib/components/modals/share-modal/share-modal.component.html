@@ -1,0 +1,135 @@
+@if (visible) {
+  <div class="share-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
+    <div class="share-container" role="dialog" aria-modal="true" aria-label="Share">
+      <!-- Header -->
+      <div class="share-header">
+        <h2 class="share-title">Share</h2>
+        <button
+          class="close-btn"
+          type="button"
+          aria-label="Close share modal"
+          (click)="onClose()">
+          ✕
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="share-content">
+        @if (!shareable) {
+          <!-- Not shareable message -->
+          <div class="not-shareable">
+            <span class="warning-icon">⚠️</span>
+            <p>This panel cannot be shared.</p>
+          </div>
+        } @else {
+          <!-- Copy Link -->
+          <div class="share-section">
+            <h3 class="section-title">Copy Link</h3>
+            <div class="link-container">
+              <input
+                type="text"
+                class="link-input"
+                [value]="shareUrl"
+                readonly
+                aria-label="Share URL" />
+              <button
+                class="copy-btn"
+                [class.success]="copySuccess"
+                type="button"
+                (click)="copyLink()">
+                {{ copySuccess ? '✓ Copied!' : '📋 Copy' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Native Share (if supported) -->
+          @if (isNativeShareSupported) {
+            <div class="share-section">
+              <button
+                class="native-share-btn"
+                type="button"
+                (click)="useNativeShare()">
+                <span class="btn-icon">↗️</span>
+                <span class="btn-label">Share via...</span>
+              </button>
+            </div>
+          }
+
+          <!-- Social Share Buttons -->
+          <div class="share-section">
+            <h3 class="section-title">Share on Social Media</h3>
+            <div class="social-buttons">
+              <button
+                class="social-btn twitter"
+                type="button"
+                aria-label="Share on Twitter"
+                (click)="shareOnTwitter()">
+                <span class="social-icon">𝕏</span>
+                <span class="social-label">Twitter</span>
+              </button>
+
+              <button
+                class="social-btn facebook"
+                type="button"
+                aria-label="Share on Facebook"
+                (click)="shareOnFacebook()">
+                <span class="social-icon">f</span>
+                <span class="social-label">Facebook</span>
+              </button>
+
+              <button
+                class="social-btn reddit"
+                type="button"
+                aria-label="Share on Reddit"
+                (click)="shareOnReddit()">
+                <span class="social-icon">▲</span>
+                <span class="social-label">Reddit</span>
+              </button>
+
+              <button
+                class="social-btn email"
+                type="button"
+                aria-label="Share via Email"
+                (click)="shareViaEmail()">
+                <span class="social-icon">✉️</span>
+                <span class="social-label">Email</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div class="share-section">
+            <button
+              class="qr-toggle-btn"
+              type="button"
+              (click)="toggleQrCode()">
+              <span class="btn-icon">{{ showQrCode ? '▼' : '▶' }}</span>
+              <span class="btn-label">{{ showQrCode ? 'Hide' : 'Show' }} QR Code</span>
+            </button>
+
+            @if (showQrCode) {
+              <div class="qr-code-container">
+                @if (qrCodeDataUrl) {
+                  <img
+                    [src]="qrCodeDataUrl"
+                    alt="QR Code"
+                    class="qr-code-image" />
+                  <p class="qr-hint">Scan with your mobile device</p>
+                } @else {
+                  <div class="qr-loading">Generating QR code...</div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Share Info -->
+          <div class="share-info">
+            <p class="info-text">
+              ℹ️ Sharing this link may reveal your current progress and choices.
+            </p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
