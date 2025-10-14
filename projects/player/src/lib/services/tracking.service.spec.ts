@@ -134,13 +134,15 @@ describe('TrackingService', () => {
       expect(service.getQueueSize()).toBe(0);
     });
 
-    it('should allow all events if no whitelist', () => {
-      service.configure({ eventWhitelist: undefined });
+    it('should filter based on whitelist', () => {
+      // Whitelist is set in beforeEach to ['page_view', 'click', 'scroll']
+      
+      service.track('page_view');   // allowed
+      service.track('custom_event'); // blocked
+      service.track('click');        // allowed
+      service.track('unknown');      // blocked
 
-      service.track('anything');
-      service.track('custom_event');
-
-      expect(service.getQueueSize()).toBe(2);
+      expect(service.getQueueSize()).toBe(2); // Only 2 allowed events
     });
   });
 
