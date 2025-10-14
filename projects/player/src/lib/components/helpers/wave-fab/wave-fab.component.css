@@ -1,0 +1,142 @@
+/**
+ * Wave FAB Component Styles
+ */
+
+.wave-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 110;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(0, 120, 215, 0.95), rgba(0, 180, 255, 0.95));
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 2px 6px rgba(0, 120, 215, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+}
+
+.wave-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    0 3px 8px rgba(0, 120, 215, 0.5);
+}
+
+.wave-fab:active {
+  transform: scale(0.95);
+}
+
+/* Icon */
+.fab-icon {
+  position: relative;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.fab-icon svg {
+  display: block;
+}
+
+/* Wave effects */
+.wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 120, 215, 0.6);
+  animation: wave-pulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+.wave-2 {
+  animation-delay: 0.5s;
+}
+
+.wave-3 {
+  animation-delay: 1s;
+}
+
+@keyframes wave-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Hover effect on waves */
+.wave-fab:hover .wave {
+  animation-duration: 1.5s;
+}
+
+/* Responsive mobile */
+@media (max-width: 768px) {
+  .wave-fab {
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .fab-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .fab-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .wave-fab {
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
+/* Focus styles */
+.wave-fab:focus-visible {
+  outline: 2px solid rgba(0, 120, 215, 0.8);
+  outline-offset: 4px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .wave-fab,
+  .wave {
+    animation: none;
+    transition: none;
+  }
+  
+  .wave-fab:hover {
+    transform: none;
+  }
+  
+  .wave-fab:active {
+    transform: none;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  .wave-fab {
+    border: 2px solid #fff;
+  }
+}
