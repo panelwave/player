@@ -1,0 +1,196 @@
+@if (visible) {
+  <div class="extras-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
+    <div class="extras-container" role="dialog" aria-modal="true" aria-label="Extras Viewer">
+      <!-- Header -->
+      <div class="extras-header">
+        <h2 class="extras-title">Extras</h2>
+        <button
+          class="close-btn"
+          type="button"
+          aria-label="Close extras viewer"
+          (click)="onClose()">
+          ✕
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="extras-filters">
+        <button
+          class="filter-btn"
+          [class.active]="filterType === 'all'"
+          type="button"
+          (click)="setFilter('all')">
+          All ({{ extras.length }})
+        </button>
+        @if (getExtrasByType('cover') > 0) {
+          <button
+            class="filter-btn"
+            [class.active]="filterType === 'cover'"
+            type="button"
+            (click)="setFilter('cover')">
+            {{ getTypeName('cover') }} ({{ getExtrasByType('cover') }})
+          </button>
+        }
+        @if (getExtrasByType('art') > 0) {
+          <button
+            class="filter-btn"
+            [class.active]="filterType === 'art'"
+            type="button"
+            (click)="setFilter('art')">
+            {{ getTypeName('art') }} ({{ getExtrasByType('art') }})
+          </button>
+        }
+        @if (getExtrasByType('bts') > 0) {
+          <button
+            class="filter-btn"
+            [class.active]="filterType === 'bts'"
+            type="button"
+            (click)="setFilter('bts')">
+            {{ getTypeName('bts') }} ({{ getExtrasByType('bts') }})
+          </button>
+        }
+        @if (getExtrasByType('interview') > 0) {
+          <button
+            class="filter-btn"
+            [class.active]="filterType === 'interview'"
+            type="button"
+            (click)="setFilter('interview')">
+            {{ getTypeName('interview') }} ({{ getExtrasByType('interview') }})
+          </button>
+        }
+      </div>
+
+      <!-- Gallery Grid -->
+      <div class="extras-content">
+        @if (getFilteredExtras().length > 0) {
+          <div class="extras-grid" role="list">
+            @for (extra of getFilteredExtras(); track extra.id) {
+              <div class="extra-card" role="listitem">
+                <button
+                  class="extra-thumbnail"
+                  [class.locked]="!isAccessible(extra)"
+                  type="button"
+                  (click)="openExtra(extra)">
+                  
+                  @if (getThumbnailUrl(extra)) {
+                    <img
+                      [src]="getThumbnailUrl(extra)"
+                      [alt]="getExtraTitle(extra)"
+                      class="thumbnail-image" />
+                  } @else {
+                    <div class="thumbnail-placeholder">
+                      {{ getMediaIcon(extra) }}
+                    </div>
+                  }
+
+                  <!-- Lock overlay for gated content -->
+                  @if (!isAccessible(extra)) {
+                    <div class="lock-overlay">
+                      <span class="lock-icon">🔒</span>
+                      <span class="lock-text">Premium</span>
+                    </div>
+                  }
+
+                  <!-- Media type badge -->
+                  <div class="media-badge">
+                    {{ getMediaIcon(extra) }}
+                  </div>
+                </button>
+
+                <div class="extra-info">
+                  <h3 class="extra-title">{{ getExtraTitle(extra) }}</h3>
+                  @if (getExtraDescription(extra)) {
+                    <p class="extra-description">{{ getExtraDescription(extra) }}</p>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <p>No extras available in this category.</p>
+          </div>
+        }
+      </div>
+
+      <!-- Detail View -->
+      @if (selectedExtra) {
+        <div class="detail-overlay" (click)="onBackdropClick($event)">
+          <div class="detail-container" (click)="$event.stopPropagation()">
+            <!-- Detail Header -->
+            <div class="detail-header">
+              <h3 class="detail-title">{{ getExtraTitle(selectedExtra) }}</h3>
+              <button
+                class="close-btn"
+                type="button"
+                aria-label="Close detail view"
+                (click)="closeDetail()">
+                ✕
+              </button>
+            </div>
+
+            <!-- Detail Content -->
+            <div class="detail-content">
+              @if (selectedExtra.mediaType === 'image' || !selectedExtra.mediaType) {
+                <img
+                  [src]="getAssetUrl(selectedExtra)"
+                  [alt]="getExtraTitle(selectedExtra)"
+                  class="detail-image" />
+              }
+
+              @if (selectedExtra.mediaType === 'video') {
+                <video
+                  [src]="getAssetUrl(selectedExtra)"
+                  controls
+                  class="detail-video">
+                  Your browser does not support the video tag.
+                </video>
+              }
+
+              @if (selectedExtra.mediaType === 'audio') {
+                <audio
+                  [src]="getAssetUrl(selectedExtra)"
+                  controls
+                  class="detail-audio">
+                  Your browser does not support the audio tag.
+                </audio>
+              }
+
+              @if (getExtraDescription(selectedExtra)) {
+                <div class="detail-description">
+                  {{ getExtraDescription(selectedExtra) }}
+                </div>
+              }
+            </div>
+
+            <!-- Detail Footer -->
+            <div class="detail-footer">
+              <button
+                class="action-btn"
+                type="button"
+                (click)="closeDetail()">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Paywall Notice (for gated content without access) -->
+      @if (!hasPremiumAccess && extras.some(e => e.gated)) {
+        <div class="paywall-notice">
+          <p class="notice-text">
+            <span class="notice-icon">🔒</span>
+            Some extras require premium access
+          </p>
+          <button
+            class="upgrade-btn"
+            type="button"
+            (click)="onPurchase()">
+            Upgrade Now
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
