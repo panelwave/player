@@ -1,0 +1,60 @@
+@if (visible) {
+  <div class="paywall-overlay">
+    <!-- Gradient backdrop -->
+    <div class="paywall-backdrop"></div>
+
+    <!-- Paywall container -->
+    <div class="paywall-container">
+      <!-- Icon -->
+      <div class="paywall-icon">{{ getIcon() }}</div>
+
+      <!-- Title -->
+      <h2 class="paywall-title">{{ getTitle() }}</h2>
+
+      <!-- Message -->
+      <p class="paywall-message">{{ getMessage() }}</p>
+
+      <!-- Price (if provided) -->
+      @if (price) {
+        <div class="paywall-price">{{ price }}</div>
+      }
+
+      <!-- CTA Button -->
+      <button
+        class="paywall-cta"
+        type="button"
+        [disabled]="processing"
+        (click)="onPurchase()">
+        @if (processing) {
+          <span class="cta-spinner"></span>
+          <span>Processing...</span>
+        } @else {
+          <span>{{ getCtaText() }}</span>
+        }
+      </button>
+
+      <!-- Close button (preview mode only) -->
+      @if (status === 'preview') {
+        <button
+          class="close-preview-btn"
+          type="button"
+          (click)="onClose()">
+          Continue Preview
+        </button>
+      }
+
+      <!-- Info footer -->
+      <div class="paywall-footer">
+        <p class="footer-note">
+          @if (status === 'subscription') {
+            <span>✨ Unlock unlimited access to all premium content</span>
+          } @else if (status === 'purchase') {
+            <span>💳 One-time purchase • Lifetime access</span>
+          } @else {
+            <span>🔐 Secure payment • Cancel anytime</span>
+          }
+        </p>
+      </div>
+    </div>
+  </div>
+}
