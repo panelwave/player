@@ -1,0 +1,72 @@
+<div class="player-shell" [class.has-error]="hasError">
+  <!-- Loading state -->
+  @if (loading) {
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading PanelWave...</p>
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (hasError && !loading) {
+    <div class="error-container">
+      <div class="error-icon">⚠️</div>
+      <h2 class="error-title">Unable to load content</h2>
+      <p class="error-message">{{ errorMessage }}</p>
+      <button class="retry-button" type="button" (click)="ngOnInit()">
+        Retry
+      </button>
+    </div>
+  }
+
+  <!-- Main player -->
+  @if (!loading && !hasError && currentPanel) {
+    <div class="player-content">
+      <!-- Viewport -->
+      <pw-viewport
+        [panel]="currentPanel"
+        [viewMode]="viewMode"
+        [reducedMotion]="reducedMotion"
+        [locale]="locale"
+        [interactive]="true"
+        [showOverflowArrows]="true"
+        (viewportClick)="onViewportClick()">
+      </pw-viewport>
+
+      <!-- Toolbar (placeholder) -->
+      @if (toolbarVisible) {
+        <div class="toolbar-container">
+          <div class="toolbar">
+            <button class="toolbar-button" type="button" (click)="navigatePrevious()">
+              <span class="button-icon">←</span>
+              <span class="button-label">Previous</span>
+            </button>
+
+            <button class="toolbar-button" type="button" (click)="navigateNext()">
+              <span class="button-icon">→</span>
+              <span class="button-label">Next</span>
+            </button>
+
+            <button class="toolbar-button" type="button" (click)="toggleToolbar()">
+              <span class="button-icon">✕</span>
+              <span class="button-label">Close</span>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- PanelWave floating icon -->
+      @if (!toolbarVisible) {
+        <button 
+          class="floating-icon"
+          type="button"
+          aria-label="Show toolbar"
+          (click)="toggleToolbar()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg>
+        </button>
+      }
+    </div>
+  }
+</div>

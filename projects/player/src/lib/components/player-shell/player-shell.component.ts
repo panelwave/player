@@ -1,0 +1,509 @@
+/**
+ * Player Shell Component
+ * Main container component that orchestrates the entire PanelWave player
+ */
+
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnInit,
+  OnDestroy,
+  ChangeDetectionStrategy,
+  HostListener,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Subject, takeUntil } from 'rxjs';
+
+import type {
+  PanelWaveManifest,
+  Panel,
+  Chapter,
+  LocaleCode,
+} from '../../types';
+
+import { PlayerStateService } from '../../services/player-state.service';
+import { ManifestService } from '../../services/manifest.service';
+import { VariableStoreService } from '../../services/variable-store.service';
+import { FlowEngineService } from '../../services/flow-engine.service';
+
+import { ViewportComponent } from '../viewport/viewport.component';
+
+/**
+ * Entitlement adapter interface
+ * Provides entitlement and paywall functionality
+ */
+export interface EntitlementAdapter {
+  /**
+   * Check if user has access to a specific panel
+   */
+  hasAccess(panelId: string): Promise<boolean>;
+
+  /**
+   * Get entitlement context
+   */
+  getContext(): Promise<Record<string, unknown>>;
+
+  /**
+   * Handle purchase flow
+   */
+  purchase?(productId: string): Promise<boolean>;
+}
+
+/**
+ * Player Shell Component
+ * Main orchestrator for the PanelWave player
+ */
+@Component({
+  selector: 'pw-player-shell',
+  standalone: true,
+  imports: [CommonModule, ViewportComponent],
+  templateUrl: './player-shell.component.html',
+  styleUrls: ['./player-shell.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class PlayerShellComponent implements OnInit, OnDestroy {
+  /**
+   * Manifest to load
+   */
+  @Input() manifest?: PanelWaveManifest;
+
+  /**
+   * Manifest URL (alternative to providing manifest directly)
+   */
+  @Input() manifestUrl?: string;
+
+  /**
+   * Entitlement adapter for paywall integration
+   */
+  @Input() entitlementAdapter?: EntitlementAdapter;
+
+  /**
+   * Initial locale
+   */
+  @Input() locale: LocaleCode = 'en-US';
+
+  /**
+   * Initial chapter ID
+   */
+  @Input() initialChapterId?: string;
+
+  /**
+   * Initial panel ID
+   */
+  @Input() initialPanelId?: string;
+
+  /**
+   * Enable autoplay
+   */
+  @Input() autoplay = false;
+
+  /**
+   * Seconds per panel in autoplay mode
+   */
+  @Input() secondsPerPanel = 5;
+
+  /**
+   * Enable reduced motion
+   */
+  @Input() reducedMotion = false;
+
+  /**
+   * Show toolbar by default
+   */
+  @Input() showToolbar = false;
+
+  /**
+   * Player ready
+   */
+  @Output() ready = new EventEmitter<void>();
+
+  /**
+   * Panel changed
+   */
+  @Output() panelChange = new EventEmitter<{ panel: Panel; chapter: Chapter }>();
+
+  /**
+   * Chapter changed
+   */
+  @Output() chapterChange = new EventEmitter<Chapter>();
+
+  /**
+   * Error occurred
+   */
+  @Output() error = new EventEmitter<Error>();
+
+  /**
+   * Locale changed
+   */
+  @Output() localeChange = new EventEmitter<LocaleCode>();
+
+  /**
+   * Variable changed
+   */
+  @Output() variableChange = new EventEmitter<{ key: string; value: unknown }>();
+
+  /**
+   * Navigation attempted
+   */
+  @Output() navigationAttempt = new EventEmitter<{ direction: 'next' | 'previous' | 'panel'; target?: string }>();
+
+  /**
+   * Destroy subject
+   */
+  private destroy$ = new Subject<void>();
+
+  /**
+   * Loading state
+   */
+  loading = true;
+
+  /**
+   * Error state
+   */
+  hasError = false;
+
+  /**
+   * Error message
+   */
+  errorMessage = '';
+
+  /**
+   * Current panel
+   */
+  currentPanel?: Panel;
+
+  /**
+   * Current chapter
+   */
+  currentChapter?: Chapter;
+
+  /**
+   * Toolbar visible
+   */
+  toolbarVisible = false;
+
+  /**
+   * View mode
+   */
+  viewMode: 'page' | 'panel' = 'panel';
+
+  constructor(
+    private playerState: PlayerStateService,
+    private manifestService: ManifestService,
+    private variableStore: VariableStoreService,
+    private flowEngine: FlowEngineService
+  ) {}
+
+  /**
+   * Initialize component
+   */
+  ngOnInit(): void {
+    this.toolbarVisible = this.showToolbar;
+    this.initializePlayer();
+  }
+
+  /**
+   * Cleanup on destroy
+   */
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  /**
+   * Initialize player
+   */
+  private async initializePlayer(): Promise<void> {
+    try {
+      this.loading = true;
+
+      // Load manifest
+      if (this.manifestUrl) {
+        await this.loadManifestFromUrl(this.manifestUrl);
+      } else if (this.manifest) {
+        this.manifestService.setManifest(this.manifest);
+      } else {
+        throw new Error('No manifest or manifestUrl provided');
+      }
+
+      // Initialize entitlement context
+      if (this.entitlementAdapter) {
+        const context = await this.entitlementAdapter.getContext();
+        this.variableStore.setMultiple(context, 'global');
+      }
+
+      // Set initial locale
+      this.playerState.setLocale(this.locale);
+
+      // Navigate to initial position
+      if (this.initialChapterId && this.initialPanelId) {
+        await this.navigateToPanel(this.initialChapterId, this.initialPanelId);
+      } else if (this.initialChapterId) {
+        await this.navigateToChapter(this.initialChapterId);
+      } else {
+        await this.navigateToStart();
+      }
+
+      // Subscribe to state changes
+      this.subscribeToStateChanges();
+
+      this.loading = false;
+      this.ready.emit();
+    } catch (err) {
+      this.handleError(err as Error);
+    }
+  }
+
+  /**
+   * Load manifest from URL
+   */
+  private async loadManifestFromUrl(url: string): Promise<void> {
+    // In a real implementation, this would fetch the manifest
+    // For now, we'll throw an error to indicate it's not implemented
+    throw new Error('Manifest URL loading not yet implemented');
+  }
+
+  /**
+   * Subscribe to state changes
+   */
+  private subscribeToStateChanges(): void {
+    // Listen to panel changes
+    this.playerState.currentPanel$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((panel) => {
+        if (panel && this.currentChapter) {
+          this.currentPanel = panel;
+          this.panelChange.emit({ panel, chapter: this.currentChapter });
+        }
+      });
+
+    // Listen to locale changes
+    this.playerState.locale$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((locale) => {
+        this.localeChange.emit(locale);
+      });
+  }
+
+  /**
+   * Navigate to start
+   */
+  private async navigateToStart(): Promise<void> {
+    const manifest = this.manifestService.getManifest();
+    if (!manifest) {
+      throw new Error('No manifest loaded');
+    }
+
+    // Get first chapter
+    const firstChapter = manifest.chapters[0];
+    if (!firstChapter) {
+      throw new Error('No chapters in manifest');
+    }
+
+    await this.navigateToChapter(firstChapter.id);
+  }
+
+  /**
+   * Navigate to chapter
+   */
+  async navigateToChapter(chapterId: string): Promise<void> {
+    try {
+      const chapter = this.manifestService.getChapter(chapterId);
+      if (!chapter) {
+        throw new Error(`Chapter not found: ${chapterId}`);
+      }
+
+      this.currentChapter = chapter;
+      this.chapterChange.emit(chapter);
+
+      // Get first panel in chapter
+      const firstPanel = this.flowEngine.getFirstPanel(chapterId);
+      if (firstPanel) {
+        this.playerState.setCurrentPanel(firstPanel);
+        this.currentPanel = firstPanel;
+      }
+    } catch (err) {
+      this.handleError(err as Error);
+    }
+  }
+
+  /**
+   * Navigate to panel
+   */
+  async navigateToPanel(chapterId: string, panelId: string): Promise<void> {
+    try {
+      // Check entitlement
+      if (this.entitlementAdapter) {
+        const hasAccess = await this.entitlementAdapter.hasAccess(panelId);
+        if (!hasAccess) {
+          throw new Error(`Access denied to panel: ${panelId}`);
+        }
+      }
+
+      const chapter = this.manifestService.getChapter(chapterId);
+      if (!chapter) {
+        throw new Error(`Chapter not found: ${chapterId}`);
+      }
+
+      const panel = this.manifestService.getPanel(chapterId, panelId);
+      if (!panel) {
+        throw new Error(`Panel not found: ${panelId}`);
+      }
+
+      this.currentChapter = chapter;
+      this.currentPanel = panel;
+      this.playerState.setCurrentPanel(panel);
+
+      this.panelChange.emit({ panel, chapter });
+    } catch (err) {
+      this.handleError(err as Error);
+    }
+  }
+
+  /**
+   * Navigate to next panel
+   */
+  async navigateNext(): Promise<void> {
+    if (!this.currentChapter || !this.currentPanel) {
+      return;
+    }
+
+    this.navigationAttempt.emit({ direction: 'next' });
+
+    try {
+      const nextPanel = this.flowEngine.getNextPanel(
+        this.currentChapter.id,
+        this.currentPanel.id
+      );
+
+      if (nextPanel) {
+        await this.navigateToPanel(this.currentChapter.id, nextPanel.id);
+      }
+    } catch (err) {
+      this.handleError(err as Error);
+    }
+  }
+
+  /**
+   * Navigate to previous panel
+   */
+  async navigatePrevious(): Promise<void> {
+    if (!this.currentChapter || !this.currentPanel) {
+      return;
+    }
+
+    this.navigationAttempt.emit({ direction: 'previous' });
+
+    try {
+      const previousPanel = this.flowEngine.getPreviousPanel(
+        this.currentChapter.id,
+        this.currentPanel.id
+      );
+
+      if (previousPanel) {
+        await this.navigateToPanel(this.currentChapter.id, previousPanel.id);
+      }
+    } catch (err) {
+      this.handleError(err as Error);
+    }
+  }
+
+  /**
+   * Toggle toolbar visibility
+   */
+  toggleToolbar(): void {
+    this.toolbarVisible = !this.toolbarVisible;
+  }
+
+  /**
+   * Show toolbar
+   */
+  showToolbarTemporarily(): void {
+    this.toolbarVisible = true;
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      if (this.toolbarVisible) {
+        this.toolbarVisible = false;
+      }
+    }, 5000);
+  }
+
+  /**
+   * Change locale
+   */
+  changeLocale(locale: LocaleCode): void {
+    this.playerState.setLocale(locale);
+  }
+
+  /**
+   * Set variable
+   */
+  setVariable(key: string, value: unknown, scope: 'global' | 'chapter' | 'page' | 'session' | 'persistent' = 'session'): void {
+    this.variableStore.set(key, value, scope);
+    this.variableChange.emit({ key, value });
+  }
+
+  /**
+   * Get variable
+   */
+  getVariable(key: string): unknown {
+    return this.variableStore.get(key);
+  }
+
+  /**
+   * Handle error
+   */
+  private handleError(err: Error): void {
+    console.error('Player error:', err);
+    this.hasError = true;
+    this.errorMessage = err.message;
+    this.loading = false;
+    this.error.emit(err);
+  }
+
+  /**
+   * Keyboard shortcut handler
+   */
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboard(event: KeyboardEvent): void {
+    // Don't handle if user is typing in an input
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault();
+        this.navigateNext();
+        break;
+
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.navigatePrevious();
+        break;
+
+      case 't':
+      case 'T':
+        event.preventDefault();
+        this.toggleToolbar();
+        break;
+
+      case 'Escape':
+        event.preventDefault();
+        if (this.toolbarVisible) {
+          this.toolbarVisible = false;
+        }
+        break;
+    }
+  }
+
+  /**
+   * Handle viewport click
+   */
+  onViewportClick(): void {
+    this.showToolbarTemporarily();
+  }
+}
