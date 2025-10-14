@@ -1,0 +1,79 @@
+/**
+ * Viewport Component Styles
+ */
+
+.viewport-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.viewport-container:active {
+  cursor: grabbing;
+}
+
+.viewport-container.interactive {
+  cursor: default;
+}
+
+.viewport-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.viewport-content.reduced-motion {
+  transition: none !important;
+}
+
+.panel-container {
+  position: relative;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.layer-placeholder {
+  padding: 20px;
+  background: rgba(0, 120, 215, 0.1);
+  border: 1px dashed rgba(0, 120, 215, 0.3);
+  color: #0078d7;
+  font-size: 14px;
+}
+
+.no-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 400px;
+  min-height: 300px;
+  color: #666;
+}
+
+/* View mode specific styles */
+.viewport-panel {
+  /* Panel view - focus on single panel */
+}
+
+.viewport-page {
+  /* Page view - show multiple panels */
+}
+
+/* Reduced motion support */
+.reduced-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

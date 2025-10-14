@@ -1,0 +1,31 @@
+<div 
+  class="viewport-container"
+  [class]="getViewModeClass()"
+  [class.reduced-motion]="reducedMotion"
+  [class.interactive]="interactive"
+  (click)="onViewportClick($event)">
+  
+  <div 
+    class="viewport-content"
+    [style.transform]="getTransformStyle()"
+    [style.transition]="reducedMotion ? 'none' : 'transform 0.3s ease'">
+    
+    @if (panel) {
+      <div class="panel-container">
+        <!-- Layers will be rendered here -->
+        @for (layer of panel.layers; track layer) {
+          <div class="layer" [attr.data-layer-id]="layer.id || 'unknown'">
+            <!-- Layer content rendering will be implemented -->
+            <div class="layer-placeholder">
+              Layer: {{ layer.id || 'unnamed' }}
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="no-panel">
+        <p>No panel to display</p>
+      </div>
+    }
+  </div>
+</div>
