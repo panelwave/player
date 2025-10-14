@@ -1,0 +1,371 @@
+/**
+ * Flow Engine Service
+ * Handles graph navigation, condition evaluation, and action application
+ */
+
+import { Injectable } from '@angular/core';
+import type { Edge, Graph, Transition } from '../types';
+import { evaluateJsonLogic } from '../utils';
+
+/**
+ * Navigation result
+ */
+export interface NavigationResult {
+  nextPanelId: string | null;
+  transition?: Transition;
+  action?: unknown[];
+}
+
+/**
+ * Flow Engine Service
+ * Manages panel navigation through graph traversal
+ */
+@Injectable({
+  providedIn: 'root',
+})
+export class FlowEngineService {
+  /**
+   * Get next panel based on graph edges and conditions
+   * @param graph - Navigation graph
+   * @param currentPanelId - Current panel ID
+   * @param context - Variable context for condition evaluation
+   * @returns Navigation result with next panel and transition
+   */
+  getNextPanel(
+    graph: Graph,
+    currentPanelId: string,
+    context: Record<string, unknown>
+  ): NavigationResult {
+    // Get edges from current panel
+    const edges = this.getEdgesFromPanel(graph, currentPanelId);
+
+    if (edges.length === 0) {
+      return { nextPanelId: null };
+    }
+
+    // Filter edges by condition
+    const validEdges = edges.filter((edge) => this.evaluateCondition(edge, context));
+
+    if (validEdges.length === 0) {
+      return { nextPanelId: null };
+    }
+
+    // Sort by priority (highest first)
+    const sortedEdges = this.sortEdgesByPriority(validEdges);
+
+    // Take first (highest priority) edge
+    const selectedEdge = sortedEdges[0];
+
+    return {
+      nextPanelId: selectedEdge.to,
+      transition: selectedEdge.transition,
+      action: selectedEdge.action,
+    };
+  }
+
+  /**
+   * Get all edges originating from a panel
+   * @param graph - Navigation graph
+   * @param panelId - Panel ID
+   * @returns Array of edges
+   */
+  private getEdgesFromPanel(graph: Graph, panelId: string): Edge[] {
+    return graph.edges.filter((edge) => edge.from === panelId);
+  }
+
+  /**
+   * Evaluate edge condition
+   * @param edge - Edge to evaluate
+   * @param context - Variable context
+   * @returns True if condition passes
+   */
+  private evaluateCondition(edge: Edge, context: Record<string, unknown>): boolean {
+    // No condition means always true
+    if (!edge.condition) {
+      return true;
+    }
+
+    return evaluateJsonLogic(edge.condition, context);
+  }
+
+  /**
+   * Sort edges by priority (highest first)
+   * @param edges - Edges to sort
+   * @returns Sorted edges
+   */
+  private sortEdgesByPriority(edges: Edge[]): Edge[] {
+    return [...edges].sort((a, b) => {
+      const priorityA = a.priority ?? 0;
+      const priorityB = b.priority ?? 0;
+      return priorityB - priorityA; // Descending order
+    });
+  }
+
+  /**
+   * Get all possible next panels (ignoring conditions)
+   * @param graph - Navigation graph
+   * @param currentPanelId - Current panel ID
+   * @returns Array of possible next panel IDs
+   */
+  getPossibleNextPanels(graph: Graph, currentPanelId: string): string[] {
+    const edges = this.getEdgesFromPanel(graph, currentPanelId);
+    return edges.map((edge) => edge.to);
+  }
+
+  /**
+   * Get all edges pointing to a panel
+   * @param graph - Navigation graph
+   * @param panelId - Panel ID
+   * @returns Array of edges
+   */
+  getEdgesToPanel(graph: Graph, panelId: string): Edge[] {
+    return graph.edges.filter((edge) => edge.to === panelId);
+  }
+
+  /**
+   * Get previous panels (panels with edges pointing to current)
+   * @param graph - Navigation graph
+   * @param currentPanelId - Current panel ID
+   * @returns Array of previous panel IDs
+   */
+  getPreviousPanels(graph: Graph, currentPanelId: string): string[] {
+    const edges = this.getEdgesToPanel(graph, currentPanelId);
+    return edges.map((edge) => edge.from);
+  }
+
+  /**
+   * Check if a panel has outgoing edges
+   * @param graph - Navigation graph
+   * @param panelId - Panel ID
+   * @returns True if panel has outgoing edges
+   */
+  hasOutgoingEdges(graph: Graph, panelId: string): boolean {
+    return this.getEdgesFromPanel(graph, panelId).length > 0;
+  }
+
+  /**
+   * Check if a panel is an endpoint (no outgoing edges)
+   * @param graph - Navigation graph
+   * @param panelId - Panel ID
+   * @returns True if panel is an endpoint
+   */
+  isEndpoint(graph: Graph, panelId: string): boolean {
+    return !this.hasOutgoingEdges(graph, panelId);
+  }
+
+  /**
+   * Check if a panel is the entry point
+   * @param graph - Navigation graph
+   * @param panelId - Panel ID
+   * @returns True if panel is the entry
+   */
+  isEntry(graph: Graph, panelId: string): boolean {
+    const entry = graph.entry;
+    
+    if (typeof entry === 'string') {
+      return entry === panelId;
+    }
+    
+    if (Array.isArray(entry)) {
+      return entry.includes(panelId);
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get entry panel(s) from graph
+   * @param graph - Navigation graph
+   * @returns Entry panel ID or array of IDs
+   */
+  getEntry(graph: Graph): string | string[] {
+    return graph.entry;
+  }
+
+  /**
+   * Find all endpoints in the graph
+   * @param graph - Navigation graph
+   * @returns Array of endpoint panel IDs
+   */
+  findEndpoints(graph: Graph): string[] {
+    const allPanelIds = new Set<string>();
+    
+    // Collect all panel IDs from edges
+    graph.edges.forEach((edge) => {
+      allPanelIds.add(edge.from);
+      allPanelIds.add(edge.to);
+    });
+    
+    // Add entry panels
+    if (typeof graph.entry === 'string') {
+      allPanelIds.add(graph.entry);
+    } else if (Array.isArray(graph.entry)) {
+      graph.entry.forEach((id) => allPanelIds.add(id));
+    }
+    
+    // Filter panels with no outgoing edges
+    return Array.from(allPanelIds).filter((panelId) => this.isEndpoint(graph, panelId));
+  }
+
+  /**
+   * Check if navigation path exists between two panels
+   * @param graph - Navigation graph
+   * @param fromPanelId - Start panel ID
+   * @param toPanelId - Target panel ID
+   * @param maxDepth - Maximum search depth (default: 100)
+   * @returns True if path exists
+   */
+  hasPath(
+    graph: Graph,
+    fromPanelId: string,
+    toPanelId: string,
+    maxDepth: number = 100
+  ): boolean {
+    if (fromPanelId === toPanelId) {
+      return true;
+    }
+
+    const visited = new Set<string>();
+    const queue: Array<{ panelId: string; depth: number }> = [
+      { panelId: fromPanelId, depth: 0 },
+    ];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      if (current.depth >= maxDepth) {
+        continue;
+      }
+
+      if (visited.has(current.panelId)) {
+        continue;
+      }
+
+      visited.add(current.panelId);
+
+      const nextPanels = this.getPossibleNextPanels(graph, current.panelId);
+
+      for (const nextPanel of nextPanels) {
+        if (nextPanel === toPanelId) {
+          return true;
+        }
+
+        queue.push({ panelId: nextPanel, depth: current.depth + 1 });
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Find shortest path between two panels (ignoring conditions)
+   * @param graph - Navigation graph
+   * @param fromPanelId - Start panel ID
+   * @param toPanelId - Target panel ID
+   * @returns Array of panel IDs in path, or null if no path exists
+   */
+  findPath(graph: Graph, fromPanelId: string, toPanelId: string): string[] | null {
+    if (fromPanelId === toPanelId) {
+      return [fromPanelId];
+    }
+
+    const visited = new Set<string>();
+    const queue: Array<{ panelId: string; path: string[] }> = [
+      { panelId: fromPanelId, path: [fromPanelId] },
+    ];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      if (visited.has(current.panelId)) {
+        continue;
+      }
+
+      visited.add(current.panelId);
+
+      const nextPanels = this.getPossibleNextPanels(graph, current.panelId);
+
+      for (const nextPanel of nextPanels) {
+        if (nextPanel === toPanelId) {
+          return [...current.path, nextPanel];
+        }
+
+        queue.push({
+          panelId: nextPanel,
+          path: [...current.path, nextPanel],
+        });
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Detect cycles in the graph
+   * @param graph - Navigation graph
+   * @returns True if graph contains cycles
+   */
+  hasCycles(graph: Graph): boolean {
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    const dfs = (panelId: string): boolean => {
+      visited.add(panelId);
+      recursionStack.add(panelId);
+
+      const nextPanels = this.getPossibleNextPanels(graph, panelId);
+
+      for (const nextPanel of nextPanels) {
+        if (!visited.has(nextPanel)) {
+          if (dfs(nextPanel)) {
+            return true;
+          }
+        } else if (recursionStack.has(nextPanel)) {
+          // Found a cycle
+          return true;
+        }
+      }
+
+      recursionStack.delete(panelId);
+      return false;
+    };
+
+    // Check from entry points
+    const entries = Array.isArray(graph.entry) ? graph.entry : [graph.entry];
+
+    for (const entry of entries) {
+      if (!visited.has(entry)) {
+        if (dfs(entry)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Get all reachable panels from entry
+   * @param graph - Navigation graph
+   * @returns Array of reachable panel IDs
+   */
+  getReachablePanels(graph: Graph): string[] {
+    const reachable = new Set<string>();
+    const entries = Array.isArray(graph.entry) ? graph.entry : [graph.entry];
+
+    const dfs = (panelId: string): void => {
+      if (reachable.has(panelId)) {
+        return;
+      }
+
+      reachable.add(panelId);
+
+      const nextPanels = this.getPossibleNextPanels(graph, panelId);
+      nextPanels.forEach((next) => dfs(next));
+    };
+
+    entries.forEach((entry) => dfs(entry));
+
+    return Array.from(reachable);
+  }
+}
