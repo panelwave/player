@@ -139,7 +139,9 @@ describe('AudioEngineService', () => {
     });
 
     it('should handle stopping non-existent track', async () => {
-      await expect(service.stop('non-existent')).toBeResolved();
+      // Should not throw
+      await service.stop('non-existent');
+      expect(true).toBe(true);
     });
   });
 

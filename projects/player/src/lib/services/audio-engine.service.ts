@@ -353,7 +353,7 @@ export class AudioEngineService {
    * Get role volume
    */
   getRoleVolume(role: AudioRole): number {
-    return this.roleVolumes.get(role) || 1.0;
+    return this.roleVolumes.get(role) ?? 1.0;
   }
 
   /**
