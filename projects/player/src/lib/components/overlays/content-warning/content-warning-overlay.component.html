@@ -1,0 +1,70 @@
+@if (shouldShow()) {
+  <div class="warning-overlay">
+    <!-- Blur backdrop -->
+    <div class="blur-backdrop"></div>
+
+    <!-- Warning container -->
+    <div class="warning-container">
+      <div class="warning-content">
+        <!-- Icon -->
+        <div class="warning-icon">⚠️</div>
+
+        <!-- Title -->
+        <h2 class="warning-title">Content Warning</h2>
+
+        <!-- Warning chips -->
+        <div class="warning-chips">
+          @for (warning of getVisibleWarnings(); track warning.id) {
+            <div class="warning-chip" [class]="getSeverityClass(warning)">
+              <span class="chip-icon">{{ getSeverityIcon(warning) }}</span>
+              <span class="chip-label">{{ getWarningLabel(warning) }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Message -->
+        <p class="warning-message">
+          This content contains material that some viewers may find disturbing.
+          Viewer discretion is advised.
+        </p>
+
+        <!-- Actions -->
+        <div class="warning-actions">
+          <button
+            class="action-btn view-btn"
+            type="button"
+            (click)="onViewAnyway()">
+            View Anyway
+          </button>
+
+          @if (getVisibleWarnings().length === 1) {
+            <button
+              class="action-btn hide-btn"
+              type="button"
+              (click)="onAlwaysHide(getVisibleWarnings()[0])">
+              Always Hide This Warning
+            </button>
+          }
+        </div>
+
+        <!-- Individual hide options (if multiple warnings) -->
+        @if (getVisibleWarnings().length > 1) {
+          <div class="hide-options">
+            <p class="hide-title">Hide specific warnings:</p>
+            <div class="hide-list">
+              @for (warning of getVisibleWarnings(); track warning.id) {
+                <button
+                  class="hide-option-btn"
+                  type="button"
+                  (click)="onAlwaysHide(warning)">
+                  <span class="hide-icon">✕</span>
+                  <span class="hide-label">{{ getWarningLabel(warning) }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
