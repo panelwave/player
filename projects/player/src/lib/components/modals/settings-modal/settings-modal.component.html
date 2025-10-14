@@ -1,0 +1,280 @@
+@if (visible) {
+  <div class="settings-overlay" (click)="onBackdropClick($event)">
+    <div class="settings-container" role="dialog" aria-modal="true" aria-label="Settings">
+      <!-- Header -->
+      <div class="settings-header">
+        <h2 class="settings-title">Settings</h2>
+        <button
+          class="close-btn"
+          type="button"
+          aria-label="Close settings"
+          (click)="cancel()">
+          ✕
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="settings-tabs" role="tablist">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'preferences'"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'preferences'"
+          (click)="switchTab('preferences')">
+          Preferences
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'variables'"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'variables'"
+          (click)="switchTab('variables')">
+          Variables
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="settings-content">
+        <!-- Preferences Tab -->
+        @if (activeTab === 'preferences') {
+          <div class="tab-panel" role="tabpanel">
+            <div class="settings-section">
+              <h3 class="section-title">Language</h3>
+              <div class="setting-item">
+                <label class="setting-label" for="locale-select">Interface Language</label>
+                <select
+                  id="locale-select"
+                  class="setting-select"
+                  [(ngModel)]="locale"
+                  (ngModelChange)="updateLocale($event)">
+                  @for (loc of availableLocales; track loc) {
+                    <option [value]="loc">{{ loc }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <h3 class="section-title">Display</h3>
+              
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.mangaMode"
+                    (ngModelChange)="updatePreference('mangaMode', $event)" />
+                  <span>Manga Mode (right-to-left reading)</span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.reducedMotion"
+                    (ngModelChange)="updatePreference('reducedMotion', $event)" />
+                  <span>Reduced Motion (disable animations)</span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.highContrast"
+                    (ngModelChange)="updatePreference('highContrast', $event)" />
+                  <span>High Contrast Mode</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <h3 class="section-title">Content</h3>
+              
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.speech"
+                    (ngModelChange)="updatePreference('speech', $event)" />
+                  <span>Show Speech Bubbles</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <h3 class="section-title">Audio</h3>
+              
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.audio"
+                    (ngModelChange)="updatePreference('audio', $event)" />
+                  <span>Enable Audio</span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.sfx"
+                    (ngModelChange)="updatePreference('sfx', $event)" />
+                  <span>Enable Sound Effects</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <h3 class="section-title">Autoplay</h3>
+              
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [(ngModel)]="preferences.autoplay"
+                    (ngModelChange)="updatePreference('autoplay', $event)" />
+                  <span>Enable Autoplay</span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <label class="setting-label" for="seconds-input">Seconds per Panel</label>
+                <div class="number-input">
+                  <input
+                    id="seconds-input"
+                    type="number"
+                    class="setting-number"
+                    min="0.5"
+                    max="120"
+                    step="0.5"
+                    [(ngModel)]="preferences.secondsPerPanel"
+                    (ngModelChange)="updatePreference('secondsPerPanel', $event)" />
+                  <span class="input-unit">seconds</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-actions">
+              <button
+                class="action-btn secondary"
+                type="button"
+                (click)="resetPreferences()">
+                Reset to Defaults
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Variables Tab -->
+        @if (activeTab === 'variables') {
+          <div class="tab-panel" role="tabpanel">
+            @if (getPublicVariables().length > 0) {
+              <div class="settings-section">
+                <h3 class="section-title">Public Variables</h3>
+                
+                @for (variable of getPublicVariables(); track variable.id) {
+                  <div class="setting-item variable-item">
+                    <label class="setting-label">{{ variable.id }}</label>
+                    
+                    <!-- Boolean Variable -->
+                    @if (isBoolean(variable)) {
+                      <label class="toggle-label">
+                        <input
+                          type="checkbox"
+                          class="setting-checkbox"
+                          [checked]="getVariableValue(variable)"
+                          (change)="updateVariable(variable.id, $any($event.target).checked)" />
+                        <span>{{ getVariableValue(variable) ? 'Enabled' : 'Disabled' }}</span>
+                      </label>
+                    }
+
+                    <!-- Number Variable -->
+                    @if (isNumber(variable)) {
+                      <div class="number-input">
+                        <input
+                          type="number"
+                          class="setting-number"
+                          [min]="getMin(variable)"
+                          [max]="getMax(variable)"
+                          [value]="getVariableValue(variable)"
+                          (input)="updateVariable(variable.id, $any($event.target).valueAsNumber)" />
+                        <button
+                          class="reset-btn-small"
+                          type="button"
+                          title="Reset to default"
+                          (click)="resetVariable(variable)">
+                          ↺
+                        </button>
+                      </div>
+                    }
+
+                    <!-- Enum Variable -->
+                    @if (isEnum(variable)) {
+                      <select
+                        class="setting-select"
+                        [value]="getVariableValue(variable)"
+                        (change)="updateVariable(variable.id, $any($event.target).value)">
+                        @for (option of getEnumOptions(variable); track option) {
+                          <option [value]="option">{{ option }}</option>
+                        }
+                      </select>
+                    }
+
+                    <!-- String Variable -->
+                    @if (isString(variable)) {
+                      <input
+                        type="text"
+                        class="setting-text"
+                        [value]="getVariableValue(variable)"
+                        (input)="updateVariable(variable.id, $any($event.target).value)" />
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="settings-actions">
+                <button
+                  class="action-btn secondary"
+                  type="button"
+                  (click)="resetAllVariables()">
+                  Reset All Variables
+                </button>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <p>No public variables available</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="settings-footer">
+        <button
+          class="action-btn secondary"
+          type="button"
+          (click)="cancel()">
+          Cancel
+        </button>
+        <button
+          class="action-btn primary"
+          type="button"
+          (click)="save()">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+}
