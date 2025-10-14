@@ -150,7 +150,7 @@ describe('VideoControllerService', () => {
   describe('getStatus', () => {
     it('should return video status', async () => {
       mockVideo.currentTime = 10;
-      mockVideo.duration = 100;
+      Object.defineProperty(mockVideo, 'duration', { value: 100, configurable: true });
       mockVideo.volume = 0.8;
       mockVideo.muted = false;
 
@@ -235,7 +235,7 @@ describe('VideoControllerService', () => {
 
   describe('seek', () => {
     it('should seek to time', async () => {
-      mockVideo.duration = 100;
+      Object.defineProperty(mockVideo, 'duration', { value: 100, configurable: true });
       await service.play(mockVideo, 'test-video');
       
       service.seek(50);
@@ -244,7 +244,7 @@ describe('VideoControllerService', () => {
     });
 
     it('should clamp seek time to duration', async () => {
-      mockVideo.duration = 100;
+      Object.defineProperty(mockVideo, 'duration', { value: 100, configurable: true });
       await service.play(mockVideo, 'test-video');
 
       service.seek(150);
@@ -288,28 +288,25 @@ describe('VideoControllerService', () => {
   });
 
   describe('error recovery', () => {
-    it('should retry on error', (done) => {
-      jasmine.clock().install();
-
-      const playPromise = service.play(mockVideo, 'test-video');
+    it('should retry on error', async () => {
+      await service.play(mockVideo, 'test-video');
       
-      playPromise.then(() => {
-        // Simulate error
-        const errorEvent = new Event('error');
-        Object.defineProperty(mockVideo, 'error', {
-          value: { code: MediaError.MEDIA_ERR_NETWORK },
-          configurable: true
-        });
-        mockVideo.dispatchEvent(errorEvent);
-
-        // Advance time for retry
-        jasmine.clock().tick(1000);
-
-        expect(mockVideo.load).toHaveBeenCalled();
-        
-        jasmine.clock().uninstall();
-        done();
+      // Simulate error
+      const errorEvent = new Event('error');
+      Object.defineProperty(mockVideo, 'error', {
+        value: { code: MediaError.MEDIA_ERR_NETWORK },
+        configurable: true
       });
+      
+      // Clear previous load calls
+      (mockVideo.load as jasmine.Spy).calls.reset();
+      
+      mockVideo.dispatchEvent(errorEvent);
+
+      // Wait for retry attempt
+      await new Promise(resolve => setTimeout(resolve, 1100));
+
+      expect(mockVideo.load).toHaveBeenCalled();
     });
   });
 
