@@ -29,6 +29,15 @@ import { VariableStoreService } from '../../services/variable-store.service';
 import { FlowEngineService } from '../../services/flow-engine.service';
 
 import { ViewportComponent } from '../viewport/viewport.component';
+import { ToolbarComponent } from '../toolbar/toolbar.component';
+// Modal components - temporarily disabled due to build errors
+// import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
+// import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
+// import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
+// import { CharacterSheetComponent } from '../modals/character-sheet/character-sheet.component';
+// import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
+// import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
+// import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 
 /**
  * Entitlement adapter interface
@@ -58,7 +67,11 @@ export interface EntitlementAdapter {
 @Component({
   selector: 'pw-player-shell',
   standalone: true,
-  imports: [CommonModule, ViewportComponent],
+  imports: [
+    CommonModule,
+    ViewportComponent,
+    ToolbarComponent,
+  ],
   templateUrl: './player-shell.component.html',
   styleUrls: ['./player-shell.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -180,9 +193,25 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   currentChapter?: Chapter;
 
   /**
-   * Toolbar visible
+   * Toolbar visibility
    */
   toolbarVisible = false;
+
+  /**
+   * Modal visibility states
+   */
+  tocVisible = false;
+  settingsVisible = false;
+  charactersVisible = false;
+  characterSheetVisible = false;
+  extrasVisible = false;
+  shareVisible = false;
+  commentsVisible = false;
+
+  /**
+   * Selected character for detail view
+   */
+  selectedCharacterId?: string;
 
   /**
    * View mode
@@ -493,6 +522,137 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.errorMessage = err.message;
     this.loading = false;
     this.error.emit(err);
+  }
+
+  /**
+   * Toolbar event handlers
+   */
+  onToggleView(): void {
+    this.viewMode = this.viewMode === 'panel' ? 'page' : 'panel';
+    console.log('View mode:', this.viewMode);
+  }
+
+  onLocaleChange(locale: LocaleCode): void {
+    this.playerState.setLocale(locale);
+    console.log('Locale changed to:', locale);
+  }
+
+  onToggleSpeech(): void {
+    console.log('Toggle speech bubbles - not yet implemented');
+  }
+
+  onToggleAudio(): void {
+    console.log('Toggle audio - not yet implemented');
+  }
+
+  onToggleSfx(): void {
+    console.log('Toggle SFX - not yet implemented');
+  }
+
+  onToggleAutoplay(): void {
+    console.log('Toggle autoplay - not yet implemented');
+  }
+
+  onSecondsPerPanelChange(seconds: number): void {
+    console.log('Seconds per panel changed to:', seconds);
+  }
+
+  onToggleThumbnails(): void {
+    console.log('Toggle thumbnails - not yet implemented');
+  }
+
+  onOpenToc(): void {
+    this.tocVisible = true;
+  }
+
+  onOpenSettings(): void {
+    this.settingsVisible = true;
+  }
+
+  onOpenCharacters(): void {
+    this.charactersVisible = true;
+  }
+
+  onCycleAlternative(): void {
+    console.log('Cycle alternative panels - not yet implemented');
+  }
+
+  onShowBranches(): void {
+    console.log('Show branch choices - not yet implemented');
+  }
+
+  onOpenExtras(): void {
+    this.extrasVisible = true;
+  }
+
+  onLike(): void {
+    console.log('Like action - not yet implemented');
+  }
+
+  onBookmark(): void {
+    console.log('Bookmark action - not yet implemented');
+  }
+
+  onShare(): void {
+    this.shareVisible = true;
+  }
+
+  onOpenComments(): void {
+    this.commentsVisible = true;
+  }
+
+  /**
+   * Modal close handlers
+   */
+  onTocClose(): void {
+    this.tocVisible = false;
+  }
+
+  onSettingsClose(): void {
+    this.settingsVisible = false;
+  }
+
+  onCharactersClose(): void {
+    this.charactersVisible = false;
+    this.selectedCharacterId = undefined;
+  }
+
+  onCharacterSheetClose(): void {
+    this.characterSheetVisible = false;
+    this.selectedCharacterId = undefined;
+  }
+
+  onExtrasClose(): void {
+    this.extrasVisible = false;
+  }
+
+  onShareClose(): void {
+    this.shareVisible = false;
+  }
+
+  onCommentsClose(): void {
+    this.commentsVisible = false;
+  }
+
+  /**
+   * Handle character selection
+   */
+  onCharacterSelect(character: { id: string }): void {
+    this.selectedCharacterId = character.id;
+    this.charactersVisible = false;
+    this.characterSheetVisible = true;
+  }
+
+  /**
+   * Handle ToC navigation
+   */
+  onTocNavigate(target: { chapterId: string; panelId?: string }): void {
+    this.tocVisible = false;
+    if (target.panelId) {
+      this.navigateToPanel(target.chapterId, target.panelId);
+    } else {
+      this.navigateToChapter(target.chapterId);
+    }
   }
 
   /**

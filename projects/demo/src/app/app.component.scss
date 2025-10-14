@@ -1,0 +1,49 @@
+
+.demo-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.demo-header {
+  padding: 1rem 2rem;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+
+  h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+}
+
+.error-banner {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  color: #c33;
+  font-size: 0.875rem;
+}
+
+.loading-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+
+  p {
+    font-size: 1.125rem;
+    color: #666;
+  }
+}
+
+pw-player-shell {
+  flex: 1;
+  display: block;
+  overflow: hidden;
+}

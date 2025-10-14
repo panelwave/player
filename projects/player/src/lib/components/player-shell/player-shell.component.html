@@ -33,27 +33,42 @@
         (viewportClick)="onViewportClick()">
       </pw-viewport>
 
-      <!-- Toolbar (placeholder) -->
-      @if (toolbarVisible) {
-        <div class="toolbar-container">
-          <div class="toolbar">
-            <button class="toolbar-button" type="button" (click)="navigatePrevious()">
-              <span class="button-icon">←</span>
-              <span class="button-label">Previous</span>
-            </button>
-
-            <button class="toolbar-button" type="button" (click)="navigateNext()">
-              <span class="button-icon">→</span>
-              <span class="button-label">Next</span>
-            </button>
-
-            <button class="toolbar-button" type="button" (click)="toggleToolbar()">
-              <span class="button-icon">✕</span>
-              <span class="button-label">Close</span>
-            </button>
-          </div>
-        </div>
-      }
+      <!-- Full Toolbar -->
+      <pw-toolbar
+        [visible]="toolbarVisible"
+        [locale]="locale"
+        [availableLocales]="['en-US', 'de-DE']"
+        [viewMode]="viewMode"
+        [pageViewAvailable]="false"
+        [speechEnabled]="true"
+        [audioEnabled]="true"
+        [sfxEnabled]="true"
+        [autoplayEnabled]="false"
+        [secondsPerPanel]="5"
+        [thumbnailsVisible]="false"
+        [hasAlternatives]="false"
+        [hasBranches]="false"
+        [showSocial]="true"
+        (toggleView)="onToggleView()"
+        (localeChange)="onLocaleChange($event)"
+        (toggleSpeech)="onToggleSpeech()"
+        (toggleAudio)="onToggleAudio()"
+        (toggleSfx)="onToggleSfx()"
+        (toggleAutoplay)="onToggleAutoplay()"
+        (secondsPerPanelChange)="onSecondsPerPanelChange($event)"
+        (toggleThumbnails)="onToggleThumbnails()"
+        (openToc)="onOpenToc()"
+        (openSettings)="onOpenSettings()"
+        (openCharacters)="onOpenCharacters()"
+        (cycleAlternative)="onCycleAlternative()"
+        (showBranches)="onShowBranches()"
+        (openExtras)="onOpenExtras()"
+        (like)="onLike()"
+        (bookmark)="onBookmark()"
+        (share)="onShare()"
+        (openComments)="onOpenComments()"
+        (close)="toggleToolbar()">
+      </pw-toolbar>
 
       <!-- PanelWave floating icon -->
       @if (!toolbarVisible) {
@@ -67,6 +82,9 @@
           </svg>
         </button>
       }
+
+      <!-- Modals will be integrated once component compilation errors are resolved -->
+      <!-- Modal visibility is controlled by toolbar buttons for now via console logs -->
     </div>
   }
 </div>

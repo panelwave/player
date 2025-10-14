@@ -130,10 +130,12 @@ export class ViewportComponent implements OnChanges {
   getTransformStyle(): string {
     if (this.reducedMotion) {
       // No transform in reduced motion mode
-      return 'translate(0, 0) scale(1)';
+      return 'translate(-50%, -50%) scale(1)';
     }
 
-    return `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+    // First translate centers the panel (-50%, -50%)
+    // Then apply pan offsets and zoom
+    return `translate(-50%, -50%) translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
   }
 
   /**

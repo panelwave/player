@@ -9,9 +9,11 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { Layer, LocaleCode } from '../../types';
+import { ManifestService } from '../../services/manifest.service';
 
 /**
  * Layer Renderer Component
@@ -26,6 +28,8 @@ import type { Layer, LocaleCode } from '../../types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LayerRendererComponent {
+  private manifestService = inject(ManifestService);
+
   /**
    * Layer to render
    */
@@ -59,17 +63,27 @@ export class LayerRendererComponent {
     // Position
     if (layer['x'] !== undefined) {
       styles['left'] = `${layer['x']}px`;
+    } else {
+      styles['left'] = '0';
     }
+    
     if (layer['y'] !== undefined) {
       styles['top'] = `${layer['y']}px`;
+    } else {
+      styles['top'] = '0';
     }
 
     // Size
     if (layer['w'] !== undefined) {
       styles['width'] = `${layer['w']}px`;
+    } else {
+      styles['width'] = '100%';
     }
+    
     if (layer['h'] !== undefined) {
       styles['height'] = `${layer['h']}px`;
+    } else {
+      styles['height'] = '100%';
     }
 
     // Z-index
@@ -116,6 +130,17 @@ export class LayerRendererComponent {
    */
   getImageSrc(): string {
     if (this.layer.kind !== 'image') return '';
+    
+    // Try to get assetId first (from manifest reference)
+    const assetId = (this.layer as Record<string, unknown>)['assetId'];
+    if (assetId && typeof assetId === 'string') {
+      const asset = this.manifestService.getAsset(assetId);
+      if (asset && asset.variants && asset.variants.length > 0) {
+        return asset.variants[0].src;
+      }
+    }
+    
+    // Fall back to direct src if provided
     const src = (this.layer as Record<string, unknown>)['src'];
     return src ? `${this.baseUrl}${src}` : '';
   }
@@ -125,6 +150,17 @@ export class LayerRendererComponent {
    */
   getVideoSrc(): string {
     if (this.layer.kind !== 'video') return '';
+    
+    // Try to get assetId first (from manifest reference)
+    const assetId = (this.layer as Record<string, unknown>)['assetId'];
+    if (assetId && typeof assetId === 'string') {
+      const asset = this.manifestService.getAsset(assetId);
+      if (asset && asset.variants && asset.variants.length > 0) {
+        return asset.variants[0].src;
+      }
+    }
+    
+    // Fall back to direct src if provided
     const src = (this.layer as Record<string, unknown>)['src'];
     return src ? `${this.baseUrl}${src}` : '';
   }
