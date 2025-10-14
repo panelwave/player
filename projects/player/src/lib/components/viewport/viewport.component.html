@@ -32,4 +32,47 @@
       </div>
     }
   </div>
+
+  <!-- Overflow navigation arrows -->
+  @if (showOverflowArrows && panel) {
+    @if (hasOverflowLeft) {
+      <button 
+        class="overflow-arrow overflow-left"
+        type="button"
+        aria-label="Navigate left"
+        (click)="navigateLeft()">
+        ←
+      </button>
+    }
+
+    @if (hasOverflowRight) {
+      <button 
+        class="overflow-arrow overflow-right"
+        type="button"
+        aria-label="Navigate right"
+        (click)="navigateRight()">
+        →
+      </button>
+    }
+
+    @if (hasOverflowTop) {
+      <button 
+        class="overflow-arrow overflow-top"
+        type="button"
+        aria-label="Navigate up"
+        (click)="navigateUp()">
+        ↑
+      </button>
+    }
+
+    @if (hasOverflowBottom) {
+      <button 
+        class="overflow-arrow overflow-bottom"
+        type="button"
+        aria-label="Navigate down"
+        (click)="navigateDown()">
+        ↓
+      </button>
+    }
+  }
 </div>

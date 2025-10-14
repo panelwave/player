@@ -71,6 +71,11 @@ export class ViewportComponent implements OnChanges {
   @Input() interactive = true;
 
   /**
+   * Show overflow arrows
+   */
+  @Input() showOverflowArrows = true;
+
+  /**
    * Viewport clicked
    */
   @Output() viewportClick = new EventEmitter<{ x: number; y: number }>();
@@ -103,6 +108,12 @@ export class ViewportComponent implements OnChanges {
   isPinching = false;
   initialPinchDistance = 0;
   lastPinchZoom = 1;
+
+  // Overflow detection
+  hasOverflowLeft = false;
+  hasOverflowRight = false;
+  hasOverflowTop = false;
+  hasOverflowBottom = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['panel']) {
@@ -353,5 +364,76 @@ export class ViewportComponent implements OnChanges {
 
     // Calculate from layers - simplified
     return { width: 800, height: 600 };
+  }
+
+  /**
+   * Detect overflow in all directions
+   */
+  detectOverflow(): void {
+    if (!this.panel) {
+      this.hasOverflowLeft = false;
+      this.hasOverflowRight = false;
+      this.hasOverflowTop = false;
+      this.hasOverflowBottom = false;
+      return;
+    }
+
+    const panelDim = this.getPanelDimensions();
+    const viewportWidth = 800; // Would get from actual viewport element
+    const viewportHeight = 600;
+
+    // Check if content can scroll in each direction
+    this.hasOverflowLeft = this.panX < 0;
+    this.hasOverflowRight = this.panX + panelDim.width * this.zoom > viewportWidth;
+    this.hasOverflowTop = this.panY < 0;
+    this.hasOverflowBottom = this.panY + panelDim.height * this.zoom > viewportHeight;
+  }
+
+  /**
+   * Navigate left (show more content on the right)
+   */
+  navigateLeft(): void {
+    const step = 200;
+    this.transformChange.emit({
+      panX: this.panX + step,
+      panY: this.panY,
+      zoom: this.zoom,
+    });
+  }
+
+  /**
+   * Navigate right (show more content on the left)
+   */
+  navigateRight(): void {
+    const step = 200;
+    this.transformChange.emit({
+      panX: this.panX - step,
+      panY: this.panY,
+      zoom: this.zoom,
+    });
+  }
+
+  /**
+   * Navigate up (show more content below)
+   */
+  navigateUp(): void {
+    const step = 200;
+    this.transformChange.emit({
+      panX: this.panX,
+      panY: this.panY + step,
+      zoom: this.zoom,
+    });
+  }
+
+  /**
+   * Navigate down (show more content above)
+   */
+  navigateDown(): void {
+    const step = 200;
+    this.transformChange.emit({
+      panX: this.panX,
+      panY: this.panY - step,
+      zoom: this.zoom,
+    });
   }
 }
