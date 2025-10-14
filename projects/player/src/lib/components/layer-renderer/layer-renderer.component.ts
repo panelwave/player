@@ -54,20 +54,22 @@ export class LayerRendererComponent {
       position: 'absolute',
     };
 
+    const layer = this.layer as Record<string, unknown>;
+
     // Position
-    if (this.layer.x !== undefined) {
-      styles['left'] = `${this.layer.x}px`;
+    if (layer['x'] !== undefined) {
+      styles['left'] = `${layer['x']}px`;
     }
-    if (this.layer.y !== undefined) {
-      styles['top'] = `${this.layer.y}px`;
+    if (layer['y'] !== undefined) {
+      styles['top'] = `${layer['y']}px`;
     }
 
     // Size
-    if (this.layer.w !== undefined) {
-      styles['width'] = `${this.layer.w}px`;
+    if (layer['w'] !== undefined) {
+      styles['width'] = `${layer['w']}px`;
     }
-    if (this.layer.h !== undefined) {
-      styles['height'] = `${this.layer.h}px`;
+    if (layer['h'] !== undefined) {
+      styles['height'] = `${layer['h']}px`;
     }
 
     // Z-index
@@ -91,25 +93,19 @@ export class LayerRendererComponent {
       return '';
     }
 
-    const t = this.layer.transform;
+    const t = this.layer.transform as Record<string, unknown>;
     const transforms: string[] = [];
 
-    if (t.translateX || t.translateY) {
-      transforms.push(`translate(${t.translateX || 0}px, ${t.translateY || 0}px)`);
+    if (t['translateX'] || t['translateY']) {
+      transforms.push(`translate(${t['translateX'] || 0}px, ${t['translateY'] || 0}px)`);
     }
 
-    if (t.rotate) {
-      transforms.push(`rotate(${t.rotate}deg)`);
+    if (t['rotate']) {
+      transforms.push(`rotate(${t['rotate']}deg)`);
     }
 
-    if (t.scaleX !== undefined || t.scaleY !== undefined) {
-      const sx = t.scaleX ?? 1;
-      const sy = t.scaleY ?? 1;
-      transforms.push(`scale(${sx}, ${sy})`);
-    }
-
-    if (t.skewX || t.skewY) {
-      transforms.push(`skew(${t.skewX || 0}deg, ${t.skewY || 0}deg)`);
+    if (t['scale']) {
+      transforms.push(`scale(${t['scale']})`);
     }
 
     return transforms.join(' ');
@@ -120,7 +116,8 @@ export class LayerRendererComponent {
    */
   getImageSrc(): string {
     if (this.layer.kind !== 'image') return '';
-    return this.layer.src ? `${this.baseUrl}${this.layer.src}` : '';
+    const src = (this.layer as Record<string, unknown>)['src'];
+    return src ? `${this.baseUrl}${src}` : '';
   }
 
   /**
@@ -128,7 +125,8 @@ export class LayerRendererComponent {
    */
   getVideoSrc(): string {
     if (this.layer.kind !== 'video') return '';
-    return this.layer.src ? `${this.baseUrl}${this.layer.src}` : '';
+    const src = (this.layer as Record<string, unknown>)['src'];
+    return src ? `${this.baseUrl}${src}` : '';
   }
 
   /**
@@ -137,29 +135,28 @@ export class LayerRendererComponent {
   getTextContent(): string {
     if (this.layer.kind !== 'text') return '';
     
-    if (!this.layer.text) return '';
+    const text = (this.layer as Record<string, unknown>)['text'];
+    if (!text || typeof text !== 'object') return '';
+
+    const textObj = text as Record<string, string>;
 
     // Try exact locale match
-    if (typeof this.layer.text === 'object' && this.layer.text[this.locale]) {
-      return this.layer.text[this.locale];
+    if (textObj[this.locale]) {
+      return textObj[this.locale];
     }
 
     // Try base language (e.g., 'en' from 'en-US')
     const baseLocale = this.locale.split('-')[0];
-    if (typeof this.layer.text === 'object') {
-      const baseMatch = Object.keys(this.layer.text).find(
-        (key) => key.startsWith(baseLocale)
-      );
-      if (baseMatch) {
-        return this.layer.text[baseMatch];
-      }
-
-      // Return first available
-      const firstKey = Object.keys(this.layer.text)[0];
-      return this.layer.text[firstKey];
+    const baseMatch = Object.keys(textObj).find(
+      (key) => key.startsWith(baseLocale)
+    );
+    if (baseMatch) {
+      return textObj[baseMatch];
     }
 
-    return '';
+    // Return first available
+    const firstKey = Object.keys(textObj)[0];
+    return firstKey ? textObj[firstKey] : '';
   }
 
   /**
@@ -169,29 +166,30 @@ export class LayerRendererComponent {
     if (this.layer.kind !== 'text') return {};
 
     const styles: Record<string, string> = {};
+    const layer = this.layer as Record<string, unknown>;
 
-    if (this.layer.fontSize) {
-      styles['font-size'] = `${this.layer.fontSize}px`;
+    if (layer['fontSize']) {
+      styles['font-size'] = `${layer['fontSize']}px`;
     }
 
-    if (this.layer.fontFamily) {
-      styles['font-family'] = this.layer.fontFamily;
+    if (layer['fontFamily']) {
+      styles['font-family'] = layer['fontFamily'] as string;
     }
 
-    if (this.layer.fontWeight) {
-      styles['font-weight'] = `${this.layer.fontWeight}`;
+    if (layer['fontWeight']) {
+      styles['font-weight'] = `${layer['fontWeight']}`;
     }
 
-    if (this.layer.color) {
-      styles['color'] = this.layer.color;
+    if (layer['color']) {
+      styles['color'] = layer['color'] as string;
     }
 
-    if (this.layer.textAlign) {
-      styles['text-align'] = this.layer.textAlign;
+    if (layer['textAlign']) {
+      styles['text-align'] = layer['textAlign'] as string;
     }
 
-    if (this.layer.lineHeight) {
-      styles['line-height'] = `${this.layer.lineHeight}`;
+    if (layer['lineHeight']) {
+      styles['line-height'] = `${layer['lineHeight']}`;
     }
 
     return styles;
@@ -216,6 +214,9 @@ export class LayerRendererComponent {
    * Check if layer is interactive
    */
   isInteractive(): boolean {
-    return this.layer.kind === 'hotspot' || this.layer.kind === 'button';
+    // Note: 'hotspot' and 'button' are not in the current LayerKind type
+    // This method is kept for future compatibility
+    const kind = this.layer.kind as string;
+    return kind === 'hotspot' || kind === 'button';
   }
 }
