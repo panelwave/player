@@ -1,0 +1,91 @@
+/**
+ * Hotspots Overlay Component Styles
+ */
+
+.hotspots-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hotspot-group {
+  pointer-events: auto;
+  cursor: pointer;
+  outline: none;
+}
+
+.hotspot-group.disabled {
+  pointer-events: none;
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Hotspot shapes */
+.hotspot {
+  fill: rgba(0, 120, 215, 0.2);
+  stroke: rgba(0, 120, 215, 0.5);
+  stroke-width: 2;
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.hotspot-group.highlight-hover:hover .hotspot,
+.hotspot-group.focused .hotspot {
+  fill: rgba(0, 120, 215, 0.3);
+  stroke: rgba(0, 120, 215, 0.8);
+  stroke-width: 3;
+}
+
+/* Focus ring */
+.hotspot-group:focus .hotspot {
+  stroke: #0078d7;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 4px rgba(0, 120, 215, 0.8));
+}
+
+/* Indicator pulse animation */
+.hotspot-indicator {
+  fill: #0078d7;
+  animation: pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.5);
+  }
+}
+
+/* Shape-specific styles */
+.hotspot-rect {
+  rx: 4;
+  ry: 4;
+}
+
+.hotspot-circle {
+  /* Circle-specific styles */
+}
+
+.hotspot-polygon {
+  /* Polygon-specific styles */
+}
+
+/* Disabled state */
+.hotspot-group.disabled .hotspot {
+  fill: rgba(128, 128, 128, 0.1);
+  stroke: rgba(128, 128, 128, 0.3);
+}
+
+/* Active/pressed state */
+.hotspot-group:active .hotspot {
+  fill: rgba(0, 120, 215, 0.4);
+  stroke: rgba(0, 120, 215, 1);
+}
