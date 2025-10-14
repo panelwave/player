@@ -199,6 +199,18 @@ export class CharacterRosterComponent implements OnInit {
   }
 
   /**
+   * Handle backdrop keyboard interaction
+   */
+  onBackdropKeydown(event: KeyboardEvent): void {
+    // Only handle Enter/Space on the backdrop itself
+    if (event.target === event.currentTarget && 
+        (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      this.onClose();
+    }
+  }
+
+  /**
    * Handle keyboard events
    */
   @HostListener('window:keydown', ['$event'])

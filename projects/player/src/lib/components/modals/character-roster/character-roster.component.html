@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="roster-overlay" (click)="onBackdropClick($event)">
+  <div class="roster-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
     <div class="roster-container" role="dialog" aria-modal="true" aria-label="Character Roster">
       <!-- Header -->
       <div class="roster-header">
