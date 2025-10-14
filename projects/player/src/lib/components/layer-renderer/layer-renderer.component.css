@@ -1,0 +1,122 @@
+/**
+ * Layer Renderer Component Styles
+ */
+
+.layer-wrapper {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.layer-wrapper.interactive {
+  cursor: pointer;
+}
+
+/* Image Layer */
+.layer-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Video Layer */
+.layer-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Text Layer */
+.layer-text {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+/* Hotspot Layer */
+.layer-hotspot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 120, 215, 0.1);
+  border: 2px solid rgba(0, 120, 215, 0.5);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.layer-hotspot:hover {
+  background: rgba(0, 120, 215, 0.2);
+  border-color: rgba(0, 120, 215, 0.8);
+}
+
+.hotspot-indicator {
+  width: 12px;
+  height: 12px;
+  background: #0078d7;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+}
+
+/* Button Layer */
+.layer-button {
+  width: 100%;
+  height: 100%;
+  padding: 12px 24px;
+  background: #0078d7;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.layer-button:hover {
+  background: #005a9e;
+}
+
+.layer-button:active {
+  background: #004578;
+}
+
+/* SVG Layer */
+.layer-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.layer-svg svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Shape Layer */
+.layer-shape {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Group Layer */
+.layer-group {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}

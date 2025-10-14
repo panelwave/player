@@ -14,6 +14,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import type { Panel, ViewMode, LocaleCode } from '../../types';
 
 /**
@@ -23,7 +24,7 @@ import type { Panel, ViewMode, LocaleCode } from '../../types';
 @Component({
   selector: 'pw-viewport',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LayerRendererComponent],
   templateUrl: './viewport.component.html',
   styleUrls: ['./viewport.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

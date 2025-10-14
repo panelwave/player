@@ -1,0 +1,81 @@
+<div 
+  class="layer-wrapper"
+  [ngStyle]="getLayerStyles()"
+  [style.transform]="getTransformStyle()"
+  [class.interactive]="isInteractive()"
+  [attr.data-layer-id]="layer.id"
+  [attr.data-layer-kind]="layer.kind"
+  (click)="isInteractive() ? onLayerClick($event) : null">
+
+  <!-- Image Layer -->
+  @if (layer.kind === 'image') {
+    <img 
+      [src]="getImageSrc()"
+      [alt]="layer.alt || ''"
+      class="layer-image"
+      loading="lazy" />
+  }
+
+  <!-- Video Layer -->
+  @if (layer.kind === 'video') {
+    <video 
+      [src]="getVideoSrc()"
+      class="layer-video"
+      [autoplay]="layer.autoplay || false"
+      [loop]="layer.loop || false"
+      [muted]="layer.muted || false"
+      [controls]="layer.controls || false">
+    </video>
+  }
+
+  <!-- Text Layer -->
+  @if (layer.kind === 'text') {
+    <div 
+      class="layer-text"
+      [ngStyle]="getTextStyles()"
+      [innerHTML]="getTextContent()">
+    </div>
+  }
+
+  <!-- Hotspot Layer -->
+  @if (layer.kind === 'hotspot') {
+    <div 
+      class="layer-hotspot"
+      role="button"
+      tabindex="0"
+      [attr.aria-label]="'Interactive hotspot'">
+      <div class="hotspot-indicator"></div>
+    </div>
+  }
+
+  <!-- Button Layer -->
+  @if (layer.kind === 'button') {
+    <button 
+      class="layer-button"
+      type="button">
+      {{ getTextContent() }}
+    </button>
+  }
+
+  <!-- SVG Layer -->
+  @if (layer.kind === 'svg') {
+    <div 
+      class="layer-svg"
+      [innerHTML]="layer.svg">
+    </div>
+  }
+
+  <!-- Shape Layer -->
+  @if (layer.kind === 'shape') {
+    <div class="layer-shape" [attr.data-shape]="layer.shape">
+      <!-- Shape rendering would be implemented here -->
+    </div>
+  }
+
+  <!-- Group Layer (container for nested layers) -->
+  @if (layer.kind === 'group') {
+    <div class="layer-group">
+      <!-- Nested layers would be rendered here -->
+    </div>
+  }
+</div>

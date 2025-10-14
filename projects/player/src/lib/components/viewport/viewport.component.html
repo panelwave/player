@@ -17,14 +17,13 @@
     
     @if (panel) {
       <div class="panel-container">
-        <!-- Layers will be rendered here -->
+        <!-- Render layers using LayerRenderer -->
         @for (layer of panel.layers; track layer.id) {
-          <div class="layer" [attr.data-layer-id]="layer.id">
-            <!-- Layer content rendering will be implemented -->
-            <div class="layer-placeholder">
-              Layer: {{ layer.id }}
-            </div>
-          </div>
+          <pw-layer-renderer
+            [layer]="layer"
+            [locale]="locale"
+            (layerClick)="layerClick.emit($event)">
+          </pw-layer-renderer>
         }
       </div>
     } @else {
