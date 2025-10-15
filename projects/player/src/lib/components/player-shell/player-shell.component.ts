@@ -45,6 +45,7 @@ import { CharacterSheetComponent } from '../modals/character-sheet/character-she
 import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
+import { LanguageModalComponent } from '../modals/language-modal/language-modal.component';
 
 /**
  * Factory function for TranslateLoader
@@ -90,6 +91,7 @@ export interface EntitlementAdapter {
     ThumbnailStripComponent,
     TocOverlayComponent,
     SettingsModalComponent,
+    LanguageModalComponent,
     CharacterRosterComponent,
     CharacterSheetComponent,
     ExtrasViewerComponent,
@@ -231,6 +233,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   tocVisible = false;
   settingsVisible = false;
+  languageModalVisible = false;
   charactersVisible = false;
   characterSheetVisible = false;
   extrasVisible = false;

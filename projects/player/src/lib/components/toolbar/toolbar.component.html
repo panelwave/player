@@ -17,32 +17,14 @@
 
       <!-- Language selector -->
       @if (availableLocales.length > 1) {
-        <div class="toolbar-dropdown">
-          <button
-            class="toolbar-btn"
-            type="button"
-            [attr.aria-label]="'toolbar.select_language' | translate"
-            aria-haspopup="true"
-            [attr.aria-expanded]="showLanguageDropdown"
-            (click)="toggleLanguageDropdown()">
-            <span class="btn-icon">🌐</span>
-            <span class="btn-label">{{ locale }}</span>
-          </button>
-
-          @if (showLanguageDropdown) {
-            <div class="dropdown-menu">
-              @for (lang of availableLocales; track lang) {
-                <button
-                  class="dropdown-item"
-                  [class.active]="lang === locale"
-                  type="button"
-                  (click)="onSelectLocale(lang)">
-                  {{ lang }}
-                </button>
-              }
-            </div>
-          }
-        </div>
+        <button
+          class="toolbar-btn"
+          type="button"
+          [attr.aria-label]="'toolbar.select_language' | translate"
+          (click)="openLanguage.emit()">
+          <span class="btn-icon">🌐</span>
+          <span class="btn-label">{{ locale }}</span>
+        </button>
       }
     </div>
 

@@ -1,12 +1,41 @@
-import { ApplicationConfig } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, HttpClient } from '@angular/common/http';
+import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { Observable } from 'rxjs';
 
 import { routes } from './app.routes';
+
+/**
+ * Simple TranslateLoader for demo app
+ */
+export class DemoTranslateLoader implements TranslateLoader {
+  constructor(private http: HttpClient) {}
+  
+  getTranslation(lang: string): Observable<Record<string, any>> {
+    return this.http.get<Record<string, any>>(`./assets/i18n/${lang}.json`);
+  }
+}
+
+/**
+ * Factory function for TranslateLoader
+ */
+export function createTranslateLoader(http: HttpClient): TranslateLoader {
+  return new DemoTranslateLoader(http);
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
-    provideHttpClient()
+    provideHttpClient(),
+    importProvidersFrom(
+      TranslateModule.forRoot({
+        loader: {
+          provide: TranslateLoader,
+          useFactory: createTranslateLoader,
+          deps: [HttpClient]
+        }
+      })
+    )
   ]
 };

@@ -63,6 +63,7 @@
         (toggleThumbnails)="onToggleThumbnails()"
         (openToc)="onOpenToc()"
         (openSettings)="onOpenSettings()"
+        (openLanguage)="languageModalVisible = true"
         (openCharacters)="onOpenCharacters()"
         (cycleAlternative)="onCycleAlternative()"
         (showBranches)="onShowBranches()"
@@ -118,6 +119,16 @@
           [visible]="settingsVisible"
           (close)="settingsVisible = false">
         </pw-settings-modal>
+      }
+
+      @if (languageModalVisible) {
+        <pw-language-modal
+          [visible]="languageModalVisible"
+          [currentLocale]="locale"
+          [availableLocales]="availableLocales"
+          (localeSelected)="onLocaleChange($event)"
+          (closeModal)="languageModalVisible = false">
+        </pw-language-modal>
       }
 
       @if (charactersVisible) {

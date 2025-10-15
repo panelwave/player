@@ -198,9 +198,9 @@ export class ToolbarComponent {
   @Output() close = new EventEmitter<void>();
 
   /**
-   * Show language dropdown
+   * Open language modal
    */
-  showLanguageDropdown = false;
+  @Output() openLanguage = new EventEmitter<void>();
 
   /**
    * Show autoplay controls
@@ -214,21 +214,6 @@ export class ToolbarComponent {
     if (this.pageViewAvailable) {
       this.toggleView.emit();
     }
-  }
-
-  /**
-   * Handle locale selection
-   */
-  onSelectLocale(locale: LocaleCode): void {
-    this.localeChange.emit(locale);
-    this.showLanguageDropdown = false;
-  }
-
-  /**
-   * Toggle language dropdown
-   */
-  toggleLanguageDropdown(): void {
-    this.showLanguageDropdown = !this.showLanguageDropdown;
   }
 
   /**

@@ -1,0 +1,42 @@
+@if (visible) {
+  <div 
+    class="language-overlay" 
+    (click)="onBackdropClick($event)"
+    (keydown)="onBackdropKeydown($event)"
+    tabindex="-1">
+    <div class="language-container" role="dialog" aria-modal="true" aria-labelledby="language-title">
+      <!-- Header -->
+      <div class="language-header">
+        <h2 id="language-title" class="language-title">
+          {{ 'toolbar.select_language' | translate }}
+        </h2>
+        <button
+          class="close-btn"
+          type="button"
+          [attr.aria-label]="'settings.close' | translate"
+          (click)="closeModal.emit()">
+          ✕
+        </button>
+      </div>
+
+      <!-- Language list -->
+      <div class="language-content">
+        <div class="language-list">
+          @for (locale of availableLocales; track locale) {
+            <button
+              class="language-item"
+              [class.active]="locale === currentLocale"
+              type="button"
+              (click)="onSelectLocale(locale)">
+              <span class="language-icon">🌐</span>
+              <span class="language-name">{{ locale }}</span>
+              @if (locale === currentLocale) {
+                <span class="language-check">✓</span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
