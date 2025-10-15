@@ -16,6 +16,7 @@ export { VideoControllerService, type VideoState, type VideoEvent, type VideoSta
 export { PreloadService, type PreloadItem, type PreloadPriority } from './lib/services/preload.service';
 export { TrackingService, type TrackingEvent } from './lib/services/tracking.service';
 export { EntitlementService } from './lib/services/entitlement.service';
+export { PluginHostService } from './lib/services/plugin-host.service';
 
 // Legacy
 export * from './lib/player.service';
@@ -24,4 +25,5 @@ export * from './lib/player.service';
 export { PlayerShellComponent } from './lib/components/player-shell/player-shell.component';
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
+export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';
 export * from './lib/player.component';
