@@ -19,6 +19,7 @@ import { Subject, takeUntil } from 'rxjs';
 import type {
   PanelWaveManifest,
   Panel,
+  Page,
   Chapter,
   LocaleCode,
 } from '../../types';
@@ -192,6 +193,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Current panel
    */
   currentPanel?: Panel;
+
+  /**
+   * Current page (for page view)
+   */
+  currentPage?: Page;
 
   /**
    * Current chapter
@@ -580,7 +586,21 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Toolbar event handlers
    */
   onToggleView(): void {
-    this.viewMode = this.viewMode === 'panel' ? 'page' : 'panel';
+    const newMode = this.viewMode === 'panel' ? 'page' : 'panel';
+    
+    if (newMode === 'page') {
+      // Switch to page view - find page containing current panel
+      this.currentPage = this.findPageContainingPanel();
+      if (this.currentPage) {
+        this.viewMode = 'page';
+      } else {
+        console.warn('No page found for current panel');
+      }
+    } else {
+      // Switch to panel view
+      this.viewMode = 'panel';
+    }
+    
     console.log('View mode:', this.viewMode);
   }
 
@@ -831,5 +851,26 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       clearInterval(this.autoplayProgressInterval);
       this.autoplayProgressInterval = undefined;
     }
+  }
+
+  /**
+   * Find the page that contains the current panel
+   */
+  private findPageContainingPanel(): Page | undefined {
+    if (!this.currentChapter) return undefined;
+    
+    const currentPanelId = this.getCurrentPanelId();
+    if (!currentPanelId) return undefined;
+    
+    // Search through pages in the current chapter
+    const pages = this.currentChapter.pages || [];
+    for (const page of pages) {
+      // Check if this page's placements include the current panel
+      if (page.layout?.placements?.some(p => p.panelId === currentPanelId)) {
+        return page;
+      }
+    }
+    
+    return undefined;
   }
 }

@@ -46,6 +46,11 @@ export class LayerRendererComponent {
   @Input() baseUrl = '';
 
   /**
+   * Alt text for image layers (localized)
+   */
+  @Input() altText = '';
+
+  /**
    * Layer clicked
    */
   @Output() layerClick = new EventEmitter<{ layerId: string; x: number; y: number }>();
@@ -169,6 +174,10 @@ export class LayerRendererComponent {
    * Get image alt text
    */
   getAltText(): string {
+    // Use provided altText input first, then check layer property
+    if (this.altText) {
+      return this.altText;
+    }
     const alt = (this.layer as Record<string, unknown>)['alt'];
     return alt ? String(alt) : '';
   }

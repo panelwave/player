@@ -4,34 +4,77 @@
   [class.reduced-motion]="reducedMotion"
   [class.interactive]="interactive"
   role="region"
-  [attr.aria-label]="'Panel viewport'"
+  [attr.aria-label]="viewMode === 'page' ? 'Page viewport' : 'Panel viewport'"
   tabindex="0"
   (click)="onViewportClick($event)"
   (keydown.enter)="onKeyboardActivate($event)"
   (keydown.space)="onKeyboardActivate($event)">
   
-  <div 
-    class="viewport-content"
-    [style.transform]="getTransformStyle()"
-    [style.transition]="reducedMotion ? 'none' : 'transform 0.3s ease'">
-    
-    @if (panel) {
-      <div class="panel-container">
-        <!-- Render layers using LayerRenderer -->
-        @for (layer of panel.layers; track layer.id) {
-          <pw-layer-renderer
-            [layer]="layer"
-            [locale]="locale"
-            (layerClick)="layerClick.emit($event)">
-          </pw-layer-renderer>
+  <!-- Panel View -->
+  @if (viewMode === 'panel') {
+    <div 
+      class="viewport-content"
+      [style.transform]="getTransformStyle()"
+      [style.transition]="reducedMotion ? 'none' : 'transform 0.3s ease'">
+      
+      @if (panel) {
+        <div class="panel-container">
+          <!-- Render layers using LayerRenderer -->
+          @for (layer of panel.layers; track layer.id) {
+            <pw-layer-renderer
+              [layer]="layer"
+              [locale]="locale"
+              (layerClick)="layerClick.emit($event)">
+            </pw-layer-renderer>
+          }
+        </div>
+      } @else {
+        <div class="no-panel">
+          <p>No panel to display</p>
+        </div>
+      }
+    </div>
+  }
+  
+  <!-- Page View -->
+  @if (viewMode === 'page' && page) {
+    <div class="viewport-page">
+      <div 
+        class="page-grid"
+        [style.grid-template-columns]="getGridColumns()"
+        [style.grid-template-rows]="getGridRows()">
+        
+        @for (placement of page.layout.placements; track placement.panelId) {
+          <div 
+            class="panel-cell"
+            [style.grid-column]="getGridColumn(placement)"
+            [style.grid-row]="getGridRow(placement)"
+            [attr.data-panel-id]="placement.panelId">
+            
+            @if (getPanel(placement.panelId); as panelData) {
+              <div class="panel-content">
+                <!-- Render panel layers -->
+                @for (layer of panelData.layers; track layer.id) {
+                  <pw-layer-renderer
+                    [layer]="layer"
+                    [locale]="locale"
+                    [altText]="getAltText(layer)"
+                    (layerClick)="layerClick.emit($event)">
+                  </pw-layer-renderer>
+                }
+              </div>
+            }
+          </div>
         }
       </div>
-    } @else {
-      <div class="no-panel">
-        <p>No panel to display</p>
-      </div>
-    }
-  </div>
+    </div>
+  }
+  
+  @if (viewMode === 'page' && !page) {
+    <div class="no-panel">
+      <p>No page to display</p>
+    </div>
+  }
 
   <!-- Overflow navigation arrows -->
   @if (showOverflowArrows && panel) {

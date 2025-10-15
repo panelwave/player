@@ -25,6 +25,8 @@
       <!-- Viewport -->
       <pw-viewport
         [panel]="currentPanel"
+        [page]="currentPage || null"
+        [panels]="currentChapter?.panels || {}"
         [viewMode]="viewMode"
         [reducedMotion]="reducedMotion"
         [locale]="locale"

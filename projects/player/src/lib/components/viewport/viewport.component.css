@@ -150,3 +150,61 @@
 .overflow-bottom:hover {
   transform: translateX(-50%) scale(1.1);
 }
+
+/* Page View Styles */
+.viewport-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.page-grid {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 1400px;
+  aspect-ratio: 16 / 9;
+  background: #1a1a1a;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.panel-cell {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  min-height: 50px;
+}
+
+.panel-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Responsive adjustments for page view */
+@media (max-width: 1024px) {
+  .page-grid {
+    max-width: 900px;
+    gap: 4px;
+    padding: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .viewport-page {
+    padding: 8px;
+  }
+  
+  .page-grid {
+    gap: 2px;
+    padding: 2px;
+  }
+}

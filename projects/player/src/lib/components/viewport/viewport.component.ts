@@ -15,7 +15,9 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
-import type { Panel, ViewMode, LocaleCode } from '../../types';
+import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString } from '../../types';
+import { inject } from '@angular/core';
+import { ManifestService } from '../../services/manifest.service';
 
 /**
  * Viewport Component
@@ -30,10 +32,22 @@ import type { Panel, ViewMode, LocaleCode } from '../../types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ViewportComponent implements OnChanges {
+  private manifestService = inject(ManifestService);
+
   /**
-   * Panel to render
+   * Panel to render (panel view)
    */
   @Input() panel: Panel | null = null;
+
+  /**
+   * Page to render (page view)
+   */
+  @Input() page: Page | null = null;
+
+  /**
+   * Panels map for page view lookup
+   */
+  @Input() panels: Record<string, Panel> = {};
 
   /**
    * View mode (panel or page)
@@ -437,5 +451,83 @@ export class ViewportComponent implements OnChanges {
       panY: this.panY - step,
       zoom: this.zoom,
     });
+  }
+
+  /**
+   * Get grid columns CSS for page view
+   */
+  getGridColumns(): string {
+    const cols = this.page?.layout.grid.cols || 12;
+    return `repeat(${cols}, 1fr)`;
+  }
+
+  /**
+   * Get grid rows CSS for page view
+   */
+  getGridRows(): string {
+    const rows = this.page?.layout.grid.rows || 8;
+    return `repeat(${rows}, 1fr)`;
+  }
+
+  /**
+   * Get grid column CSS for panel placement
+   */
+  getGridColumn(placement: PanelPlacement): string {
+    return `${placement.x + 1} / span ${placement.w}`;
+  }
+
+  /**
+   * Get grid row CSS for panel placement
+   */
+  getGridRow(placement: PanelPlacement): string {
+    return `${placement.y + 1} / span ${placement.h}`;
+  }
+
+  /**
+   * Get panel by ID from panels map
+   */
+  getPanel(panelId: string): Panel | undefined {
+    if (!this.panels || !this.panels[panelId]) {
+      console.warn(`Panel not found: ${panelId}`);
+      return undefined;
+    }
+    return this.panels[panelId];
+  }
+
+  /**
+   * Get alt text for a layer from the asset catalog
+   */
+  getAltText(layer: Layer): string {
+    if (!layer.assetId) return '';
+    
+    // Get manifest and asset catalog
+    const manifest = this.manifestService.getManifest();
+    if (!manifest?.assets?.catalog) return '';
+    
+    // Find asset by ID
+    const asset = manifest.assets.catalog.find((a: any) => a.id === layer.assetId);
+    if (!asset?.alt) return '';
+    
+    // Get localized alt text
+    return this.getLocalizedString(asset.alt);
+  }
+
+  /**
+   * Get localized string based on current locale
+   */
+  private getLocalizedString(text: LocalizedString): string {
+    if (!text || typeof text !== 'object') return '';
+    
+    // Try exact locale match
+    if (text[this.locale]) return text[this.locale];
+    
+    // Try base language (e.g., en-US -> en)
+    const baseLocale = this.locale.split('-')[0];
+    const baseMatch = Object.keys(text).find(key => key.startsWith(baseLocale));
+    if (baseMatch && text[baseMatch]) return text[baseMatch];
+    
+    // Fallback to first available
+    const firstKey = Object.keys(text)[0];
+    return firstKey ? text[firstKey] : '';
   }
 }
