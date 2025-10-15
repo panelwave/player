@@ -39,7 +39,51 @@
          "de-DE"
       ],
       "default_locale":"en-US",
-      "cover":"img-cover"
+      "cover":"img-cover",
+      "characters":[
+         {
+            "id":"char-alex",
+            "name":{
+               "en-US":"Detective Alex Chen",
+               "de-DE":"Detektiv Alex Chen"
+            },
+            "description":{
+               "en-US":"A seasoned detective navigating the neon-lit streets of the city.",
+               "de-DE":"Ein erfahrener Detektiv, der durch die neonbeleuchteten Straßen der Stadt navigiert."
+            },
+            "images":{
+               "portrait":"https://i.pravatar.cc/150?img=12"
+            }
+         },
+         {
+            "id":"char-marcus",
+            "name":{
+               "en-US":"Marcus Kane",
+               "de-DE":"Marcus Kane"
+            },
+            "description":{
+               "en-US":"Alex's partner, always ready with a witty comment and a sharp eye.",
+               "de-DE":"Alex' Partner, immer bereit mit einem witzigen Kommentar und einem scharfen Auge."
+            },
+            "images":{
+               "portrait":"https://i.pravatar.cc/150?img=33"
+            }
+         },
+         {
+            "id":"char-informant",
+            "name":{
+               "en-US":"The Informant",
+               "de-DE":"Der Informant"
+            },
+            "description":{
+               "en-US":"A mysterious figure who knows more than they should about the city's secrets.",
+               "de-DE":"Eine mysteriöse Gestalt, die mehr über die Geheimnisse der Stadt weiß, als sie sollte."
+            },
+            "images":{
+               "portrait":"https://i.pravatar.cc/150?img=52"
+            }
+         }
+      ]
    },
    "assets":{
       "catalog":[

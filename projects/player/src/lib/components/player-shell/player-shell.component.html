@@ -123,15 +123,20 @@
       @if (charactersVisible) {
         <pw-character-roster
           [visible]="charactersVisible"
+          [characters]="characters"
+          [locale]="locale"
+          [baseUrl]="''"
           (characterSelect)="onCharacterSelect($event)"
           (close)="charactersVisible = false">
         </pw-character-roster>
       }
 
-      @if (characterSheetVisible && selectedCharacterId) {
+      @if (characterSheetVisible && selectedCharacter) {
         <pw-character-sheet
           [visible]="characterSheetVisible"
-          [characterId]="selectedCharacterId"
+          [character]="selectedCharacter"
+          [locale]="locale"
+          [baseUrl]="''"
           (close)="characterSheetVisible = false">
         </pw-character-sheet>
       }

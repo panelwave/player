@@ -9,6 +9,7 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnChanges,
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
@@ -40,7 +41,7 @@ export interface Character {
   styleUrls: ['./character-roster.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CharacterRosterComponent implements OnInit {
+export class CharacterRosterComponent implements OnInit, OnChanges {
   /**
    * List of characters
    */
@@ -85,6 +86,13 @@ export class CharacterRosterComponent implements OnInit {
    * Initialize component
    */
   ngOnInit(): void {
+    this.filterCharacters();
+  }
+
+  /**
+   * Handle input changes
+   */
+  ngOnChanges(): void {
     this.filterCharacters();
   }
 

@@ -22,7 +22,9 @@ import type {
   Page,
   Chapter,
   LocaleCode,
+  Character as ManifestCharacter,
 } from '../../types';
+import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
 import { PlayerStateService } from '../../services/player-state.service';
 import { ManifestService } from '../../services/manifest.service';
@@ -967,5 +969,44 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     }
     
     console.log('Navigated to previous page:', this.currentPage.id);
+  }
+
+  // ============================================================================
+  // Character helpers
+  // ============================================================================
+
+  /**
+   * Get characters from manifest mapped to roster format
+   */
+  get characters(): RosterCharacter[] {
+    const manifest = this.manifestService.getManifest();
+    if (!manifest?.meta?.characters) {
+      return [];
+    }
+    return this.mapCharacters(manifest.meta.characters);
+  }
+
+  /**
+   * Get selected character for detail view
+   */
+  get selectedCharacter(): RosterCharacter | undefined {
+    if (!this.selectedCharacterId) {
+      return undefined;
+    }
+    return this.characters.find(c => c.id === this.selectedCharacterId);
+  }
+
+  /**
+   * Map manifest characters to roster character format
+   */
+  private mapCharacters(characters: ManifestCharacter[]): RosterCharacter[] {
+    return characters.map(char => ({
+      id: char.id,
+      name: char.name,
+      avatar: char.images?.['portrait'],
+      bio: char.description,
+      voiceSample: undefined, // Could be added later if needed
+      role: undefined, // Could be extracted from description or added to schema
+    }));
   }
 }
