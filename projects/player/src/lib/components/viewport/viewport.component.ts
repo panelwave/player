@@ -109,12 +109,27 @@ export class ViewportComponent implements OnChanges {
    */
   @Output() swipe = new EventEmitter<'left' | 'right' | 'up' | 'down'>();
 
+  /**
+   * Navigate to previous panel
+   */
+  @Output() navigatePrevious = new EventEmitter<void>();
+
+  /**
+   * Navigate to next panel
+   */
+  @Output() navigateNext = new EventEmitter<void>();
+
   // Internal state - Mouse
   isDragging = false;
   dragStartX = 0;
   dragStartY = 0;
   lastPanX = 0;
   lastPanY = 0;
+
+  // Navigation arrows state
+  showLeftArrow = false;
+  showRightArrow = false;
+  private hoverZonePercent = 0.15; // 15% on each side
 
   // Internal state - Touch
   isTouching = false;
@@ -610,5 +625,52 @@ export class ViewportComponent implements OnChanges {
         this.swipe.emit('up');
       }
     }
+  }
+
+  /**
+   * Handle viewport mouse move for navigation arrows
+   */
+  onViewportMouseMove(event: MouseEvent): void {
+    // Only show arrows in panel view
+    if (this.viewMode !== 'panel') {
+      this.showLeftArrow = false;
+      this.showRightArrow = false;
+      return;
+    }
+
+    const target = event.currentTarget as HTMLElement;
+    if (!target) return;
+
+    const rect = target.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const width = rect.width;
+
+    const leftZoneWidth = width * this.hoverZonePercent;
+    const rightZoneStart = width - (width * this.hoverZonePercent);
+
+    this.showLeftArrow = x <= leftZoneWidth;
+    this.showRightArrow = x >= rightZoneStart;
+  }
+
+  /**
+   * Handle viewport mouse leave - hide arrows
+   */
+  onViewportMouseLeave(): void {
+    this.showLeftArrow = false;
+    this.showRightArrow = false;
+  }
+
+  /**
+   * Navigate to previous panel
+   */
+  onNavigatePrevious(): void {
+    this.navigatePrevious.emit();
+  }
+
+  /**
+   * Navigate to next panel
+   */
+  onNavigateNext(): void {
+    this.navigateNext.emit();
   }
 }

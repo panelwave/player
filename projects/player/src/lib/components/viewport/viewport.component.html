@@ -8,7 +8,9 @@
   tabindex="0"
   (click)="onViewportClick($event)"
   (keydown.enter)="onKeyboardActivate($event)"
-  (keydown.space)="onKeyboardActivate($event)">
+  (keydown.space)="onKeyboardActivate($event)"
+  (mousemove)="onViewportMouseMove($event)"
+  (mouseleave)="onViewportMouseLeave()">
   
   <!-- Panel View -->
   @if (viewMode === 'panel') {
@@ -115,6 +117,29 @@
         aria-label="Navigate down"
         (click)="navigateDown()">
         ↓
+      </button>
+    }
+  }
+
+  <!-- Navigation arrows (hover zones) -->
+  @if (viewMode === 'panel') {
+    @if (showLeftArrow) {
+      <button 
+        class="nav-arrow nav-arrow-left"
+        type="button"
+        aria-label="Previous panel"
+        (click)="onNavigatePrevious()">
+        <span class="arrow-icon">‹</span>
+      </button>
+    }
+
+    @if (showRightArrow) {
+      <button 
+        class="nav-arrow nav-arrow-right"
+        type="button"
+        aria-label="Next panel"
+        (click)="onNavigateNext()">
+        <span class="arrow-icon">›</span>
       </button>
     }
   }

@@ -33,7 +33,9 @@
         [interactive]="true"
         [showOverflowArrows]="true"
         (viewportClick)="onViewportClick()"
-        (swipe)="onSwipe($event)">
+        (swipe)="onSwipe($event)"
+        (navigatePrevious)="navigatePrevious()"
+        (navigateNext)="navigateNext()">
       </pw-viewport>
 
       <!-- Full Toolbar -->
