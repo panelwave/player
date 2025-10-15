@@ -83,8 +83,58 @@
         </button>
       }
 
-      <!-- Modals will be integrated once component compilation errors are resolved -->
-      <!-- Modal visibility is controlled by toolbar buttons for now via console logs -->
+      <!-- Modals -->
+      @if (tocVisible) {
+        <pw-toc-overlay
+          [visible]="tocVisible"
+          [manifest]="manifest"
+          (close)="tocVisible = false">
+        </pw-toc-overlay>
+      }
+
+      @if (settingsVisible) {
+        <pw-settings-modal
+          [visible]="settingsVisible"
+          (close)="settingsVisible = false">
+        </pw-settings-modal>
+      }
+
+      @if (charactersVisible) {
+        <pw-character-roster
+          [visible]="charactersVisible"
+          (characterSelect)="onCharacterSelect($event)"
+          (close)="charactersVisible = false">
+        </pw-character-roster>
+      }
+
+      @if (characterSheetVisible && selectedCharacterId) {
+        <pw-character-sheet
+          [visible]="characterSheetVisible"
+          [characterId]="selectedCharacterId"
+          (close)="characterSheetVisible = false">
+        </pw-character-sheet>
+      }
+
+      @if (extrasVisible) {
+        <pw-extras-viewer
+          [visible]="extrasVisible"
+          (close)="extrasVisible = false">
+        </pw-extras-viewer>
+      }
+
+      @if (shareVisible) {
+        <pw-share-modal
+          [visible]="shareVisible"
+          (close)="shareVisible = false">
+        </pw-share-modal>
+      }
+
+      @if (commentsVisible) {
+        <pw-comments-drawer
+          [visible]="commentsVisible"
+          (close)="commentsVisible = false">
+        </pw-comments-drawer>
+      }
     </div>
   }
 </div>

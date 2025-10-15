@@ -30,14 +30,13 @@ import { FlowEngineService } from '../../services/flow-engine.service';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
-// Modal components - temporarily disabled due to build errors
-// import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
-// import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
-// import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
-// import { CharacterSheetComponent } from '../modals/character-sheet/character-sheet.component';
-// import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
-// import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
-// import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
+import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
+import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
+import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
+import { CharacterSheetComponent } from '../modals/character-sheet/character-sheet.component';
+import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
+import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
+import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 
 /**
  * Entitlement adapter interface
@@ -71,6 +70,13 @@ export interface EntitlementAdapter {
     CommonModule,
     ViewportComponent,
     ToolbarComponent,
+    TocOverlayComponent,
+    SettingsModalComponent,
+    CharacterRosterComponent,
+    CharacterSheetComponent,
+    ExtrasViewerComponent,
+    ShareModalComponent,
+    CommentsDrawerComponent,
   ],
   templateUrl: './player-shell.component.html',
   styleUrls: ['./player-shell.component.css'],
