@@ -110,6 +110,13 @@ export class ExtrasViewerComponent {
   }
 
   /**
+   * Check if any extras are gated
+   */
+  hasGatedExtras(): boolean {
+    return this.extras.some((extra) => extra.gated);
+  }
+
+  /**
    * Set filter type
    */
   setFilter(type: ExtraType | 'all'): void {

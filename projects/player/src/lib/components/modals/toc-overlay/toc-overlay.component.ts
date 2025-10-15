@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import type { Chapter, Panel, LocaleCode, LocalizedString } from '../../../types';
+import type { Chapter, Panel, LocaleCode, LocalizedString, PanelWaveManifest } from '../../../types';
 
 /**
  * ToC navigation target
@@ -38,7 +38,12 @@ export interface TocNavigationTarget {
 })
 export class TocOverlayComponent implements OnInit {
   /**
-   * List of chapters
+   * Manifest (optional, will extract chapters)
+   */
+  @Input() manifest?: PanelWaveManifest;
+
+  /**
+   * List of chapters (alternative to manifest)
    */
   @Input() chapters: Chapter[] = [];
 
@@ -91,6 +96,11 @@ export class TocOverlayComponent implements OnInit {
    * Initialize component
    */
   ngOnInit(): void {
+    // Extract chapters from manifest if provided
+    if (this.manifest?.chapters) {
+      this.chapters = Object.values(this.manifest.chapters);
+    }
+    
     this.filterChapters();
     this.selectCurrentChapter();
   }
@@ -166,11 +176,11 @@ export class TocOverlayComponent implements OnInit {
   }
 
   /**
-   * Get panels for chapter
+   * Get panels for chapter with IDs
    */
-  getPanels(chapter: Chapter): Panel[] {
+  getPanels(chapter: Chapter): Array<{ id: string; panel: Panel }> {
     if (!chapter.panels) return [];
-    return Object.values(chapter.panels);
+    return Object.entries(chapter.panels).map(([id, panel]) => ({ id, panel }));
   }
 
   /**
@@ -183,10 +193,10 @@ export class TocOverlayComponent implements OnInit {
   /**
    * Navigate to panel
    */
-  navigateToPanel(chapter: Chapter, panel: Panel): void {
+  navigateToPanel(chapter: Chapter, panelId: string): void {
     this.navigate.emit({
       chapterId: chapter.id,
-      panelId: panel.id,
+      panelId: panelId,
     });
   }
 
@@ -200,8 +210,8 @@ export class TocOverlayComponent implements OnInit {
   /**
    * Check if panel is current
    */
-  isCurrentPanel(panel: Panel): boolean {
-    return panel.id === this.currentPanelId;
+  isCurrentPanel(panelId: string): boolean {
+    return panelId === this.currentPanelId;
   }
 
   /**

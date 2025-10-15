@@ -177,7 +177,7 @@
       }
 
       <!-- Paywall Notice (for gated content without access) -->
-      @if (!hasPremiumAccess && extras.some(e => e.gated)) {
+      @if (!hasPremiumAccess && hasGatedExtras()) {
         <div class="paywall-notice">
           <p class="notice-text">
             <span class="notice-icon">🔒</span>

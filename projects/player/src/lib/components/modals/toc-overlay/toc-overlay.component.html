@@ -49,15 +49,15 @@
               <!-- Panel list (if chapter selected) -->
               @if (i === selectedChapterIndex) {
                 <div class="panel-list" role="list">
-                  @for (panel of getPanels(chapter); track panel.id) {
+                  @for (panelItem of getPanels(chapter); track panelItem.id) {
                     <button
                       class="panel-item"
-                      [class.current]="isCurrentPanel(panel)"
+                      [class.current]="isCurrentPanel(panelItem.id)"
                       type="button"
                       role="listitem"
-                      (click)="navigateToPanel(chapter, panel)">
-                      <span class="panel-id">{{ panel.id }}</span>
-                      @if (isCurrentPanel(panel)) {
+                      (click)="navigateToPanel(chapter, panelItem.id)">
+                      <span class="panel-id">{{ panelItem.id }}</span>
+                      @if (isCurrentPanel(panelItem.id)) {
                         <span class="current-indicator">▶</span>
                       }
                     </button>

@@ -40,7 +40,12 @@ export interface Character {
 })
 export class CharacterSheetComponent {
   /**
-   * Character to display
+   * Character ID to display
+   */
+  @Input() characterId?: string;
+
+  /**
+   * Character to display (alternative to characterId)
    */
   @Input() character?: Character;
 
