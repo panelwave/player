@@ -104,6 +104,11 @@ export class ViewportComponent implements OnChanges {
    */
   @Output() layerClick = new EventEmitter<{ layerId: string; x: number; y: number }>();
 
+  /**
+   * Swipe gesture detected
+   */
+  @Output() swipe = new EventEmitter<'left' | 'right' | 'up' | 'down'>();
+
   // Internal state - Mouse
   isDragging = false;
   dragStartX = 0;
@@ -122,6 +127,14 @@ export class ViewportComponent implements OnChanges {
   isPinching = false;
   initialPinchDistance = 0;
   lastPinchZoom = 1;
+
+  // Swipe detection
+  swipeStartX = 0;
+  swipeStartY = 0;
+  swipeStartTime = 0;
+  minSwipeDistance = 50; // pixels
+  maxSwipeTime = 300; // milliseconds
+  minSwipeVelocity = 0.3; // pixels per millisecond
 
   // Overflow detection
   hasOverflowLeft = false;
@@ -196,6 +209,11 @@ export class ViewportComponent implements OnChanges {
     this.lastPanX = this.panX;
     this.lastPanY = this.panY;
 
+    // Track for swipe detection
+    this.swipeStartX = event.clientX;
+    this.swipeStartY = event.clientY;
+    this.swipeStartTime = Date.now();
+
     event.preventDefault();
   }
 
@@ -222,8 +240,13 @@ export class ViewportComponent implements OnChanges {
   /**
    * Handle mouse up for pan
    */
-  @HostListener('document:mouseup')
-  onMouseUp(): void {
+  @HostListener('document:mouseup', ['$event'])
+  onMouseUp(event: MouseEvent): void {
+    // Detect swipe before resetting drag state
+    if (this.isDragging) {
+      this.detectSwipe(event.clientX, event.clientY);
+    }
+    
     this.isDragging = false;
   }
 
@@ -262,6 +285,11 @@ export class ViewportComponent implements OnChanges {
       this.touchStartY = touch.clientY;
       this.lastTouchPanX = this.panX;
       this.lastTouchPanY = this.panY;
+      
+      // Track for swipe detection
+      this.swipeStartX = touch.clientX;
+      this.swipeStartY = touch.clientY;
+      this.swipeStartTime = Date.now();
     } else if (event.touches.length === 2) {
       // Two touches - pinch zoom
       this.isTouching = false;
@@ -315,6 +343,12 @@ export class ViewportComponent implements OnChanges {
   @HostListener('touchend', ['$event'])
   @HostListener('touchcancel', ['$event'])
   onTouchEnd(event: TouchEvent): void {
+    // Detect swipe before resetting touch state
+    if (event.changedTouches.length > 0 && this.isTouching) {
+      const touch = event.changedTouches[0];
+      this.detectSwipe(touch.clientX, touch.clientY);
+    }
+
     if (event.touches.length === 0) {
       this.isTouching = false;
       this.isPinching = false;
@@ -328,6 +362,11 @@ export class ViewportComponent implements OnChanges {
       this.touchStartY = touch.clientY;
       this.lastTouchPanX = this.panX;
       this.lastTouchPanY = this.panY;
+      
+      // Reset swipe tracking
+      this.swipeStartX = touch.clientX;
+      this.swipeStartY = touch.clientY;
+      this.swipeStartTime = Date.now();
     }
   }
 
@@ -529,5 +568,47 @@ export class ViewportComponent implements OnChanges {
     // Fallback to first available
     const firstKey = Object.keys(text)[0];
     return firstKey ? text[firstKey] : '';
+  }
+
+  /**
+   * Detect swipe gesture
+   */
+  private detectSwipe(endX: number, endY: number): void {
+    const deltaX = endX - this.swipeStartX;
+    const deltaY = endY - this.swipeStartY;
+    const deltaTime = Date.now() - this.swipeStartTime;
+    
+    // Calculate distance and velocity
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const velocity = distance / deltaTime; // pixels per millisecond
+    
+    // Check if it's a valid swipe (fast enough and far enough)
+    if (deltaTime > this.maxSwipeTime || distance < this.minSwipeDistance) {
+      return; // Not a swipe, just a slow drag
+    }
+    
+    if (velocity < this.minSwipeVelocity) {
+      return; // Too slow to be considered a swipe
+    }
+    
+    // Determine swipe direction (prioritize horizontal or vertical)
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+    
+    if (absDeltaX > absDeltaY) {
+      // Horizontal swipe
+      if (deltaX > 0) {
+        this.swipe.emit('right');
+      } else {
+        this.swipe.emit('left');
+      }
+    } else {
+      // Vertical swipe
+      if (deltaY > 0) {
+        this.swipe.emit('down');
+      } else {
+        this.swipe.emit('up');
+      }
+    }
   }
 }

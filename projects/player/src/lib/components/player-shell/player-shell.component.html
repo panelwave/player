@@ -32,7 +32,8 @@
         [locale]="locale"
         [interactive]="true"
         [showOverflowArrows]="true"
-        (viewportClick)="onViewportClick()">
+        (viewportClick)="onViewportClick()"
+        (swipe)="onSwipe($event)">
       </pw-viewport>
 
       <!-- Full Toolbar -->
