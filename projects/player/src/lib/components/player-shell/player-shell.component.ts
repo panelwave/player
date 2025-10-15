@@ -234,6 +234,26 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   autoplayEnabled = false;
 
+  /**
+   * Autoplay progress (0-100)
+   */
+  autoplayProgress = 0;
+
+  /**
+   * Autoplay progress interval
+   */
+  private autoplayProgressInterval?: ReturnType<typeof setInterval>;
+
+  /**
+   * Autoplay start time
+   */
+  private autoplayStartTime = 0;
+
+  /**
+   * Autoplay duration for current panel
+   */
+  private autoplayDuration = 0;
+
   constructor(
     private playerState: PlayerStateService,
     private manifestService: ManifestService,
@@ -254,6 +274,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   ngOnDestroy(): void {
     this.stopAutoplay();
+    this.stopAutoplayProgress();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -736,6 +757,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     // Use panel-specific durationMs if available, otherwise use global setting (in seconds)
     const durationMs = this.currentPanel?.durationMs ?? (this.secondsPerPanel * 1000);
     
+    // Start progress tracking
+    this.autoplayDuration = durationMs;
+    this.autoplayStartTime = Date.now();
+    this.autoplayProgress = 0;
+    this.startAutoplayProgress();
+    
     this.autoplayTimer = setTimeout(() => {
       this.navigateNext();
       
@@ -753,6 +780,31 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (this.autoplayTimer) {
       clearTimeout(this.autoplayTimer);
       this.autoplayTimer = undefined;
+    }
+    this.stopAutoplayProgress();
+    this.autoplayProgress = 0;
+  }
+
+  /**
+   * Start autoplay progress tracking
+   */
+  private startAutoplayProgress(): void {
+    this.stopAutoplayProgress();
+    
+    this.autoplayProgressInterval = setInterval(() => {
+      const elapsed = Date.now() - this.autoplayStartTime;
+      const progress = Math.min(100, (elapsed / this.autoplayDuration) * 100);
+      this.autoplayProgress = progress;
+    }, 50); // Update every 50ms for smooth animation
+  }
+
+  /**
+   * Stop autoplay progress tracking
+   */
+  private stopAutoplayProgress(): void {
+    if (this.autoplayProgressInterval) {
+      clearInterval(this.autoplayProgressInterval);
+      this.autoplayProgressInterval = undefined;
     }
   }
 }

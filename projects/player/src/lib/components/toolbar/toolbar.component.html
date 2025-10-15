@@ -90,7 +90,7 @@
       <!-- Autoplay control -->
       <div class="toolbar-dropdown">
         <button
-          class="toolbar-btn toggle-btn"
+          class="toolbar-btn toggle-btn autoplay-btn"
           [class.active]="autoplayEnabled"
           type="button"
           aria-label="Toggle autoplay"
@@ -99,6 +99,11 @@
           (click)="onToggleAutoplay()">
           <span class="btn-icon">{{ autoplayEnabled ? '⏸️' : '▶️' }}</span>
           <span class="btn-label">Autoplay</span>
+          @if (autoplayEnabled) {
+            <div class="autoplay-progress-bar">
+              <div class="autoplay-progress-fill" [style.width.%]="autoplayProgress"></div>
+            </div>
+          }
         </button>
 
         @if (autoplayEnabled) {

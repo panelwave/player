@@ -431,3 +431,28 @@
     background: rgba(0, 120, 215, 1);
   }
 }
+
+/* Autoplay progress bar */
+.autoplay-btn {
+  position: relative;
+  overflow: visible;
+}
+
+.autoplay-progress-bar {
+  position: absolute;
+  bottom: -4px;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.autoplay-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0, 120, 215, 0.8), rgba(0, 180, 255, 0.9));
+  border-radius: 2px;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(0, 180, 255, 0.5);
+}

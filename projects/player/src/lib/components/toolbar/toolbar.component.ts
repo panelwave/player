@@ -72,6 +72,11 @@ export class ToolbarComponent {
   @Input() secondsPerPanel = 5;
 
   /**
+   * Autoplay progress (0-100)
+   */
+  @Input() autoplayProgress = 0;
+
+  /**
    * Thumbnails visible
    */
   @Input() thumbnailsVisible = false;
