@@ -211,6 +211,8 @@ The **ViewportComponent** - the main rendering container for PanelWave panels wi
 | `transformChange` | `{ panX: number; panY: number; zoom: number }` | Emitted when pan/zoom changes |
 | `layerClick` | `{ layerId: string; x: number; y: number }` | Emitted when layer is clicked |
 | `swipe` | `'left' \| 'right' \| 'up' \| 'down'` | Emitted when swipe gesture detected |
+| `navigatePrevious` | `void` | Emitted when hover navigation arrow clicked (left) |
+| `navigateNext` | `void` | Emitted when hover navigation arrow clicked (right) |
 
 ### Public Methods
 
@@ -589,6 +591,55 @@ Slow movement (≥ 300ms) → Pan gesture (viewport movement)
 
 This allows both swipe navigation and pan/zoom to coexist without conflicts.
 ```
+
+### 9. Hover Navigation Arrows
+
+**Mouse-Based Panel Navigation:**
+- ✅ Arrows appear in outer 15% zones (left/right)
+- ✅ Only visible in panel view mode
+- ✅ Large chevron icons (‹ ›) for clarity
+- ✅ Semi-transparent with backdrop blur
+- ✅ Smooth fade-in/fade-out animations
+- ✅ Expand on hover for visual feedback
+- ✅ Click to navigate previous/next panel
+
+**Hover Zone Detection:**
+```typescript
+// Left zone: 0% to 15% of viewport width
+// Right zone: 85% to 100% of viewport width
+const leftZoneWidth = viewportWidth * 0.15;
+const rightZoneStart = viewportWidth * 0.85;
+
+// Show arrows based on mouse position
+showLeftArrow = mouseX <= leftZoneWidth;
+showRightArrow = mouseX >= rightZoneStart;
+```
+
+**Visual Design:**
+- 60px × 120px arrow size (70px on hover)
+- 48px chevron icons
+- Dark semi-transparent background (rgba(0,0,0,0.4))
+- Backdrop blur effect
+- Rounded corners on outer edges
+- Positioned at vertical center
+- z-index: 50 (above content, below UI)
+
+**Integration:**
+```html
+<pw-viewport
+  [panel]="currentPanel"
+  [viewMode]="'panel'"
+  (navigatePrevious)="onPrevious()"
+  (navigateNext)="onNext()">
+</pw-viewport>
+```
+
+**Benefits:**
+- Intuitive for mouse users
+- Discover zones naturally by moving mouse
+- No UI clutter until needed
+- Works alongside keyboard & swipe navigation
+- Responsive (smaller on mobile)
 
 ---
 
@@ -1023,17 +1074,19 @@ Each layer is positioned using absolute positioning:
 - **Total Lines:** 1,345
 - **Tests:** 30/32 passing (94%)
 - **Inputs:** 12 (panel, page, panels, viewMode, locale, panX, panY, zoom, reducedMotion, interactive, showOverflowArrows)
-- **Outputs:** 4 (viewportClick, transformChange, layerClick, swipe)
+- **Outputs:** 6 (viewportClick, transformChange, layerClick, swipe, navigatePrevious, navigateNext)
 - **Methods:** 27+
 - **View Modes:** 2 (panel, page)
 - **Gesture Types:** 3 (pan, pinch-zoom, swipe)
-- **Features:** 19/19 complete (100%)
+- **Navigation Methods:** 4 (keyboard, swipe, overflow arrows, hover arrows)
+- **Features:** 20/20 complete (100%)
 
 ---
 
 ## Commits
 
 ```
+beeb300 - feat: add hover-based navigation arrows in panel view
 dbe3b52 - feat: complete ViewportComponent with overflow detection and navigation arrows
 dd01420 - feat: add touch support (pan and pinch-to-zoom) to ViewportComponent with tests
 473816b - feat: add LayerRendererComponent for proper layer rendering in ViewportComponent
@@ -1060,7 +1113,9 @@ The ViewportComponent provides a robust, accessible, and feature-complete render
 **Navigation Methods:**
 - Touch swipe (finger on mobile/tablet)
 - Mouse swipe (quick drag on desktop)
+- Hover arrows (mouse in left/right 15% zones)
 - Pan/zoom gestures (slow drag)
 - Pinch-to-zoom (two fingers)
+- Keyboard shortcuts (arrow keys)
 
-The component is ready for production use and supports both traditional single-panel navigation and modern page-based comic book layouts with multiple gesture types that coexist without conflicts.
+The component is ready for production use and supports both traditional single-panel navigation and modern page-based comic book layouts with multiple gesture types that coexist without conflicts. The hover navigation feature provides an intuitive mouse-based navigation method that complements touch and keyboard interactions.

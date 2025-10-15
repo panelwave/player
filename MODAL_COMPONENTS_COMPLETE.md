@@ -2,7 +2,9 @@
 
 ## Summary
 
-This document provides comprehensive documentation for all **7 Modal Components** of the PanelWave Player. These components provide overlays, dialogs, and drawers for various player functions including navigation, settings, character information, extras, sharing, and comments.
+This document provides comprehensive documentation for all **6 Modal Components** of the PanelWave Player. These components provide overlays, dialogs, and drawers for various player functions including navigation, settings, character information, extras, sharing, and comments.
+
+**Note:** The CharacterSheetComponent has been integrated into CharacterRosterComponent for a seamless, no-flicker experience. Character list and detail views now exist in a single modal component.
 
 ---
 
@@ -10,11 +12,10 @@ This document provides comprehensive documentation for all **7 Modal Components*
 
 1. [ToCOverlayComponent](#tocoverlaycomponent) - Table of Contents
 2. [SettingsModalComponent](#settingsmodalcomponent) - Settings & Preferences
-3. [CharacterRosterComponent](#characterrostercomponent) - Character Grid
-4. [CharacterSheetComponent](#charactersheetcomponent) - Character Details
-5. [ExtrasViewerComponent](#extrasviewercomponent) - Bonus Content Gallery
-6. [ShareModalComponent](#sharemodalcomponent) - Social Sharing
-7. [CommentsDrawerComponent](#commentsdrawercomponent) - Comments Side Drawer
+3. [CharacterRosterComponent](#characterrostercomponent) - Character Grid with Integrated Detail View
+4. [ExtrasViewerComponent](#extrasviewercomponent) - Bonus Content Gallery
+5. [ShareModalComponent](#sharemodalcomponent) - Social Sharing
+6. [CommentsDrawerComponent](#commentsdrawercomponent) - Comments Side Drawer
 
 ---
 
@@ -277,9 +278,14 @@ The **CharacterRosterComponent** displays a responsive character grid with searc
 ✅ Responsive character grid  
 ✅ Real-time search (name and role)  
 ✅ Avatar display with fallback to initials  
-✅ Character selection event  
+✅ **Integrated detail view** (no separate modal)  
+✅ **Back button** for list/detail navigation  
+✅ Voice sample playback  
+✅ Biography display  
+✅ Role badge display  
 ✅ Localization support  
 ✅ Mobile optimization  
+✅ No flickering (single modal with view switching)  
 
 ### API Reference
 
@@ -293,9 +299,11 @@ The **CharacterRosterComponent** displays a responsive character grid with searc
 
 **Output Events:**
 ```typescript
-@Output() characterSelect = new EventEmitter<Character>();
+@Output() characterSelect = new EventEmitter<Character>(); // Kept for backward compatibility
 @Output() close = new EventEmitter<void>();
 ```
+
+**Note:** The component now handles character detail view internally. When a character is clicked, it switches to detail view within the same modal. The `characterSelect` event is kept for backward compatibility but is no longer needed for typical usage.
 
 **Character Interface:**
 ```typescript
@@ -312,15 +320,21 @@ interface Character {
 ### Usage Example
 
 ```typescript
+<!-- Simplified usage - detail view is handled internally -->
 <pw-character-roster
   [visible]="rosterVisible"
   [characters]="manifest.meta?.characters || []"
   [locale]="currentLocale"
   [baseUrl]="'/assets/'"
-  (characterSelect)="openCharacterSheet($event)"
   (close)="closeRoster()">
 </pw-character-roster>
 ```
+
+**Component Behavior:**
+1. User opens roster → Shows character grid with search
+2. User clicks character → Switches to detail view (portrait, bio, voice sample)
+3. User clicks "← Back" button → Returns to character grid
+4. User clicks close (✕) → Closes modal (returns to list view on next open)
 
 ### Grid Layout
 
