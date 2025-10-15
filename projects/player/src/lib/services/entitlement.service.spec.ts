@@ -117,6 +117,7 @@ describe('EntitlementService', () => {
       adapter.resolveEntitlement.and.returnValue(Promise.resolve({
         ok: true,
         entitlements: {},
+        expiresAt: Date.now() + 300000, // 5 minutes from now
       }));
       
       service.setAdapter(adapter);
@@ -126,6 +127,7 @@ describe('EntitlementService', () => {
       // Second call (should use cache)
       await service.checkEntitlement(context);
       
+      // Should only be called once during first call (setAdapter clears cache, doesn't call adapter)
       expect(adapter.resolveEntitlement).toHaveBeenCalledTimes(1);
     });
 
