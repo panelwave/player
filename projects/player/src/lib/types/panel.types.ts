@@ -15,8 +15,8 @@ export interface Panel {
   /** Localized panel description (optional) */
   description?: LocalizedString;
   
-  /** Duration in seconds for autoplay (optional, defaults to player setting) */
-  duration?: number;
+  /** Duration in milliseconds for autoplay (optional, defaults to player setting) */
+  durationMs?: number;
   
   /** Format-specific view configurations (optional) */
   formatViews?: Record<string, FormatView>;

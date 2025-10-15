@@ -490,6 +490,7 @@
                   "en-US":"Rainy Street",
                   "de-DE":"Regennasse Straße"
                },
+               "durationMs":3000,
                "formatViews":{
                   "mobile-portrait":{
                      "minimalFocusRect":{
@@ -517,6 +518,7 @@
                   "en-US":"Neon Sign",
                   "de-DE":"Neonschild"
                },
+               "durationMs":6000,
                "formatViews":{
                   "mobile-portrait":{
                      "minimalFocusRect":{
@@ -542,6 +544,7 @@
                   "en-US":"Alleyway",
                   "de-DE":"Gasse"
                },
+               "durationMs":2500,
                "layers":[
                   {
                      "kind":"image",
@@ -599,6 +602,7 @@
                   "en-US":"Raindrops",
                   "de-DE":"Regentropfen"
                },
+               "durationMs":7000,
                "layers":[
                   {
                      "kind":"image",
@@ -711,6 +715,7 @@
                   "en-US":"Dawn",
                   "de-DE":"Morgengrauen"
                },
+               "durationMs":8000,
                "layers":[
                   {
                      "kind":"image",
