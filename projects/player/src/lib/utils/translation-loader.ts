@@ -1,26 +1,20 @@
 /**
- * Translation Loader Factory
- * Creates a custom translation loader for the player library
+ * Translation Loader
+ * Loads translation files via HTTP
  */
 
+import { HttpClient } from '@angular/common/http';
 import { TranslateLoader } from '@ngx-translate/core';
-import { Observable, of } from 'rxjs';
-
-// Import translation files directly
-import * as enTranslations from '../assets/i18n/en.json';
-import * as deTranslations from '../assets/i18n/de.json';
+import { Observable } from 'rxjs';
 
 /**
  * Custom Translation Loader
- * Loads translations from bundled JSON files
+ * Loads translations from JSON files via HTTP
  */
 export class CustomTranslateLoader implements TranslateLoader {
-  private translations: Record<string, unknown> = {
-    'en': enTranslations,
-    'de': deTranslations,
-  };
+  constructor(private http: HttpClient) {}
 
-  getTranslation(lang: string): Observable<unknown> {
-    return of(this.translations[lang] || this.translations['en']);
+  getTranslation(lang: string): Observable<Record<string, any>> {
+    return this.http.get<Record<string, any>>(`./assets/i18n/${lang}.json`);
   }
 }

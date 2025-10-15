@@ -165,11 +165,15 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
   }
 
   /**
-   * Get panels from chapter
+   * Get panels from chapter with their IDs
    */
-  private getPanels(chapter: Chapter): Panel[] {
+  private getPanels(chapter: Chapter): (Panel & { id: string; thumbnail?: string })[] {
     if (!chapter.panels) return [];
-    return Object.values(chapter.panels);
+    return Object.entries(chapter.panels).map(([id, panel]) => ({
+      ...panel,
+      id,
+      thumbnail: undefined, // Thumbnails should be generated/cached separately
+    }));
   }
 
   /**

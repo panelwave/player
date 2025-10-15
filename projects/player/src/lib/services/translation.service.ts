@@ -6,7 +6,6 @@
 import { Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import type { LocaleCode } from '../types';
-import { TRANSLATIONS } from './translations';
 
 /**
  * Translation Service
@@ -17,9 +16,7 @@ import { TRANSLATIONS } from './translations';
 })
 export class TranslationService {
   constructor(private translate: TranslateService) {
-    // Set up translations from bundled data
-    this.translate.setTranslation('en', TRANSLATIONS.en);
-    this.translate.setTranslation('de', TRANSLATIONS.de);
+    // Set default language - translations will be loaded via HTTP
     this.translate.setDefaultLang('en');
     this.translate.use('en');
   }

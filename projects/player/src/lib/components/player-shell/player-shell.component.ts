@@ -14,8 +14,10 @@ import {
   HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Subject, takeUntil } from 'rxjs';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { CustomTranslateLoader } from '../../utils/translation-loader';
 
 import type {
   PanelWaveManifest,
@@ -43,6 +45,14 @@ import { CharacterSheetComponent } from '../modals/character-sheet/character-she
 import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
+
+/**
+ * Factory function for TranslateLoader
+ */
+export function createTranslateLoader(http: HttpClient): TranslateLoader {
+  // Use CustomTranslateLoader to load JSON translation files
+  return new CustomTranslateLoader(http);
+}
 
 /**
  * Entitlement adapter interface
