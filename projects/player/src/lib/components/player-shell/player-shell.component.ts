@@ -224,6 +224,16 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   viewMode: 'page' | 'panel' = 'panel';
 
+  /**
+   * Autoplay timer
+   */
+  private autoplayTimer?: ReturnType<typeof setTimeout>;
+
+  /**
+   * Autoplay enabled state
+   */
+  autoplayEnabled = false;
+
   constructor(
     private playerState: PlayerStateService,
     private manifestService: ManifestService,
@@ -243,6 +253,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Cleanup on destroy
    */
   ngOnDestroy(): void {
+    this.stopAutoplay();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -556,11 +567,23 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onToggleAutoplay(): void {
-    console.log('Toggle autoplay - not yet implemented');
+    this.autoplayEnabled = !this.autoplayEnabled;
+    
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
+    } else {
+      this.stopAutoplay();
+    }
   }
 
   onSecondsPerPanelChange(seconds: number): void {
-    console.log('Seconds per panel changed to:', seconds);
+    this.secondsPerPanel = seconds;
+    
+    // Restart autoplay if active to apply new timing
+    if (this.autoplayEnabled) {
+      this.stopAutoplay();
+      this.startAutoplay();
+    }
   }
 
   onToggleThumbnails(): void {
@@ -702,5 +725,31 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   onViewportClick(): void {
     this.showToolbarTemporarily();
+  }
+
+  /**
+   * Start autoplay
+   */
+  private startAutoplay(): void {
+    this.stopAutoplay(); // Clear any existing timer
+    
+    this.autoplayTimer = setTimeout(() => {
+      this.navigateNext();
+      
+      // Continue autoplay if still enabled
+      if (this.autoplayEnabled) {
+        this.startAutoplay();
+      }
+    }, this.secondsPerPanel * 1000);
+  }
+
+  /**
+   * Stop autoplay
+   */
+  private stopAutoplay(): void {
+    if (this.autoplayTimer) {
+      clearTimeout(this.autoplayTimer);
+      this.autoplayTimer = undefined;
+    }
   }
 }
