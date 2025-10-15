@@ -752,12 +752,20 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
-        this.navigateNext();
+        if (this.viewMode === 'page') {
+          this.navigateToNextPage();
+        } else {
+          this.navigateNext();
+        }
         break;
 
       case 'ArrowLeft':
         event.preventDefault();
-        this.navigatePrevious();
+        if (this.viewMode === 'page') {
+          this.navigateToPreviousPage();
+        } else {
+          this.navigatePrevious();
+        }
         break;
 
       case 't':
@@ -780,6 +788,27 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   onViewportClick(): void {
     this.showToolbarTemporarily();
+  }
+
+  /**
+   * Handle swipe gesture
+   */
+  onSwipe(direction: 'left' | 'right' | 'up' | 'down'): void {
+    if (direction === 'left') {
+      // Swipe left = navigate forward
+      if (this.viewMode === 'page') {
+        this.navigateToNextPage();
+      } else {
+        this.navigateNext();
+      }
+    } else if (direction === 'right') {
+      // Swipe right = navigate backward
+      if (this.viewMode === 'page') {
+        this.navigateToPreviousPage();
+      } else {
+        this.navigatePrevious();
+      }
+    }
   }
 
   /**
@@ -872,5 +901,57 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     }
     
     return undefined;
+  }
+
+  /**
+   * Navigate to next page (in page view mode)
+   */
+  navigateToNextPage(): void {
+    if (!this.currentChapter?.pages || !this.currentPage) return;
+    
+    const pages = this.currentChapter.pages;
+    const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
+    
+    if (currentIndex === -1 || currentIndex >= pages.length - 1) {
+      console.log('Already at last page');
+      return;
+    }
+    
+    // Move to next page
+    this.currentPage = pages[currentIndex + 1];
+    
+    // Update current panel to first panel in reading order
+    if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
+      const firstPanelId = this.currentPage.readingOrder[0];
+      this.currentPanel = this.currentChapter.panels[firstPanelId];
+    }
+    
+    console.log('Navigated to next page:', this.currentPage.id);
+  }
+
+  /**
+   * Navigate to previous page (in page view mode)
+   */
+  navigateToPreviousPage(): void {
+    if (!this.currentChapter?.pages || !this.currentPage) return;
+    
+    const pages = this.currentChapter.pages;
+    const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
+    
+    if (currentIndex <= 0) {
+      console.log('Already at first page');
+      return;
+    }
+    
+    // Move to previous page
+    this.currentPage = pages[currentIndex - 1];
+    
+    // Update current panel to first panel in reading order
+    if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
+      const firstPanelId = this.currentPage.readingOrder[0];
+      this.currentPanel = this.currentChapter.panels[firstPanelId];
+    }
+    
+    console.log('Navigated to previous page:', this.currentPage.id);
   }
 }
