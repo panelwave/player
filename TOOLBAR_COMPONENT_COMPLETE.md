@@ -78,7 +78,11 @@ The ToolbarComponent serves as the primary control interface for the PanelWave P
 - Toggle autoplay on/off
 - Inline speed adjustment (+/-)
 - Range: 0.5s - 120s per panel
-- Visual feedback
+- Visual feedback with progress bar
+- Real-time progress animation (0-100%)
+- Smooth 50ms update interval
+- Respects panel-specific durationMs
+- Progress bar only visible when active
 
 ### ✅ Conditional Controls
 
@@ -110,6 +114,13 @@ The ToolbarComponent serves as the primary control interface for the PanelWave P
 - 200ms fade-in
 - Slight transform
 - Smooth appearance
+
+**Progress Bar Animation:**
+- Smooth linear progression (0.1s transition)
+- Blue gradient with glow effect
+- 3px height below autoplay button
+- Resets on panel change
+- Updates every 50ms
 
 ### ✅ Accessibility
 
@@ -157,6 +168,7 @@ The ToolbarComponent serves as the primary control interface for the PanelWave P
 | `audioEnabled` | `boolean` | `true` | Audio enabled |
 | `sfxEnabled` | `boolean` | `true` | Sound effects enabled |
 | `autoplayEnabled` | `boolean` | `false` | Autoplay active |
+| `autoplayProgress` | `number` | `0` | Autoplay progress (0-100) |
 | `secondsPerPanel` | `number` | `5` | Seconds per panel in autoplay |
 | `thumbnailsVisible` | `boolean` | `false` | Thumbnail strip visible |
 | `hasAlternatives` | `boolean` | `false` | Current panel has variants |
@@ -249,6 +261,7 @@ onClose(): void
   [audioEnabled]="audioEnabled"
   [sfxEnabled]="sfxEnabled"
   [autoplayEnabled]="autoplayEnabled"
+  [autoplayProgress]="autoplayProgress"
   [secondsPerPanel]="secondsPerPanel"
   [thumbnailsVisible]="thumbnailsVisible"
   [hasAlternatives]="currentPanelHasVariants"
@@ -904,11 +917,11 @@ describe('Toolbar Accessibility', () => {
 | **TypeScript** | 350 |
 | **HTML** | 260 |
 | **CSS** | 440 |
-| **Inputs** | 14 |
+| **Inputs** | 15 |
 | **Outputs** | 18 |
 | **Controls** | 20+ |
 | **Sections** | 4 |
-| **Animations** | 3 |
+| **Animations** | 4 |
 | **Breakpoints** | 3 |
 
 ---
@@ -924,10 +937,81 @@ describe('Toolbar Accessibility', () => {
 
 ---
 
+## Autoplay Progress Bar Feature
+
+### Overview
+
+The autoplay progress bar provides real-time visual feedback about panel duration during autoplay mode.
+
+### Key Features
+
+**Visual Indicator:**
+- 3px height progress bar below autoplay button
+- Blue gradient fill with glow effect
+- Smooth animation from 0% to 100%
+- Only visible when autoplay is active
+
+**Progress Tracking:**
+- Updates every 50ms for smooth animation
+- Calculates: `progress = (elapsed / duration) * 100`
+- Respects panel-specific `durationMs` from manifest
+- Falls back to global `secondsPerPanel` setting
+
+**User Experience:**
+- **Fast panels** (2.5s): Bar fills quickly
+- **Moderate panels** (5s): Standard progression
+- **Slow panels** (8s): Bar fills slowly
+- Clearly shows panel timing at a glance
+
+### Implementation
+
+**Component Properties:**
+```typescript
+@Input() autoplayProgress: number = 0;  // 0-100
+```
+
+**PlayerShell Tracking:**
+```typescript
+private autoplayProgressInterval?: ReturnType<typeof setInterval>;
+private autoplayStartTime = 0;
+private autoplayDuration = 0;
+
+startAutoplayProgress(): void {
+  this.autoplayProgressInterval = setInterval(() => {
+    const elapsed = Date.now() - this.autoplayStartTime;
+    const progress = Math.min(100, (elapsed / this.autoplayDuration) * 100);
+    this.autoplayProgress = progress;
+  }, 50);
+}
+```
+
+**CSS Styling:**
+```css
+.autoplay-progress-bar {
+  position: absolute;
+  bottom: -4px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.autoplay-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(0, 120, 215, 0.8), 
+    rgba(0, 180, 255, 0.9));
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(0, 180, 255, 0.5);
+}
+```
+
+---
+
 ## Commits
 
 ```
 ddf17e5 - feat: implement ToolbarComponent with all player controls
+b41d113 - feat: add autoplay progress bar animation
 ```
 
 ---
