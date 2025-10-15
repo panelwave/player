@@ -64,7 +64,7 @@ export class CharacterRosterComponent implements OnInit, OnChanges {
   @Input() visible = false;
 
   /**
-   * Character selected
+   * Character selected (kept for backward compatibility but not used internally)
    */
   @Output() characterSelect = new EventEmitter<Character>();
 
@@ -77,6 +77,26 @@ export class CharacterRosterComponent implements OnInit, OnChanges {
    * Search query
    */
   searchQuery = '';
+
+  /**
+   * Current view: 'list' or 'detail'
+   */
+  currentView: 'list' | 'detail' = 'list';
+
+  /**
+   * Selected character for detail view
+   */
+  selectedCharacter: Character | null = null;
+
+  /**
+   * Audio element for voice samples
+   */
+  private audioElement: HTMLAudioElement | null = null;
+
+  /**
+   * Is voice sample playing
+   */
+  isPlaying = false;
 
   /**
    * Filtered characters
@@ -185,17 +205,99 @@ export class CharacterRosterComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Select character
+   * Select character - shows detail view
    */
   selectCharacter(character: Character): void {
-    this.characterSelect.emit(character);
+    this.selectedCharacter = character;
+    this.currentView = 'detail';
+    this.searchQuery = ''; // Clear search when viewing detail
+  }
+
+  /**
+   * Go back to character list
+   */
+  backToList(): void {
+    this.currentView = 'list';
+    this.selectedCharacter = null;
+    this.stopVoiceSample();
   }
 
   /**
    * Close roster
    */
   onClose(): void {
+    this.backToList(); // Reset view when closing
     this.close.emit();
+  }
+
+  /**
+   * Get character initials for placeholder
+   */
+  getInitials(character: Character): string {
+    const name = this.getCharacterName(character);
+    const words = name.split(' ').filter(w => w.length > 0);
+    if (words.length === 0) return '?';
+    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  }
+
+  /**
+   * Check if character has voice sample
+   */
+  hasVoiceSample(character: Character): boolean {
+    return !!character.voiceSample;
+  }
+
+  /**
+   * Play or stop voice sample
+   */
+  playVoiceSample(character: Character): void {
+    if (!character.voiceSample) return;
+
+    if (this.isPlaying && this.audioElement) {
+      this.stopVoiceSample();
+    } else {
+      this.startVoiceSample(character.voiceSample);
+    }
+  }
+
+  /**
+   * Start playing voice sample
+   */
+  private startVoiceSample(url: string): void {
+    this.stopVoiceSample(); // Stop any existing audio
+
+    const audioUrl = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')
+      ? url
+      : this.baseUrl + url;
+
+    this.audioElement = new Audio(audioUrl);
+    this.audioElement.addEventListener('ended', () => {
+      this.isPlaying = false;
+    });
+    this.audioElement.addEventListener('error', () => {
+      this.isPlaying = false;
+      console.error('Failed to load voice sample');
+    });
+
+    this.audioElement.play().then(() => {
+      this.isPlaying = true;
+    }).catch((error) => {
+      console.error('Failed to play voice sample:', error);
+      this.isPlaying = false;
+    });
+  }
+
+  /**
+   * Stop playing voice sample
+   */
+  private stopVoiceSample(): void {
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.audioElement = null;
+    }
+    this.isPlaying = false;
   }
 
   /**
@@ -232,15 +334,4 @@ export class CharacterRosterComponent implements OnInit, OnChanges {
     }
   }
 
-  /**
-   * Get character initials for fallback
-   */
-  getInitials(character: Character): string {
-    const name = this.getCharacterName(character);
-    const words = name.split(' ');
-    if (words.length >= 2) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  }
 }

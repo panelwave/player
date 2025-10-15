@@ -45,7 +45,8 @@
     "search": "Charaktere suchen...",
     "search_label": "Charaktere suchen",
     "no_results": "Keine Charaktere gefunden für \"{{query}}\"",
-    "keyboard_hint": "Schließen"
+    "keyboard_hint": "Schließen",
+    "back_to_list": "← Zurück"
   },
   "character_sheet": {
     "close": "Charakterdetails schließen",

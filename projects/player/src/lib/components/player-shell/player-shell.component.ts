@@ -37,15 +37,14 @@ import { TranslationService } from '../../services/translation.service';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
+import { LanguageModalComponent } from '../modals/language-modal/language-modal.component';
 import { ThumbnailStripComponent } from '../overlays/thumbnail-strip/thumbnail-strip.component';
 import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
 import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
-import { CharacterSheetComponent } from '../modals/character-sheet/character-sheet.component';
 import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
-import { LanguageModalComponent } from '../modals/language-modal/language-modal.component';
 
 /**
  * Factory function for TranslateLoader
@@ -93,7 +92,6 @@ export interface EntitlementAdapter {
     SettingsModalComponent,
     LanguageModalComponent,
     CharacterRosterComponent,
-    CharacterSheetComponent,
     ExtrasViewerComponent,
     ShareModalComponent,
     CommentsDrawerComponent,
@@ -235,16 +233,10 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   settingsVisible = false;
   languageModalVisible = false;
   charactersVisible = false;
-  characterSheetVisible = false;
   extrasVisible = false;
   shareVisible = false;
   commentsVisible = false;
   thumbnailsVisible = false;
-
-  /**
-   * Selected character for detail view
-   */
-  selectedCharacterId?: string;
 
   /**
    * View mode
@@ -727,12 +719,6 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
 
   onCharactersClose(): void {
     this.charactersVisible = false;
-    this.selectedCharacterId = undefined;
-  }
-
-  onCharacterSheetClose(): void {
-    this.characterSheetVisible = false;
-    this.selectedCharacterId = undefined;
   }
 
   onExtrasClose(): void {
@@ -749,15 +735,6 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
 
   onThumbnailsClose(): void {
     this.thumbnailsVisible = false;
-  }
-
-  /**
-   * Handle character selection
-   */
-  onCharacterSelect(character: { id: string }): void {
-    this.selectedCharacterId = character.id;
-    this.charactersVisible = false;
-    this.characterSheetVisible = true;
   }
 
   /**
@@ -1019,16 +996,6 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       return [];
     }
     return this.mapCharacters(manifest.meta.characters);
-  }
-
-  /**
-   * Get selected character for detail view
-   */
-  get selectedCharacter(): RosterCharacter | undefined {
-    if (!this.selectedCharacterId) {
-      return undefined;
-    }
-    return this.characters.find(c => c.id === this.selectedCharacterId);
   }
 
   /**

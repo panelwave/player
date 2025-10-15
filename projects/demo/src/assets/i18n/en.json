@@ -45,7 +45,8 @@
     "search": "Search characters...",
     "search_label": "Search characters",
     "no_results": "No characters found matching \"{{query}}\"",
-    "keyboard_hint": "Close"
+    "keyboard_hint": "Close",
+    "back_to_list": "← Back"
   },
   "character_sheet": {
     "close": "Close character details",

@@ -1,32 +1,35 @@
 @if (visible) {
   <div class="roster-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
-    <div class="roster-container" role="dialog" aria-modal="true" aria-label="Character Roster">
-      <!-- Header -->
-      <div class="roster-header">
-        <h2 class="roster-title">{{ 'character_roster.title' | translate }}</h2>
-        <button
-          class="close-btn"
-          type="button"
-          [attr.aria-label]="'character_roster.close' | translate"
-          (click)="onClose()">
-          ✕
-        </button>
-      </div>
+    <div class="roster-container" role="dialog" aria-modal="true" [attr.aria-label]="currentView === 'list' ? 'Character Roster' : 'Character Details'">
+      
+      <!-- LIST VIEW -->
+      @if (currentView === 'list') {
+        <!-- Header -->
+        <div class="roster-header">
+          <h2 class="roster-title">{{ 'character_roster.title' | translate }}</h2>
+          <button
+            class="close-btn"
+            type="button"
+            [attr.aria-label]="'character_roster.close' | translate"
+            (click)="onClose()">
+            ✕
+          </button>
+        </div>
 
-      <!-- Search -->
-      <div class="roster-search">
-        <input
-          type="text"
-          class="search-input"
-          [placeholder]="'character_roster.search' | translate"
-          [attr.aria-label]="'character_roster.search_label' | translate"
-          [(ngModel)]="searchQuery"
-          (ngModelChange)="onSearchChange()" />
-        <span class="search-icon">🔍</span>
-      </div>
+        <!-- Search -->
+        <div class="roster-search">
+          <input
+            type="text"
+            class="search-input"
+            [placeholder]="'character_roster.search' | translate"
+            [attr.aria-label]="'character_roster.search_label' | translate"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchChange()" />
+          <span class="search-icon">🔍</span>
+        </div>
 
-      <!-- Character grid -->
-      <div class="roster-content">
+        <!-- Character grid -->
+        <div class="roster-content">
         @if (filteredCharacters.length > 0) {
           <div class="character-grid" role="list">
             @for (character of filteredCharacters; track character.id) {
@@ -67,12 +70,94 @@
         }
       </div>
 
-      <!-- Footer -->
-      <div class="roster-footer">
-        <p class="footer-hint">
-          <kbd>{{ 'common.esc' | translate }}</kbd> {{ 'character_roster.keyboard_hint' | translate }}
-        </p>
-      </div>
+        <!-- Footer -->
+        <div class="roster-footer">
+          <p class="footer-hint">
+            <kbd>{{ 'common.esc' | translate }}</kbd> {{ 'character_roster.keyboard_hint' | translate }}
+          </p>
+        </div>
+      }
+
+      <!-- DETAIL VIEW -->
+      @if (currentView === 'detail' && selectedCharacter) {
+        <!-- Header with back button -->
+        <div class="roster-header">
+          <button
+            class="back-btn"
+            type="button"
+            [attr.aria-label]="'character_roster.back_to_list' | translate"
+            (click)="backToList()">
+            {{ 'character_roster.back_to_list' | translate }}
+          </button>
+          <h2 class="roster-title">{{ getCharacterName(selectedCharacter) }}</h2>
+          <button
+            class="close-btn"
+            type="button"
+            [attr.aria-label]="'character_sheet.close' | translate"
+            (click)="onClose()">
+            ✕
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="sheet-content">
+          <!-- Portrait -->
+          <div class="portrait-section">
+            <div class="portrait-container">
+              @if (getAvatarUrl(selectedCharacter)) {
+                <img
+                  [src]="getAvatarUrl(selectedCharacter)"
+                  [alt]="getCharacterName(selectedCharacter)"
+                  class="portrait-image" />
+              } @else {
+                <div class="portrait-placeholder">
+                  {{ getInitials(selectedCharacter) }}
+                </div>
+              }
+            </div>
+
+            <!-- Role badge -->
+            @if (selectedCharacter['role']) {
+              <div class="role-badge">
+                {{ selectedCharacter['role'] }}
+              </div>
+            }
+
+            <!-- Voice sample button -->
+            @if (hasVoiceSample(selectedCharacter)) {
+              <button
+                class="voice-btn"
+                [class.playing]="isPlaying"
+                type="button"
+                [attr.aria-label]="(isPlaying ? 'character_sheet.stop_voice' : 'character_sheet.play_voice') | translate"
+                (click)="playVoiceSample(selectedCharacter)">
+                <span class="voice-icon">{{ isPlaying ? '⏸️' : '🔊' }}</span>
+                <span class="voice-label">{{ (isPlaying ? 'character_sheet.stop_voice' : 'character_sheet.play_voice') | translate }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Bio -->
+          <div class="bio-section">
+            <h3 class="bio-title">Biography</h3>
+            @if (getCharacterBio(selectedCharacter)) {
+              <div class="bio-content">
+                {{ getCharacterBio(selectedCharacter) }}
+              </div>
+            } @else {
+              <p class="bio-empty">No biography available.</p>
+            }
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="sheet-footer">
+          <p class="footer-hint">
+            <kbd>{{ 'common.esc' | translate }}</kbd> {{ 'character_sheet.keyboard_hint' | translate }}
+          </p>
+        </div>
+      }
+
     </div>
   </div>
 }

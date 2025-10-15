@@ -137,19 +137,8 @@
           [characters]="characters"
           [locale]="locale"
           [baseUrl]="''"
-          (characterSelect)="onCharacterSelect($event)"
           (close)="charactersVisible = false">
         </pw-character-roster>
-      }
-
-      @if (characterSheetVisible && selectedCharacter) {
-        <pw-character-sheet
-          [visible]="characterSheetVisible"
-          [character]="selectedCharacter"
-          [locale]="locale"
-          [baseUrl]="''"
-          (close)="characterSheetVisible = false">
-        </pw-character-sheet>
       }
 
       @if (extrasVisible) {
