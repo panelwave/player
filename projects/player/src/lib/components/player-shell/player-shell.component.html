@@ -104,6 +104,11 @@
         <pw-toc-overlay
           [visible]="tocVisible"
           [manifest]="manifest"
+          [currentChapterId]="currentChapter?.id"
+          [currentPanelId]="getCurrentPanelId()"
+          [locale]="locale"
+          [baseUrl]="''"
+          (navigate)="onTocNavigate($event)"
           (close)="tocVisible = false">
         </pw-toc-overlay>
       }

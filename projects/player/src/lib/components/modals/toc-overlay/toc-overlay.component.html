@@ -48,19 +48,82 @@
 
               <!-- Panel list (if chapter selected) -->
               @if (i === selectedChapterIndex) {
-                <div class="panel-list" role="list">
-                  @for (panelItem of getPanels(chapter); track panelItem.id) {
-                    <button
-                      class="panel-item"
-                      [class.current]="isCurrentPanel(panelItem.id)"
-                      type="button"
-                      role="listitem"
-                      (click)="navigateToPanel(chapter, panelItem.id)">
-                      <span class="panel-id">{{ panelItem.id }}</span>
-                      @if (isCurrentPanel(panelItem.id)) {
-                        <span class="current-indicator">▶</span>
+                <div class="panel-list">
+                  <!-- If chapter has pages, group by pages -->
+                  @if (hasPages(chapter)) {
+                    @for (page of getPages(chapter); track page.id) {
+                      <div class="page-group">
+                        <div class="page-header">
+                          <span class="page-title">{{ getPageTitle(page) }}</span>
+                        </div>
+                        <div class="panels-grid">
+                          @for (panelItem of getPanelsForPage(chapter, page); track panelItem.id) {
+                            <button
+                              class="panel-card"
+                              [class.current]="isCurrentPanel(panelItem.id)"
+                              type="button"
+                              (click)="navigateToPanel(chapter, panelItem.id)">
+                              
+                              @if (getThumbnailUrl(panelItem.panel)) {
+                                <div class="panel-thumbnail">
+                                  <img 
+                                    [src]="getThumbnailUrl(panelItem.panel)" 
+                                    [alt]="getPanelTitle(panelItem.panel, panelItem.id)"
+                                    loading="lazy" />
+                                  @if (isCurrentPanel(panelItem.id)) {
+                                    <div class="current-overlay">
+                                      <span class="current-icon">▶</span>
+                                    </div>
+                                  }
+                                </div>
+                              } @else {
+                                <div class="panel-thumbnail placeholder">
+                                  <span class="placeholder-icon">🖼️</span>
+                                </div>
+                              }
+                              
+                              <div class="panel-info">
+                                <span class="panel-title">{{ getPanelTitle(panelItem.panel, panelItem.id) }}</span>
+                              </div>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <!-- No pages, show all panels directly -->
+                    <div class="panels-grid">
+                      @for (panelItem of getPanels(chapter); track panelItem.id) {
+                        <button
+                          class="panel-card"
+                          [class.current]="isCurrentPanel(panelItem.id)"
+                          type="button"
+                          (click)="navigateToPanel(chapter, panelItem.id)">
+                          
+                          @if (getThumbnailUrl(panelItem.panel)) {
+                            <div class="panel-thumbnail">
+                              <img 
+                                [src]="getThumbnailUrl(panelItem.panel)" 
+                                [alt]="getPanelTitle(panelItem.panel, panelItem.id)"
+                                loading="lazy" />
+                              @if (isCurrentPanel(panelItem.id)) {
+                                <div class="current-overlay">
+                                  <span class="current-icon">▶</span>
+                                </div>
+                              }
+                            </div>
+                          } @else {
+                            <div class="panel-thumbnail placeholder">
+                              <span class="placeholder-icon">🖼️</span>
+                            </div>
+                          }
+                          
+                          <div class="panel-info">
+                            <span class="panel-title">{{ getPanelTitle(panelItem.panel, panelItem.id) }}</span>
+                          </div>
+                        </button>
                       }
-                    </button>
+                    </div>
                   }
                 </div>
               }

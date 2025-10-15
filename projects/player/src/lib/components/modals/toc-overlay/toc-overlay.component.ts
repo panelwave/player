@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import type { Chapter, Panel, LocaleCode, LocalizedString, PanelWaveManifest } from '../../../types';
+import type { Chapter, Panel, Page, LocaleCode, LocalizedString, PanelWaveManifest } from '../../../types';
 
 /**
  * ToC navigation target
@@ -61,6 +61,11 @@ export class TocOverlayComponent implements OnInit {
    * Current locale
    */
   @Input() locale: LocaleCode = 'en-US';
+
+  /**
+   * Base URL for thumbnails
+   */
+  @Input() baseUrl = '';
 
   /**
    * Visible state
@@ -181,6 +186,70 @@ export class TocOverlayComponent implements OnInit {
   getPanels(chapter: Chapter): Array<{ id: string; panel: Panel }> {
     if (!chapter.panels) return [];
     return Object.entries(chapter.panels).map(([id, panel]) => ({ id, panel }));
+  }
+
+  /**
+   * Get pages for chapter
+   */
+  getPages(chapter: Chapter): Page[] {
+    return chapter.pages || [];
+  }
+
+  /**
+   * Check if chapter has pages
+   */
+  hasPages(chapter: Chapter): boolean {
+    return !!(chapter.pages && chapter.pages.length > 0);
+  }
+
+  /**
+   * Get panels for a specific page
+   */
+  getPanelsForPage(chapter: Chapter, page: Page): Array<{ id: string; panel: Panel }> {
+    if (!chapter.panels || !page.readingOrder) return [];
+    
+    return page.readingOrder
+      .filter(panelId => chapter.panels[panelId])
+      .map(panelId => ({
+        id: panelId,
+        panel: chapter.panels[panelId]
+      }));
+  }
+
+  /**
+   * Get page title
+   */
+  getPageTitle(page: Page): string {
+    return this.getLocalizedString(page.title) || `Page ${page.id}`;
+  }
+
+  /**
+   * Get panel title
+   */
+  getPanelTitle(panel: Panel, panelId: string): string {
+    return this.getLocalizedString(panel.title) || panelId;
+  }
+
+  /**
+   * Get thumbnail URL for panel
+   */
+  getThumbnailUrl(panel: Panel): string {
+    const thumbnail = (panel as any).thumbnail;
+    if (!thumbnail) {
+      return '';
+    }
+
+    // Absolute URL
+    if (
+      thumbnail.startsWith('http://') ||
+      thumbnail.startsWith('https://') ||
+      thumbnail.startsWith('data:')
+    ) {
+      return thumbnail;
+    }
+
+    // Relative URL
+    return this.baseUrl + thumbnail;
   }
 
   /**
