@@ -128,7 +128,7 @@
         class="nav-arrow nav-arrow-left"
         type="button"
         aria-label="Previous panel"
-        (click)="onNavigatePrevious()">
+        (click)="onNavigatePrevious(); $event.stopPropagation()">
         <span class="arrow-icon">‹</span>
       </button>
     }
@@ -138,7 +138,7 @@
         class="nav-arrow nav-arrow-right"
         type="button"
         aria-label="Next panel"
-        (click)="onNavigateNext()">
+        (click)="onNavigateNext(); $event.stopPropagation()">
         <span class="arrow-icon">›</span>
       </button>
     }
