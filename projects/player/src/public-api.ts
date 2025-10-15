@@ -17,6 +17,7 @@ export { PreloadService, type PreloadItem, type PreloadPriority } from './lib/se
 export { TrackingService, type TrackingEvent } from './lib/services/tracking.service';
 export { EntitlementService } from './lib/services/entitlement.service';
 export { PluginHostService } from './lib/services/plugin-host.service';
+export { VariantService } from './lib/services/variant.service';
 
 // Legacy
 export * from './lib/player.service';
@@ -26,4 +27,5 @@ export { PlayerShellComponent } from './lib/components/player-shell/player-shell
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';
+export { VariantSelectorComponent } from './lib/components/variant-selector/variant-selector.component';
 export * from './lib/player.component';
