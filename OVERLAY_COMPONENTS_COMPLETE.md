@@ -2,7 +2,7 @@
 
 ## Summary
 
-This document provides comprehensive documentation for all **3 Overlay Components** of the PanelWave Player. These components provide overlays for content warnings, paywalls, and thumbnail navigation that enhance the player experience with important user interactions and navigation features.
+This document provides comprehensive documentation for all **4 Overlay Components** of the PanelWave Player. These components provide overlays for content warnings, paywalls, age verification, and thumbnail navigation that enhance the player experience with important user interactions and navigation features.
 
 ---
 
@@ -10,7 +10,8 @@ This document provides comprehensive documentation for all **3 Overlay Component
 
 1. [ContentWarningOverlayComponent](#contentwarningov) - Content Warnings
 2. [PaywallOverlayComponent](#paywalloverlay) - Premium Content Gate
-3. [ThumbnailStripComponent](#thumbnailstrip) - Panel Navigation
+3. [AgeGateComponent](#agegate) - Age Verification
+4. [ThumbnailStripComponent](#thumbnailstrip) - Panel Navigation
 
 ---
 
@@ -170,98 +171,136 @@ saveWarningPreference(pref: WarningPreference) {
 
 ### Overview
 
-The **PaywallOverlayComponent** displays a premium content gate with entitlement messages, purchase CTAs, and beautiful gradient styling for locked or preview content.
+The **PaywallOverlayComponent** displays a premium content gate with full entitlement system integration, multiple purchase options, and beautiful gradient styling. Fully integrated with the EntitlementService and PaywallGate types.
 
 ### Files
 
-- `paywall-overlay.component.ts` (~210 lines)
-- `paywall-overlay.component.html` (~60 lines)
-- `paywall-overlay.component.css` (~287 lines)
+- `paywall-overlay.component.ts` (~209 lines)
+- `paywall-overlay.component.html` (~108 lines)
+- `paywall-overlay.component.css` (~310 lines)
 
-**Total:** ~557 lines
+**Total:** ~627 lines
 
 ### Key Features
 
-✅ Gradient backdrop and container  
-✅ 4 entitlement status types  
-✅ Status-based icons and messages  
+✅ Full EntitlementService integration  
+✅ PaywallGate support with scope (work/chapter/panel)  
+✅ Multiple purchase options with pricing  
+✅ Preview panel information display  
 ✅ Premium gradient styling (purple/violet theme)  
-✅ CTA button with processing state  
-✅ Loading spinner animation  
-✅ Preview mode with close option  
-✅ Price display support  
-✅ Info footer messages  
+✅ Secure payment messaging  
+✅ Login/authentication prompts  
+✅ Price formatting with Intl.NumberFormat  
+✅ Purchase type labels (one-time/subscription/token)  
+✅ Keyboard navigation (ESC to dismiss)  
+✅ Backdrop click to dismiss  
 ✅ Localization support  
-✅ Float animation on icon  
 
 ### API Reference
 
 **Input Properties:**
 ```typescript
 @Input() visible = false;
-@Input() status: EntitlementStatus = 'locked';
-@Input() title: LocalizedString = {};
-@Input() message: LocalizedString = {};
-@Input() ctaText: LocalizedString = {};
-@Input() price?: string;
+@Input() gate?: PaywallGate;
+@Input() purchaseOptions: PurchaseInfo[] = [];
 @Input() locale: LocaleCode = 'en-US';
-@Input() processing = false;
+@Input() title?: LocalizedString;
+@Input() message?: LocalizedString;
+@Input() allowPreview = false;
+@Input() showLogin = true;
 ```
 
 **Output Events:**
 ```typescript
-@Output() purchase = new EventEmitter<void>();
+@Output() action = new EventEmitter<PaywallAction>();
+@Output() purchase = new EventEmitter<string>(); // productId
 @Output() close = new EventEmitter<void>();
 ```
 
-**Entitlement Status Type:**
+**PaywallAction Type:**
 ```typescript
-type EntitlementStatus = 'locked' | 'preview' | 'subscription' | 'purchase';
+type PaywallAction = 'purchase' | 'subscribe' | 'login' | 'dismiss';
 ```
 
-### Entitlement Status Types
+**PaywallGate Interface:**
+```typescript
+interface PaywallGate {
+  scope: 'work' | 'chapter' | 'panel';
+  refId?: string;
+  requireEntitlement?: string;
+  reason: string;
+  preview?: PreviewInfo;
+}
+```
 
-| Status | Icon | Default Title | Default CTA | Use Case |
-|--------|------|---------------|-------------|----------|
-| **locked** | 🔒 | Content Locked | Unlock Now | General locked content |
-| **preview** | 👁️ | Preview Mode | Subscribe | Preview with limited access |
-| **subscription** | ⭐ | Subscribe to Continue | Subscribe Now | Recurring subscription |
-| **purchase** | 💎 | Purchase to Unlock | Purchase | One-time purchase |
+**PurchaseInfo Interface:**
+```typescript
+interface PurchaseInfo {
+  productId: string;
+  name: string;
+  price: { amount: number; currency: string };
+  type: 'one-time' | 'subscription' | 'token';
+  description?: string;
+}
+```
 
 ### Usage Example
 
 ```typescript
 <pw-paywall-overlay
-  [visible]="!hasAccess"
-  [status]="'subscription'"
-  [title]="{ 'en-US': 'Premium Content' }"
-  [message]="{ 'en-US': 'Subscribe to access this and all premium content' }"
-  [ctaText]="{ 'en-US': 'Subscribe Now' }"
-  [price]="'$4.99/month'"
+  [visible]="paywallVisible"
+  [gate]="currentPaywallGate"
+  [purchaseOptions]="availablePurchases"
   [locale]="currentLocale"
-  [processing]="purchaseInProgress"
-  (purchase)="handlePurchase()"
+  [title]="{ 'en-US': 'Premium Content' }"
+  [allowPreview]="true"
+  [showLogin]="!isAuthenticated"
+  (action)="handlePaywallAction($event)"
+  (purchase)="handlePurchase($event)"
   (close)="closePaywall()">
 </pw-paywall-overlay>
 ```
 
 **Handler:**
 ```typescript
-hasAccess = false;
-purchaseInProgress = false;
+currentPaywallGate: PaywallGate = {
+  scope: 'chapter',
+  refId: 'chapter-2',
+  reason: 'This chapter requires a premium subscription',
+  preview: {
+    previewPanels: 3,
+    mode: 'blur'
+  }
+};
 
-async handlePurchase() {
-  this.purchaseInProgress = true;
-  
-  try {
-    const result = await this.entitlementAdapter.purchase();
-    if (result.success) {
-      this.hasAccess = true;
-    }
-  } catch (error) {
-    console.error('Purchase failed:', error);
-  } finally {
-    this.purchaseInProgress = false;
+availablePurchases: PurchaseInfo[] = [
+  {
+    productId: 'premium-monthly',
+    name: 'Premium Monthly',
+    price: { amount: 4.99, currency: 'USD' },
+    type: 'subscription',
+    description: 'Access all premium content'
+  },
+  {
+    productId: 'chapter-unlock',
+    name: 'Unlock Chapter',
+    price: { amount: 1.99, currency: 'USD' },
+    type: 'one-time',
+    description: 'Permanent access to this chapter'
+  }
+];
+
+async handlePurchase(productId: string) {
+  const result = await this.entitlementService.purchase(productId);
+  if (result.success) {
+    this.paywallVisible = false;
+  }
+}
+
+handlePaywallAction(action: PaywallAction) {
+  console.log('Paywall action:', action);
+  if (action === 'login') {
+    this.showLoginModal();
   }
 }
 ```
@@ -271,20 +310,32 @@ async handlePurchase() {
 ```
 ┌──────────────────────────────────────┐
 │     [Purple Gradient Backdrop]       │
-│                                      │
+│                                   [✕]│
 │  ┌────────────────────────────────┐ │
-│  │          💎                    │ │
-│  │  Purchase to Unlock            │ │
+│  │          🛡️                    │ │
+│  │    Unlock This Chapter         │ │
 │  │                                │ │
-│  │  Purchase this content to      │ │
-│  │  unlock full access.           │ │
+│  │  This chapter requires a       │ │
+│  │  premium subscription.         │ │
 │  │                                │ │
-│  │        $9.99                   │ │
+│  │  ✓ Preview 3 panels free      │ │
+│  │  Preview mode: blur            │ │
 │  │                                │ │
-│  │     [Purchase]                 │ │
+│  │  ┌──────────────────────────┐ │ │
+│  │  │ Premium Monthly    $4.99 │ │ │
+│  │  │ Access all content       │ │ │
+│  │  │ [Subscribe]              │ │ │
+│  │  └──────────────────────────┘ │ │
 │  │                                │ │
-│  │ 💳 One-time purchase           │ │
-│  │    Lifetime access             │ │
+│  │  ┌──────────────────────────┐ │ │
+│  │  │ Unlock Chapter     $1.99 │ │ │
+│  │  │ Permanent access         │ │ │
+│  │  │ [Buy Once]               │ │ │
+│  │  └──────────────────────────┘ │ │
+│  │                                │ │
+│  │     [Maybe Later]              │ │
+│  │                                │ │
+│  │  🔒 Secure payment processing │ │
 │  └────────────────────────────────┘ │
 └──────────────────────────────────────┘
 ```
@@ -294,44 +345,249 @@ async handlePurchase() {
 **Gradient Styling:**
 ```css
 /* Backdrop */
-background: linear-gradient(
-  135deg,
-  rgba(0, 0, 0, 0.95) 0%,
-  rgba(20, 0, 40, 0.95) 50%,
-  rgba(0, 0, 0, 0.95) 100%
-);
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+backdrop-filter: blur(4px);
 
-/* CTA Button */
-background: linear-gradient(135deg, #8a2be2 0%, #da70d6 100%);
-box-shadow: 
-  0 4px 15px rgba(138, 43, 226, 0.4),
-  0 0 30px rgba(138, 43, 226, 0.2);
+/* Purchase Option Cards */
+background: white;
+border-radius: 12px;
+transition: transform 0.2s, box-shadow 0.2s;
 ```
 
-**Float Animation:**
+**Hover Effects:**
 ```css
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+.purchase-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 ```
 
-**Processing State:**
-- Spinner animation
-- "Processing..." text
-- Button disabled
-- Prevents double-click
+**Price Formatting:**
+```typescript
+formatPrice(amount: number, currency: string): string {
+  return new Intl.NumberFormat(this.locale, {
+    style: 'currency',
+    currency: currency,
+  }).format(amount);
+}
+```
 
-**Preview Mode:**
-- Special close button
-- "Continue Preview" option
-- Allows temporary dismissal
-- Doesn't require purchase
+**Preview Info Display:**
+- Shows number of free preview panels
+- Displays preview mode (blur/low-res/watermark/time-limited)
+- Conditional based on `gate.preview` property
 
-**Default Messages:**
-- Status-based fallbacks
-- English defaults
-- Customizable via inputs
+**Multiple Purchase Options:**
+- Each option displayed as a card
+- Shows name, price, description
+- Type badge (Buy Once/Subscribe/Use Token)
+- Individual purchase buttons
+
+**Smart Defaults:**
+- Title based on gate scope
+- Auto-generated messages
+- Localized fallbacks
+- Dynamic button text
+
+---
+
+## AgeGateComponent
+
+### Overview
+
+The **AgeGateComponent** provides age verification UI for restricted content, requiring users to enter their birth date before accessing age-restricted panels. Features automatic age calculation, validation, and privacy-focused design.
+
+### Files
+
+- `age-gate.component.ts` (~221 lines)
+- `age-gate.component.html` (~104 lines)
+- `age-gate.component.css` (~249 lines)
+
+**Total:** ~574 lines
+
+### Key Features
+
+✅ Birth date input with dropdowns (Month/Day/Year)  
+✅ Automatic age calculation from birth date  
+✅ Configurable minimum age requirement  
+✅ Comprehensive validation and error handling  
+✅ Privacy notice ("not stored" messaging)  
+✅ Warning icon with orange theme  
+✅ Non-dismissible mode for strict gating  
+✅ Keyboard navigation (ESC to dismiss if allowed)  
+✅ Backdrop click to dismiss (if allowed)  
+✅ Localization support  
+✅ Responsive design  
+
+### API Reference
+
+**Input Properties:**
+```typescript
+@Input() visible = false;
+@Input() minimumAge = 18;
+@Input() locale: LocaleCode = 'en-US';
+@Input() warningMessage?: string;
+@Input() allowDismiss = true;
+```
+
+**Output Events:**
+```typescript
+@Output() verify = new EventEmitter<AgeVerificationResult>();
+@Output() close = new EventEmitter<void>();
+```
+
+**AgeVerificationResult Interface:**
+```typescript
+interface AgeVerificationResult {
+  verified: boolean;
+  age?: number;
+  birthDate?: Date;
+}
+```
+
+### Usage Example
+
+```typescript
+<pw-age-gate
+  [visible]="showAgeGate"
+  [minimumAge]="18"
+  [locale]="currentLocale"
+  [warningMessage]="customWarning"
+  [allowDismiss]="false"
+  (verify)="handleAgeVerification($event)"
+  (close)="closeAgeGate()">
+</pw-age-gate>
+```
+
+**Handler:**
+```typescript
+showAgeGate = true;
+customWarning = 'This content contains mature themes suitable for adults only.';
+
+handleAgeVerification(result: AgeVerificationResult) {
+  if (result.verified) {
+    console.log('Age verified:', result.age);
+    this.showAgeGate = false;
+    this.proceedToContent();
+  } else {
+    console.log('Age verification failed');
+    this.showAccessDenied();
+  }
+}
+
+closeAgeGate() {
+  // User dismissed without verifying
+  this.navigateAway();
+}
+```
+
+### Visual Layout
+
+```
+┌──────────────────────────────────────┐
+│      [Dark Backdrop with Blur]   [✕]│
+│                                      │
+│  ┌────────────────────────────────┐ │
+│  │          ⚠️                    │ │
+│  │  Age Verification Required     │ │
+│  │                                │ │
+│  │  This content is restricted to │ │
+│  │  users 18 years of age or      │ │
+│  │  older.                        │ │
+│  │                                │ │
+│  │  Please enter your birth date: │ │
+│  │                                │ │
+│  │  Month    Day     Year         │ │
+│  │  [Jan ▼] [15 ▼] [2000 ▼]     │ │
+│  │                                │ │
+│  │      [Verify Age]              │ │
+│  │                                │ │
+│  │  🔒 Your information is        │ │
+│  │     private and will not       │ │
+│  │     be stored.                 │ │
+│  └────────────────────────────────┘ │
+└──────────────────────────────────────┘
+```
+
+### Special Features
+
+**Orange Warning Theme:**
+```css
+/* Header */
+background: #1a1a1a;
+border: 2px solid #ffa500;
+
+/* Warning Icon */
+background: rgba(255, 165, 0, 0.15);
+color: #ffa500;
+```
+
+**Age Calculation:**
+```typescript
+calculateAge(birthDate: Date): number {
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
+```
+
+**Validation Features:**
+- Month range: 1-12
+- Day range: 1-31
+- Year range: 1900 - current year
+- Complete date required
+- Age threshold check
+- Clear error messages
+
+**Dropdown Generators:**
+```typescript
+// Month dropdown (January - December)
+getMonthOptions(): Array<{ value: string; label: string }>
+
+// Day dropdown (1-31)
+getDayOptions(): number[]
+
+// Year dropdown (current year back to 1900)
+getYearOptions(): number[]
+```
+
+**Error Handling:**
+```typescript
+// Examples of error messages
+- "Please enter your complete birth date."
+- "Please enter a valid month (1-12)."
+- "Please enter a valid day (1-31)."
+- "Please enter a valid year (1900-2025)."
+- "You must be at least 18 years old to access this content."
+```
+
+**Privacy Notice:**
+- Lock icon
+- Clear messaging
+- Bottom of modal
+- Reassures users
+
+**Non-Dismissible Mode:**
+- `[allowDismiss]="false"` removes close button
+- ESC key disabled
+- Backdrop click disabled
+- Forces verification
+
+**Custom Warning:**
+```typescript
+[warningMessage]="'This comic contains violence and adult themes'"
+```
+
+Fallback to default:
+```
+"This content is restricted to users {minimumAge} years of age or older."
+```
 
 ---
 
@@ -628,9 +884,10 @@ changeDetection: ChangeDetectionStrategy.OnPush
 | Component | TypeScript | HTML | CSS | Total | Inputs | Outputs |
 |-----------|-----------|------|-----|-------|--------|---------|
 | **ContentWarning** | 188 | 71 | 312 | 571 | 4 | 3 |
-| **Paywall** | 210 | 60 | 287 | 557 | 8 | 2 |
+| **Paywall** | 209 | 108 | 310 | 627 | 8 | 3 |
+| **AgeGate** | 221 | 104 | 249 | 574 | 5 | 2 |
 | **ThumbnailStrip** | 250 | 85 | 367 | 702 | 6 | 2 |
-| **TOTAL** | **648** | **216** | **966** | **1,830** | **18** | **7** |
+| **TOTAL** | **868** | **368** | **1,238** | **2,474** | **23** | **10** |
 
 ---
 
@@ -643,6 +900,7 @@ changeDetection: ChangeDetectionStrategy.OnPush
 | Content warnings | ✅ | ContentWarning |
 | Blur overlay | ✅ | ContentWarning |
 | Paywall for premium content | ✅ | Paywall |
+| Age verification | ✅ | AgeGate |
 | Thumbnail navigation | ✅ | ThumbnailStrip |
 | Chapter separators | ✅ | ThumbnailStrip |
 | Current panel highlighting | ✅ | ThumbnailStrip |
@@ -654,10 +912,11 @@ changeDetection: ChangeDetectionStrategy.OnPush
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
-| Overlay components | ✅ | 3 overlays implemented |
+| Overlay components | ✅ | 4 overlays implemented |
 | Blur effects | ✅ | 20px blur |
 | Preference persistence | ✅ | Event-based |
-| Entitlement integration | ✅ | Purchase event |
+| Entitlement integration | ✅ | Full EntitlementService |
+| Age verification | ✅ | Birth date validation |
 | Virtual scrolling | ✅ | Viewport-based |
 | Responsive layouts | ✅ | All overlays |
 
@@ -667,8 +926,8 @@ changeDetection: ChangeDetectionStrategy.OnPush
 
 ```
 f96aaff - feat: implement ContentWarningOverlayComponent - blur overlay with severity levels
-ff1c0e2 - feat: implement PaywallOverlayComponent - premium content overlay with entitlement adapter
 829761b - feat: implement ThumbnailStripComponent - panel navigation with virtual scrolling
+fd8ab7d - feat: implement Phase 6 - Entitlement & Paywall system (PaywallOverlay + AgeGate)
 ```
 
 ---
@@ -801,10 +1060,21 @@ onThumbnailNav(target: ThumbnailNavigationTarget) {
 
 ### PaywallOverlay
 
-1. **Status Selection:** Choose appropriate status type
-2. **Price Display:** Include currency and period
-3. **Processing State:** Always show loading feedback
-4. **Error Handling:** Handle purchase failures gracefully
+1. **Gate Configuration:** Use appropriate scope (work/chapter/panel)
+2. **Purchase Options:** Provide multiple purchase choices
+3. **Preview Info:** Include preview panel counts when available
+4. **Price Display:** Use proper currency formatting with Intl
+5. **Error Handling:** Handle purchase failures gracefully
+6. **Login Integration:** Show login option for unauthenticated users
+
+### AgeGate
+
+1. **Minimum Age:** Set appropriate age requirement (13/16/18/21)
+2. **Custom Messages:** Provide context-specific warnings
+3. **Non-Dismissible:** Use `[allowDismiss]="false"` for strict gating
+4. **Privacy:** Always show privacy notice
+5. **Validation:** Handle all edge cases (leap years, invalid dates)
+6. **Result Handling:** Store verification results appropriately
 
 ### ThumbnailStrip
 
@@ -816,6 +1086,6 @@ onThumbnailNav(target: ThumbnailNavigationTarget) {
 
 ---
 
-**All 3 Overlay Components are COMPLETE and PRODUCTION-READY!** ✅
+**All 4 Overlay Components are COMPLETE and PRODUCTION-READY!** ✅
 
-Total implementation: **~1,830 lines of code** providing essential overlay functionality for content warnings, premium content gates, and quick panel navigation with excellent performance and user experience.
+Total implementation: **~2,474 lines of code** providing essential overlay functionality for content warnings, premium content gates with full entitlement system integration, age verification, and quick panel navigation with excellent performance and user experience.
