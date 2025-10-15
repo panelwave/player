@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
 /**
@@ -36,7 +37,7 @@ export interface Character {
 @Component({
   selector: 'pw-character-roster',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './character-roster.component.html',
   styleUrls: ['./character-roster.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

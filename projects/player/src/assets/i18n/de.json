@@ -1,0 +1,79 @@
+{
+  "toolbar": {
+    "view": "Ansicht",
+    "view_toggle": "Zwischen Seiten- und Panelansicht wechseln",
+    "language": "Sprache",
+    "select_language": "Sprache auswählen",
+    "speech": "Sprache",
+    "speech_toggle": "Sprechblasen ein-/ausblenden",
+    "audio": "Audio",
+    "audio_toggle": "Audio stumm/laut schalten",
+    "sfx": "SFX",
+    "sfx_toggle": "Soundeffekte aktivieren/deaktivieren",
+    "autoplay": "Autoplay",
+    "autoplay_toggle": "Autoplay aktivieren/deaktivieren",
+    "decrease_speed": "Geschwindigkeit verringern",
+    "increase_speed": "Geschwindigkeit erhöhen",
+    "seconds": "{{value}}s",
+    "thumbs": "Vorschau",
+    "thumbs_toggle": "Vorschaubildleiste ein-/ausblenden",
+    "toc": "Inhalt",
+    "toc_open": "Inhaltsverzeichnis öffnen",
+    "settings": "Einstellungen",
+    "settings_open": "Einstellungen öffnen",
+    "characters": "Charaktere",
+    "characters_open": "Charakterübersicht anzeigen",
+    "alt": "Alt",
+    "alt_cycle": "Durch alternative Panels wechseln",
+    "choices": "Auswahlmöglichkeiten",
+    "choices_view": "Kommende Auswahlmöglichkeiten anzeigen",
+    "extras": "Extras",
+    "extras_open": "Bonus-Inhalte anzeigen",
+    "like": "Gefällt mir",
+    "like_content": "Inhalt liken",
+    "bookmark": "Lesezeichen",
+    "bookmark_panel": "Panel als Lesezeichen setzen",
+    "share": "Teilen",
+    "share_panel": "Panel teilen",
+    "comments": "Kommentare",
+    "comments_view": "Kommentare anzeigen",
+    "close": "Werkzeugleiste schließen"
+  },
+  "character_roster": {
+    "title": "Charaktere",
+    "close": "Charakterübersicht schließen",
+    "search": "Charaktere suchen...",
+    "search_label": "Charaktere suchen",
+    "no_results": "Keine Charaktere gefunden für \"{{query}}\"",
+    "keyboard_hint": "Schließen"
+  },
+  "character_sheet": {
+    "close": "Charakterdetails schließen",
+    "play_voice": "Stimmprobe abspielen",
+    "stop_voice": "Stimmprobe stoppen",
+    "keyboard_hint": "Schließen"
+  },
+  "toc": {
+    "title": "Inhaltsverzeichnis",
+    "close": "Inhaltsverzeichnis schließen",
+    "chapter": "Kapitel",
+    "panel": "Panel",
+    "locked": "Gesperrt",
+    "keyboard_hint": "Schließen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "close": "Einstellungen schließen",
+    "keyboard_hint": "Schließen"
+  },
+  "loading": {
+    "text": "PanelWave wird geladen..."
+  },
+  "error": {
+    "title": "Inhalt konnte nicht geladen werden",
+    "retry": "Erneut versuchen"
+  },
+  "common": {
+    "esc": "Esc"
+  }
+}

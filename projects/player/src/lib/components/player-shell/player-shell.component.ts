@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
+import { TranslateModule } from '@ngx-translate/core';
 
 import type {
   PanelWaveManifest,
@@ -30,6 +31,7 @@ import { PlayerStateService } from '../../services/player-state.service';
 import { ManifestService } from '../../services/manifest.service';
 import { VariableStoreService } from '../../services/variable-store.service';
 import { FlowEngineService } from '../../services/flow-engine.service';
+import { TranslationService } from '../../services/translation.service';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
@@ -72,6 +74,7 @@ export interface EntitlementAdapter {
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     ViewportComponent,
     ToolbarComponent,
     ThumbnailStripComponent,
@@ -274,7 +277,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     private playerState: PlayerStateService,
     private manifestService: ManifestService,
     private variableStore: VariableStoreService,
-    private flowEngine: FlowEngineService
+    private flowEngine: FlowEngineService,
+    private translationService: TranslationService
   ) {}
 
   /**
@@ -319,8 +323,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         });
       }
 
-      // Set initial locale
+      // Set initial locale and configure translations
       this.playerState.setLocale(this.locale);
+      this.translationService.setLanguage(this.locale);
 
       // Check if page view is available
       const loadedManifest = this.manifestService.getManifest();
@@ -610,7 +615,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onLocaleChange(locale: LocaleCode): void {
+    // Update content locale
+    this.locale = locale;
     this.playerState.setLocale(locale);
+    
+    // Update GUI language (sync with content locale)
+    this.translationService.setLanguage(locale);
+    
     console.log('Locale changed to:', locale);
   }
 
@@ -974,6 +985,17 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   // ============================================================================
   // Character helpers
   // ============================================================================
+
+  /**
+   * Get available locales from manifest
+   */
+  get availableLocales(): LocaleCode[] {
+    const manifest = this.manifestService.getManifest();
+    if (!manifest?.meta?.locales) {
+      return ['en-US'];
+    }
+    return manifest.meta.locales;
+  }
 
   /**
    * Get characters from manifest mapped to roster format

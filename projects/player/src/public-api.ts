@@ -19,6 +19,7 @@ export { EntitlementService } from './lib/services/entitlement.service';
 export { PluginHostService } from './lib/services/plugin-host.service';
 export { VariantService } from './lib/services/variant.service';
 export { ExportService } from './lib/services/export.service';
+export { TranslationService } from './lib/services/translation.service';
 
 // Legacy
 export * from './lib/player.service';

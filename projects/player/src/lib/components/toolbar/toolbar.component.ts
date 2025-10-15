@@ -11,6 +11,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode } from '../../types';
 
 /**
@@ -20,7 +21,7 @@ import type { LocaleCode } from '../../types';
 @Component({
   selector: 'pw-toolbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './toolbar.component.html',
   styleUrls: ['./toolbar.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

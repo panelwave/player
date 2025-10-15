@@ -3,11 +3,11 @@
     <div class="settings-container" role="dialog" aria-modal="true" aria-label="Settings">
       <!-- Header -->
       <div class="settings-header">
-        <h2 class="settings-title">Settings</h2>
+        <h2 class="settings-title">{{ 'settings.title' | translate }}</h2>
         <button
           class="close-btn"
           type="button"
-          aria-label="Close settings"
+          [attr.aria-label]="'settings.close' | translate"
           (click)="cancel()">
           ✕
         </button>
@@ -22,7 +22,7 @@
           role="tab"
           [attr.aria-selected]="activeTab === 'preferences'"
           (click)="switchTab('preferences')">
-          Preferences
+          {{ 'settings.preferences' | translate }}
         </button>
         <button
           class="tab-btn"
@@ -31,7 +31,7 @@
           role="tab"
           [attr.aria-selected]="activeTab === 'variables'"
           (click)="switchTab('variables')">
-          Variables
+          {{ 'settings.variables' | translate }}
         </button>
       </div>
 
@@ -41,9 +41,9 @@
         @if (activeTab === 'preferences') {
           <div class="tab-panel" role="tabpanel">
             <div class="settings-section">
-              <h3 class="section-title">Language</h3>
+              <h3 class="section-title">{{ 'settings.language' | translate }}</h3>
               <div class="setting-item">
-                <label class="setting-label" for="locale-select">Interface Language</label>
+                <label class="setting-label" for="locale-select">{{ 'settings.interface_language' | translate }}</label>
                 <select
                   id="locale-select"
                   class="setting-select"
@@ -57,7 +57,7 @@
             </div>
 
             <div class="settings-section">
-              <h3 class="section-title">Display</h3>
+              <h3 class="section-title">{{ 'settings.display' | translate }}</h3>
               
               <div class="setting-item">
                 <label class="setting-label">
@@ -66,7 +66,7 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.mangaMode"
                     (ngModelChange)="updatePreference('mangaMode', $event)" />
-                  <span>Manga Mode (right-to-left reading)</span>
+                  <span>{{ 'settings.manga_mode' | translate }}</span>
                 </label>
               </div>
 
@@ -77,7 +77,7 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.reducedMotion"
                     (ngModelChange)="updatePreference('reducedMotion', $event)" />
-                  <span>Reduced Motion (disable animations)</span>
+                  <span>{{ 'settings.reduced_motion' | translate }}</span>
                 </label>
               </div>
 
@@ -88,13 +88,13 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.highContrast"
                     (ngModelChange)="updatePreference('highContrast', $event)" />
-                  <span>High Contrast Mode</span>
+                  <span>{{ 'settings.high_contrast' | translate }}</span>
                 </label>
               </div>
             </div>
 
             <div class="settings-section">
-              <h3 class="section-title">Content</h3>
+              <h3 class="section-title">{{ 'settings.content' | translate }}</h3>
               
               <div class="setting-item">
                 <label class="setting-label">
@@ -103,13 +103,13 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.speech"
                     (ngModelChange)="updatePreference('speech', $event)" />
-                  <span>Show Speech Bubbles</span>
+                  <span>{{ 'settings.show_speech_bubbles' | translate }}</span>
                 </label>
               </div>
             </div>
 
             <div class="settings-section">
-              <h3 class="section-title">Audio</h3>
+              <h3 class="section-title">{{ 'settings.audio' | translate }}</h3>
               
               <div class="setting-item">
                 <label class="setting-label">
@@ -118,7 +118,7 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.audio"
                     (ngModelChange)="updatePreference('audio', $event)" />
-                  <span>Enable Audio</span>
+                  <span>{{ 'settings.enable_audio' | translate }}</span>
                 </label>
               </div>
 
@@ -129,13 +129,13 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.sfx"
                     (ngModelChange)="updatePreference('sfx', $event)" />
-                  <span>Enable Sound Effects</span>
+                  <span>{{ 'settings.enable_sfx' | translate }}</span>
                 </label>
               </div>
             </div>
 
             <div class="settings-section">
-              <h3 class="section-title">Autoplay</h3>
+              <h3 class="section-title">{{ 'settings.autoplay' | translate }}</h3>
               
               <div class="setting-item">
                 <label class="setting-label">
@@ -144,12 +144,12 @@
                     class="setting-checkbox"
                     [(ngModel)]="preferences.autoplay"
                     (ngModelChange)="updatePreference('autoplay', $event)" />
-                  <span>Enable Autoplay</span>
+                  <span>{{ 'settings.enable_autoplay' | translate }}</span>
                 </label>
               </div>
 
               <div class="setting-item">
-                <label class="setting-label" for="seconds-input">Seconds per Panel</label>
+                <label class="setting-label" for="seconds-input">{{ 'settings.seconds_per_panel' | translate }}</label>
                 <div class="number-input">
                   <input
                     id="seconds-input"
@@ -160,7 +160,7 @@
                     step="0.5"
                     [(ngModel)]="preferences.secondsPerPanel"
                     (ngModelChange)="updatePreference('secondsPerPanel', $event)" />
-                  <span class="input-unit">seconds</span>
+                  <span class="input-unit">{{ 'settings.seconds_unit' | translate }}</span>
                 </div>
               </div>
             </div>
@@ -170,7 +170,7 @@
                 class="action-btn secondary"
                 type="button"
                 (click)="resetPreferences()">
-                Reset to Defaults
+                {{ 'settings.reset_defaults' | translate }}
               </button>
             </div>
           </div>
@@ -181,7 +181,7 @@
           <div class="tab-panel" role="tabpanel">
             @if (getPublicVariables().length > 0) {
               <div class="settings-section">
-                <h3 class="section-title">Public Variables</h3>
+                <h3 class="section-title">{{ 'settings.public_variables' | translate }}</h3>
                 
                 @for (variable of getPublicVariables(); track variable.id) {
                   <div class="setting-item variable-item">
@@ -195,7 +195,7 @@
                           class="setting-checkbox"
                           [checked]="getVariableValue(variable)"
                           (change)="updateVariable(variable.id, $any($event.target).checked)" />
-                        <span>{{ getVariableValue(variable) ? 'Enabled' : 'Disabled' }}</span>
+                        <span>{{ getVariableValue(variable) ? ('settings.enabled' | translate) : ('settings.disabled' | translate) }}</span>
                       </label>
                     }
 
@@ -212,7 +212,7 @@
                         <button
                           class="reset-btn-small"
                           type="button"
-                          title="Reset to default"
+                          [attr.title]="'settings.reset_to_default' | translate"
                           (click)="resetVariable(variable)">
                           ↺
                         </button>
@@ -248,12 +248,12 @@
                   class="action-btn secondary"
                   type="button"
                   (click)="resetAllVariables()">
-                  Reset All Variables
+                  {{ 'settings.reset_all_variables' | translate }}
                 </button>
               </div>
             } @else {
               <div class="empty-state">
-                <p>No public variables available</p>
+                <p>{{ 'settings.no_variables' | translate }}</p>
               </div>
             }
           </div>
@@ -266,13 +266,13 @@
           class="action-btn secondary"
           type="button"
           (click)="cancel()">
-          Cancel
+          {{ 'settings.cancel' | translate }}
         </button>
         <button
           class="action-btn primary"
           type="button"
           (click)="save()">
-          Save Changes
+          {{ 'settings.save_changes' | translate }}
         </button>
       </div>
     </div>

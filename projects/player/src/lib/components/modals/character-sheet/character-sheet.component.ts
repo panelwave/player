@@ -12,6 +12,7 @@ import {
   HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
 /**
@@ -33,7 +34,7 @@ export interface Character {
 @Component({
   selector: 'pw-character-sheet',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './character-sheet.component.html',
   styleUrls: ['./character-sheet.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -3,7 +3,7 @@
   @if (loading) {
     <div class="loading-container">
       <div class="loading-spinner"></div>
-      <p class="loading-text">Loading PanelWave...</p>
+      <p class="loading-text">{{ 'loading.text' | translate }}</p>
     </div>
   }
 
@@ -11,10 +11,10 @@
   @if (hasError && !loading) {
     <div class="error-container">
       <div class="error-icon">⚠️</div>
-      <h2 class="error-title">Unable to load content</h2>
+      <h2 class="error-title">{{ 'error.title' | translate }}</h2>
       <p class="error-message">{{ errorMessage }}</p>
       <button class="retry-button" type="button" (click)="ngOnInit()">
-        Retry
+        {{ 'error.retry' | translate }}
       </button>
     </div>
   }
@@ -40,7 +40,7 @@
       <pw-toolbar
         [visible]="toolbarVisible"
         [locale]="locale"
-        [availableLocales]="['en-US', 'de-DE']"
+        [availableLocales]="availableLocales"
         [viewMode]="viewMode"
         [pageViewAvailable]="pageViewAvailable"
         [speechEnabled]="true"

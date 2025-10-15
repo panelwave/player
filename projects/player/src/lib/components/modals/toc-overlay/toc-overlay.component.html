@@ -3,11 +3,11 @@
     <div class="toc-container" role="dialog" aria-modal="true" aria-label="Table of Contents">
       <!-- Header -->
       <div class="toc-header">
-        <h2 class="toc-title">Table of Contents</h2>
+        <h2 class="toc-title">{{ 'toc.title' | translate }}</h2>
         <button
           class="close-btn"
           type="button"
-          aria-label="Close table of contents"
+          [attr.aria-label]="'toc.close' | translate"
           (click)="onClose()">
           ✕
         </button>
@@ -18,8 +18,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search chapters..."
-          aria-label="Search chapters"
+          [placeholder]="'toc.search_chapters' | translate"
+          [attr.aria-label]="'toc.search_label' | translate"
           [(ngModel)]="searchQuery"
           (ngModelChange)="onSearchChange()" />
         <span class="search-icon">🔍</span>
@@ -42,7 +42,7 @@
                 <span class="chapter-number">{{ i + 1 }}</span>
                 <h3 class="chapter-title">{{ getChapterTitle(chapter) }}</h3>
                 @if (isCurrentChapter(chapter)) {
-                  <span class="current-badge">Current</span>
+                  <span class="current-badge">{{ 'toc.current' | translate }}</span>
                 }
               </div>
 
@@ -132,7 +132,7 @@
 
           @if (filteredChapters.length === 0) {
             <div class="empty-state">
-              <p>No chapters found matching "{{ searchQuery }}"</p>
+              <p>{{ 'toc.no_results' | translate: {query: searchQuery} }}</p>
             </div>
           }
         </div>
@@ -141,9 +141,9 @@
       <!-- Footer -->
       <div class="toc-footer">
         <p class="footer-hint">
-          <kbd>↑</kbd> <kbd>↓</kbd> Navigate
-          <kbd>Enter</kbd> Select
-          <kbd>Esc</kbd> Close
+          <kbd>↑</kbd> <kbd>↓</kbd> {{ 'toc.keyboard_hint_nav' | translate }}
+          <kbd>Enter</kbd> {{ 'toc.keyboard_hint_select' | translate }}
+          <kbd>{{ 'common.esc' | translate }}</kbd> {{ 'toc.keyboard_hint_close' | translate }}
         </p>
       </div>
     </div>

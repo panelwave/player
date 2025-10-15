@@ -3,11 +3,11 @@
     <div class="drawer-container" role="dialog" aria-modal="true" aria-label="Comments">
       <!-- Header -->
       <div class="drawer-header">
-        <h2 class="drawer-title">Comments</h2>
+        <h2 class="drawer-title">{{ 'comments.title' | translate }}</h2>
         <button
           class="close-btn"
           type="button"
-          aria-label="Close comments"
+          [attr.aria-label]="'comments.close' | translate"
           (click)="onClose()">
           ✕
         </button>
@@ -18,23 +18,23 @@
         <div class="comment-composer">
           <textarea
             class="composer-input"
-            placeholder="Write a comment..."
+            [placeholder]="'comments.write_comment' | translate"
             rows="3"
             [(ngModel)]="newCommentContent"
-            aria-label="New comment"></textarea>
+            [attr.aria-label]="'comments.new_comment_label' | translate"></textarea>
           <div class="composer-actions">
             <button
               class="post-btn"
               type="button"
               [disabled]="!newCommentContent.trim()"
               (click)="submitComment()">
-              Post Comment
+              {{ 'comments.post_comment' | translate }}
             </button>
           </div>
         </div>
       } @else {
         <div class="auth-notice">
-          <p>Sign in to post comments</p>
+          <p>{{ 'comments.sign_in' | translate }}</p>
         </div>
       }
 
@@ -43,12 +43,12 @@
         @if (loading && comments.length === 0) {
           <div class="loading-state">
             <div class="loading-spinner"></div>
-            <p>Loading comments...</p>
+            <p>{{ 'comments.loading' | translate }}</p>
           </div>
         } @else if (comments.length === 0) {
           <div class="empty-state">
             <span class="empty-icon">💬</span>
-            <p>No comments yet. Be the first to comment!</p>
+            <p>{{ 'comments.no_comments' | translate }}</p>
           </div>
         } @else {
           <div class="comments-list">
@@ -95,7 +95,7 @@
                         class="action-btn"
                         type="button"
                         (click)="startReply(comment)">
-                        Reply
+                        {{ 'comments.reply' | translate }}
                       </button>
                     }
                   </div>
@@ -135,23 +135,23 @@
                     <div class="reply-composer">
                       <textarea
                         class="composer-input"
-                        placeholder="Write a reply..."
+                        [placeholder]="'comments.write_reply' | translate"
                         rows="2"
                         [(ngModel)]="replyContent"
-                        aria-label="Reply to comment"></textarea>
+                        [attr.aria-label]="'comments.reply_label' | translate"></textarea>
                       <div class="composer-actions">
                         <button
                           class="cancel-btn"
                           type="button"
                           (click)="cancelReply()">
-                          Cancel
+                          {{ 'comments.cancel' | translate }}
                         </button>
                         <button
                           class="post-btn"
                           type="button"
                           [disabled]="!replyContent.trim()"
                           (click)="submitReply()">
-                          Reply
+                          {{ 'comments.reply' | translate }}
                         </button>
                       </div>
                     </div>
@@ -171,7 +171,7 @@
                   class="load-more-btn"
                   type="button"
                   (click)="onLoadMore()">
-                  Load More Comments
+                  {{ 'comments.load_more' | translate }}
                 </button>
               }
             </div>
@@ -182,9 +182,9 @@
       <!-- Footer Info -->
       <div class="drawer-footer">
         <p class="footer-text">
-          {{ comments.length }} {{ comments.length === 1 ? 'comment' : 'comments' }}
+          {{ comments.length }} {{ comments.length === 1 ? ('comments.comment_count_singular' | translate) : ('comments.comment_count_plural' | translate) }}
           @if (totalPages > 1) {
-            <span> • Page {{ currentPage }} of {{ totalPages }}</span>
+            <span> • {{ 'comments.page_of' | translate: {current: currentPage, total: totalPages} }}</span>
           }
         </p>
       </div>

@@ -19,6 +19,8 @@
     "@angular/platform-browser": "^17.3.0",
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
+    "@ngx-translate/core": "^17.0.0",
+    "@ngx-translate/http-loader": "^17.0.0",
     "json-logic-js": "^2.0.5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

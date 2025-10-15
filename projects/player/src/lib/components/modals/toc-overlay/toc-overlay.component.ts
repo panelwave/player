@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import type { Chapter, Panel, Page, LocaleCode, LocalizedString, PanelWaveManifest } from '../../../types';
 
 /**
@@ -31,7 +32,7 @@ export interface TocNavigationTarget {
 @Component({
   selector: 'pw-toc-overlay',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './toc-overlay.component.html',
   styleUrls: ['./toc-overlay.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,0 +1,79 @@
+{
+  "toolbar": {
+    "view": "View",
+    "view_toggle": "Toggle between page and panel view",
+    "language": "Language",
+    "select_language": "Select language",
+    "speech": "Speech",
+    "speech_toggle": "Show/hide speech bubbles",
+    "audio": "Audio",
+    "audio_toggle": "Mute/unmute audio",
+    "sfx": "SFX",
+    "sfx_toggle": "Enable/disable sound effects",
+    "autoplay": "Autoplay",
+    "autoplay_toggle": "Enable/disable autoplay",
+    "decrease_speed": "Decrease speed",
+    "increase_speed": "Increase speed",
+    "seconds": "{{value}}s",
+    "thumbs": "Thumbs",
+    "thumbs_toggle": "Show/hide thumbnail strip",
+    "toc": "ToC",
+    "toc_open": "Open table of contents",
+    "settings": "Settings",
+    "settings_open": "Open settings",
+    "characters": "Characters",
+    "characters_open": "View character roster",
+    "alt": "Alt",
+    "alt_cycle": "Cycle through alternative panels",
+    "choices": "Choices",
+    "choices_view": "View upcoming choices",
+    "extras": "Extras",
+    "extras_open": "View bonus content",
+    "like": "Like",
+    "like_content": "Like this content",
+    "bookmark": "Bookmark",
+    "bookmark_panel": "Bookmark this panel",
+    "share": "Share",
+    "share_panel": "Share this panel",
+    "comments": "Comments",
+    "comments_view": "View comments",
+    "close": "Close toolbar"
+  },
+  "character_roster": {
+    "title": "Characters",
+    "close": "Close character roster",
+    "search": "Search characters...",
+    "search_label": "Search characters",
+    "no_results": "No characters found matching \"{{query}}\"",
+    "keyboard_hint": "Close"
+  },
+  "character_sheet": {
+    "close": "Close character details",
+    "play_voice": "Play voice sample",
+    "stop_voice": "Stop voice sample",
+    "keyboard_hint": "Close"
+  },
+  "toc": {
+    "title": "Table of Contents",
+    "close": "Close table of contents",
+    "chapter": "Chapter",
+    "panel": "Panel",
+    "locked": "Locked",
+    "keyboard_hint": "Close"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close settings",
+    "keyboard_hint": "Close"
+  },
+  "loading": {
+    "text": "Loading PanelWave..."
+  },
+  "error": {
+    "title": "Unable to load content",
+    "retry": "Retry"
+  },
+  "common": {
+    "esc": "Esc"
+  }
+}

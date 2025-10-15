@@ -8,11 +8,11 @@
         [class.disabled]="!pageViewAvailable"
         [disabled]="!pageViewAvailable"
         type="button"
-        aria-label="Toggle view mode"
-        title="Toggle between page and panel view"
+        [attr.aria-label]="'toolbar.view_toggle' | translate"
+        [attr.title]="'toolbar.view_toggle' | translate"
         (click)="onToggleView()">
         <span class="btn-icon">{{ viewMode === 'page' ? '▦' : '▢' }}</span>
-        <span class="btn-label">View</span>
+        <span class="btn-label">{{ 'toolbar.view' | translate }}</span>
       </button>
 
       <!-- Language selector -->
@@ -21,7 +21,7 @@
           <button
             class="toolbar-btn"
             type="button"
-            aria-label="Select language"
+            [attr.aria-label]="'toolbar.select_language' | translate"
             aria-haspopup="true"
             [attr.aria-expanded]="showLanguageDropdown"
             (click)="toggleLanguageDropdown()">
@@ -53,12 +53,12 @@
         class="toolbar-btn toggle-btn"
         [class.active]="speechEnabled"
         type="button"
-        aria-label="Toggle speech bubbles"
+        [attr.aria-label]="'toolbar.speech_toggle' | translate"
         [attr.aria-pressed]="speechEnabled"
-        title="Show/hide speech bubbles"
+        [attr.title]="'toolbar.speech_toggle' | translate"
         (click)="onToggleSpeech()">
         <span class="btn-icon">💬</span>
-        <span class="btn-label">Speech</span>
+        <span class="btn-label">{{ 'toolbar.speech' | translate }}</span>
       </button>
 
       <!-- Audio toggle -->
@@ -66,12 +66,12 @@
         class="toolbar-btn toggle-btn"
         [class.active]="audioEnabled"
         type="button"
-        aria-label="Toggle audio"
+        [attr.aria-label]="'toolbar.audio_toggle' | translate"
         [attr.aria-pressed]="audioEnabled"
-        title="Mute/unmute audio"
+        [attr.title]="'toolbar.audio_toggle' | translate"
         (click)="onToggleAudio()">
         <span class="btn-icon">{{ audioEnabled ? '🔊' : '🔇' }}</span>
-        <span class="btn-label">Audio</span>
+        <span class="btn-label">{{ 'toolbar.audio' | translate }}</span>
       </button>
 
       <!-- SFX toggle -->
@@ -79,12 +79,12 @@
         class="toolbar-btn toggle-btn"
         [class.active]="sfxEnabled"
         type="button"
-        aria-label="Toggle sound effects"
+        [attr.aria-label]="'toolbar.sfx_toggle' | translate"
         [attr.aria-pressed]="sfxEnabled"
-        title="Enable/disable sound effects"
+        [attr.title]="'toolbar.sfx_toggle' | translate"
         (click)="onToggleSfx()">
         <span class="btn-icon">🎵</span>
-        <span class="btn-label">SFX</span>
+        <span class="btn-label">{{ 'toolbar.sfx' | translate }}</span>
       </button>
 
       <!-- Autoplay control -->
@@ -93,12 +93,12 @@
           class="toolbar-btn toggle-btn autoplay-btn"
           [class.active]="autoplayEnabled"
           type="button"
-          aria-label="Toggle autoplay"
+          [attr.aria-label]="'toolbar.autoplay_toggle' | translate"
           [attr.aria-pressed]="autoplayEnabled"
-          title="Enable/disable autoplay"
+          [attr.title]="'toolbar.autoplay_toggle' | translate"
           (click)="onToggleAutoplay()">
           <span class="btn-icon">{{ autoplayEnabled ? '⏸️' : '▶️' }}</span>
-          <span class="btn-label">Autoplay</span>
+          <span class="btn-label">{{ 'toolbar.autoplay' | translate }}</span>
           @if (autoplayEnabled) {
             <div class="autoplay-progress-bar">
               <div class="autoplay-progress-fill" [style.width.%]="autoplayProgress"></div>
@@ -111,15 +111,15 @@
             <button
               class="control-btn"
               type="button"
-              aria-label="Decrease speed"
+              [attr.aria-label]="'toolbar.decrease_speed' | translate"
               (click)="adjustSecondsPerPanel(-1)">
               -
             </button>
-            <span class="control-value">{{ secondsPerPanel }}s</span>
+            <span class="control-value">{{ 'toolbar.seconds' | translate: {value: secondsPerPanel} }}</span>
             <button
               class="control-btn"
               type="button"
-              aria-label="Increase speed"
+              [attr.aria-label]="'toolbar.increase_speed' | translate"
               (click)="adjustSecondsPerPanel(1)">
               +
             </button>
@@ -132,12 +132,12 @@
         class="toolbar-btn toggle-btn"
         [class.active]="thumbnailsVisible"
         type="button"
-        aria-label="Toggle thumbnails"
+        [attr.aria-label]="'toolbar.thumbs_toggle' | translate"
         [attr.aria-pressed]="thumbnailsVisible"
-        title="Show/hide thumbnail strip"
+        [attr.title]="'toolbar.thumbs_toggle' | translate"
         (click)="onToggleThumbnails()">
         <span class="btn-icon">🖼️</span>
-        <span class="btn-label">Thumbs</span>
+        <span class="btn-label">{{ 'toolbar.thumbs' | translate }}</span>
       </button>
     </div>
 
@@ -147,33 +147,33 @@
       <button
         class="toolbar-btn"
         type="button"
-        aria-label="Table of contents"
-        title="Open table of contents"
+        [attr.aria-label]="'toolbar.toc_open' | translate"
+        [attr.title]="'toolbar.toc_open' | translate"
         (click)="onOpenToc()">
         <span class="btn-icon">📑</span>
-        <span class="btn-label">ToC</span>
+        <span class="btn-label">{{ 'toolbar.toc' | translate }}</span>
       </button>
 
       <!-- Settings -->
       <button
         class="toolbar-btn"
         type="button"
-        aria-label="Settings"
-        title="Open settings"
+        [attr.aria-label]="'toolbar.settings_open' | translate"
+        [attr.title]="'toolbar.settings_open' | translate"
         (click)="onOpenSettings()">
         <span class="btn-icon">⚙️</span>
-        <span class="btn-label">Settings</span>
+        <span class="btn-label">{{ 'toolbar.settings' | translate }}</span>
       </button>
 
       <!-- Characters -->
       <button
         class="toolbar-btn"
         type="button"
-        aria-label="Characters"
-        title="View character roster"
+        [attr.aria-label]="'toolbar.characters_open' | translate"
+        [attr.title]="'toolbar.characters_open' | translate"
         (click)="onOpenCharacters()">
         <span class="btn-icon">👥</span>
-        <span class="btn-label">Characters</span>
+        <span class="btn-label">{{ 'toolbar.characters' | translate }}</span>
       </button>
 
       <!-- Alternatives (if available) -->

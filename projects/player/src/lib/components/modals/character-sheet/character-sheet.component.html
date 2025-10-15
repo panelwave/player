@@ -7,7 +7,7 @@
         <button
           class="close-btn"
           type="button"
-          aria-label="Close character sheet"
+          [attr.aria-label]="'character_sheet.close' | translate"
           (click)="onClose()">
           ✕
         </button>
@@ -43,9 +43,10 @@
               class="voice-btn"
               [class.playing]="isPlaying"
               type="button"
+              [attr.aria-label]="(isPlaying ? 'character_sheet.stop_voice' : 'character_sheet.play_voice') | translate"
               (click)="playVoiceSample()">
               <span class="voice-icon">{{ isPlaying ? '⏸️' : '🔊' }}</span>
-              <span class="voice-label">{{ isPlaying ? 'Stop' : 'Play' }} Voice Sample</span>
+              <span class="voice-label">{{ (isPlaying ? 'character_sheet.stop_voice' : 'character_sheet.play_voice') | translate }}</span>
             </button>
           }
         </div>
@@ -65,12 +66,9 @@
 
       <!-- Footer -->
       <div class="sheet-footer">
-        <button
-          class="action-btn"
-          type="button"
-          (click)="onClose()">
-          Close
-        </button>
+        <p class="footer-hint">
+          <kbd>{{ 'common.esc' | translate }}</kbd> {{ 'character_sheet.keyboard_hint' | translate }}
+        </p>
       </div>
     </div>
   </div>

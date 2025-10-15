@@ -3,11 +3,11 @@
     <div class="extras-container" role="dialog" aria-modal="true" aria-label="Extras Viewer">
       <!-- Header -->
       <div class="extras-header">
-        <h2 class="extras-title">Extras</h2>
+        <h2 class="extras-title">{{ 'extras.title' | translate }}</h2>
         <button
           class="close-btn"
           type="button"
-          aria-label="Close extras viewer"
+          [attr.aria-label]="'extras.close' | translate"
           (click)="onClose()">
           ✕
         </button>
@@ -20,7 +20,7 @@
           [class.active]="filterType === 'all'"
           type="button"
           (click)="setFilter('all')">
-          All ({{ extras.length }})
+          {{ 'extras.all' | translate }} ({{ extras.length }})
         </button>
         @if (getExtrasByType('cover') > 0) {
           <button
@@ -87,7 +87,7 @@
                   @if (!isAccessible(extra)) {
                     <div class="lock-overlay">
                       <span class="lock-icon">🔒</span>
-                      <span class="lock-text">Premium</span>
+                      <span class="lock-text">{{ 'extras.locked_premium' | translate }}</span>
                     </div>
                   }
 
@@ -108,7 +108,7 @@
           </div>
         } @else {
           <div class="empty-state">
-            <p>No extras available in this category.</p>
+            <p>{{ 'extras.no_extras' | translate }}</p>
           </div>
         }
       </div>
@@ -123,7 +123,7 @@
               <button
                 class="close-btn"
                 type="button"
-                aria-label="Close detail view"
+                [attr.aria-label]="'extras.close_detail' | translate"
                 (click)="closeDetail()">
                 ✕
               </button>
@@ -143,7 +143,7 @@
                   [src]="getAssetUrl(selectedExtra)"
                   controls
                   class="detail-video">
-                  Your browser does not support the video tag.
+                  {{ 'extras.video_not_supported' | translate }}
                 </video>
               }
 
@@ -152,7 +152,7 @@
                   [src]="getAssetUrl(selectedExtra)"
                   controls
                   class="detail-audio">
-                  Your browser does not support the audio tag.
+                  {{ 'extras.audio_not_supported' | translate }}
                 </audio>
               }
 
@@ -169,7 +169,7 @@
                 class="action-btn"
                 type="button"
                 (click)="closeDetail()">
-                Close
+                {{ 'extras.close_button' | translate }}
               </button>
             </div>
           </div>
@@ -181,13 +181,13 @@
         <div class="paywall-notice">
           <p class="notice-text">
             <span class="notice-icon">🔒</span>
-            Some extras require premium access
+            {{ 'extras.premium_notice' | translate }}
           </p>
           <button
             class="upgrade-btn"
             type="button"
             (click)="onPurchase()">
-            Upgrade Now
+            {{ 'extras.upgrade_now' | translate }}
           </button>
         </div>
       }

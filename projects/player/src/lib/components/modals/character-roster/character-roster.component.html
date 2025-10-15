@@ -3,11 +3,11 @@
     <div class="roster-container" role="dialog" aria-modal="true" aria-label="Character Roster">
       <!-- Header -->
       <div class="roster-header">
-        <h2 class="roster-title">Characters</h2>
+        <h2 class="roster-title">{{ 'character_roster.title' | translate }}</h2>
         <button
           class="close-btn"
           type="button"
-          aria-label="Close character roster"
+          [attr.aria-label]="'character_roster.close' | translate"
           (click)="onClose()">
           ✕
         </button>
@@ -18,8 +18,8 @@
         <input
           type="text"
           class="search-input"
-          placeholder="Search characters..."
-          aria-label="Search characters"
+          [placeholder]="'character_roster.search' | translate"
+          [attr.aria-label]="'character_roster.search_label' | translate"
           [(ngModel)]="searchQuery"
           (ngModelChange)="onSearchChange()" />
         <span class="search-icon">🔍</span>
@@ -62,7 +62,7 @@
           </div>
         } @else {
           <div class="empty-state">
-            <p>No characters found matching "{{ searchQuery }}"</p>
+            <p>{{ 'character_roster.no_results' | translate: {query: searchQuery} }}</p>
           </div>
         }
       </div>
@@ -70,7 +70,7 @@
       <!-- Footer -->
       <div class="roster-footer">
         <p class="footer-hint">
-          <kbd>Esc</kbd> Close
+          <kbd>{{ 'common.esc' | translate }}</kbd> {{ 'character_roster.keyboard_hint' | translate }}
         </p>
       </div>
     </div>

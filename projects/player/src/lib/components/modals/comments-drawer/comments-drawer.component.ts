@@ -12,6 +12,7 @@ import {
   HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
 
 /**
@@ -43,7 +44,7 @@ export interface CommentPost {
 @Component({
   selector: 'pw-comments-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './comments-drawer.component.html',
   styleUrls: ['./comments-drawer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
