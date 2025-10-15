@@ -225,6 +225,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   viewMode: 'page' | 'panel' = 'panel';
 
   /**
+   * Page view available (has pages defined)
+   */
+  pageViewAvailable = false;
+
+  /**
    * Autoplay timer
    */
   private autoplayTimer?: ReturnType<typeof setTimeout>;
@@ -305,6 +310,15 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
 
       // Set initial locale
       this.playerState.setLocale(this.locale);
+
+      // Check if page view is available
+      const loadedManifest = this.manifestService.getManifest();
+      if (loadedManifest?.chapters) {
+        const chapters = Object.values(loadedManifest.chapters);
+        this.pageViewAvailable = chapters.some(chapter => 
+          chapter.pages && chapter.pages.length > 0
+        );
+      }
 
       // Navigate to initial position
       if (this.initialChapterId && this.initialPanelId) {
