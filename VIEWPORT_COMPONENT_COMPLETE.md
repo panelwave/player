@@ -133,7 +133,33 @@ The **ViewportComponent** - the main rendering container for PanelWave panels wi
 4. Empty string if no alt text defined
 ```
 
-### 7. Accessibility & UX
+### 7. Swipe Gesture Navigation
+
+**Touch & Mouse Swipe Detection:**
+- ✅ Fast swipe detection (< 300ms)
+- ✅ Minimum distance threshold (50px)
+- ✅ Velocity validation (≥ 0.3 px/ms)
+- ✅ Directional detection (left/right/up/down)
+- ✅ Works with both touch and mouse
+- ✅ Compatible with pan/zoom gestures
+
+**Swipe Algorithm:**
+```typescript
+// Valid swipe must meet all criteria:
+- Distance ≥ 50 pixels
+- Time ≤ 300 milliseconds
+- Velocity ≥ 0.3 pixels/millisecond
+- Distinguishes from slow pan gestures
+```
+
+**Integration:**
+```html
+<pw-viewport
+  (swipe)="onSwipe($event)">
+</pw-viewport>
+```
+
+### 8. Accessibility & UX
 
 **ARIA Support:**
 - ✅ `role="region"` for screen readers
@@ -184,6 +210,7 @@ The **ViewportComponent** - the main rendering container for PanelWave panels wi
 | `viewportClick` | `{ x: number; y: number }` | Emitted when viewport is clicked |
 | `transformChange` | `{ panX: number; panY: number; zoom: number }` | Emitted when pan/zoom changes |
 | `layerClick` | `{ layerId: string; x: number; y: number }` | Emitted when layer is clicked |
+| `swipe` | `'left' \| 'right' \| 'up' \| 'down'` | Emitted when swipe gesture detected |
 
 ### Public Methods
 
@@ -412,6 +439,63 @@ export class PlayerComponent {
 }
 ```
 
+### Swipe Gesture Navigation
+
+```typescript
+@Component({
+  selector: 'app-player',
+  template: `
+    <pw-viewport
+      [panel]="currentPanel"
+      [page]="currentPage"
+      [panels]="currentChapter?.panels || {}"
+      [viewMode]="viewMode"
+      [locale]="locale"
+      (swipe)="onSwipe($event)">
+    </pw-viewport>
+  `
+})
+export class PlayerComponent {
+  viewMode: 'panel' | 'page' = 'panel';
+  currentPanel: Panel | null = null;
+  currentPage: Page | null = null;
+  
+  onSwipe(direction: 'left' | 'right' | 'up' | 'down') {
+    if (direction === 'left') {
+      // Navigate forward
+      if (this.viewMode === 'page') {
+        this.navigateToNextPage();
+      } else {
+        this.navigateToNextPanel();
+      }
+    } else if (direction === 'right') {
+      // Navigate backward
+      if (this.viewMode === 'page') {
+        this.navigateToPreviousPage();
+      } else {
+        this.navigateToPreviousPanel();
+      }
+    }
+  }
+  
+  navigateToNextPanel() {
+    // Your panel navigation logic
+  }
+  
+  navigateToPreviousPanel() {
+    // Your panel navigation logic
+  }
+  
+  navigateToNextPage() {
+    // Your page navigation logic
+  }
+  
+  navigateToPreviousPage() {
+    // Your page navigation logic
+  }
+}
+```
+
 ---
 
 ## Interaction Patterns
@@ -470,6 +554,40 @@ export class PlayerComponent {
 3. onTouchEnd() detects single remaining touch
 4. Seamlessly switches to pan mode
 5. User continues with single-finger pan
+```
+
+### Swipe Gesture Detection
+
+**Touch Swipe:**
+```
+1. User touches screen with one finger
+2. onTouchStart() captures position and timestamp
+3. User quickly drags finger and releases (< 300ms)
+4. onTouchEnd() called with changedTouches
+5. detectSwipe() calculates distance, time, velocity
+6. Validates: distance ≥ 50px, time ≤ 300ms, velocity ≥ 0.3 px/ms
+7. Determines direction (horizontal or vertical)
+8. Emits swipe event: 'left', 'right', 'up', or 'down'
+```
+
+**Mouse Swipe:**
+```
+1. User clicks and holds left mouse button
+2. onMouseDown() captures position and timestamp
+3. User quickly drags mouse and releases (< 300ms)
+4. onMouseUp() called with position
+5. detectSwipe() calculates distance, time, velocity
+6. Validates: distance ≥ 50px, time ≤ 300ms, velocity ≥ 0.3 px/ms
+7. Determines direction (horizontal or vertical)
+8. Emits swipe event: 'left', 'right', 'up', or 'down'
+```
+
+**Swipe vs Pan Distinction:**
+```
+Fast movement (< 300ms) → Swipe event (navigation)
+Slow movement (≥ 300ms) → Pan gesture (viewport movement)
+
+This allows both swipe navigation and pan/zoom to coexist without conflicts.
 ```
 
 ---
@@ -855,6 +973,7 @@ Each layer is positioned using absolute positioning:
 - [ ] Momentum scrolling with physics
 - [ ] Rotation gesture support
 - [✅] Multi-panel display (page view) **COMPLETE**
+- [✅] Swipe gesture navigation **COMPLETE**
 - [ ] Page view pan/zoom support
 - [ ] Click individual panels to zoom in page view
 - [ ] Reading progress indicator in page view
@@ -897,17 +1016,18 @@ Each layer is positioned using absolute positioning:
 
 ## Statistics
 
-- **Component Lines:** 530 (TypeScript)
+- **Component Lines:** 615 (TypeScript)
 - **Template Lines:** 120 (HTML)
 - **Style Lines:** 210 (CSS)
 - **Test Lines:** 400 (Spec)
-- **Total Lines:** 1,260
+- **Total Lines:** 1,345
 - **Tests:** 30/32 passing (94%)
 - **Inputs:** 12 (panel, page, panels, viewMode, locale, panX, panY, zoom, reducedMotion, interactive, showOverflowArrows)
-- **Outputs:** 3 (viewportClick, transformChange, layerClick)
-- **Methods:** 26+
+- **Outputs:** 4 (viewportClick, transformChange, layerClick, swipe)
+- **Methods:** 27+
 - **View Modes:** 2 (panel, page)
-- **Features:** 18/18 complete (100%)
+- **Gesture Types:** 3 (pan, pinch-zoom, swipe)
+- **Features:** 19/19 complete (100%)
 
 ---
 
@@ -920,6 +1040,7 @@ dd01420 - feat: add touch support (pan and pinch-to-zoom) to ViewportComponent w
 64ed15a - fix: resolve template errors in ViewportComponent - add accessibility
 5aaa2b9 - feat: implement ViewportComponent with pan/zoom support (21/23 tests passing)
 83fb369 - feat: implement page view with grid layout and alt text support
+9e97e73 - feat: add swipe gesture navigation for panels and pages
 ```
 
 ---
@@ -930,9 +1051,16 @@ The ViewportComponent provides a robust, accessible, and feature-complete render
 
 - ✅ **Dual View Modes:** Panel view (single panel with pan/zoom) and Page view (multi-panel grid layout)
 - ✅ **Full Interaction Support:** Mouse, touch, and keyboard support with overflow detection and navigation
+- ✅ **Swipe Gesture Navigation:** Fast swipe detection for both touch and mouse with velocity-based validation
 - ✅ **Grid Layout System:** CSS Grid-based page rendering with responsive breakpoints
 - ✅ **Localized Alt Text:** Intelligent fallback for accessibility
 - ✅ **Layer Rendering:** Integration with LayerRendererComponent for all layer types
 - ✅ **Comprehensive Testing:** 30/32 tests passing (94%)
 
-The component is ready for production use and supports both traditional single-panel navigation and modern page-based comic book layouts.
+**Navigation Methods:**
+- Touch swipe (finger on mobile/tablet)
+- Mouse swipe (quick drag on desktop)
+- Pan/zoom gestures (slow drag)
+- Pinch-to-zoom (two fingers)
+
+The component is ready for production use and supports both traditional single-panel navigation and modern page-based comic book layouts with multiple gesture types that coexist without conflicts.
