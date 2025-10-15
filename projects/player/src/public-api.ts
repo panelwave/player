@@ -18,6 +18,7 @@ export { TrackingService, type TrackingEvent } from './lib/services/tracking.ser
 export { EntitlementService } from './lib/services/entitlement.service';
 export { PluginHostService } from './lib/services/plugin-host.service';
 export { VariantService } from './lib/services/variant.service';
+export { ExportService } from './lib/services/export.service';
 
 // Legacy
 export * from './lib/player.service';
