@@ -771,20 +771,31 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     // Use panel-specific durationMs if available, otherwise use global setting (in seconds)
     const durationMs = this.currentPanel?.durationMs ?? (this.secondsPerPanel * 1000);
     
-    // Start progress tracking
-    this.autoplayDuration = durationMs;
-    this.autoplayStartTime = Date.now();
+    // Ensure we have a valid duration
+    if (!durationMs || durationMs <= 0) {
+      console.warn('Invalid autoplay duration, using default 5s');
+      this.autoplayDuration = 5000;
+    } else {
+      this.autoplayDuration = durationMs;
+    }
+    
+    // Reset and start progress tracking
     this.autoplayProgress = 0;
+    this.autoplayStartTime = Date.now();
     this.startAutoplayProgress();
     
     this.autoplayTimer = setTimeout(() => {
-      this.navigateNext();
-      
       // Continue autoplay if still enabled
       if (this.autoplayEnabled) {
-        this.startAutoplay();
+        this.navigateNext();
+        // Small delay to let panel change complete, then restart
+        setTimeout(() => {
+          if (this.autoplayEnabled) {
+            this.startAutoplay();
+          }
+        }, 10);
       }
-    }, durationMs);
+    }, this.autoplayDuration);
   }
 
   /**
