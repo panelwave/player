@@ -1,0 +1,106 @@
+<!-- Age Gate Overlay -->
+<div class="age-gate-overlay" [class.visible]="visible" (click)="onBackdropClick($event)">
+  <div class="age-gate-modal" role="dialog" aria-modal="true" aria-label="Age Verification">
+    <!-- Header -->
+    <div class="age-gate-header">
+      <div class="warning-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+        </svg>
+      </div>
+      <h2 class="age-gate-title">Age Verification Required</h2>
+      @if (allowDismiss) {
+        <button
+          class="close-btn"
+          type="button"
+          aria-label="Close"
+          (click)="onDismiss()">
+          ✕
+        </button>
+      }
+    </div>
+
+    <!-- Content -->
+    <div class="age-gate-content">
+      <!-- Warning Message -->
+      <p class="warning-message">{{ getWarningMessage() }}</p>
+
+      <!-- Birth Date Form -->
+      <form class="birth-date-form" (ngSubmit)="onSubmit()">
+        <div class="form-label">Please enter your birth date:</div>
+
+        <div class="date-inputs">
+          <!-- Month -->
+          <div class="input-group">
+            <label for="birth-month" class="input-label">Month</label>
+            <select
+              id="birth-month"
+              class="date-input"
+              [(ngModel)]="birthMonth"
+              name="birthMonth"
+              required>
+              <option value="">--</option>
+              @for (month of getMonthOptions(); track month.value) {
+                <option [value]="month.value">{{ month.label }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Day -->
+          <div class="input-group">
+            <label for="birth-day" class="input-label">Day</label>
+            <select
+              id="birth-day"
+              class="date-input"
+              [(ngModel)]="birthDay"
+              name="birthDay"
+              required>
+              <option value="">--</option>
+              @for (day of getDayOptions(); track day) {
+                <option [value]="day">{{ day }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Year -->
+          <div class="input-group">
+            <label for="birth-year" class="input-label">Year</label>
+            <select
+              id="birth-year"
+              class="date-input"
+              [(ngModel)]="birthYear"
+              name="birthYear"
+              required>
+              <option value="">----</option>
+              @for (year of getYearOptions(); track year) {
+                <option [value]="year">{{ year }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        @if (errorMessage) {
+          <div class="error-message" role="alert">
+            {{ errorMessage }}
+          </div>
+        }
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="verify-btn">
+          Verify Age
+        </button>
+      </form>
+
+      <!-- Privacy Notice -->
+      <div class="privacy-notice">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+        </svg>
+        <span>Your information is private and will not be stored.</span>
+      </div>
+    </div>
+  </div>
+</div>

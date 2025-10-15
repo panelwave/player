@@ -1,0 +1,107 @@
+<!-- Paywall Overlay -->
+<div class="paywall-overlay" [class.visible]="visible" (click)="onBackdropClick($event)">
+  <div class="paywall-modal" role="dialog" aria-modal="true" [attr.aria-label]="getTitle()">
+    <!-- Header -->
+    <div class="paywall-header">
+      <h2 class="paywall-title">{{ getTitle() }}</h2>
+      <button
+        class="close-btn"
+        type="button"
+        aria-label="Close"
+        (click)="onDismiss()">
+        ✕
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="paywall-content">
+      <!-- Icon -->
+      <div class="paywall-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+        </svg>
+      </div>
+
+      <!-- Message -->
+      <p class="paywall-message">{{ getMessage() }}</p>
+
+      <!-- Preview Info -->
+      @if (gate?.preview && allowPreview) {
+        <div class="preview-info">
+          @if (gate?.preview?.previewPanels) {
+            <p class="preview-text">
+              ✓ Preview {{ gate?.preview?.previewPanels }} panels free
+            </p>
+          }
+          @if (gate?.preview?.mode) {
+            <p class="preview-mode">
+              Preview mode: {{ gate?.preview?.mode }}
+            </p>
+          }
+        </div>
+      }
+
+      <!-- Purchase Options -->
+      @if (purchaseOptions.length > 0) {
+        <div class="purchase-options">
+          <h3 class="options-title">Choose an option:</h3>
+          @for (option of purchaseOptions; track option.productId) {
+            <button
+              class="purchase-option"
+              type="button"
+              (click)="onPurchaseOption(option.productId)">
+              <div class="option-header">
+                <span class="option-name">{{ option.name }}</span>
+                <span class="option-price">{{ formatPrice(option.price.amount, option.price.currency) }}</span>
+              </div>
+              @if (option.description) {
+                <p class="option-description">{{ option.description }}</p>
+              }
+              <span class="option-type">{{ getPurchaseTypeLabel(option.type) }}</span>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Login Option -->
+      @if (showLogin && !purchaseOptions.length) {
+        <button
+          class="login-btn"
+          type="button"
+          (click)="onLogin()">
+          Sign In to Continue
+        </button>
+      }
+
+      <!-- Actions -->
+      <div class="paywall-actions">
+        @if (purchaseOptions.length === 0 && !showLogin) {
+          <button
+            class="action-btn primary"
+            type="button"
+            (click)="onDismiss()">
+            Go Back
+          </button>
+        }
+        @if (purchaseOptions.length > 0 || showLogin) {
+          <button
+            class="action-btn secondary"
+            type="button"
+            (click)="onDismiss()">
+            Maybe Later
+          </button>
+        }
+      </div>
+
+      <!-- Footer Info -->
+      <div class="paywall-footer">
+        <p class="footer-text">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+          </svg>
+          Secure payment processing
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

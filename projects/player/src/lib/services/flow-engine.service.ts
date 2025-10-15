@@ -6,6 +6,7 @@
 import { Injectable } from '@angular/core';
 import type { Edge, Graph, Transition } from '../types';
 import { evaluateJsonLogic } from '../utils';
+import { EntitlementService } from './entitlement.service';
 
 /**
  * Navigation result
@@ -24,6 +25,8 @@ export interface NavigationResult {
   providedIn: 'root',
 })
 export class FlowEngineService {
+  constructor(private entitlementService: EntitlementService) {}
+
   /**
    * Get next panel based on graph edges and conditions
    * @param graph - Navigation graph
@@ -367,5 +370,47 @@ export class FlowEngineService {
     entries.forEach((entry) => dfs(entry));
 
     return Array.from(reachable);
+  }
+
+  /**
+   * Check if user has entitlement to access a panel
+   * @param workId - Work ID
+   * @param chapterId - Chapter ID
+   * @param panelId - Panel ID
+   * @returns Promise resolving to true if user has access
+   */
+  async checkPanelEntitlement(
+    workId: string,
+    chapterId: string,
+    panelId: string
+  ): Promise<boolean> {
+    return await this.entitlementService.hasAccessToPanel(workId, chapterId, panelId);
+  }
+
+  /**
+   * Check if user has entitlement to access a chapter
+   * @param workId - Work ID
+   * @param chapterId - Chapter ID
+   * @returns Promise resolving to true if user has access
+   */
+  async checkChapterEntitlement(workId: string, chapterId: string): Promise<boolean> {
+    return await this.entitlementService.hasAccessToChapter(workId, chapterId);
+  }
+
+  /**
+   * Check if user has entitlement to access a work
+   * @param workId - Work ID
+   * @returns Promise resolving to true if user has access
+   */
+  async checkWorkEntitlement(workId: string): Promise<boolean> {
+    return await this.entitlementService.hasAccessToWork(workId);
+  }
+
+  /**
+   * Get entitlement service instance
+   * @returns EntitlementService
+   */
+  getEntitlementService(): EntitlementService {
+    return this.entitlementService;
   }
 }

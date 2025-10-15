@@ -15,10 +15,13 @@ export { AudioEngineService, type AudioTrack, type PlaybackState } from './lib/s
 export { VideoControllerService, type VideoState, type VideoEvent, type VideoStatus } from './lib/services/video-controller.service';
 export { PreloadService, type PreloadItem, type PreloadPriority } from './lib/services/preload.service';
 export { TrackingService, type TrackingEvent } from './lib/services/tracking.service';
+export { EntitlementService } from './lib/services/entitlement.service';
 
 // Legacy
 export * from './lib/player.service';
 
 // Components
 export { PlayerShellComponent } from './lib/components/player-shell/player-shell.component';
+export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
+export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export * from './lib/player.component';
