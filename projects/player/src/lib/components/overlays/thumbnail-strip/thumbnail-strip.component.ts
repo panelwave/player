@@ -14,6 +14,7 @@ import {
   ViewChild,
   ElementRef,
   AfterViewInit,
+  HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { Chapter, Panel } from '../../../types';
@@ -111,6 +112,13 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
   viewportEnd = 50; // Show 50 items at a time
   itemWidth = 120; // Width of each thumbnail
   itemGap = 8; // Gap between items
+
+  /**
+   * Drag scrolling state
+   */
+  private isDragging = false;
+  private startX = 0;
+  private dragScrollLeft = 0;
 
   /**
    * Handle changes
@@ -275,5 +283,119 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
    */
   getVisibleItems(): ThumbnailItem[] {
     return this.thumbnailItems.filter((item) => this.isInViewport(item));
+  }
+
+  /**
+   * Scroll left by one viewport width
+   */
+  scrollLeft(): void {
+    if (!this.scrollContainer) return;
+    
+    const container = this.scrollContainer.nativeElement;
+    const scrollAmount = container.offsetWidth * 0.8; // Scroll 80% of viewport
+    
+    container.scrollTo({
+      left: Math.max(0, container.scrollLeft - scrollAmount),
+      behavior: 'smooth',
+    });
+  }
+
+  /**
+   * Scroll right by one viewport width
+   */
+  scrollRight(): void {
+    if (!this.scrollContainer) return;
+    
+    const container = this.scrollContainer.nativeElement;
+    const scrollAmount = container.offsetWidth * 0.8; // Scroll 80% of viewport
+    const maxScroll = container.scrollWidth - container.offsetWidth;
+    
+    container.scrollTo({
+      left: Math.min(maxScroll, container.scrollLeft + scrollAmount),
+      behavior: 'smooth',
+    });
+  }
+
+  /**
+   * Check if can scroll left
+   */
+  canScrollLeft(): boolean {
+    if (!this.scrollContainer) return false;
+    return this.scrollContainer.nativeElement.scrollLeft > 0;
+  }
+
+  /**
+   * Check if can scroll right
+   */
+  canScrollRight(): boolean {
+    if (!this.scrollContainer) return false;
+    const container = this.scrollContainer.nativeElement;
+    return container.scrollLeft < container.scrollWidth - container.offsetWidth - 1;
+  }
+
+  /**
+   * Handle keyboard navigation
+   */
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboard(event: KeyboardEvent): void {
+    if (!this.visible) return;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.scrollLeft();
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.scrollRight();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        this.onClose();
+        break;
+    }
+  }
+
+  /**
+   * Start drag scrolling
+   */
+  onMouseDown(event: MouseEvent): void {
+    if (!this.scrollContainer) return;
+    
+    this.isDragging = true;
+    this.startX = event.pageX - this.scrollContainer.nativeElement.offsetLeft;
+    this.dragScrollLeft = this.scrollContainer.nativeElement.scrollLeft;
+    this.scrollContainer.nativeElement.style.cursor = 'grabbing';
+  }
+
+  /**
+   * Handle drag scrolling
+   */
+  onMouseMove(event: MouseEvent): void {
+    if (!this.isDragging || !this.scrollContainer) return;
+    
+    event.preventDefault();
+    const x = event.pageX - this.scrollContainer.nativeElement.offsetLeft;
+    const walk = (x - this.startX) * 2; // Multiply for faster scrolling
+    this.scrollContainer.nativeElement.scrollLeft = this.dragScrollLeft - walk;
+  }
+
+  /**
+   * End drag scrolling
+   */
+  onMouseUp(): void {
+    if (!this.scrollContainer) return;
+    
+    this.isDragging = false;
+    this.scrollContainer.nativeElement.style.cursor = 'grab';
+  }
+
+  /**
+   * Handle mouse leave
+   */
+  onMouseLeave(): void {
+    if (this.isDragging) {
+      this.onMouseUp();
+    }
   }
 }

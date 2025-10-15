@@ -595,15 +595,15 @@ Fallback to default:
 
 ### Overview
 
-The **ThumbnailStripComponent** provides a horizontal thumbnail strip at the bottom of the screen for quick panel navigation with virtual scrolling and chapter organization.
+The **ThumbnailStripComponent** provides a horizontal thumbnail strip at the bottom of the screen for quick panel navigation with multiple scrolling methods, virtual scrolling, and chapter organization. Fully integrated with the player shell for seamless navigation in both panel and page view modes.
 
 ### Files
 
-- `thumbnail-strip.component.ts` (~250 lines)
-- `thumbnail-strip.component.html` (~85 lines)
-- `thumbnail-strip.component.css` (~367 lines)
+- `thumbnail-strip.component.ts` (~402 lines)
+- `thumbnail-strip.component.html` (~110 lines)
+- `thumbnail-strip.component.css` (~405 lines)
 
-**Total:** ~702 lines
+**Total:** ~917 lines
 
 ### Key Features
 
@@ -612,11 +612,15 @@ The **ThumbnailStripComponent** provides a horizontal thumbnail strip at the bot
 ✅ Current panel highlighting (blue border + indicator)  
 ✅ Paywall lock indicators  
 ✅ Click navigation to panels  
+✅ **Arrow button navigation** (left/right with disabled states)  
+✅ **Drag-and-drop scrolling** (grab cursor, smooth dragging)  
+✅ **Keyboard navigation** (←/→ arrows to scroll, Esc to close)  
 ✅ Virtual scrolling (viewport-based rendering)  
-✅ Auto-scroll to current panel  
+✅ Auto-scroll to current panel (centered)  
 ✅ Horizontal scroll with custom scrollbar  
 ✅ Responsive design (3 breakpoints)  
-✅ Keyboard navigation hints  
+✅ Navigation hints display  
+✅ Integrated with toolbar toggle button  
 
 ### API Reference
 
@@ -699,16 +703,23 @@ closeThumbnails() {
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                                                          [✕] │
-│ ┌────┐ ┌────┐ ── Chapter 2 ── ┌────┐ ┌────┐ ┌────┐         │
-│ │    │ │    │                 │▓▓▓▓│ │    │ │ 🔒 │         │
-│ │ p1 │ │ p2 │                 │ p3 │ │ p4 │ │ p5 │         │
-│ └────┘ └────┘                 └────┘ └────┘ └────┘         │
-│                                  ▀▀▀▀                        │
-│                   (Current panel with blue bar)             │
+│ [‹] ┌────┐ ┌────┐ ── Chapter 2 ── ┌────┐ ┌────┐ ┌────┐ [›] │
+│     │    │ │    │                 │▓▓▓▓│ │    │ │ 🔒 │     │
+│     │ p1 │ │ p2 │                 │ p3 │ │ p4 │ │ p5 │     │
+│     └────┘ └────┘                 └────┘ └────┘ └────┘     │
+│                                      ▀▀▀▀                    │
+│                     (Current panel with blue bar)           │
 │                                                              │
 │ ← → Navigate  •  Esc Close                                  │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+**Navigation Controls:**
+- `[‹]` Left arrow button (scroll left)
+- `[›]` Right arrow button (scroll right)
+- Arrow buttons auto-disable at edges
+- Grab cursor for drag scrolling
+- Keyboard arrows for navigation
 
 ### Special Features
 
@@ -770,6 +781,88 @@ scrollToCurrentPanel(): void {
 ```html
 <img [src]="getThumbnailUrl(item)" loading="lazy" />
 ```
+
+**Arrow Button Navigation:**
+```typescript
+// Scroll by 80% of viewport width
+scrollLeft(): void {
+  const scrollAmount = container.offsetWidth * 0.8;
+  container.scrollTo({
+    left: Math.max(0, container.scrollLeft - scrollAmount),
+    behavior: 'smooth'
+  });
+}
+
+scrollRight(): void {
+  const scrollAmount = container.offsetWidth * 0.8;
+  const maxScroll = container.scrollWidth - container.offsetWidth;
+  container.scrollTo({
+    left: Math.min(maxScroll, container.scrollLeft + scrollAmount),
+    behavior: 'smooth'
+  });
+}
+```
+
+**Features:**
+- Circular buttons with backdrop blur
+- Auto-disable at scroll boundaries
+- Smooth scroll animation
+- Hover effects with scale
+- Responsive sizing on mobile
+
+**Drag Scrolling:**
+```typescript
+onMouseDown(event: MouseEvent): void {
+  this.isDragging = true;
+  this.startX = event.pageX;
+  this.dragScrollLeft = container.scrollLeft;
+  container.style.cursor = 'grabbing';
+}
+
+onMouseMove(event: MouseEvent): void {
+  if (!this.isDragging) return;
+  const x = event.pageX;
+  const walk = (x - this.startX) * 2;
+  container.scrollLeft = this.dragScrollLeft - walk;
+}
+```
+
+**Features:**
+- Grab/grabbing cursor states
+- Smooth drag experience
+- 2x multiplier for faster scrolling
+- Mouse up/leave handlers
+
+**Keyboard Navigation:**
+```typescript
+@HostListener('window:keydown', ['$event'])
+handleKeyboard(event: KeyboardEvent): void {
+  if (!this.visible) return;
+  
+  switch (event.key) {
+    case 'ArrowLeft':
+      this.scrollLeft();
+      break;
+    case 'ArrowRight':
+      this.scrollRight();
+      break;
+    case 'Escape':
+      this.onClose();
+      break;
+  }
+}
+```
+
+**Keyboard Controls:**
+- `←` Scroll left
+- `→` Scroll right
+- `Esc` Close thumbnail strip
+
+**Integration with Toolbar:**
+- Toggle button in toolbar (🖼️ Thumbs)
+- Active state when visible
+- `thumbnailsVisible` binding
+- `toggleThumbnails` event handler
 
 ---
 
@@ -886,8 +979,8 @@ changeDetection: ChangeDetectionStrategy.OnPush
 | **ContentWarning** | 188 | 71 | 312 | 571 | 4 | 3 |
 | **Paywall** | 209 | 108 | 310 | 627 | 8 | 3 |
 | **AgeGate** | 221 | 104 | 249 | 574 | 5 | 2 |
-| **ThumbnailStrip** | 250 | 85 | 367 | 702 | 6 | 2 |
-| **TOTAL** | **868** | **368** | **1,238** | **2,474** | **23** | **10** |
+| **ThumbnailStrip** | 402 | 110 | 405 | 917 | 6 | 2 |
+| **TOTAL** | **1,020** | **393** | **1,276** | **2,689** | **23** | **10** |
 
 ---
 
@@ -905,6 +998,8 @@ changeDetection: ChangeDetectionStrategy.OnPush
 | Chapter separators | ✅ | ThumbnailStrip |
 | Current panel highlighting | ✅ | ThumbnailStrip |
 | Virtual scrolling | ✅ | ThumbnailStrip |
+| Arrow button navigation | ✅ | ThumbnailStrip |
+| Drag-and-drop scrolling | ✅ | ThumbnailStrip |
 | Keyboard navigation | ✅ | All |
 | Responsive design | ✅ | All |
 
@@ -1083,9 +1178,33 @@ onThumbnailNav(target: ThumbnailNavigationTarget) {
 3. **Lock Status:** Update locked panels dynamically
 4. **Auto-scroll:** Call after navigation
 5. **Performance:** Limit visible items to 50-100
+6. **Multiple Navigation Methods:** Support arrows, drag, and keyboard for accessibility
+7. **Toolbar Integration:** Wire up toggle button and visibility state
+8. **Panel Navigation:** Support both panel and page view modes
 
 ---
 
 **All 4 Overlay Components are COMPLETE and PRODUCTION-READY!** ✅
 
-Total implementation: **~2,474 lines of code** providing essential overlay functionality for content warnings, premium content gates with full entitlement system integration, age verification, and quick panel navigation with excellent performance and user experience.
+Total implementation: **~2,689 lines of code** providing essential overlay functionality for content warnings, premium content gates with full entitlement system integration, age verification, and advanced panel navigation with multiple scrolling methods (arrow buttons, drag-and-drop, keyboard), delivering excellent performance and user experience.
+
+### Recent Enhancements (ThumbnailStrip)
+
+**Navigation Methods:**
+- ✅ Arrow button navigation with auto-disable at boundaries
+- ✅ Drag-and-drop scrolling with grab cursor
+- ✅ Keyboard navigation (←/→ to scroll, Esc to close)
+- ✅ Direct click navigation to panels
+- ✅ Native scrollbar support
+
+**Integration:**
+- ✅ Toolbar toggle button with active state
+- ✅ Player shell integration for both panel and page view
+- ✅ Auto-scroll to current panel on open
+- ✅ Navigation to correct panel/page on thumbnail click
+
+**Performance:**
+- Virtual scrolling handles 100+ panels efficiently
+- Lazy loading for all thumbnail images
+- OnPush change detection strategy
+- Optimized viewport calculations

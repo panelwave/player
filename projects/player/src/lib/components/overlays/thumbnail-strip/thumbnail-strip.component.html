@@ -9,11 +9,37 @@
       ✕
     </button>
 
+    <!-- Left arrow navigation -->
+    <button
+      class="nav-arrow nav-arrow-left"
+      type="button"
+      aria-label="Scroll left"
+      [disabled]="!canScrollLeft()"
+      [class.disabled]="!canScrollLeft()"
+      (click)="scrollLeft()">
+      ‹
+    </button>
+
+    <!-- Right arrow navigation -->
+    <button
+      class="nav-arrow nav-arrow-right"
+      type="button"
+      aria-label="Scroll right"
+      [disabled]="!canScrollRight()"
+      [class.disabled]="!canScrollRight()"
+      (click)="scrollRight()">
+      ›
+    </button>
+
     <!-- Scroll container -->
     <div
       class="strip-scroll-container"
       #scrollContainer
-      (scroll)="onScroll($event)">
+      (scroll)="onScroll($event)"
+      (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)"
+      (mouseup)="onMouseUp()"
+      (mouseleave)="onMouseLeave()">
       
       <!-- Content wrapper for virtual scrolling -->
       <div

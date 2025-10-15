@@ -31,6 +31,7 @@ import { FlowEngineService } from '../../services/flow-engine.service';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
+import { ThumbnailStripComponent } from '../overlays/thumbnail-strip/thumbnail-strip.component';
 import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
 import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
@@ -71,6 +72,7 @@ export interface EntitlementAdapter {
     CommonModule,
     ViewportComponent,
     ToolbarComponent,
+    ThumbnailStripComponent,
     TocOverlayComponent,
     SettingsModalComponent,
     CharacterRosterComponent,
@@ -219,6 +221,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   extrasVisible = false;
   shareVisible = false;
   commentsVisible = false;
+  thumbnailsVisible = false;
 
   /**
    * Selected character for detail view
@@ -558,8 +561,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   /**
    * Get current panel ID
    */
-  private getCurrentPanelId(): string | null {
-    if (!this.currentPanel || !this.currentChapter) return null;
+  getCurrentPanelId(): string | undefined {
+    if (!this.currentPanel || !this.currentChapter) return undefined;
     
     // Find the panel ID by searching in the chapter's panels
     for (const [panelId, panel] of Object.entries(this.currentChapter.panels)) {
@@ -568,7 +571,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       }
     }
     
-    return null;
+    return undefined;
   }
 
   /**
@@ -642,7 +645,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onToggleThumbnails(): void {
-    console.log('Toggle thumbnails - not yet implemented');
+    this.thumbnailsVisible = !this.thumbnailsVisible;
   }
 
   onOpenToc(): void {
@@ -718,6 +721,10 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.commentsVisible = false;
   }
 
+  onThumbnailsClose(): void {
+    this.thumbnailsVisible = false;
+  }
+
   /**
    * Handle character selection
    */
@@ -737,6 +744,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     } else {
       this.navigateToChapter(target.chapterId);
     }
+  }
+
+  /**
+   * Handle thumbnail navigation
+   */
+  onThumbnailNavigate(target: { chapterId: string; panelId: string }): void {
+    this.navigateToPanel(target.chapterId, target.panelId);
   }
 
   /**

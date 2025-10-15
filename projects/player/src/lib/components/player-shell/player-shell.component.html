@@ -49,7 +49,7 @@
         [autoplayEnabled]="autoplayEnabled"
         [autoplayProgress]="autoplayProgress"
         [secondsPerPanel]="secondsPerPanel"
-        [thumbnailsVisible]="false"
+        [thumbnailsVisible]="thumbnailsVisible"
         [hasAlternatives]="false"
         [hasBranches]="false"
         [showSocial]="true"
@@ -73,6 +73,18 @@
         (openComments)="onOpenComments()"
         (close)="toggleToolbar()">
       </pw-toolbar>
+
+      <!-- Thumbnail Strip -->
+      <pw-thumbnail-strip
+        [visible]="thumbnailsVisible"
+        [chapters]="manifest?.chapters || []"
+        [currentChapterId]="currentChapter?.id"
+        [currentPanelId]="getCurrentPanelId()"
+        [baseUrl]="''"
+        [lockedPanels]="[]"
+        (navigate)="onThumbnailNavigate($event)"
+        (close)="onThumbnailsClose()">
+      </pw-thumbnail-strip>
 
       <!-- PanelWave floating icon -->
       @if (!toolbarVisible) {
