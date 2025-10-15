@@ -733,6 +733,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private startAutoplay(): void {
     this.stopAutoplay(); // Clear any existing timer
     
+    // Use panel-specific duration if available, otherwise use global setting
+    const duration = this.currentPanel?.duration ?? this.secondsPerPanel;
+    
     this.autoplayTimer = setTimeout(() => {
       this.navigateNext();
       
@@ -740,7 +743,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       if (this.autoplayEnabled) {
         this.startAutoplay();
       }
-    }, this.secondsPerPanel * 1000);
+    }, duration * 1000);
   }
 
   /**
