@@ -209,37 +209,70 @@ export interface PageLayout {
   /** Target output format */
   format: OutputFormat;
   
-  /** Grid configuration */
-  grid: {
+  /** Reference canvas size for CMS editor UI only (optional) */
+  canvasSize?: {
+    /** Canvas width in pixels */
+    width: number;
+    
+    /** Canvas height in pixels */
+    height: number;
+  };
+  
+  /** Optional grid visual helper for CMS editor */
+  gridHelper?: {
     /** Number of columns */
     cols: number;
     
     /** Number of rows */
     rows: number;
+    
+    /** Show grid in editor */
+    visible: boolean;
+    
+    /** Enable snap-to-grid */
+    snapEnabled: boolean;
+    
+    /** Snap threshold in normalized units (0.01 = 1%) */
+    snapDistance: number;
   };
   
-  /** Panel placements on the grid */
+  /** Panel placements with absolute positioning */
   placements: PanelPlacement[];
 }
 
 /**
- * Panel placement on a page grid
+ * Panel placement with flexible absolute positioning
  */
 export interface PanelPlacement {
   /** Panel ID to place */
   panelId: string;
   
-  /** X position (column start) */
+  /** X position (normalized: 0 = left edge, 1 = right edge) */
   x: number;
   
-  /** Y position (row start) */
+  /** Y position (normalized: 0 = top edge, 1 = bottom edge) */
   y: number;
   
-  /** Width in columns */
+  /** Width (normalized: 0-1 = 0-100% of page width) */
   w: number;
   
-  /** Height in rows */
+  /** Height (normalized: 0-1 = 0-100% of page height) */
   h: number;
+  
+  /** Z-index for overlapping panels (higher = on top) */
+  z?: number;
+  
+  /** Rotation in degrees (clockwise, -180 to 180) */
+  r?: number;
+  
+  /** Transform origin point for rotation */
+  origin?: {
+    /** X origin (0 = left, 0.5 = center, 1 = right) */
+    x: number;
+    
+    /** Y origin (0 = top, 0.5 = center, 1 = bottom) */
+    y: number;
+  };
 }
 
 /**

@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
-import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString } from '../../types';
+import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem } from '../../types';
 import { inject } from '@angular/core';
 import { ManifestService } from '../../services/manifest.service';
 
@@ -508,33 +508,143 @@ export class ViewportComponent implements OnChanges {
   }
 
   /**
-   * Get grid columns CSS for page view
+   * Get panels sorted by z-index (lowest to highest for rendering order)
    */
-  getGridColumns(): string {
-    const cols = this.page?.layout.grid.cols || 12;
-    return `repeat(${cols}, 1fr)`;
+  getSortedPanels(): PanelPlacement[] {
+    if (!this.page?.layout.placements) return [];
+    
+    return [...this.page.layout.placements].sort((a, b) => {
+      const zA = a.z ?? 0;
+      const zB = b.z ?? 0;
+      return zA - zB;
+    });
   }
 
   /**
-   * Get grid rows CSS for page view
+   * Convert normalized value (0-1) to percentage
    */
-  getGridRows(): string {
-    const rows = this.page?.layout.grid.rows || 8;
-    return `repeat(${rows}, 1fr)`;
+  toPercent(value: number): number {
+    return value * 100;
   }
 
   /**
-   * Get grid column CSS for panel placement
+   * Get CSS transform for panel (rotation)
    */
-  getGridColumn(placement: PanelPlacement): string {
-    return `${placement.x + 1} / span ${placement.w}`;
+  getPanelTransform(placement: PanelPlacement): string {
+    if (!placement.r || placement.r === 0) {
+      return 'none';
+    }
+    return `rotate(${placement.r}deg)`;
   }
 
   /**
-   * Get grid row CSS for panel placement
+   * Get transform origin CSS for panel
    */
-  getGridRow(placement: PanelPlacement): string {
-    return `${placement.y + 1} / span ${placement.h}`;
+  getTransformOrigin(placement: PanelPlacement): string {
+    if (!placement.origin) {
+      return 'center center'; // Default
+    }
+    
+    const x = placement.origin.x * 100;
+    const y = placement.origin.y * 100;
+    return `${x}% ${y}%`;
+  }
+
+  /**
+   * Handle panel click in page view
+   */
+  onPanelClick(event: MouseEvent, panelId: string): void {
+    event.stopPropagation();
+    
+    // Get click coordinates relative to panel
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Emit viewport click with panel context
+    this.viewportClick.emit({ x, y });
+    
+    console.log(`Panel clicked: ${panelId} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+  }
+
+  /**
+   * Check if point is inside a rotated panel
+   * Used for precise hit testing when panels have rotation
+   */
+  isPointInRotatedPanel(
+    point: { x: number; y: number },
+    placement: PanelPlacement,
+    canvasWidth: number,
+    canvasHeight: number
+  ): boolean {
+    // Convert normalized placement to pixel coordinates
+    const panelX = placement.x * canvasWidth;
+    const panelY = placement.y * canvasHeight;
+    const panelWidth = placement.w * canvasWidth;
+    const panelHeight = placement.h * canvasHeight;
+
+    // If no rotation, simple bounding box check
+    if (!placement.r || placement.r === 0) {
+      return (
+        point.x >= panelX &&
+        point.x <= panelX + panelWidth &&
+        point.y >= panelY &&
+        point.y <= panelY + panelHeight
+      );
+    }
+
+    // For rotated panels, transform point to panel's local space
+    const origin = placement.origin || { x: 0.5, y: 0.5 };
+    const originX = panelX + panelWidth * origin.x;
+    const originY = panelY + panelHeight * origin.y;
+
+    // Translate point to origin
+    const translatedX = point.x - originX;
+    const translatedY = point.y - originY;
+
+    // Rotate point by negative rotation angle (inverse rotation)
+    const angleRad = (-placement.r * Math.PI) / 180;
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+
+    const rotatedX = translatedX * cos - translatedY * sin;
+    const rotatedY = translatedX * sin + translatedY * cos;
+
+    // Translate back and check if in axis-aligned bounding box
+    const localX = rotatedX + panelWidth * origin.x;
+    const localY = rotatedY + panelHeight * origin.y;
+
+    return (
+      localX >= 0 &&
+      localX <= panelWidth &&
+      localY >= 0 &&
+      localY <= panelHeight
+    );
+  }
+
+  /**
+   * Get the panel at a specific point, considering rotation and z-index
+   * Returns the top-most panel (highest z-index) at the given point
+   */
+  getPanelAtPoint(point: { x: number; y: number }): PanelPlacement | null {
+    if (!this.page?.layout.placements) return null;
+
+    const canvas = document.querySelector('.page-canvas') as HTMLElement;
+    if (!canvas) return null;
+
+    const canvasWidth = canvas.offsetWidth;
+    const canvasHeight = canvas.offsetHeight;
+
+    // Check from highest z-index to lowest (reverse of render order)
+    const sortedPanels = this.getSortedPanels().reverse();
+
+    for (const placement of sortedPanels) {
+      if (this.isPointInRotatedPanel(point, placement, canvasWidth, canvasHeight)) {
+        return placement;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -559,7 +669,7 @@ export class ViewportComponent implements OnChanges {
     if (!manifest?.assets?.catalog) return '';
     
     // Find asset by ID
-    const asset = manifest.assets.catalog.find((a: any) => a.id === layer.assetId);
+    const asset = manifest.assets.catalog.find((a: AssetCatalogItem) => a.id === layer.assetId);
     if (!asset?.alt) return '';
     
     // Get localized alt text

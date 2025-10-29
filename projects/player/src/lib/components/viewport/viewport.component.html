@@ -41,17 +41,20 @@
   <!-- Page View -->
   @if (viewMode === 'page' && page) {
     <div class="viewport-page">
-      <div 
-        class="page-grid"
-        [style.grid-template-columns]="getGridColumns()"
-        [style.grid-template-rows]="getGridRows()">
+      <div class="page-canvas">
         
-        @for (placement of page.layout.placements; track placement.panelId) {
+        @for (placement of getSortedPanels(); track placement.panelId) {
           <div 
-            class="panel-cell"
-            [style.grid-column]="getGridColumn(placement)"
-            [style.grid-row]="getGridRow(placement)"
-            [attr.data-panel-id]="placement.panelId">
+            class="panel-container"
+            [style.left.%]="toPercent(placement.x)"
+            [style.top.%]="toPercent(placement.y)"
+            [style.width.%]="toPercent(placement.w)"
+            [style.height.%]="toPercent(placement.h)"
+            [style.z-index]="placement.z || 0"
+            [style.transform]="getPanelTransform(placement)"
+            [style.transform-origin]="getTransformOrigin(placement)"
+            [attr.data-panel-id]="placement.panelId"
+            (click)="onPanelClick($event, placement.panelId)">
             
             @if (getPanel(placement.panelId); as panelData) {
               <div class="panel-content">
