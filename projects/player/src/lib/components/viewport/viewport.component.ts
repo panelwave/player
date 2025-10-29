@@ -20,6 +20,18 @@ import { inject } from '@angular/core';
 import { ManifestService } from '../../services/manifest.service';
 
 /**
+ * Performance metrics interface
+ */
+export interface PerformanceMetrics {
+  renderTime: number;
+  panelCount: number;
+  visiblePanelCount: number;
+  culledPanelCount: number;
+  memoryUsage?: number;
+  transformCalculationTime: number;
+}
+
+/**
  * Viewport Component
  * Renders a panel with pan/zoom/transform capabilities
  */
@@ -90,9 +102,24 @@ export class ViewportComponent implements OnChanges {
   @Input() showOverflowArrows = true;
 
   /**
+   * Enable viewport culling (hide off-screen panels)
+   */
+  @Input() enableViewportCulling = false;
+
+  /**
+   * Enable lazy loading for images
+   */
+  @Input() enableLazyLoading = true;
+
+  /**
    * Viewport clicked
    */
   @Output() viewportClick = new EventEmitter<{ x: number; y: number }>();
+
+  /**
+   * Performance metrics event
+   */
+  @Output() performanceMetrics = new EventEmitter<PerformanceMetrics>();
 
   /**
    * Pan/zoom changed
@@ -127,6 +154,11 @@ export class ViewportComponent implements OnChanges {
   // Focus state for navigation
   focusedPanelId: string | null = null;
   focusedPanelIndex = -1;
+
+  // Performance tracking
+  private performanceStartTime = 0;
+  private renderCount = 0;
+  private visiblePanels = new Set<string>();
 
   // Internal state - Mouse
   isDragging = false;
@@ -943,5 +975,190 @@ export class ViewportComponent implements OnChanges {
    */
   isPanelFocused(panelId: string): boolean {
     return this.focusedPanelId === panelId;
+  }
+
+  /**
+   * Check if a panel is visible in viewport (for culling)
+   */
+  isPanelVisible(placement: PanelPlacement): boolean {
+    if (!this.enableViewportCulling) {
+      return true; // Always visible if culling disabled
+    }
+
+    const canvas = document.querySelector('.page-canvas') as HTMLElement;
+    if (!canvas) return true;
+    
+    // Convert normalized to pixel coordinates
+    const panelLeft = placement.x * canvas.offsetWidth;
+    const panelTop = placement.y * canvas.offsetHeight;
+    const panelWidth = placement.w * canvas.offsetWidth;
+    const panelHeight = placement.h * canvas.offsetHeight;
+
+    // Simple bounding box check (could be enhanced for rotation)
+    const panelRight = panelLeft + panelWidth;
+    const panelBottom = panelTop + panelHeight;
+
+    // Check if panel intersects viewport
+    const isVisible = !(
+      panelRight < 0 ||
+      panelBottom < 0 ||
+      panelLeft > canvas.offsetWidth ||
+      panelTop > canvas.offsetHeight
+    );
+
+    // Track visible panels
+    if (isVisible) {
+      this.visiblePanels.add(placement.panelId);
+    } else {
+      this.visiblePanels.delete(placement.panelId);
+    }
+
+    return isVisible;
+  }
+
+  /**
+   * Start performance measurement
+   */
+  startPerformanceMeasurement(): void {
+    this.performanceStartTime = performance.now();
+  }
+
+  /**
+   * End performance measurement and emit metrics
+   */
+  endPerformanceMeasurement(): void {
+    if (this.performanceStartTime === 0) return;
+
+    const renderTime = performance.now() - this.performanceStartTime;
+    const panelCount = this.page?.layout.placements.length || 0;
+    const visiblePanelCount = this.visiblePanels.size;
+    const culledPanelCount = panelCount - visiblePanelCount;
+
+    // Calculate memory usage if available
+    let memoryUsage: number | undefined;
+    if ('memory' in performance) {
+      const perfMemory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
+      if (perfMemory) {
+        memoryUsage = perfMemory.usedJSHeapSize / 1024 / 1024; // MB
+      }
+    }
+
+    const metrics: PerformanceMetrics = {
+      renderTime,
+      panelCount,
+      visiblePanelCount,
+      culledPanelCount,
+      memoryUsage,
+      transformCalculationTime: 0 // Updated separately if needed
+    };
+
+    this.performanceMetrics.emit(metrics);
+    this.renderCount++;
+  }
+
+  /**
+   * Get lazy loading state for images
+   * Returns 'lazy' if lazy loading is enabled, 'eager' otherwise
+   */
+  getImageLoadingStrategy(): 'lazy' | 'eager' {
+    return this.enableLazyLoading ? 'lazy' : 'eager';
+  }
+
+  /**
+   * Measure transform calculation performance
+   */
+  measureTransformPerformance(callback: () => void): number {
+    const start = performance.now();
+    callback();
+    const end = performance.now();
+    return end - start;
+  }
+
+  /**
+   * Get performance statistics
+   */
+  getPerformanceStats(): {
+    totalRenders: number;
+    averageRenderTime: number;
+    visiblePanelCount: number;
+    memoryUsage?: number;
+  } {
+    let memoryUsage: number | undefined;
+    if ('memory' in performance) {
+      const perfMemory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
+      if (perfMemory) {
+        memoryUsage = perfMemory.usedJSHeapSize / 1024 / 1024; // MB
+      }
+    }
+
+    return {
+      totalRenders: this.renderCount,
+      averageRenderTime: 0, // Would need to track average over time
+      visiblePanelCount: this.visiblePanels.size,
+      memoryUsage
+    };
+  }
+
+  /**
+   * Force garbage collection (if available)
+   * Note: This is only available in dev mode or with specific flags
+   */
+  forceGarbageCollection(): void {
+    const globalWithGC = global as unknown as { gc?: () => void };
+    if ('gc' in global && typeof globalWithGC.gc === 'function') {
+      globalWithGC.gc();
+      console.log('[Performance] Garbage collection triggered');
+    } else {
+      console.warn('[Performance] Garbage collection not available');
+    }
+  }
+
+  /**
+   * Profile memory usage
+   */
+  profileMemory(): {
+    totalJSHeapSize?: number;
+    usedJSHeapSize?: number;
+    jsHeapSizeLimit?: number;
+  } {
+    if ('memory' in performance) {
+      const perfMemory = (performance as unknown as { 
+        memory?: { 
+          totalJSHeapSize: number; 
+          usedJSHeapSize: number; 
+          jsHeapSizeLimit: number 
+        } 
+      }).memory;
+      
+      if (perfMemory) {
+        return {
+          totalJSHeapSize: perfMemory.totalJSHeapSize / 1024 / 1024, // MB
+          usedJSHeapSize: perfMemory.usedJSHeapSize / 1024 / 1024, // MB
+          jsHeapSizeLimit: perfMemory.jsHeapSizeLimit / 1024 / 1024 // MB
+        };
+      }
+    }
+    return {};
+  }
+
+  /**
+   * Log performance metrics to console
+   */
+  logPerformanceMetrics(): void {
+    const stats = this.getPerformanceStats();
+    const memory = this.profileMemory();
+
+    console.group('[Performance Metrics]');
+    console.log('Total Renders:', stats.totalRenders);
+    console.log('Visible Panels:', stats.visiblePanelCount);
+    if (stats.memoryUsage) {
+      console.log('Memory Usage:', stats.memoryUsage.toFixed(2), 'MB');
+    }
+    if (memory.usedJSHeapSize) {
+      console.log('Heap Used:', memory.usedJSHeapSize.toFixed(2), 'MB');
+      console.log('Heap Total:', memory.totalJSHeapSize?.toFixed(2), 'MB');
+      console.log('Heap Limit:', memory.jsHeapSizeLimit?.toFixed(2), 'MB');
+    }
+    console.groupEnd();
   }
 }

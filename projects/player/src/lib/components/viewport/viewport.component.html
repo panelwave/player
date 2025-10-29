@@ -49,41 +49,44 @@
         (keydown.space)="onCanvasKeyboardActivate($event)">
         
         @for (placement of getSortedPanels(); track placement.panelId) {
-          <div 
-            class="panel-container"
-            [class.panel-focused]="isPanelFocused(placement.panelId)"
-            [style.left.%]="toPercent(placement.x)"
-            [style.top.%]="toPercent(placement.y)"
-            [style.width.%]="toPercent(placement.w)"
-            [style.height.%]="toPercent(placement.h)"
-            [style.z-index]="placement.z || 0"
-            [style.transform]="getPanelTransform(placement)"
-            [style.transform-origin]="getTransformOrigin(placement)"
-            [attr.data-panel-id]="placement.panelId"
-            [attr.tabindex]="0"
-            [attr.role]="'button'"
-            [attr.aria-label]="'Panel ' + placement.panelId"
-            (click)="onPanelClick($event, placement.panelId)">
-            
-            @if (getPanel(placement.panelId); as panelData) {
-              <div class="panel-content">
-                <!-- Render panel layers -->
-                @for (layer of panelData.layers; track layer.id) {
-                  <pw-layer-renderer
-                    [layer]="layer"
-                    [locale]="locale"
-                    [altText]="getAltText(layer)"
-                    (layerClick)="layerClick.emit($event)">
-                  </pw-layer-renderer>
-                }
-              </div>
-            }
-            
-            <!-- Focus indicator for rotated panels -->
-            @if (isPanelFocused(placement.panelId)) {
-              <div class="focus-rect" aria-hidden="true"></div>
-            }
-          </div>
+          @if (isPanelVisible(placement)) {
+            <div 
+              class="panel-container"
+              [class.panel-focused]="isPanelFocused(placement.panelId)"
+              [style.left.%]="toPercent(placement.x)"
+              [style.top.%]="toPercent(placement.y)"
+              [style.width.%]="toPercent(placement.w)"
+              [style.height.%]="toPercent(placement.h)"
+              [style.z-index]="placement.z || 0"
+              [style.transform]="getPanelTransform(placement)"
+              [style.transform-origin]="getTransformOrigin(placement)"
+              [attr.data-panel-id]="placement.panelId"
+              [attr.tabindex]="0"
+              [attr.role]="'button'"
+              [attr.aria-label]="'Panel ' + placement.panelId"
+              [attr.loading]="getImageLoadingStrategy()"
+              (click)="onPanelClick($event, placement.panelId)">
+              
+              @if (getPanel(placement.panelId); as panelData) {
+                <div class="panel-content">
+                  <!-- Render panel layers -->
+                  @for (layer of panelData.layers; track layer.id) {
+                    <pw-layer-renderer
+                      [layer]="layer"
+                      [locale]="locale"
+                      [altText]="getAltText(layer)"
+                      (layerClick)="layerClick.emit($event)">
+                    </pw-layer-renderer>
+                  }
+                </div>
+              }
+              
+              <!-- Focus indicator for rotated panels -->
+              @if (isPanelFocused(placement.panelId)) {
+                <div class="focus-rect" aria-hidden="true"></div>
+              }
+            </div>
+          }
         }
       </div>
     </div>
