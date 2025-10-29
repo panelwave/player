@@ -6,11 +6,20 @@ All TypeScript type definitions for the PanelWave Player have been successfully 
 
 ## Files Created
 
-### 1. `manifest.types.ts` (505 lines)
+### 1. `manifest.types.ts` (~550 lines)
 **Main manifest and metadata types:**
 - `PanelWaveManifest` - Root manifest structure
 - `Meta` - Metadata (title, creators, characters, etc.)
 - `Chapter` - Chapter with pages and panels
+- `PageLayout` - **Flexible absolute positioning with normalized coordinates (0-1)**
+  - `canvasSize` - Reference canvas size for CMS editor (optional)
+  - `gridHelper` - Optional visual grid aid for CMS editor
+  - `placements` - Panel placements with absolute positioning
+- `PanelPlacement` - **Panel positioning with flexible coordinates**
+  - `x`, `y`, `w`, `h` - Normalized coordinates (0-1)
+  - `z` - Z-index for overlapping panels
+  - `r` - Rotation in degrees (-180 to 180)
+  - `origin` - Transform origin point for rotation
 - `Settings` - Global UI and preload settings
 - `Extras` - Bonus content (covers, character sheets, etc.)
 - `Paywall` - Entitlement rules
@@ -227,5 +236,19 @@ With types complete, the next phase is **Utilities Implementation**:
 ## Commits
 
 - `318eb1a` - feat: implement complete TypeScript type definitions for PanelWave schema
+- `6e14b86` - feat: Update manifest types for flexible absolute positioning (Phase 1 & 2)
+  - Removed `grid` property from `PageLayout`
+  - Added `canvasSize` and `gridHelper` (optional) to `PageLayout`
+  - Updated `PanelPlacement` with normalized coordinates (0-1)
+  - Added `z` (z-index), `r` (rotation), and `origin` properties
+
+## Recent Updates (Flexible Positioning Migration)
+
+**Breaking Changes:**
+- `PageLayout.grid` removed - replaced with optional `canvasSize` and `gridHelper`
+- `PanelPlacement` coordinates now normalized (0-1) instead of grid integers
+- New properties: `z`, `r`, `origin` added to `PanelPlacement`
+
+**Backward Compatibility:** None - clean break from grid-based layout
 
 All type definitions are now in place and ready to be used by services and components! 🎉
