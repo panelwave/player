@@ -41,11 +41,17 @@
   <!-- Page View -->
   @if (viewMode === 'page' && page) {
     <div class="viewport-page">
-      <div class="page-canvas">
+      <div 
+        class="page-canvas"
+        [attr.tabindex]="-1"
+        (click)="onPanelClickWithFocus($event)"
+        (keydown.enter)="onCanvasKeyboardActivate($event)"
+        (keydown.space)="onCanvasKeyboardActivate($event)">
         
         @for (placement of getSortedPanels(); track placement.panelId) {
           <div 
             class="panel-container"
+            [class.panel-focused]="isPanelFocused(placement.panelId)"
             [style.left.%]="toPercent(placement.x)"
             [style.top.%]="toPercent(placement.y)"
             [style.width.%]="toPercent(placement.w)"
@@ -54,6 +60,9 @@
             [style.transform]="getPanelTransform(placement)"
             [style.transform-origin]="getTransformOrigin(placement)"
             [attr.data-panel-id]="placement.panelId"
+            [attr.tabindex]="0"
+            [attr.role]="'button'"
+            [attr.aria-label]="'Panel ' + placement.panelId"
             (click)="onPanelClick($event, placement.panelId)">
             
             @if (getPanel(placement.panelId); as panelData) {
@@ -68,6 +77,11 @@
                   </pw-layer-renderer>
                 }
               </div>
+            }
+            
+            <!-- Focus indicator for rotated panels -->
+            @if (isPanelFocused(placement.panelId)) {
+              <div class="focus-rect" aria-hidden="true"></div>
             }
           </div>
         }

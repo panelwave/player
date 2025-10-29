@@ -119,6 +119,15 @@ export class ViewportComponent implements OnChanges {
    */
   @Output() navigateNext = new EventEmitter<void>();
 
+  /**
+   * Panel focus changed
+   */
+  @Output() panelFocus = new EventEmitter<string | null>();
+
+  // Focus state for navigation
+  focusedPanelId: string | null = null;
+  focusedPanelIndex = -1;
+
   // Internal state - Mouse
   isDragging = false;
   dragStartX = 0;
@@ -782,5 +791,157 @@ export class ViewportComponent implements OnChanges {
    */
   onNavigateNext(): void {
     this.navigateNext.emit();
+  }
+
+  /**
+   * Set focus on a specific panel
+   */
+  focusPanel(panelId: string | null): void {
+    this.focusedPanelId = panelId;
+    
+    if (panelId && this.page?.readingOrder) {
+      this.focusedPanelIndex = this.page.readingOrder.indexOf(panelId);
+    } else {
+      this.focusedPanelIndex = -1;
+    }
+    
+    this.panelFocus.emit(panelId);
+  }
+
+  /**
+   * Handle keyboard navigation (Tab key)
+   */
+  @HostListener('keydown.tab', ['$event'])
+  onKeydownTab(event: KeyboardEvent): void {
+    if (this.viewMode !== 'page' || !this.page?.readingOrder) return;
+    
+    event.preventDefault();
+    
+    const readingOrder = this.page.readingOrder;
+    const currentIndex = this.focusedPanelIndex;
+    
+    if (event.shiftKey) {
+      // Navigate backwards (Shift+Tab)
+      const newIndex = currentIndex <= 0 ? readingOrder.length - 1 : currentIndex - 1;
+      this.focusPanel(readingOrder[newIndex]);
+    } else {
+      // Navigate forwards (Tab)
+      const newIndex = currentIndex >= readingOrder.length - 1 ? 0 : currentIndex + 1;
+      this.focusPanel(readingOrder[newIndex]);
+    }
+  }
+
+  /**
+   * Handle arrow key navigation
+   */
+  @HostListener('keydown.arrowRight', ['$event'])
+  @HostListener('keydown.arrowDown', ['$event'])
+  onKeydownNext(event: KeyboardEvent): void {
+    if (this.viewMode !== 'page' || !this.page?.readingOrder) return;
+    
+    event.preventDefault();
+    
+    const readingOrder = this.page.readingOrder;
+    const currentIndex = this.focusedPanelIndex;
+    const newIndex = currentIndex >= readingOrder.length - 1 ? 0 : currentIndex + 1;
+    
+    this.focusPanel(readingOrder[newIndex]);
+  }
+
+  @HostListener('keydown.arrowLeft', ['$event'])
+  @HostListener('keydown.arrowUp', ['$event'])
+  onKeydownPrevious(event: KeyboardEvent): void {
+    if (this.viewMode !== 'page' || !this.page?.readingOrder) return;
+    
+    event.preventDefault();
+    
+    const readingOrder = this.page.readingOrder;
+    const currentIndex = this.focusedPanelIndex;
+    const newIndex = currentIndex <= 0 ? readingOrder.length - 1 : currentIndex - 1;
+    
+    this.focusPanel(readingOrder[newIndex]);
+  }
+
+  /**
+   * Handle panel click with overlap handling
+   * Enhanced to set focus on clicked panel
+   */
+  onPanelClickWithFocus(event: MouseEvent): void {
+    if (this.viewMode !== 'page') return;
+    
+    const canvas = event.currentTarget as HTMLElement;
+    if (!canvas) return;
+    
+    // Determine which panel was clicked
+    const rect = canvas.getBoundingClientRect();
+    const point = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+    
+    // Find the top-most panel at click position
+    const clickedPanel = this.getPanelAtPoint(point);
+    
+    if (clickedPanel) {
+      this.focusPanel(clickedPanel.panelId);
+      console.log(`Panel focused: ${clickedPanel.panelId} (z-index: ${clickedPanel.z || 0})`);
+    } else {
+      // Clicked on empty space - clear focus
+      this.focusPanel(null);
+    }
+  }
+
+  /**
+   * Handle keyboard activation of canvas (Enter/Space)
+   * Focuses on the first panel in reading order if nothing is focused
+   */
+  onCanvasKeyboardActivate(event: Event): void {
+    if (this.viewMode !== 'page') return;
+    
+    event.preventDefault();
+    
+    // If nothing is focused, focus on the first panel in reading order
+    if (!this.focusedPanelId && this.page?.readingOrder && this.page.readingOrder.length > 0) {
+      this.focusPanel(this.page.readingOrder[0]);
+    }
+  }
+
+  /**
+   * Get focus rect for a panel (accounting for rotation)
+   * Returns the bounding box coordinates for focus visualization
+   */
+  getFocusRect(placement: PanelPlacement): {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    rotation: number;
+  } | null {
+    const canvas = document.querySelector('.page-canvas') as HTMLElement;
+    if (!canvas) return null;
+    
+    const canvasWidth = canvas.offsetWidth;
+    const canvasHeight = canvas.offsetHeight;
+    
+    // Convert normalized to pixel coordinates
+    const left = placement.x * canvasWidth;
+    const top = placement.y * canvasHeight;
+    const width = placement.w * canvasWidth;
+    const height = placement.h * canvasHeight;
+    
+    return {
+      left,
+      top,
+      width,
+      height,
+      rotation: placement.r || 0
+    };
+  }
+
+  /**
+   * Check if a panel is currently focused
+   */
+  isPanelFocused(panelId: string): boolean {
+    return this.focusedPanelId === panelId;
   }
 }
