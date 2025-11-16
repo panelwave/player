@@ -592,6 +592,51 @@ export class ViewportComponent implements OnChanges {
   }
 
   /**
+   * Get clip-path CSS for panel content (visible area)
+   * Returns inset values to show only the visible portion of the panel
+   */
+  getPanelContentClipPath(placement: PanelPlacement): string {
+    const vx = placement.vx ?? 0;
+    const vy = placement.vy ?? 0;
+    const vw = placement.vw ?? 1;
+    const vh = placement.vh ?? 1;
+    
+    // If full panel is visible, no clipping needed
+    if (vx === 0 && vy === 0 && vw === 1 && vh === 1) {
+      return 'none';
+    }
+    
+    // Calculate inset values as percentages
+    // inset(top right bottom left)
+    const top = vy * 100;
+    const right = (1 - (vx + vw)) * 100;
+    const bottom = (1 - (vy + vh)) * 100;
+    const left = vx * 100;
+    
+    return `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+  }
+
+  /**
+   * Get position offset for panel content (visible area)
+   * Returns translate transform to shift content when visible area is cropped
+   */
+  getPanelContentTransform(placement: PanelPlacement): string {
+    const vx = placement.vx ?? 0;
+    const vy = placement.vy ?? 0;
+    
+    // If no offset, return none
+    if (vx === 0 && vy === 0) {
+      return 'none';
+    }
+    
+    // Translate content by negative offset to show the visible portion
+    const translateX = -vx * 100;
+    const translateY = -vy * 100;
+    
+    return `translate(${translateX}%, ${translateY}%)`;
+  }
+
+  /**
    * Handle panel click in page view
    */
   onPanelClick(event: MouseEvent, panelId: string): void {

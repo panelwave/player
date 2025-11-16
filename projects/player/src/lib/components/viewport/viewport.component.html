@@ -68,7 +68,9 @@
               (click)="onPanelClick($event, placement.panelId)">
               
               @if (getPanel(placement.panelId); as panelData) {
-                <div class="panel-content">
+                <div class="panel-content"
+                     [style.clip-path]="getPanelContentClipPath(placement)"
+                     [style.transform]="getPanelContentTransform(placement)">
                   <!-- Render panel layers -->
                   @for (layer of panelData.layers; track layer.id) {
                     <pw-layer-renderer

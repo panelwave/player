@@ -273,6 +273,18 @@ export interface PanelPlacement {
     /** Y origin (0 = top, 0.5 = center, 1 = bottom) */
     y: number;
   };
+  
+  /** Visible area X position (normalized 0-1, relative to panel) */
+  vx?: number;
+  
+  /** Visible area Y position (normalized 0-1, relative to panel) */
+  vy?: number;
+  
+  /** Visible area width (normalized 0-1, relative to panel) */
+  vw?: number;
+  
+  /** Visible area height (normalized 0-1, relative to panel) */
+  vh?: number;
 }
 
 /**
