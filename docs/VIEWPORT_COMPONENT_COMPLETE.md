@@ -67,6 +67,7 @@ The **ViewportComponent** - the main rendering container for PanelWave panels wi
 - ✅ Z-index support for overlapping panels
 - ✅ Full rotation support (-180° to 180°)
 - ✅ Custom transform origins for rotation
+- ✅ **Visible area support for panel content cropping (vx, vy, vw, vh)**
 - ✅ Panel positioning via normalized coordinates (resolution independent)
 - ✅ Optional grid helper for CMS editor (visual aid only)
 - ✅ Responsive layout (desktop/tablet/mobile)
@@ -151,7 +152,69 @@ The **ViewportComponent** - the main rendering container for PanelWave panels wi
 4. Empty string if no alt text defined
 ```
 
-### 7. Swipe Gesture Navigation
+### 7. Visible Area Support (Panel Content Cropping)
+
+**Purpose:**
+- ✅ Display only a portion of panel content without resizing the panel
+- ✅ Enables responsive layouts with different focal areas per page format
+- ✅ Maintains aspect ratio while showing different crops
+- ✅ Works seamlessly with rotation and transform origins
+
+**Properties:**
+```typescript
+interface PanelPlacement {
+  vx?: number;  // Visible area X (0-1, relative to panel)
+  vy?: number;  // Visible area Y (0-1, relative to panel)
+  vw?: number;  // Visible area width (0-1, relative to panel)
+  vh?: number;  // Visible area height (0-1, relative to panel)
+}
+```
+
+**Rendering:**
+- ✅ Uses CSS `clip-path` for hardware-accelerated clipping
+- ✅ Calculates inset values based on visible area
+- ✅ Applies CSS `transform` to position content correctly
+- ✅ Panel container size remains unchanged
+- ✅ Only content is clipped to visible area
+
+**Behavior:**
+```typescript
+// Full panel visible (default)
+vx: 0, vy: 0, vw: 1, vh: 1  → No clipping applied
+
+// Show center 80% of panel
+vx: 0.1, vy: 0.1, vw: 0.8, vh: 0.8  → Clips 10% from all sides
+
+// Show top 70% (portrait crop)
+vx: 0, vy: 0, vw: 1, vh: 0.7  → Shows top 70%, hides bottom 30%
+
+// Show left half (split panel)
+vx: 0, vy: 0, vw: 0.5, vh: 1  → Shows left 50%, hides right 50%
+```
+
+**Methods:**
+```typescript
+getPanelContentClipPath(placement: PanelPlacement): string
+  // Returns CSS clip-path inset() or 'none'
+  // Example: "inset(10% 20% 10% 0%)" for cropped area
+
+getPanelContentTransform(placement: PanelPlacement): string
+  // Returns CSS translate() or 'none'
+  // Example: "translate(-10%, -15%)" to position content
+```
+
+**Use Cases:**
+1. **Responsive Layouts:** Different formats show different focal areas
+2. **Split Panels:** Wide panel split into multiple page views
+3. **Aspect Ratio Preservation:** Crop instead of distort
+4. **Progressive Reveal:** Show more content in larger formats
+
+**Backward Compatibility:**
+- ✅ All visible area properties are optional
+- ✅ Undefined values default to full panel (0, 0, 1, 1)
+- ✅ Existing content displays normally without modification
+
+### 8. Swipe Gesture Navigation
 
 **Touch & Mouse Swipe Detection:**
 - ✅ Fast swipe detection (< 300ms)
@@ -264,6 +327,8 @@ getSortedPanels(): PanelPlacement[]  // Sort by z-index
 toPercent(value: number): number  // Convert 0-1 to 0-100%
 getPanelTransform(placement: PanelPlacement): string  // Rotation CSS
 getTransformOrigin(placement: PanelPlacement): string  // Transform origin CSS
+getPanelContentClipPath(placement: PanelPlacement): string  // Visible area clipping CSS
+getPanelContentTransform(placement: PanelPlacement): string  // Visible area positioning CSS
 getPanel(panelId: string): Panel | undefined
 getAltText(layer: Layer): string
 

@@ -20,6 +20,7 @@ All TypeScript type definitions for the PanelWave Player have been successfully 
   - `z` - Z-index for overlapping panels
   - `r` - Rotation in degrees (-180 to 180)
   - `origin` - Transform origin point for rotation
+  - `vx`, `vy`, `vw`, `vh` - Visible area (optional, 0-1, for content cropping)
 - `Settings` - Global UI and preload settings
 - `Extras` - Bonus content (covers, character sheets, etc.)
 - `Paywall` - Entitlement rules
@@ -241,9 +242,22 @@ With types complete, the next phase is **Utilities Implementation**:
   - Added `canvasSize` and `gridHelper` (optional) to `PageLayout`
   - Updated `PanelPlacement` with normalized coordinates (0-1)
   - Added `z` (z-index), `r` (rotation), and `origin` properties
+- `6426d1e` - feat: Add visible area support to player (November 16, 2025)
+  - Added `vx`, `vy`, `vw`, `vh` properties to `PanelPlacement`
+  - Enables panel content cropping without resizing panel
+  - All properties optional for backward compatibility
 
-## Recent Updates (Flexible Positioning Migration)
+## Recent Updates
 
+### Visible Area Support (November 2025)
+**New Features:**
+- Added optional visible area properties to `PanelPlacement`: `vx`, `vy`, `vw`, `vh`
+- Enables responsive layouts with different focal areas per page format
+- Content clipping without panel resize using CSS clip-path
+
+**Backward Compatibility:** Full - all visible area properties are optional, defaults to full panel
+
+### Flexible Positioning Migration
 **Breaking Changes:**
 - `PageLayout.grid` removed - replaced with optional `canvasSize` and `gridHelper`
 - `PanelPlacement` coordinates now normalized (0-1) instead of grid integers
