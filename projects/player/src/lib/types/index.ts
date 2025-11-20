@@ -12,6 +12,7 @@ export type {
   Creator,
   Character,
   ContentWarning,
+  SequenceAudioTrack,
   Chapter,
   Page,
   PageLayout,

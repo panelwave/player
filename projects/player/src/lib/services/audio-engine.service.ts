@@ -4,6 +4,7 @@
  */
 
 import { Injectable } from '@angular/core';
+import type { SequenceAudioTrack } from '../types';
 
 /**
  * Audio role/bus type
@@ -424,6 +425,133 @@ export class AudioEngineService {
    */
   isAutoplayAllowed(): boolean {
     return this.autoplayAllowed;
+  }
+
+  /**
+   * Play sequence audio tracks for a chapter based on playback time
+   * @param tracks Array of sequence audio tracks from chapter
+   * @param currentTimeMs Current playback time in milliseconds
+   * @param assetBaseUrl Base URL for resolving asset URLs
+   */
+  async playSequenceTracks(
+    tracks: SequenceAudioTrack[],
+    currentTimeMs: number,
+    assetBaseUrl: string = ''
+  ): Promise<void> {
+    // Ensure initialized
+    if (!this.audioContext) {
+      await this.initialize();
+    }
+
+    // Resume if needed
+    if (this.audioContext!.state === 'suspended') {
+      await this.resumeContext();
+    }
+
+    // Play tracks that should be playing at current time
+    for (const track of tracks) {
+      // Skip muted tracks
+      if (track.muted) continue;
+
+      const trackStartMs = track.startTime;
+      const trackEndMs = trackStartMs + track.duration;
+
+      // Check if track should be playing at current time
+      if (currentTimeMs >= trackStartMs && currentTimeMs < trackEndMs) {
+        // Calculate offset within the track
+        const offsetMs = currentTimeMs - trackStartMs;
+        const offsetSeconds = offsetMs / 1000;
+
+        // Construct asset URL
+        const audioUrl = assetBaseUrl + track.assetId;
+
+        // Create audio track definition
+        const audioTrack: AudioTrack = {
+          id: track.id,
+          url: audioUrl,
+          role: track.role,
+          loop: track.loop,
+          volume: track.volume !== undefined && isFinite(track.volume) 
+            ? Math.max(0, Math.min(2, track.volume))
+            : 1.0,
+          fadeIn: track.fadeIn,
+          fadeOut: track.fadeOut,
+        };
+
+        try {
+          // Play track from offset
+          await this.playFromOffset(audioTrack, offsetSeconds);
+        } catch (error) {
+          console.error(`Failed to play sequence track ${track.id}:`, error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Play audio track from a specific offset
+   * @param track Audio track definition
+   * @param offsetSeconds Start playback from this offset in seconds
+   */
+  private async playFromOffset(track: AudioTrack, offsetSeconds: number): Promise<void> {
+    // Ensure initialized
+    if (!this.audioContext) {
+      await this.initialize();
+    }
+
+    // Stop existing track with same ID
+    if (this.activeAudio.has(track.id)) {
+      await this.stop(track.id);
+    }
+
+    try {
+      // Create audio element
+      const audio = new Audio(track.url);
+      audio.loop = track.loop || false;
+      audio.currentTime = offsetSeconds;
+
+      // Create source node
+      const source = this.audioContext!.createMediaElementSource(audio);
+      const gainNode = this.roleGains.get(track.role);
+      
+      if (!gainNode) {
+        throw new Error(`Invalid role: ${track.role}`);
+      }
+
+      source.connect(gainNode);
+
+      // Store references
+      this.activeAudio.set(track.id, audio);
+      this.audioSources.set(track.id, source);
+
+      // Set initial volume
+      const initialVolume = track.volume !== undefined ? track.volume : 1.0;
+
+      // Apply fade in if we're at the start
+      if (track.fadeIn && track.fadeIn > 0 && offsetSeconds < track.fadeIn / 1000) {
+        await this.fadeIn(track.id, track.fadeIn - offsetSeconds * 1000, initialVolume);
+      }
+
+      // Play audio
+      await audio.play();
+    } catch (error) {
+      console.error(`Failed to play audio ${track.id} from offset:`, error);
+      // Cleanup on error
+      this.cleanup(track.id);
+      throw error;
+    }
+  }
+
+  /**
+   * Stop sequence audio tracks
+   * @param trackIds Array of track IDs to stop (optional, stops all if not provided)
+   */
+  async stopSequenceTracks(trackIds?: string[]): Promise<void> {
+    if (trackIds) {
+      await Promise.all(trackIds.map((id) => this.stop(id)));
+    } else {
+      await this.stopAll();
+    }
   }
 
   /**

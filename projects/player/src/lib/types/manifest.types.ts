@@ -166,6 +166,59 @@ export interface ContentWarning {
 }
 
 /**
+ * Sequence audio track that spans multiple panels
+ */
+export interface SequenceAudioTrack {
+  /** Unique identifier for this audio track */
+  id: string;
+  
+  /** Human-readable identifier */
+  friendlyId: string;
+  
+  /** Display name for the track (optional) */
+  name?: string;
+  
+  /** Reference to audio asset */
+  assetId: string;
+  
+  /** Role/category of the audio track */
+  role: 'ambient' | 'music' | 'voiceover' | 'sfx';
+  
+  /** Optional format filter (null = applies to all formats) */
+  format?: 'tablet-portrait' | 'mobile-portrait' | 'bigscreen-landscape' | null;
+  
+  /** Start time in milliseconds relative to chapter/sequence start */
+  startTime: number;
+  
+  /** Duration in milliseconds */
+  duration: number;
+  
+  /** Volume/gain level (0.0 = silent, 1.0 = normal, 2.0 = double) */
+  volume?: number;
+  
+  /** Whether the track should loop */
+  loop?: boolean;
+  
+  /** Fade-in duration in milliseconds */
+  fadeIn?: number;
+  
+  /** Fade-out duration in milliseconds */
+  fadeOut?: number;
+  
+  /** Playback speed multiplier */
+  playbackRate?: number;
+  
+  /** Whether the track is muted */
+  muted?: boolean;
+  
+  /** Optional explicit panel range start */
+  startPanelId?: string;
+  
+  /** Optional explicit panel range end */
+  endPanelId?: string;
+}
+
+/**
  * Chapter containing panels and navigation graph
  */
 export interface Chapter {
@@ -183,6 +236,9 @@ export interface Chapter {
   
   /** Navigation graph defining flow between panels */
   graph: Graph;
+  
+  /** Sequence audio tracks that span multiple panels (optional) */
+  sequenceAudioTracks?: SequenceAudioTrack[];
 }
 
 /**
