@@ -1219,6 +1219,149 @@ ngOnDestroy() {
 
 ---
 
+## Sequence Audio Tracks (NEW - November 2024)
+
+### Overview
+
+The AudioEngineService now supports **Sequence Audio Tracks** - audio tracks that span multiple panels within a chapter and play based on timeline position.
+
+### Features
+
+- **Timeline-Based Playback:** Tracks start/stop based on chapter playback time
+- **Offset Calculation:** Automatically calculates correct playback offset
+- **Volume Validation:** Ensures finite volume values (0-2 range)
+- **Multi-Track Support:** Play multiple overlapping sequence tracks
+- **Asset URL Resolution:** Resolves asset IDs to full URLs
+
+### New API Methods
+
+#### `playSequenceTracks()`
+
+Play sequence audio tracks for a chapter based on playback time.
+
+```typescript
+async playSequenceTracks(
+  tracks: SequenceAudioTrack[],
+  currentTimeMs: number,
+  assetBaseUrl: string = ''
+): Promise<void>
+```
+
+**Parameters:**
+- `tracks` - Array of sequence audio tracks from chapter manifest
+- `currentTimeMs` - Current chapter playback time in milliseconds
+- `assetBaseUrl` - Base URL for resolving asset URLs (optional)
+
+**Example:**
+```typescript
+// Get sequence tracks from chapter
+const chapter = manifest.chapters[0];
+const tracks = chapter.sequenceAudioTracks || [];
+
+// Play tracks at 5 seconds into chapter
+await audioEngine.playSequenceTracks(
+  tracks,
+  5000, // 5 seconds in ms
+  'https://cdn.example.com/assets/'
+);
+```
+
+#### `stopSequenceTracks()`
+
+Stop specific or all sequence audio tracks.
+
+```typescript
+async stopSequenceTracks(trackIds?: string[]): Promise<void>
+```
+
+**Parameters:**
+- `trackIds` - Array of track IDs to stop (optional, stops all if not provided)
+
+**Example:**
+```typescript
+// Stop specific tracks
+await audioEngine.stopSequenceTracks(['track-1', 'track-2']);
+
+// Stop all sequence tracks
+await audioEngine.stopSequenceTracks();
+```
+
+### SequenceAudioTrack Interface
+
+```typescript
+interface SequenceAudioTrack {
+  id: string;              // Unique identifier
+  friendlyId: string;      // Human-readable ID
+  name?: string;           // Display name
+  assetId: string;         // Reference to audio asset
+  role: AudioRole;         // Audio bus (ambient/music/voiceover/sfx)
+  format?: string;         // Optional format filter
+  startTime: number;       // Start time in milliseconds
+  duration: number;        // Duration in milliseconds
+  volume?: number;         // Volume (0-2, default 1.0)
+  loop?: boolean;          // Whether to loop
+  fadeIn?: number;         // Fade in duration (ms)
+  fadeOut?: number;        // Fade out duration (ms)
+  playbackRate?: number;   // Playback speed multiplier
+  muted?: boolean;         // Whether muted
+}
+```
+
+### Usage Example
+
+**Complete Chapter Audio Playback:**
+
+```typescript
+import { AudioEngineService } from './services/audio-engine.service';
+import type { Chapter } from './types';
+
+@Component({...})
+export class ChapterPlayerComponent {
+  constructor(private audioEngine: AudioEngineService) {}
+
+  async playChapterAudio(chapter: Chapter, timeMs: number) {
+    // Get sequence tracks
+    const tracks = chapter.sequenceAudioTracks || [];
+    
+    // Filter by current format if needed
+    const currentFormat = 'tablet-portrait';
+    const applicableTracks = tracks.filter(track => 
+      !track.format || track.format === currentFormat
+    );
+
+    // Play tracks that should be active
+    await this.audioEngine.playSequenceTracks(
+      applicableTracks,
+      timeMs,
+      this.assetBaseUrl
+    );
+  }
+
+  async stopChapterAudio() {
+    await this.audioEngine.stopSequenceTracks();
+  }
+}
+```
+
+### Features
+
+- ✅ **Automatic Track Selection:** Only plays tracks active at current time
+- ✅ **Offset Playback:** Starts audio from correct position
+- ✅ **Volume Validation:** Prevents non-finite value errors
+- ✅ **Mute Support:** Respects track mute state
+- ✅ **Role-Based Mixing:** Uses existing audio bus system
+- ✅ **Fade Effects:** Applies fade in/out when appropriate
+- ✅ **Error Handling:** Graceful error handling with logging
+
+### Implementation Notes
+
+1. **Track Selection:** Tracks are selected if `currentTimeMs` is within `[startTime, startTime + duration)`
+2. **Offset Calculation:** `offsetSeconds = (currentTimeMs - startTime) / 1000`
+3. **Volume Validation:** Ensures volume is finite and clamped to [0, 2]
+4. **Asset URL:** Full URL = `assetBaseUrl + track.assetId`
+
+---
+
 **AudioEngineService is COMPLETE and PRODUCTION-READY!** ✅
 
-Total implementation: **~748 lines** providing professional-grade audio management with Web Audio API, multiple buses, volume controls, fade effects, and comprehensive testing for immersive audio experiences in the PanelWave Player.
+Total implementation: **~570 lines** (updated November 2024) providing professional-grade audio management with Web Audio API, multiple buses, volume controls, fade effects, sequence audio track support, and comprehensive testing for immersive audio experiences in the PanelWave Player.
