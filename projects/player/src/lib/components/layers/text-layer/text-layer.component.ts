@@ -16,12 +16,11 @@ import type { LocaleCode, LocalizedString } from '../../../types';
  * Displays localized text with custom styling
  */
 @Component({
-  selector: 'pw-text-layer',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './text-layer.component.html',
-  styleUrls: ['./text-layer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-text-layer',
+    imports: [CommonModule],
+    templateUrl: './text-layer.component.html',
+    styleUrls: ['./text-layer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TextLayerComponent {
   /**

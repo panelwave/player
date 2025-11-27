@@ -14,7 +14,7 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 /**
@@ -30,12 +30,11 @@ export interface PluginMessage {
  * Embeds external content in a sandboxed iframe
  */
 @Component({
-  selector: 'pw-plugin-layer',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './plugin-layer.component.html',
-  styleUrls: ['./plugin-layer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-plugin-layer',
+    imports: [],
+    templateUrl: './plugin-layer.component.html',
+    styleUrls: ['./plugin-layer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PluginLayerComponent implements OnInit, OnDestroy {
   /**

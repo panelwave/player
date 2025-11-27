@@ -1,15 +1,14 @@
 import { Component } from '@angular/core';
 
 @Component({
-  selector: 'pw-player',
-  standalone: true,
-  imports: [],
-  template: `
+    selector: 'pw-player',
+    imports: [],
+    template: `
     <p>
       player works!
     </p>
   `,
-  styles: ``
+    styles: ``
 })
 export class PlayerComponent {
 

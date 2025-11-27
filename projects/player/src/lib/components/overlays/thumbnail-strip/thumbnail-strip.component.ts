@@ -16,7 +16,7 @@ import {
   AfterViewInit,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import type { Chapter, Panel } from '../../../types';
 
 /**
@@ -47,12 +47,11 @@ interface ThumbnailItem {
  * Horizontal strip of panel thumbnails for quick navigation
  */
 @Component({
-  selector: 'pw-thumbnail-strip',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './thumbnail-strip.component.html',
-  styleUrls: ['./thumbnail-strip.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-thumbnail-strip',
+    imports: [],
+    templateUrl: './thumbnail-strip.component.html',
+    styleUrls: ['./thumbnail-strip.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
   /**

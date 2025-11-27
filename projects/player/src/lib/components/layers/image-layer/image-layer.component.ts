@@ -10,19 +10,18 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Image Layer Component
  * Displays images with lazy loading and error fallback
  */
 @Component({
-  selector: 'pw-image-layer',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './image-layer.component.html',
-  styleUrls: ['./image-layer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-image-layer',
+    imports: [],
+    templateUrl: './image-layer.component.html',
+    styleUrls: ['./image-layer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ImageLayerComponent {
   /**

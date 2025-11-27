@@ -10,7 +10,7 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import type { LocaleCode, LocalizedString } from '../../../types';
 
 /**
@@ -36,12 +36,11 @@ export interface SpeechBubble {
  * Displays localized text bubbles with SVG tails
  */
 @Component({
-  selector: 'pw-speech-bubbles',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './speech-bubbles.component.html',
-  styleUrls: ['./speech-bubbles.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-speech-bubbles',
+    imports: [],
+    templateUrl: './speech-bubbles.component.html',
+    styleUrls: ['./speech-bubbles.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SpeechBubblesComponent {
   /**

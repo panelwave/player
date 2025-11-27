@@ -10,7 +10,7 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import type { LocaleCode, LocalizedString } from '../../../types';
 
 /**
@@ -35,12 +35,11 @@ export interface WarningPreference {
  * Overlays content with warnings and user controls
  */
 @Component({
-  selector: 'pw-content-warning-overlay',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './content-warning-overlay.component.html',
-  styleUrls: ['./content-warning-overlay.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-content-warning-overlay',
+    imports: [],
+    templateUrl: './content-warning-overlay.component.html',
+    styleUrls: ['./content-warning-overlay.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ContentWarningOverlayComponent {
   /**

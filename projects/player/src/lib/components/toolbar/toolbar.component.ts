@@ -10,7 +10,7 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode } from '../../types';
 
@@ -19,12 +19,11 @@ import type { LocaleCode } from '../../types';
  * Provides all player controls in a bottom toolbar
  */
 @Component({
-  selector: 'pw-toolbar',
-  standalone: true,
-  imports: [CommonModule, TranslateModule],
-  templateUrl: './toolbar.component.html',
-  styleUrls: ['./toolbar.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-toolbar',
+    imports: [TranslateModule],
+    templateUrl: './toolbar.component.html',
+    styleUrls: ['./toolbar.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ToolbarComponent {
   /**

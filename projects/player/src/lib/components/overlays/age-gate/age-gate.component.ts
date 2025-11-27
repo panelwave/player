@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import type { LocaleCode } from '../../../types';
 
@@ -29,12 +29,11 @@ export interface AgeVerificationResult {
  * Modal overlay for age verification
  */
 @Component({
-  selector: 'pw-age-gate',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './age-gate.component.html',
-  styleUrls: ['./age-gate.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-age-gate',
+    imports: [FormsModule],
+    templateUrl: './age-gate.component.html',
+    styleUrls: ['./age-gate.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AgeGateComponent {
   /**

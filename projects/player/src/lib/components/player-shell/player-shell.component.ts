@@ -13,7 +13,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { HttpClient } from '@angular/common/http';
 import { Subject, takeUntil } from 'rxjs';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
@@ -80,10 +80,8 @@ export interface EntitlementAdapter {
  * Main orchestrator for the PanelWave player
  */
 @Component({
-  selector: 'pw-player-shell',
-  standalone: true,
-  imports: [
-    CommonModule,
+    selector: 'pw-player-shell',
+    imports: [
     TranslateModule,
     ViewportComponent,
     ToolbarComponent,
@@ -94,11 +92,11 @@ export interface EntitlementAdapter {
     CharacterRosterComponent,
     ExtrasViewerComponent,
     ShareModalComponent,
-    CommentsDrawerComponent,
-  ],
-  templateUrl: './player-shell.component.html',
-  styleUrls: ['./player-shell.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    CommentsDrawerComponent
+],
+    templateUrl: './player-shell.component.html',
+    styleUrls: ['./player-shell.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PlayerShellComponent implements OnInit, OnDestroy {
   /**

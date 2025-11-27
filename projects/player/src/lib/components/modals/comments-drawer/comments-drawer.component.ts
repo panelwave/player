@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
 
@@ -42,12 +42,11 @@ export interface CommentPost {
  * Side drawer for comment interaction
  */
 @Component({
-  selector: 'pw-comments-drawer',
-  standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule],
-  templateUrl: './comments-drawer.component.html',
-  styleUrls: ['./comments-drawer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-comments-drawer',
+    imports: [FormsModule, TranslateModule],
+    templateUrl: './comments-drawer.component.html',
+    styleUrls: ['./comments-drawer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CommentsDrawerComponent {
   /**

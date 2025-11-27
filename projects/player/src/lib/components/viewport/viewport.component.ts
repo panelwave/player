@@ -13,7 +13,7 @@ import {
   HostListener,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem } from '../../types';
 import { inject } from '@angular/core';
@@ -36,12 +36,11 @@ export interface PerformanceMetrics {
  * Renders a panel with pan/zoom/transform capabilities
  */
 @Component({
-  selector: 'pw-viewport',
-  standalone: true,
-  imports: [CommonModule, LayerRendererComponent],
-  templateUrl: './viewport.component.html',
-  styleUrls: ['./viewport.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-viewport',
+    imports: [LayerRendererComponent],
+    templateUrl: './viewport.component.html',
+    styleUrls: ['./viewport.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ViewportComponent implements OnChanges {
   private manifestService = inject(ManifestService);
@@ -1149,8 +1148,8 @@ export class ViewportComponent implements OnChanges {
    * Note: This is only available in dev mode or with specific flags
    */
   forceGarbageCollection(): void {
-    const globalWithGC = global as unknown as { gc?: () => void };
-    if ('gc' in global && typeof globalWithGC.gc === 'function') {
+    const globalWithGC = globalThis as unknown as { gc?: () => void };
+    if ('gc' in globalThis && typeof globalWithGC.gc === 'function') {
       globalWithGC.gc();
       console.log('[Performance] Garbage collection triggered');
     } else {

@@ -12,7 +12,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode, VariableDefinition } from '../../../types';
@@ -44,12 +44,11 @@ export interface VariableChange {
  * Modal for editing preferences and variables
  */
 @Component({
-  selector: 'pw-settings-modal',
-  standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule],
-  templateUrl: './settings-modal.component.html',
-  styleUrls: ['./settings-modal.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-settings-modal',
+    imports: [FormsModule, TranslateModule],
+    templateUrl: './settings-modal.component.html',
+    styleUrls: ['./settings-modal.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SettingsModalComponent implements OnInit {
   /**

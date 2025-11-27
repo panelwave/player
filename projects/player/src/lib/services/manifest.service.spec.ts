@@ -3,9 +3,10 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ManifestService } from './manifest.service';
 import type { PanelWaveManifest } from '../types';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('ManifestService', () => {
   let service: ManifestService;
@@ -64,9 +65,9 @@ describe('ManifestService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [ManifestService],
-    });
+    imports: [],
+    providers: [ManifestService, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
+});
 
     service = TestBed.inject(ManifestService);
     httpMock = TestBed.inject(HttpTestingController);

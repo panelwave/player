@@ -12,19 +12,18 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Video Layer Component
  * Displays videos with playback control
  */
 @Component({
-  selector: 'pw-video-layer',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './video-layer.component.html',
-  styleUrls: ['./video-layer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-video-layer',
+    imports: [],
+    templateUrl: './video-layer.component.html',
+    styleUrls: ['./video-layer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class VideoLayerComponent {
   /**

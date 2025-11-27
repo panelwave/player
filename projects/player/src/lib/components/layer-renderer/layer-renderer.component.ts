@@ -20,12 +20,11 @@ import { ManifestService } from '../../services/manifest.service';
  * Dynamically renders layers based on their kind
  */
 @Component({
-  selector: 'pw-layer-renderer',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './layer-renderer.component.html',
-  styleUrls: ['./layer-renderer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-layer-renderer',
+    imports: [CommonModule],
+    templateUrl: './layer-renderer.component.html',
+    styleUrls: ['./layer-renderer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LayerRendererComponent {
   private manifestService = inject(ManifestService);

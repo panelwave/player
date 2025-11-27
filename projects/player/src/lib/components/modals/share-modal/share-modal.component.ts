@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TranslateModule } from '@ngx-translate/core';
 
 /**
@@ -24,12 +24,11 @@ export type SharePlatform = 'twitter' | 'facebook' | 'reddit' | 'email' | 'copy'
  * Modal for sharing content via various platforms
  */
 @Component({
-  selector: 'pw-share-modal',
-  standalone: true,
-  imports: [CommonModule, TranslateModule],
-  templateUrl: './share-modal.component.html',
-  styleUrls: ['./share-modal.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-share-modal',
+    imports: [TranslateModule],
+    templateUrl: './share-modal.component.html',
+    styleUrls: ['./share-modal.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ShareModalComponent {
   /**

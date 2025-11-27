@@ -14,15 +14,14 @@ import {
   ViewChild,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { PluginHostService } from '../../services/plugin-host.service';
 import type { PluginManifest } from '../../types/plugin.types';
 
 @Component({
-  selector: 'pw-plugin-sandbox',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'pw-plugin-sandbox',
+    imports: [],
+    template: `
     <div class="plugin-sandbox" [class.loading]="loading">
       @if (loading) {
         <div class="plugin-loading">
@@ -38,7 +37,7 @@ import type { PluginManifest } from '../../types/plugin.types';
       }
     </div>
   `,
-  styles: [`
+    styles: [`
     .plugin-sandbox {
       position: relative;
       width: 100%;
@@ -82,7 +81,7 @@ import type { PluginManifest } from '../../types/plugin.types';
       color: #e74c3c;
     }
   `],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PluginSandboxComponent implements OnInit, OnDestroy {
   @Input() manifest!: PluginManifest;

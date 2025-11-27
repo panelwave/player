@@ -11,19 +11,18 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Top HUD Component
  * Displays work/chapter/panel info and quick actions
  */
 @Component({
-  selector: 'pw-top-hud',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './top-hud.component.html',
-  styleUrls: ['./top-hud.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-top-hud',
+    imports: [],
+    templateUrl: './top-hud.component.html',
+    styleUrls: ['./top-hud.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TopHudComponent {
   /**

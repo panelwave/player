@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
@@ -40,12 +40,11 @@ export interface Extra {
  * Modal for displaying and browsing extras
  */
 @Component({
-  selector: 'pw-extras-viewer',
-  standalone: true,
-  imports: [CommonModule, TranslateModule],
-  templateUrl: './extras-viewer.component.html',
-  styleUrls: ['./extras-viewer.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-extras-viewer',
+    imports: [TranslateModule],
+    templateUrl: './extras-viewer.component.html',
+    styleUrls: ['./extras-viewer.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExtrasViewerComponent {
   /**

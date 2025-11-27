@@ -13,7 +13,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode, LocalizedString } from '../../../types';
@@ -35,12 +35,11 @@ export interface Character {
  * Modal for displaying and filtering characters
  */
 @Component({
-  selector: 'pw-character-roster',
-  standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule],
-  templateUrl: './character-roster.component.html',
-  styleUrls: ['./character-roster.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-character-roster',
+    imports: [FormsModule, TranslateModule],
+    templateUrl: './character-roster.component.html',
+    styleUrls: ['./character-roster.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CharacterRosterComponent implements OnInit, OnChanges {
   /**

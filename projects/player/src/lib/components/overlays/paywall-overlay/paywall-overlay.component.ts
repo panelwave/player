@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import type { PaywallGate, PurchaseInfo } from '../../../types/entitlement.types';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
@@ -25,12 +25,11 @@ export type PaywallAction = 'purchase' | 'subscribe' | 'login' | 'dismiss';
  * Modal overlay for gated content
  */
 @Component({
-  selector: 'pw-paywall-overlay',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './paywall-overlay.component.html',
-  styleUrls: ['./paywall-overlay.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-paywall-overlay',
+    imports: [],
+    templateUrl: './paywall-overlay.component.html',
+    styleUrls: ['./paywall-overlay.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaywallOverlayComponent {
   /**

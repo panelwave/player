@@ -12,7 +12,7 @@ import {
   OnInit,
   OnDestroy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { VariantService } from '../../services/variant.service';
 import type {
   VariantGroup,
@@ -23,10 +23,9 @@ import type {
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
-  selector: 'pw-variant-selector',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'pw-variant-selector',
+    imports: [],
+    template: `
     <div class="variant-selector" [class.visible]="visible">
       <div class="selector-header">
         <h3>Variant Selector</h3>
@@ -96,7 +95,7 @@ import { Subject, takeUntil } from 'rxjs';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .variant-selector {
       position: fixed;
       right: 20px;
@@ -309,7 +308,7 @@ import { Subject, takeUntil } from 'rxjs';
       color: #999;
     }
   `],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class VariantSelectorComponent implements OnInit, OnDestroy {
   @Input() visible = false;

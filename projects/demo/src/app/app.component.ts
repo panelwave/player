@@ -5,11 +5,10 @@ import { PlayerShellComponent } from 'player';
 import type { PanelWaveManifest } from 'player';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet, PlayerShellComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+    selector: 'app-root',
+    imports: [RouterOutlet, PlayerShellComponent],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
   title = 'PanelWave Player Demo';

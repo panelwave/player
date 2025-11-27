@@ -3,7 +3,7 @@
  */
 
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode } from '../../../types';
 
@@ -12,12 +12,11 @@ import type { LocaleCode } from '../../../types';
  * Allows users to select the interface language
  */
 @Component({
-  selector: 'pw-language-modal',
-  standalone: true,
-  imports: [CommonModule, TranslateModule],
-  templateUrl: './language-modal.component.html',
-  styleUrls: ['./language-modal.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-language-modal',
+    imports: [TranslateModule],
+    templateUrl: './language-modal.component.html',
+    styleUrls: ['./language-modal.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LanguageModalComponent {
   /**

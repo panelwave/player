@@ -10,7 +10,7 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Hotspot shape definition
@@ -33,12 +33,11 @@ export interface Hotspot {
  * Displays interactive clickable areas over panel content
  */
 @Component({
-  selector: 'pw-hotspots-overlay',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './hotspots-overlay.component.html',
-  styleUrls: ['./hotspots-overlay.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-hotspots-overlay',
+    imports: [],
+    templateUrl: './hotspots-overlay.component.html',
+    styleUrls: ['./hotspots-overlay.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HotspotsOverlayComponent {
   /**

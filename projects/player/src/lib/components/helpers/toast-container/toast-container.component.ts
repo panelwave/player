@@ -9,7 +9,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Toast type
@@ -39,12 +39,11 @@ interface ToastItem extends Toast {
  * Displays toast notifications in a queue
  */
 @Component({
-  selector: 'pw-toast-container',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './toast-container.component.html',
-  styleUrls: ['./toast-container.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+    selector: 'pw-toast-container',
+    imports: [],
+    templateUrl: './toast-container.component.html',
+    styleUrls: ['./toast-container.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ToastContainerComponent {
   /**
