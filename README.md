@@ -3,14 +3,14 @@
 **Open-source Angular library** for rendering interactive graphic novels in the PanelWave JSON format. High-performance, accessible, and extensible player with graph-based navigation, multilingual support, and plugin system.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Angular](https://img.shields.io/badge/Angular-17%2B-red)](https://angular.io)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
+[![Angular](https://img.shields.io/badge/Angular-20%2B-red)](https://angular.io)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)](https://www.typescriptlang.org/)
 
 ---
 
 ## 🎯 Overview
 
-PanelWave Player is an **Angular 17+ library** that renders interactive graphic novels using the open **PanelWave JSON format**. It provides a complete, production-ready player with advanced features:
+PanelWave Player is an **Angular 20+ library** that renders interactive graphic novels using the open **PanelWave JSON format**. It provides a complete, production-ready player with advanced features:
 
 - **📖 Graph-Based Navigation** - Non-linear storytelling with conditional branching
 - **🌍 Multilingual Support** - Runtime language switching with localized assets
@@ -184,8 +184,8 @@ panelwave-player/
 ## 🛠️ Technology Stack
 
 ### Core
-- **Framework:** Angular 17+ (standalone components)
-- **Language:** TypeScript 5.4+ (strict mode)
+- **Framework:** Angular 20+ (standalone components)
+- **Language:** TypeScript 5.8+ (strict mode)
 - **State Management:** RxJS BehaviorSubjects
 - **Logic Engine:** json-logic-js (condition evaluation)
 
@@ -284,7 +284,7 @@ panelwave-player/
 # Required
 - Node.js 20.x
 - npm 10.x
-- Angular CLI 17+
+- Angular CLI 20+
 ```
 
 ### Setup
@@ -382,8 +382,8 @@ npm publish --access public
   "keywords": ["angular", "graphic-novel", "webcomic", "interactive", "player"],
   "license": "MIT",
   "peerDependencies": {
-    "@angular/common": "^17.0.0",
-    "@angular/core": "^17.0.0"
+    "@angular/common": "^20.0.0",
+    "@angular/core": "^20.0.0"
   }
 }
 ```
@@ -603,5 +603,9 @@ Built with:
 ---
 
 **Version:** 1.0.0 (Phase 6 Complete)  
-**Last Updated:** 2025-10-16  
+**Last Updated:** 2025-11-27  
 **Status:** 🚧 In Development (Testing & QA phase)
+
+### Recent Updates
+- **2025-11-27:** Upgraded to Angular 20.3.14 with TypeScript 5.8.3
+- **2025-10-16:** Completed Phase 6 (Advanced Features)
