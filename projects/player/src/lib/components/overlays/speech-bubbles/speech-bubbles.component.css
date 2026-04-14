@@ -1,6 +1,20 @@
 /**
  * Speech Bubbles Component Styles
+ * Styles for the ComicBalloon SVG-based speech bubble renderer.
+ * Balloons are positioned absolutely within the container using
+ * pixel coordinates computed from normalized shape data.
  */
+
+:host {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+}
 
 .speech-bubbles-container {
   position: absolute;
@@ -11,110 +25,45 @@
   pointer-events: none;
 }
 
-.speech-bubble {
+/* Each balloon wrapper is positioned absolutely at the bubble's shape center */
+.speech-bubble-wrapper {
   position: absolute;
   pointer-events: auto;
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  z-index: 10;
-}
-
-.speech-bubble.toggleable {
   cursor: pointer;
+  z-index: 10;
+  animation: bubbleAppear 0.3s ease-out;
 }
 
-.speech-bubble.toggleable:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transform: scale(1.02);
+.speech-bubble-wrapper:focus {
+  outline: 2px solid rgba(0, 120, 255, 0.6);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
-/* Bubble content */
-.bubble-content {
-  font-size: 14px;
-  line-height: 1.5;
-  color: #333;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+.speech-bubble-wrapper:hover {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
 }
 
-/* Bubble styles */
-.bubble-speech {
-  background: white;
-  border: 2px solid #e0e0e0;
+/* The balloon container holds the ComicBalloon SVG */
+.balloon-container {
+  display: inline-block;
+  position: relative;
 }
 
-.bubble-thought {
-  background: #f5f5f5;
-  border: 2px dashed #bdbdbd;
-  border-radius: 20px;
-}
-
-.bubble-shout {
-  background: #fff9c4;
-  border: 3px solid #fbc02d;
-  font-weight: 700;
-}
-
-/* SVG tail */
-.bubble-tail {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+/* Ensure the SVG rendered by ComicBalloon displays correctly */
+.balloon-container :deep(.comic-balloon-svg) {
+  display: block;
   overflow: visible;
-}
-
-.tail-path {
-  fill: white;
-  stroke: #e0e0e0;
-  stroke-width: 2;
-}
-
-.bubble-speech .tail-path {
-  fill: white;
-  stroke: #e0e0e0;
-}
-
-.bubble-thought .tail-path {
-  fill: #f5f5f5;
-  stroke: #bdbdbd;
-  stroke-dasharray: 4, 4;
-}
-
-.bubble-shout .tail-path {
-  fill: #fff9c4;
-  stroke: #fbc02d;
-  stroke-width: 3;
 }
 
 /* Animation on appear */
 @keyframes bubbleAppear {
   from {
     opacity: 0;
-    transform: scale(0.8);
+    transform: scale(0.85);
   }
   to {
     opacity: 1;
     transform: scale(1);
-  }
-}
-
-.speech-bubble {
-  animation: bubbleAppear 0.3s ease-out;
-}
-
-/* Responsive text */
-@media (max-width: 768px) {
-  .bubble-content {
-    font-size: 12px;
-  }
-  
-  .speech-bubble {
-    padding: 12px;
   }
 }

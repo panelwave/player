@@ -4,7 +4,7 @@
  */
 
 // Import types from other modules
-import type { Panel } from './panel.types';
+import type { Panel, BalloonConfig, BalloonConfigOverride } from './panel.types';
 import type { Graph } from './graph.types';
 import type { Assets } from './asset.types';
 import type { Variables } from './variable.types';
@@ -149,6 +149,9 @@ export interface Character {
     /** Provider-specific voice ID */
     voiceId: string;
   };
+  
+  /** Per-character balloon style overrides (merged onto work-level defaults) */
+  balloonConfig?: BalloonConfigOverride;
 }
 
 /**
@@ -347,6 +350,18 @@ export interface PanelPlacement {
  * Settings for global UI and preloading behavior
  */
 export interface Settings {
+  /** Typography and global styling defaults */
+  typography?: {
+    /** Default font family */
+    default_font?: string;
+    /** Default font size in points */
+    default_font_size?: number;
+    /** Default page background color */
+    default_page_bg_color?: string;
+    /** Default balloon styling for all speech bubbles in this work */
+    balloon_config?: BalloonConfig;
+  };
+  
   /** UI defaults (optional) */
   ui?: UIDefaults;
   

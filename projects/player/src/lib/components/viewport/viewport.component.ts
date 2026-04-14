@@ -12,11 +12,13 @@ import {
   SimpleChanges,
   HostListener,
   ChangeDetectionStrategy,
+  ElementRef,
+  inject,
 } from '@angular/core';
 
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
-import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem } from '../../types';
-import { inject } from '@angular/core';
+import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
+import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 
 /**
@@ -37,13 +39,14 @@ export interface PerformanceMetrics {
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent],
+    imports: [LayerRendererComponent, SpeechBubblesComponent],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ViewportComponent implements OnChanges {
   private manifestService = inject(ManifestService);
+  private elementRef = inject(ElementRef<HTMLElement>);
 
   /**
    * Panel to render (panel view)
@@ -109,6 +112,16 @@ export class ViewportComponent implements OnChanges {
    * Enable lazy loading for images
    */
   @Input() enableLazyLoading = true;
+
+  /**
+   * Work-level balloon config defaults (from settings.typography.balloon_config)
+   */
+  @Input() workBalloonConfig: BalloonConfig | null = null;
+
+  /**
+   * Characters array for resolving character-level balloon overrides
+   */
+  @Input() characters: Character[] = [];
 
   /**
    * Viewport clicked
@@ -225,6 +238,41 @@ export class ViewportComponent implements OnChanges {
    */
   getViewModeClass(): string {
     return `viewport-${this.viewMode}`;
+  }
+
+  /**
+   * Get the container width in pixels (panel view).
+   * Used by pw-speech-bubbles to convert normalized coordinates to pixels.
+   */
+  getContainerWidth(): number {
+    const container = this.elementRef.nativeElement.querySelector('.panel-container');
+    return container ? container.clientWidth : 0;
+  }
+
+  /**
+   * Get the container height in pixels (panel view).
+   */
+  getContainerHeight(): number {
+    const container = this.elementRef.nativeElement.querySelector('.panel-container');
+    return container ? container.clientHeight : 0;
+  }
+
+  /**
+   * Get a page-view panel's rendered width in pixels.
+   */
+  getPagePanelWidth(placement: PanelPlacement): number {
+    const pageCanvas = this.elementRef.nativeElement.querySelector('.page-canvas');
+    if (!pageCanvas) return 0;
+    return placement.w * pageCanvas.clientWidth;
+  }
+
+  /**
+   * Get a page-view panel's rendered height in pixels.
+   */
+  getPagePanelHeight(placement: PanelPlacement): number {
+    const pageCanvas = this.elementRef.nativeElement.querySelector('.page-canvas');
+    if (!pageCanvas) return 0;
+    return placement.h * pageCanvas.clientHeight;
   }
 
   /**

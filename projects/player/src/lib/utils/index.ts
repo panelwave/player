@@ -44,6 +44,25 @@ export {
   testJsonLogic,
 } from './json-logic-utils';
 
+// Balloon config utilities
+export {
+  DEFAULT_BALLOON_CONFIG,
+  mergeBalloonConfig,
+  balloonConfigToRenderOptions,
+  balloonConfigToTailOptions,
+} from './balloon-config';
+
+// Comic Balloon renderer
+export {
+  ComicBalloon,
+  createBalloon,
+  type BalloonOptions,
+  type BalloonPadding,
+  type TailOptions,
+  type CutOptions,
+  type BalloonRenderResult,
+} from './comic-balloon';
+
 // Animation utilities
 export {
   type EasingFunction,

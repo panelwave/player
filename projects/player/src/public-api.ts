@@ -24,8 +24,22 @@ export { TranslationService } from './lib/services/translation.service';
 // Legacy
 export * from './lib/player.service';
 
+// Utilities
+export {
+  DEFAULT_BALLOON_CONFIG,
+  mergeBalloonConfig,
+  balloonConfigToRenderOptions,
+  balloonConfigToTailOptions,
+  ComicBalloon,
+  createBalloon,
+  type BalloonOptions,
+  type TailOptions,
+  type BalloonRenderResult,
+} from './lib/utils';
+
 // Components
 export { PlayerShellComponent } from './lib/components/player-shell/player-shell.component';
+export { SpeechBubblesComponent } from './lib/components/overlays/speech-bubbles/speech-bubbles.component';
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';

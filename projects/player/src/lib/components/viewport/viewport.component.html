@@ -29,6 +29,18 @@
               (layerClick)="layerClick.emit($event)">
             </pw-layer-renderer>
           }
+          
+          <!-- Speech bubbles overlay for panel view -->
+          @if (panel.speechBubbles && panel.speechBubbles.length > 0) {
+            <pw-speech-bubbles
+              [bubbles]="panel.speechBubbles"
+              [locale]="locale"
+              [containerWidth]="getContainerWidth()"
+              [containerHeight]="getContainerHeight()"
+              [workBalloonConfig]="workBalloonConfig"
+              [characters]="characters">
+            </pw-speech-bubbles>
+          }
         </div>
       } @else {
         <div class="no-panel">
@@ -79,6 +91,18 @@
                       [altText]="getAltText(layer)"
                       (layerClick)="layerClick.emit($event)">
                     </pw-layer-renderer>
+                  }
+                  
+                  <!-- Speech bubbles overlay for page view panels -->
+                  @if (panelData.speechBubbles && panelData.speechBubbles.length > 0) {
+                    <pw-speech-bubbles
+                      [bubbles]="panelData.speechBubbles"
+                      [locale]="locale"
+                      [containerWidth]="getPagePanelWidth(placement)"
+                      [containerHeight]="getPagePanelHeight(placement)"
+                      [workBalloonConfig]="workBalloonConfig"
+                      [characters]="characters">
+                    </pw-speech-bubbles>
                   }
                 </div>
               }

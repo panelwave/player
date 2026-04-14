@@ -251,6 +251,9 @@ export interface SpeechBubble {
   /** Bubble styling (optional) */
   style?: BubbleStyle;
   
+  /** Per-bubble balloon style overrides (merged onto character or work-level defaults) */
+  balloonConfig?: BalloonConfigOverride;
+  
   /** Audio asset ID for voice-over (optional) */
   audioAssetId?: AssetRef;
   
@@ -259,26 +262,48 @@ export interface SpeechBubble {
 }
 
 /**
- * Speech bubble shape
+ * Speech bubble shape (matches schema Shape definition)
  */
-export interface BubbleShape {
-  /** Shape type */
-  type: 'ellipse' | 'rect' | 'rounded-rect' | 'cloud' | 'thought';
-  
+export type BubbleShape = BubbleShapeRect | BubbleShapeCircle | BubbleShapeEllipse | BubbleShapePolygon;
+
+export interface BubbleShapeRect {
+  type: 'rect';
   /** X position (normalized 0-1) */
   x: number;
-  
   /** Y position (normalized 0-1) */
   y: number;
-  
   /** Width (normalized 0-1) */
   w: number;
-  
   /** Height (normalized 0-1) */
   h: number;
-  
-  /** Border radius for rounded shapes (optional) */
-  radius?: number;
+}
+
+export interface BubbleShapeCircle {
+  type: 'circle';
+  /** Center X (normalized 0-1) */
+  cx: number;
+  /** Center Y (normalized 0-1) */
+  cy: number;
+  /** Radius (normalized 0-1) */
+  r: number;
+}
+
+export interface BubbleShapeEllipse {
+  type: 'ellipse';
+  /** X position (normalized 0-1) */
+  x: number;
+  /** Y position (normalized 0-1) */
+  y: number;
+  /** Width (normalized 0-1) */
+  w: number;
+  /** Height (normalized 0-1) */
+  h: number;
+}
+
+export interface BubbleShapePolygon {
+  type: 'polygon';
+  /** Array of points [x, y] (normalized 0-1) */
+  points: NormalizedPoint[];
 }
 
 /**
@@ -314,6 +339,78 @@ export interface BubbleStyle {
   /** Stroke width in pixels (optional) */
   strokeWidth?: number;
 }
+
+/**
+ * Balloon type discriminator
+ */
+export type BalloonType =
+  | 'normal'
+  | 'rectangle'
+  | 'cutTop'
+  | 'cutTopRight'
+  | 'cutTopLeft'
+  | 'thought'
+  | 'shout'
+  | 'whisper'
+  | 'connector';
+
+/** Tail curve direction */
+export type TailCurve = 'straight' | 'left' | 'right';
+
+/** Tail configuration */
+export interface TailConfig {
+  enabled: boolean;
+  /** 0-359 degrees (0=top, 90=right, 180=bottom, 270=left) */
+  position: number;
+  /** Length in pixels */
+  length: number;
+  curve: TailCurve;
+  /** 0-1 curve intensity */
+  curveAmount: number;
+}
+
+/** Border hiding configuration */
+export interface HideBorderConfig {
+  enabled: boolean;
+  /** 0-359 degrees */
+  angle: number;
+  /** 10-180 degrees width */
+  arc: number;
+}
+
+/**
+ * Complete balloon configuration.
+ * Used at work level (defaults), character level (overrides), and bubble level.
+ */
+export interface BalloonConfig {
+  balloonType: BalloonType;
+  /** 0-1 (0=rectangle, 1=ellipse) */
+  cornerRadius: number;
+  /** Pixels */
+  maxWidth: number;
+  /** Pixels */
+  maxHeight: number;
+  /** CSS font-family */
+  fontFamily: string;
+  /** Pixels */
+  fontSize: number;
+  /** 1-8 */
+  strokeWidth: number;
+  /** Hex color */
+  strokeColor: string;
+  /** Hex color */
+  fillColor: string;
+  tail: TailConfig;
+  hideBorder: HideBorderConfig;
+}
+
+/**
+ * Partial balloon config for character-level and bubble-level overrides.
+ */
+export type BalloonConfigOverride = Partial<BalloonConfig> & {
+  tail?: Partial<TailConfig>;
+  hideBorder?: Partial<HideBorderConfig>;
+};
 
 /**
  * Interactive hotspot
