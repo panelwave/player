@@ -15,7 +15,7 @@ PanelWave Player is an **Angular 20+ library** that renders interactive graphic 
 - **📖 Graph-Based Navigation** - Non-linear storytelling with conditional branching
 - **🌍 Multilingual Support** - Runtime language switching with localized assets
 - **♿ Accessibility First** - WCAG 2.1 AA compliance, keyboard navigation, screen reader support
-- **🎮 Interactive Layers** - Hotspots, speech bubbles, variants, parallax effects
+- **🎮 Interactive Layers** - Hotspots, speech bubbles (9 balloon types with SVG rendering), variants, parallax effects
 - **🔌 Plugin System** - Extensible with custom components (360° viewer, mega-zoom, mini-games)
 - **💰 Monetization Ready** - Paywall adapter interface for entitlement checks
 - **🎨 Media Rich** - Image caching, WebAudio mixing, video playback, preloading
@@ -78,7 +78,7 @@ const config: PlayerConfig = {
 
 ### ✅ Content & Media
 - **Layer System** - Image, video, text, audio, plugin layers
-- **Speech Bubbles** - Character dialogue with tail positioning and conditions
+- **Speech Bubbles** - Comic-book balloon rendering (normal, thought, shout, whisper, connector, cut-top variants) with configurable tails, hide-border effects, and per-character/per-bubble style overrides
 - **Hotspots** - Interactive areas (rect, circle, polygon) with actions
 - **Variants** - Conditional content based on variables/entitlements
 - **Preloading** - Intelligent lookahead with configurable distance
@@ -157,7 +157,9 @@ panelwave-player/
 │   │       │   ├── locale-utils.ts
 │   │       │   ├── asset-utils.ts
 │   │       │   ├── json-logic-utils.ts
-│   │       │   └── animation-utils.ts
+│   │       │   ├── animation-utils.ts
+│   │       │   ├── comic-balloon.ts   # SVG balloon renderer
+│   │       │   └── balloon-config.ts  # Balloon config utilities
 │   │       │
 │   │       └── styles/            # Global styles
 │   │
@@ -439,6 +441,45 @@ export class MyEntitlementAdapter implements EntitlementAdapter {
 </pw-player>
 ```
 
+### Speech Bubble Configuration
+
+Speech bubbles are rendered using the `ComicBalloon` SVG engine. Styling cascades from work-level defaults through character overrides to per-bubble overrides.
+
+```typescript
+import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig } from '@panelwave/player';
+import type { BalloonConfig, BalloonConfigOverride } from '@panelwave/player';
+
+// Work-level defaults (set in manifest settings.typography.balloon_config)
+const workDefaults: BalloonConfig = {
+  ...DEFAULT_BALLOON_CONFIG,
+  balloonType: 'normal',       // normal | rectangle | cutTop | thought | shout | whisper | connector
+  cornerRadius: 0.5,           // 0 = rectangle, 1 = ellipse
+  fontFamily: "'Ames Italic', sans-serif",
+  fontSize: 12,
+  strokeWidth: 2,
+  strokeColor: '#000000',
+  fillColor: '#ffffff',
+  tail: {
+    enabled: true,
+    position: 180,             // compass degrees (0=top, 90=right, 180=bottom, 270=left)
+    length: 45,
+    curve: 'straight',         // straight | left | right
+    curveAmount: 0.4,
+  },
+  hideBorder: { enabled: false, angle: 0, arc: 60 },
+};
+
+// Character-level override (only overridden fields)
+const villainStyle: BalloonConfigOverride = {
+  balloonType: 'shout',
+  fillColor: '#ffe0e0',
+  tail: { curve: 'right', curveAmount: 0.6 },
+};
+
+// Merge: work defaults → character override
+const effective = mergeBalloonConfig(workDefaults, villainStyle);
+```
+
 ### Register Custom Plugin
 
 ```typescript
@@ -603,9 +644,10 @@ Built with:
 ---
 
 **Version:** 1.0.0 (Phase 6 Complete)  
-**Last Updated:** 2025-11-27  
+**Last Updated:** 2026-04-14  
 **Status:** 🚧 In Development (Testing & QA phase)
 
 ### Recent Updates
+- **2026-04-14:** Integrated full speech bubble/balloon rendering from CMS (ComicBalloon SVG renderer, 9 balloon types, configurable tails, hide-border effects, per-character and per-bubble style overrides, panel + page view support)
 - **2025-11-27:** Upgraded to Angular 20.3.14 with TypeScript 5.8.3
 - **2025-10-16:** Completed Phase 6 (Advanced Features)
