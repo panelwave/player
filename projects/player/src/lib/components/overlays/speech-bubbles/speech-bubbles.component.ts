@@ -177,7 +177,7 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   }
 
   /**
-   * Compute the pixel position of a bubble from its normalized shape coordinates
+   * Compute the pixel position of a bubble from its normalized bounding box
    */
   computeBubblePosition(bubble: SpeechBubble): { left: number; top: number; width: number; height: number } {
     const cw = this.containerWidth || 1;
@@ -188,45 +188,12 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
       return { left: 0, top: 0, width: 120, height: 80 };
     }
 
-    switch (shape.type) {
-      case 'rect':
-      case 'ellipse':
-        return {
-          left: shape.x * cw + (shape.w * cw) / 2,
-          top: shape.y * ch + (shape.h * ch) / 2,
-          width: shape.w * cw,
-          height: shape.h * ch,
-        };
-
-      case 'circle':
-        return {
-          left: shape.cx * cw,
-          top: shape.cy * ch,
-          width: shape.r * 2 * cw,
-          height: shape.r * 2 * ch,
-        };
-
-      case 'polygon': {
-        if (!shape.points || shape.points.length === 0) {
-          return { left: 0, top: 0, width: 120, height: 80 };
-        }
-        const xs = shape.points.map(p => p[0] * cw);
-        const ys = shape.points.map(p => p[1] * ch);
-        const minX = Math.min(...xs);
-        const minY = Math.min(...ys);
-        const maxX = Math.max(...xs);
-        const maxY = Math.max(...ys);
-        return {
-          left: (minX + maxX) / 2,
-          top: (minY + maxY) / 2,
-          width: maxX - minX,
-          height: maxY - minY,
-        };
-      }
-
-      default:
-        return { left: 0, top: 0, width: 120, height: 80 };
-    }
+    return {
+      left: shape.x * cw + (shape.w * cw) / 2,
+      top: shape.y * ch + (shape.h * ch) / 2,
+      width: shape.w * cw,
+      height: shape.h * ch,
+    };
   }
 
   /**

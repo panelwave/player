@@ -242,8 +242,8 @@ export interface SpeechBubble {
   /** Localized speech text */
   text: LocalizedString;
   
-  /** Bubble shape and position */
-  shape: BubbleShape;
+  /** Bounding box for bubble position and size (normalized 0-1 coordinates) */
+  shape: BoundingBox;
   
   /** Tail pointing configuration (optional) */
   tail?: BubbleTail;
@@ -262,48 +262,18 @@ export interface SpeechBubble {
 }
 
 /**
- * Speech bubble shape (matches schema Shape definition)
+ * Axis-aligned bounding box using normalized coordinates (0-1).
+ * Used for speech bubble positioning within a panel.
  */
-export type BubbleShape = BubbleShapeRect | BubbleShapeCircle | BubbleShapeEllipse | BubbleShapePolygon;
-
-export interface BubbleShapeRect {
-  type: 'rect';
-  /** X position (normalized 0-1) */
+export interface BoundingBox {
+  /** Left edge (0 = left, 1 = right) */
   x: number;
-  /** Y position (normalized 0-1) */
+  /** Top edge (0 = top, 1 = bottom) */
   y: number;
-  /** Width (normalized 0-1) */
+  /** Width (fraction of container) */
   w: number;
-  /** Height (normalized 0-1) */
+  /** Height (fraction of container) */
   h: number;
-}
-
-export interface BubbleShapeCircle {
-  type: 'circle';
-  /** Center X (normalized 0-1) */
-  cx: number;
-  /** Center Y (normalized 0-1) */
-  cy: number;
-  /** Radius (normalized 0-1) */
-  r: number;
-}
-
-export interface BubbleShapeEllipse {
-  type: 'ellipse';
-  /** X position (normalized 0-1) */
-  x: number;
-  /** Y position (normalized 0-1) */
-  y: number;
-  /** Width (normalized 0-1) */
-  w: number;
-  /** Height (normalized 0-1) */
-  h: number;
-}
-
-export interface BubbleShapePolygon {
-  type: 'polygon';
-  /** Array of points [x, y] (normalized 0-1) */
-  points: NormalizedPoint[];
 }
 
 /**
