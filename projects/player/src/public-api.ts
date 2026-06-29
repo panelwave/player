@@ -38,6 +38,7 @@ export {
 } from './lib/utils';
 
 // Components
+export { PwIconComponent } from './lib/components/icon/pw-icon.component';
 export { PlayerShellComponent } from './lib/components/player-shell/player-shell.component';
 export { SpeechBubblesComponent } from './lib/components/overlays/speech-bubbles/speech-bubbles.component';
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';

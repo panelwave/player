@@ -7,7 +7,7 @@
     <div class="warning-container">
       <div class="warning-content">
         <!-- Icon -->
-        <div class="warning-icon">⚠️</div>
+        <div class="warning-icon"><pw-icon name="lucideTriangleAlert" /></div>
 
         <!-- Title -->
         <h2 class="warning-title">Content Warning</h2>
@@ -16,7 +16,7 @@
         <div class="warning-chips">
           @for (warning of getVisibleWarnings(); track warning.id) {
             <div class="warning-chip" [class]="getSeverityClass(warning)">
-              <span class="chip-icon">{{ getSeverityIcon(warning) }}</span>
+              <span class="chip-icon"><pw-icon [name]="getSeverityIcon(warning)" /></span>
               <span class="chip-label">{{ getWarningLabel(warning) }}</span>
             </div>
           }
@@ -57,7 +57,7 @@
                   class="hide-option-btn"
                   type="button"
                   (click)="onAlwaysHide(warning)">
-                  <span class="hide-icon">✕</span>
+                  <span class="hide-icon"><pw-icon name="lucideX" /></span>
                   <span class="hide-label">{{ getWarningLabel(warning) }}</span>
                 </button>
               }

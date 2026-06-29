@@ -11,7 +11,7 @@
         [attr.aria-label]="'toolbar.view_toggle' | translate"
         [attr.title]="'toolbar.view_toggle' | translate"
         (click)="onToggleView()">
-        <span class="btn-icon">{{ viewMode === 'page' ? '▦' : '▢' }}</span>
+        <span class="btn-icon"><pw-icon [name]="viewMode === 'page' ? 'lucideLayoutGrid' : 'lucideSquare'" /></span>
         <span class="btn-label">{{ 'toolbar.view' | translate }}</span>
       </button>
 
@@ -22,7 +22,7 @@
           type="button"
           [attr.aria-label]="'toolbar.select_language' | translate"
           (click)="openLanguage.emit()">
-          <span class="btn-icon">🌐</span>
+          <span class="btn-icon"><pw-icon name="lucideGlobe" /></span>
           <span class="btn-label">{{ locale }}</span>
         </button>
       }
@@ -39,7 +39,7 @@
         [attr.aria-pressed]="speechEnabled"
         [attr.title]="'toolbar.speech_toggle' | translate"
         (click)="onToggleSpeech()">
-        <span class="btn-icon">💬</span>
+        <span class="btn-icon"><pw-icon name="lucideMessageSquare" /></span>
         <span class="btn-label">{{ 'toolbar.speech' | translate }}</span>
       </button>
 
@@ -52,7 +52,7 @@
         [attr.aria-pressed]="audioEnabled"
         [attr.title]="'toolbar.audio_toggle' | translate"
         (click)="onToggleAudio()">
-        <span class="btn-icon">{{ audioEnabled ? '🔊' : '🔇' }}</span>
+        <span class="btn-icon"><pw-icon [name]="audioEnabled ? 'lucideVolume2' : 'lucideVolumeX'" /></span>
         <span class="btn-label">{{ 'toolbar.audio' | translate }}</span>
       </button>
 
@@ -65,7 +65,7 @@
         [attr.aria-pressed]="sfxEnabled"
         [attr.title]="'toolbar.sfx_toggle' | translate"
         (click)="onToggleSfx()">
-        <span class="btn-icon">🎵</span>
+        <span class="btn-icon"><pw-icon name="lucideMusic" /></span>
         <span class="btn-label">{{ 'toolbar.sfx' | translate }}</span>
       </button>
 
@@ -79,7 +79,7 @@
           [attr.aria-pressed]="autoplayEnabled"
           [attr.title]="'toolbar.autoplay_toggle' | translate"
           (click)="onToggleAutoplay()">
-          <span class="btn-icon">{{ autoplayEnabled ? '⏸️' : '▶️' }}</span>
+          <span class="btn-icon"><pw-icon [name]="autoplayEnabled ? 'lucidePause' : 'lucidePlay'" /></span>
           <span class="btn-label">{{ 'toolbar.autoplay' | translate }}</span>
           @if (autoplayEnabled) {
             <div class="autoplay-progress-bar">
@@ -118,7 +118,7 @@
         [attr.aria-pressed]="thumbnailsVisible"
         [attr.title]="'toolbar.thumbs_toggle' | translate"
         (click)="onToggleThumbnails()">
-        <span class="btn-icon">🖼️</span>
+        <span class="btn-icon"><pw-icon name="lucideImages" /></span>
         <span class="btn-label">{{ 'toolbar.thumbs' | translate }}</span>
       </button>
     </div>
@@ -132,7 +132,7 @@
         [attr.aria-label]="'toolbar.toc_open' | translate"
         [attr.title]="'toolbar.toc_open' | translate"
         (click)="onOpenToc()">
-        <span class="btn-icon">📑</span>
+        <span class="btn-icon"><pw-icon name="lucideList" /></span>
         <span class="btn-label">{{ 'toolbar.toc' | translate }}</span>
       </button>
 
@@ -143,7 +143,7 @@
         [attr.aria-label]="'toolbar.settings_open' | translate"
         [attr.title]="'toolbar.settings_open' | translate"
         (click)="onOpenSettings()">
-        <span class="btn-icon">⚙️</span>
+        <span class="btn-icon"><pw-icon name="lucideSettings" /></span>
         <span class="btn-label">{{ 'toolbar.settings' | translate }}</span>
       </button>
 
@@ -154,7 +154,7 @@
         [attr.aria-label]="'toolbar.characters_open' | translate"
         [attr.title]="'toolbar.characters_open' | translate"
         (click)="onOpenCharacters()">
-        <span class="btn-icon">👥</span>
+        <span class="btn-icon"><pw-icon name="lucideUsers" /></span>
         <span class="btn-label">{{ 'toolbar.characters' | translate }}</span>
       </button>
 
@@ -166,7 +166,7 @@
           aria-label="Alternative panels"
           title="Cycle through alternative panels"
           (click)="onCycleAlternative()">
-          <span class="btn-icon">🔄</span>
+          <span class="btn-icon"><pw-icon name="lucideRefreshCw" /></span>
           <span class="btn-label">Alt</span>
         </button>
       }
@@ -179,7 +179,7 @@
           aria-label="Choices ahead"
           title="View upcoming choices"
           (click)="onShowBranches()">
-          <span class="btn-icon">🔀</span>
+          <span class="btn-icon"><pw-icon name="lucideSplit" /></span>
           <span class="btn-label">Choices</span>
         </button>
       }
@@ -191,7 +191,7 @@
         aria-label="Extras"
         title="View bonus content"
         (click)="onOpenExtras()">
-        <span class="btn-icon">✨</span>
+        <span class="btn-icon"><pw-icon name="lucideSparkles" /></span>
         <span class="btn-label">Extras</span>
       </button>
     </div>
@@ -205,7 +205,7 @@
           aria-label="Like"
           title="Like this content"
           (click)="onLike()">
-          <span class="btn-icon">❤️</span>
+          <span class="btn-icon"><pw-icon name="lucideHeart" /></span>
         </button>
 
         <button
@@ -214,7 +214,7 @@
           aria-label="Bookmark"
           title="Bookmark this panel"
           (click)="onBookmark()">
-          <span class="btn-icon">🔖</span>
+          <span class="btn-icon"><pw-icon name="lucideBookmark" /></span>
         </button>
 
         <button
@@ -223,7 +223,7 @@
           aria-label="Share"
           title="Share this panel"
           (click)="onShare()">
-          <span class="btn-icon">↗️</span>
+          <span class="btn-icon"><pw-icon name="lucideShare2" /></span>
         </button>
 
         <button
@@ -232,7 +232,7 @@
           aria-label="Comments"
           title="View comments"
           (click)="onOpenComments()">
-          <span class="btn-icon">💭</span>
+          <span class="btn-icon"><pw-icon name="lucideMessageCircle" /></span>
         </button>
       </div>
     }
@@ -244,7 +244,7 @@
       aria-label="Close toolbar"
       title="Close toolbar"
       (click)="onClose()">
-      <span class="btn-icon">✕</span>
+      <span class="btn-icon"><pw-icon name="lucideX" /></span>
     </button>
   </div>
 </div>

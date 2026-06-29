@@ -14,6 +14,7 @@ import {
 
 import { FormsModule } from '@angular/forms';
 import type { LocaleCode } from '../../../types';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
  * Age verification result
@@ -30,7 +31,7 @@ export interface AgeVerificationResult {
  */
 @Component({
     selector: 'pw-age-gate',
-    imports: [FormsModule],
+    imports: [FormsModule, PwIconComponent],
     templateUrl: './age-gate.component.html',
     styleUrls: ['./age-gate.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

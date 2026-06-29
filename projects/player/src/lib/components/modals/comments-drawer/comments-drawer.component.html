@@ -9,7 +9,7 @@
           type="button"
           [attr.aria-label]="'comments.close' | translate"
           (click)="onClose()">
-          ✕
+          <pw-icon name="lucideX" />
         </button>
       </div>
 
@@ -47,7 +47,7 @@
           </div>
         } @else if (comments.length === 0) {
           <div class="empty-state">
-            <span class="empty-icon">💬</span>
+            <span class="empty-icon"><pw-icon name="lucideMessageCircle" /></span>
             <p>{{ 'comments.no_comments' | translate }}</p>
           </div>
         } @else {
@@ -85,7 +85,7 @@
                         [class.active]="comment.isLiked"
                         type="button"
                         (click)="onLikeComment(comment)">
-                        {{ comment.isLiked ? '❤️' : '🤍' }}
+                        <pw-icon name="lucideHeart" />
                         @if (comment.likes && comment.likes > 0) {
                           <span>{{ comment.likes }}</span>
                         }

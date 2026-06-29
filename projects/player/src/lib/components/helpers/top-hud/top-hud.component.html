@@ -34,7 +34,7 @@
         aria-label="Bookmark"
         [attr.aria-pressed]="isBookmarked"
         (click)="onBookmark()">
-        <span class="action-icon">{{ isBookmarked ? '🔖' : '📑' }}</span>
+        <span class="action-icon"><pw-icon [name]="isBookmarked ? 'lucideBookmarkCheck' : 'lucideBookmark'" /></span>
       </button>
 
       <button
@@ -44,7 +44,7 @@
         aria-label="Like"
         [attr.aria-pressed]="isLiked"
         (click)="onLike()">
-        <span class="action-icon">{{ isLiked ? '❤️' : '🤍' }}</span>
+        <span class="action-icon"><pw-icon name="lucideHeart" /></span>
       </button>
 
       <button
@@ -52,7 +52,7 @@
         type="button"
         aria-label="Share"
         (click)="onShare()">
-        <span class="action-icon">↗️</span>
+        <span class="action-icon"><pw-icon name="lucideShare2" /></span>
       </button>
     </div>
   </div>

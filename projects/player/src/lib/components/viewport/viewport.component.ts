@@ -18,6 +18,7 @@ import {
 
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
+import { PwIconComponent } from '../icon/pw-icon.component';
 import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 
@@ -39,7 +40,7 @@ export interface PerformanceMetrics {
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent, SpeechBubblesComponent],
+    imports: [LayerRendererComponent, SpeechBubblesComponent, PwIconComponent],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

@@ -10,7 +10,7 @@
   <!-- Error state -->
   @if (hasError && !loading) {
     <div class="error-container">
-      <div class="error-icon">⚠️</div>
+      <div class="error-icon"><pw-icon name="lucideTriangleAlert" /></div>
       <h2 class="error-title">{{ 'error.title' | translate }}</h2>
       <p class="error-message">{{ errorMessage }}</p>
       <button class="retry-button" type="button" (click)="ngOnInit()">

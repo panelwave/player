@@ -21,15 +21,16 @@ import type {
   VariantContext,
 } from '../../types/variant.types';
 import { Subject, takeUntil } from 'rxjs';
+import { PwIconComponent } from '../icon/pw-icon.component';
 
 @Component({
     selector: 'pw-variant-selector',
-    imports: [],
+    imports: [PwIconComponent],
     template: `
     <div class="variant-selector" [class.visible]="visible">
       <div class="selector-header">
         <h3>Variant Selector</h3>
-        <button class="close-btn" (click)="onClose()" aria-label="Close">✕</button>
+        <button class="close-btn" (click)="onClose()" aria-label="Close"><pw-icon name="lucideX" /></button>
       </div>
 
       <div class="selector-content">
@@ -57,7 +58,7 @@ import { Subject, takeUntil } from 'rxjs';
                   {{ getConditionSummary(variant.condition) }}
                 </div>
                 @if (isVariantMatched(variant)) {
-                  <span class="match-indicator">✓ Matches</span>
+                  <span class="match-indicator"><pw-icon name="lucideCheck" /> Matches</span>
                 }
               </div>
             }

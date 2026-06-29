@@ -12,7 +12,7 @@
             type="button"
             [attr.aria-label]="'character_roster.close' | translate"
             (click)="onClose()">
-            ✕
+            <pw-icon name="lucideX" />
           </button>
         </div>
 
@@ -25,7 +25,7 @@
             [attr.aria-label]="'character_roster.search_label' | translate"
             [(ngModel)]="searchQuery"
             (ngModelChange)="onSearchChange()" />
-          <span class="search-icon">🔍</span>
+          <span class="search-icon"><pw-icon name="lucideSearch" /></span>
         </div>
 
         <!-- Character grid -->
@@ -95,7 +95,7 @@
             type="button"
             [attr.aria-label]="'character_sheet.close' | translate"
             (click)="onClose()">
-            ✕
+            <pw-icon name="lucideX" />
           </button>
         </div>
 
@@ -131,7 +131,7 @@
                 type="button"
                 [attr.aria-label]="(isPlaying ? 'character_sheet.stop_voice' : 'character_sheet.play_voice') | translate"
                 (click)="playVoiceSample(selectedCharacter)">
-                <span class="voice-icon">{{ isPlaying ? '⏸️' : '🔊' }}</span>
+                <span class="voice-icon"><pw-icon [name]="isPlaying ? 'lucidePause' : 'lucideVolume2'" /></span>
                 <span class="voice-label">{{ (isPlaying ? 'character_sheet.stop_voice' : 'character_sheet.play_voice') | translate }}</span>
               </button>
             }

@@ -6,7 +6,7 @@
       type="button"
       aria-label="Close thumbnail strip"
       (click)="onClose()">
-      ✕
+      <pw-icon name="lucideX" />
     </button>
 
     <!-- Left arrow navigation -->
@@ -17,7 +17,7 @@
       [disabled]="!canScrollLeft()"
       [class.disabled]="!canScrollLeft()"
       (click)="scrollLeft()">
-      ‹
+      <pw-icon name="lucideChevronLeft" />
     </button>
 
     <!-- Right arrow navigation -->
@@ -28,7 +28,7 @@
       [disabled]="!canScrollRight()"
       [class.disabled]="!canScrollRight()"
       (click)="scrollRight()">
-      ›
+      <pw-icon name="lucideChevronRight" />
     </button>
 
     <!-- Scroll container -->
@@ -85,7 +85,7 @@
               <!-- Lock overlay -->
               @if (item.isLocked) {
                 <div class="lock-overlay">
-                  <span class="lock-icon">🔒</span>
+                  <span class="lock-icon"><pw-icon name="lucideLock" /></span>
                 </div>
               }
 

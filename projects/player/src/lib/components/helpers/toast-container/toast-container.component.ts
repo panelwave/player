@@ -10,6 +10,8 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 
+import { PwIconComponent } from '../../icon/pw-icon.component';
+
 
 /**
  * Toast type
@@ -40,7 +42,7 @@ interface ToastItem extends Toast {
  */
 @Component({
     selector: 'pw-toast-container',
-    imports: [],
+    imports: [PwIconComponent],
     templateUrl: './toast-container.component.html',
     styleUrls: ['./toast-container.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -134,11 +136,11 @@ export class ToastContainerComponent {
    */
   getIcon(type: ToastType): string {
     switch (type) {
-      case 'success': return '✓';
-      case 'error': return '✕';
-      case 'warning': return '⚠';
-      case 'info': return 'ℹ';
-      default: return 'ℹ';
+      case 'success': return 'lucideCheck';
+      case 'error': return 'lucideX';
+      case 'warning': return 'lucideTriangleAlert';
+      case 'info': return 'lucideInfo';
+      default: return 'lucideInfo';
     }
   }
 

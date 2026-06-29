@@ -9,7 +9,7 @@
           type="button"
           [attr.aria-label]="'settings.close' | translate"
           (click)="cancel()">
-          ✕
+          <pw-icon name="lucideX" />
         </button>
       </div>
 
@@ -214,7 +214,7 @@
                           type="button"
                           [attr.title]="'settings.reset_to_default' | translate"
                           (click)="resetVariable(variable)">
-                          ↺
+                          <pw-icon name="lucideRotateCcw" />
                         </button>
                       </div>
                     }

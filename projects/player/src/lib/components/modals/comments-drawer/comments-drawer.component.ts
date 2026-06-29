@@ -14,6 +14,7 @@ import {
 
 import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
  * Comment interface
@@ -43,7 +44,7 @@ export interface CommentPost {
  */
 @Component({
     selector: 'pw-comments-drawer',
-    imports: [FormsModule, TranslateModule],
+    imports: [FormsModule, TranslateModule, PwIconComponent],
     templateUrl: './comments-drawer.component.html',
     styleUrls: ['./comments-drawer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

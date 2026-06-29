@@ -9,7 +9,7 @@
       
       <!-- Icon -->
       <div class="toast-icon">
-        {{ getIcon(toast.type) }}
+        <pw-icon [name]="getIcon(toast.type)" />
       </div>
 
       <!-- Message -->
@@ -23,7 +23,7 @@
         type="button"
         aria-label="Dismiss"
         (click)="dismiss(toast.id)">
-        ✕
+        <pw-icon name="lucideX" />
       </button>
     </div>
   }

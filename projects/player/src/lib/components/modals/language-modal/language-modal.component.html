@@ -15,7 +15,7 @@
           type="button"
           [attr.aria-label]="'settings.close' | translate"
           (click)="closeModal.emit()">
-          ✕
+          <pw-icon name="lucideX" />
         </button>
       </div>
 
@@ -28,10 +28,10 @@
               [class.active]="locale === currentLocale"
               type="button"
               (click)="onSelectLocale(locale)">
-              <span class="language-icon">🌐</span>
+              <span class="language-icon"><pw-icon name="lucideGlobe" /></span>
               <span class="language-name">{{ locale }}</span>
               @if (locale === currentLocale) {
-                <span class="language-check">✓</span>
+                <span class="language-check"><pw-icon name="lucideCheck" /></span>
               }
             </button>
           }

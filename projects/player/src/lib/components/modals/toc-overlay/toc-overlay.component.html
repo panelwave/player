@@ -9,7 +9,7 @@
           type="button"
           [attr.aria-label]="'toc.close' | translate"
           (click)="onClose()">
-          ✕
+          <pw-icon name="lucideX" />
         </button>
       </div>
 
@@ -22,7 +22,7 @@
           [attr.aria-label]="'toc.search_label' | translate"
           [(ngModel)]="searchQuery"
           (ngModelChange)="onSearchChange()" />
-        <span class="search-icon">🔍</span>
+        <span class="search-icon"><pw-icon name="lucideSearch" /></span>
       </div>
 
       <!-- Content -->
@@ -72,13 +72,13 @@
                                     loading="lazy" />
                                   @if (isCurrentPanel(panelItem.id)) {
                                     <div class="current-overlay">
-                                      <span class="current-icon">▶</span>
+                                      <span class="current-icon"><pw-icon name="lucidePlay" /></span>
                                     </div>
                                   }
                                 </div>
                               } @else {
                                 <div class="panel-thumbnail placeholder">
-                                  <span class="placeholder-icon">🖼️</span>
+                                  <span class="placeholder-icon"><pw-icon name="lucideImage" /></span>
                                 </div>
                               }
                               
@@ -108,13 +108,13 @@
                                 loading="lazy" />
                               @if (isCurrentPanel(panelItem.id)) {
                                 <div class="current-overlay">
-                                  <span class="current-icon">▶</span>
+                                  <span class="current-icon"><pw-icon name="lucidePlay" /></span>
                                 </div>
                               }
                             </div>
                           } @else {
                             <div class="panel-thumbnail placeholder">
-                              <span class="placeholder-icon">🖼️</span>
+                              <span class="placeholder-icon"><pw-icon name="lucideImage" /></span>
                             </div>
                           }
                           

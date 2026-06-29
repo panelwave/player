@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 
 import { TranslateModule } from '@ngx-translate/core';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
 /**
@@ -41,7 +42,7 @@ export interface Extra {
  */
 @Component({
     selector: 'pw-extras-viewer',
-    imports: [TranslateModule],
+    imports: [TranslateModule, PwIconComponent],
     templateUrl: './extras-viewer.component.html',
     styleUrls: ['./extras-viewer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -303,15 +304,15 @@ export class ExtrasViewerComponent {
   }
 
   /**
-   * Get media type icon
+   * Get media type icon (Lucide icon name for {@link PwIconComponent})
    */
   getMediaIcon(extra: Extra): string {
     switch (extra.mediaType) {
-      case 'image': return '🖼️';
-      case 'video': return '🎬';
-      case 'audio': return '🎵';
-      case 'document': return '📄';
-      default: return '📎';
+      case 'image': return 'lucideImage';
+      case 'video': return 'lucideClapperboard';
+      case 'audio': return 'lucideMusic';
+      case 'document': return 'lucideFileText';
+      default: return 'lucidePaperclip';
     }
   }
 }

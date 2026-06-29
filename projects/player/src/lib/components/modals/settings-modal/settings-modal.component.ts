@@ -15,6 +15,7 @@ import {
 
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 import type { LocaleCode, VariableDefinition } from '../../../types';
 
 /**
@@ -45,7 +46,7 @@ export interface VariableChange {
  */
 @Component({
     selector: 'pw-settings-modal',
-    imports: [FormsModule, TranslateModule],
+    imports: [FormsModule, TranslateModule, PwIconComponent],
     templateUrl: './settings-modal.component.html',
     styleUrls: ['./settings-modal.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

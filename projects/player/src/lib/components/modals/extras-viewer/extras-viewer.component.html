@@ -9,7 +9,7 @@
           type="button"
           [attr.aria-label]="'extras.close' | translate"
           (click)="onClose()">
-          ✕
+          <pw-icon name="lucideX" />
         </button>
       </div>
 
@@ -79,21 +79,21 @@
                       class="thumbnail-image" />
                   } @else {
                     <div class="thumbnail-placeholder">
-                      {{ getMediaIcon(extra) }}
+                      <pw-icon [name]="getMediaIcon(extra)" />
                     </div>
                   }
 
                   <!-- Lock overlay for gated content -->
                   @if (!isAccessible(extra)) {
                     <div class="lock-overlay">
-                      <span class="lock-icon">🔒</span>
+                      <span class="lock-icon"><pw-icon name="lucideLock" /></span>
                       <span class="lock-text">{{ 'extras.locked_premium' | translate }}</span>
                     </div>
                   }
 
                   <!-- Media type badge -->
                   <div class="media-badge">
-                    {{ getMediaIcon(extra) }}
+                    <pw-icon [name]="getMediaIcon(extra)" />
                   </div>
                 </button>
 
@@ -125,7 +125,7 @@
                 type="button"
                 [attr.aria-label]="'extras.close_detail' | translate"
                 (click)="closeDetail()">
-                ✕
+                <pw-icon name="lucideX" />
               </button>
             </div>
 
@@ -180,7 +180,7 @@
       @if (!hasPremiumAccess && hasGatedExtras()) {
         <div class="paywall-notice">
           <p class="notice-text">
-            <span class="notice-icon">🔒</span>
+            <span class="notice-icon"><pw-icon name="lucideLock" /></span>
             {{ 'extras.premium_notice' | translate }}
           </p>
           <button

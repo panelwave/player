@@ -9,7 +9,7 @@
         type="button"
         aria-label="Close"
         (click)="onDismiss()">
-        ✕
+        <pw-icon name="lucideX" />
       </button>
     </div>
 
@@ -30,7 +30,7 @@
         <div class="preview-info">
           @if (gate?.preview?.previewPanels) {
             <p class="preview-text">
-              ✓ Preview {{ gate?.preview?.previewPanels }} panels free
+              <pw-icon name="lucideCheck" /> Preview {{ gate?.preview?.previewPanels }} panels free
             </p>
           }
           @if (gate?.preview?.mode) {

@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 
 import type { LocaleCode, LocalizedString } from '../../../types';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
  * Content warning definition
@@ -36,7 +37,7 @@ export interface WarningPreference {
  */
 @Component({
     selector: 'pw-content-warning-overlay',
-    imports: [],
+    imports: [PwIconComponent],
     templateUrl: './content-warning-overlay.component.html',
     styleUrls: ['./content-warning-overlay.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -131,13 +132,13 @@ export class ContentWarningOverlayComponent {
   getSeverityIcon(warning: ContentWarning): string {
     switch (warning.severity) {
       case 'high':
-        return '🔴';
+        return 'lucideCircle';
       case 'medium':
-        return '⚠️';
+        return 'lucideTriangleAlert';
       case 'low':
-        return 'ℹ️';
+        return 'lucideInfo';
       default:
-        return '⚠️';
+        return 'lucideTriangleAlert';
     }
   }
 

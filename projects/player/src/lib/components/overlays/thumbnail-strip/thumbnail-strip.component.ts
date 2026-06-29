@@ -18,6 +18,7 @@ import {
 } from '@angular/core';
 
 import type { Chapter, Panel } from '../../../types';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
  * Thumbnail navigation target
@@ -48,7 +49,7 @@ interface ThumbnailItem {
  */
 @Component({
     selector: 'pw-thumbnail-strip',
-    imports: [],
+    imports: [PwIconComponent],
     templateUrl: './thumbnail-strip.component.html',
     styleUrls: ['./thumbnail-strip.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

@@ -9,7 +9,7 @@
           type="button"
           [attr.aria-label]="'share.close' | translate"
           (click)="onClose()">
-          ✕
+          <pw-icon name="lucideX" />
         </button>
       </div>
 
@@ -18,7 +18,7 @@
         @if (!shareable) {
           <!-- Not shareable message -->
           <div class="not-shareable">
-            <span class="warning-icon">⚠️</span>
+            <span class="warning-icon"><pw-icon name="lucideTriangleAlert" /></span>
             <p>{{ 'share.not_shareable' | translate }}</p>
           </div>
         } @else {
@@ -37,7 +37,8 @@
                 [class.success]="copySuccess"
                 type="button"
                 (click)="copyLink()">
-                {{ copySuccess ? ('✓ ' + ('share.copied' | translate)) : ('📋 ' + ('share.copy' | translate)) }}
+                <pw-icon [name]="copySuccess ? 'lucideCheck' : 'lucideClipboard'" />
+                {{ copySuccess ? ('share.copied' | translate) : ('share.copy' | translate) }}
               </button>
             </div>
           </div>
@@ -49,7 +50,7 @@
                 class="native-share-btn"
                 type="button"
                 (click)="useNativeShare()">
-                <span class="btn-icon">↗️</span>
+                <span class="btn-icon"><pw-icon name="lucideShare2" /></span>
                 <span class="btn-label">{{ 'share.share_via' | translate }}</span>
               </button>
             </div>
@@ -91,7 +92,7 @@
                 type="button"
                 [attr.aria-label]="'Share via ' + ('share.email' | translate)"
                 (click)="shareViaEmail()">
-                <span class="social-icon">✉️</span>
+                <span class="social-icon"><pw-icon name="lucideMail" /></span>
                 <span class="social-label">{{ 'share.email' | translate }}</span>
               </button>
             </div>
@@ -103,7 +104,7 @@
               class="qr-toggle-btn"
               type="button"
               (click)="toggleQrCode()">
-              <span class="btn-icon">{{ showQrCode ? '▼' : '▶' }}</span>
+              <span class="btn-icon"><pw-icon [name]="showQrCode ? 'lucideChevronDown' : 'lucideChevronRight'" /></span>
               <span class="btn-label">{{ showQrCode ? ('share.hide_qr' | translate) : ('share.show_qr' | translate) }}</span>
             </button>
 
@@ -125,7 +126,7 @@
           <!-- Share Info -->
           <div class="share-info">
             <p class="info-text">
-              ℹ️ {{ 'share.share_info' | translate }}
+              <pw-icon name="lucideInfo" /> {{ 'share.share_info' | translate }}
             </p>
           </div>
         }

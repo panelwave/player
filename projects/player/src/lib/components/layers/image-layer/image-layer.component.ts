@@ -11,6 +11,8 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 
+import { PwIconComponent } from '../../icon/pw-icon.component';
+
 
 /**
  * Image Layer Component
@@ -18,7 +20,7 @@ import {
  */
 @Component({
     selector: 'pw-image-layer',
-    imports: [],
+    imports: [PwIconComponent],
     templateUrl: './image-layer.component.html',
     styleUrls: ['./image-layer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

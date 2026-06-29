@@ -12,6 +12,8 @@ import {
   HostListener,
 } from '@angular/core';
 
+import { PwIconComponent } from '../../icon/pw-icon.component';
+
 
 /**
  * Top HUD Component
@@ -19,7 +21,7 @@ import {
  */
 @Component({
     selector: 'pw-top-hud',
-    imports: [],
+    imports: [PwIconComponent],
     templateUrl: './top-hud.component.html',
     styleUrls: ['./top-hud.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

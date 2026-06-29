@@ -13,6 +13,7 @@ import {
 
 import { TranslateModule } from '@ngx-translate/core';
 import type { LocaleCode } from '../../types';
+import { PwIconComponent } from '../icon/pw-icon.component';
 
 /**
  * Toolbar Component
@@ -20,7 +21,7 @@ import type { LocaleCode } from '../../types';
  */
 @Component({
     selector: 'pw-toolbar',
-    imports: [TranslateModule],
+    imports: [TranslateModule, PwIconComponent],
     templateUrl: './toolbar.component.html',
     styleUrls: ['./toolbar.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

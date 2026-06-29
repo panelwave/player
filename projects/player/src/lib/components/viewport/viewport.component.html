@@ -132,7 +132,7 @@
         type="button"
         aria-label="Navigate left"
         (click)="navigateLeft()">
-        ←
+        <pw-icon name="lucideChevronLeft" />
       </button>
     }
 
@@ -142,7 +142,7 @@
         type="button"
         aria-label="Navigate right"
         (click)="navigateRight()">
-        →
+        <pw-icon name="lucideChevronRight" />
       </button>
     }
 
@@ -152,7 +152,7 @@
         type="button"
         aria-label="Navigate up"
         (click)="navigateUp()">
-        ↑
+        <pw-icon name="lucideChevronUp" />
       </button>
     }
 
@@ -162,7 +162,7 @@
         type="button"
         aria-label="Navigate down"
         (click)="navigateDown()">
-        ↓
+        <pw-icon name="lucideChevronDown" />
       </button>
     }
   }
@@ -175,7 +175,7 @@
         type="button"
         aria-label="Previous panel"
         (click)="onNavigatePrevious(); $event.stopPropagation()">
-        <span class="arrow-icon">‹</span>
+        <span class="arrow-icon"><pw-icon name="lucideChevronLeft" /></span>
       </button>
     }
 
@@ -185,7 +185,7 @@
         type="button"
         aria-label="Next panel"
         (click)="onNavigateNext(); $event.stopPropagation()">
-        <span class="arrow-icon">›</span>
+        <span class="arrow-icon"><pw-icon name="lucideChevronRight" /></span>
       </button>
     }
   }

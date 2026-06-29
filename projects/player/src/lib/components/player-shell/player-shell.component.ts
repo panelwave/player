@@ -45,6 +45,7 @@ import { CharacterRosterComponent } from '../modals/character-roster/character-r
 import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
+import { PwIconComponent } from '../icon/pw-icon.component';
 
 /**
  * Factory function for TranslateLoader
@@ -92,7 +93,8 @@ export interface EntitlementAdapter {
     CharacterRosterComponent,
     ExtrasViewerComponent,
     ShareModalComponent,
-    CommentsDrawerComponent
+    CommentsDrawerComponent,
+    PwIconComponent
 ],
     templateUrl: './player-shell.component.html',
     styleUrls: ['./player-shell.component.css'],

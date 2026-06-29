@@ -14,6 +14,7 @@ import {
 
 import type { PaywallGate, PurchaseInfo } from '../../../types/entitlement.types';
 import type { LocaleCode, LocalizedString } from '../../../types';
+import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
  * Paywall action
@@ -26,7 +27,7 @@ export type PaywallAction = 'purchase' | 'subscribe' | 'login' | 'dismiss';
  */
 @Component({
     selector: 'pw-paywall-overlay',
-    imports: [],
+    imports: [PwIconComponent],
     templateUrl: './paywall-overlay.component.html',
     styleUrls: ['./paywall-overlay.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
