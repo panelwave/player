@@ -190,6 +190,7 @@ panelwave-player/
 - **Language:** TypeScript 5.8+ (strict mode)
 - **State Management:** RxJS BehaviorSubjects
 - **Logic Engine:** json-logic-js (condition evaluation)
+- **Icons:** inlined [Lucide](https://lucide.dev) SVGs (ISC) via the `pw-icon` component — **no icon-library dependency**
 
 ### Media
 - **Audio:** WebAudio API
@@ -206,6 +207,18 @@ panelwave-player/
 - **Testing:** Jasmine (unit), Karma (runner)
 - **Linting:** ESLint with Angular rules
 - **Formatting:** Prettier
+
+---
+
+## 🪶 Icons
+
+All UI-chrome icons render through a tiny, **dependency-free** inline-SVG component — the player does **not** pull in an icon library, so embedding it adds no extra runtime dependencies (there are no emoji in the UI).
+
+- **Component:** [`PwIconComponent`](projects/player/src/lib/components/icon/pw-icon.component.ts) (selector `pw-icon`, exported from the public API). Glyphs use `stroke="currentColor"` and are sized to `1em`, so they inherit colour and size from the surrounding text and stay vertically centred (no clipping in flex rows).
+- **Source:** the SVG markup lives in [`pw-icon.data.ts`](projects/player/src/lib/components/icon/pw-icon.data.ts). Icons are from [Lucide](https://lucide.dev) (ISC License) and inlined — only the glyphs the player UI actually uses are bundled.
+- **Usage:** add `PwIconComponent` to a standalone component's `imports`, then `<pw-icon name="lucideSettings" />` (or `[name]="expr"` for dynamic/data-driven icons).
+- **Adding an icon:** copy the Lucide SVG markup into the `PW_ICONS` map in `pw-icon.data.ts`, keyed by its `lucide<Name>` id (browse names at [lucide.dev/icons](https://lucide.dev/icons)). Do **not** add a runtime dependency on an icon package.
+- **Kept as-is:** social brand marks (X / Facebook / Reddit — Lucide has no brand icons) and `<kbd>` keyboard-key labels.
 
 ---
 
