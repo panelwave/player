@@ -102,8 +102,14 @@ describe('AnimationUtils', () => {
 
   describe('getAdjustedDuration', () => {
     it('should return base duration when motion is not reduced', () => {
-      spyOn(globalThis as any, 'shouldReduceMotion').and.returnValue(false);
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = jasmine
+        .createSpy('matchMedia')
+        .and.returnValue({ matches: false } as MediaQueryList);
+
       expect(getAdjustedDuration(1000)).toBe(1000);
+
+      window.matchMedia = originalMatchMedia;
     });
 
     it('should use custom reduction factor', () => {

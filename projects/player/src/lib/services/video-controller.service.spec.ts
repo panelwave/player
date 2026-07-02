@@ -74,6 +74,49 @@ describe('VideoControllerService', () => {
     });
   });
 
+  describe('one-unmuted-video rule', () => {
+    let secondVideo: HTMLVideoElement;
+
+    beforeEach(() => {
+      secondVideo = document.createElement('video');
+      secondVideo.src = 'second.mp4';
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      spyOn(secondVideo, 'pause');
+    });
+
+    it('pauses another unmuted video when a new unmuted one plays', async () => {
+      await service.play(mockVideo, 'unmuted-1', false);
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      expect(mockVideo.pause).toHaveBeenCalled();
+    });
+
+    it('does NOT pause a muted video when an unmuted one plays', async () => {
+      await service.play(mockVideo, 'muted-1', true);
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+    });
+
+    it('lets multiple muted videos play concurrently', async () => {
+      await service.play(mockVideo, 'muted-1', true);
+      await service.play(secondVideo, 'muted-2', true);
+
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+      expect(secondVideo.play).toHaveBeenCalled();
+    });
+
+    it('pauses others when a muted video is flipped to unmuted', async () => {
+      await service.play(mockVideo, 'unmuted-1', false);
+      await service.play(secondVideo, 'muted-2', true);
+      // mockVideo not paused yet (second was muted)
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+
+      service.notifyMutedChanged('muted-2', false);
+      expect(mockVideo.pause).toHaveBeenCalled();
+    });
+  });
+
   describe('pause', () => {
     it('should pause playing video', async () => {
       await service.play(mockVideo, 'test-video');
