@@ -212,9 +212,16 @@ export interface VideoVariant {
   
   /** Whether this is a streaming format (HLS/DASH) (optional) */
   streaming?: boolean;
-  
+
   /** Locale for this variant (optional) */
   locale?: LocaleCode;
+
+  /**
+   * Playback direction of this variant (schema 1.1+, default 'forward').
+   * `reverse` marks a pre-rendered, time-reversed encode used for smooth
+   * `pingpong` playback; the player frame-steps when no reverse variant exists.
+   */
+  direction?: 'forward' | 'reverse';
 }
 
 /**

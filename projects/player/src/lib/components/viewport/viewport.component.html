@@ -26,6 +26,9 @@
             <pw-layer-renderer
               [layer]="layer"
               [locale]="locale"
+              [viewMode]="viewMode"
+              [viewActive]="true"
+              [reducedMotion]="reducedMotion"
               (layerClick)="layerClick.emit($event)">
             </pw-layer-renderer>
           }
@@ -89,6 +92,8 @@
                       [layer]="layer"
                       [locale]="locale"
                       [altText]="getAltText(layer)"
+                      [viewMode]="viewMode"
+                      [reducedMotion]="reducedMotion"
                       (layerClick)="layerClick.emit($event)">
                     </pw-layer-renderer>
                   }

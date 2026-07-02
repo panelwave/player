@@ -43,6 +43,8 @@ export type {
   Layer,
   ImageLayer,
   VideoLayer,
+  VideoPlayMode,
+  VideoStartMode,
   TextLayer,
   AudioLayer,
   PluginLayer,

@@ -18,14 +18,25 @@
 
   <!-- Video Layer -->
   @if (layer.kind === 'video') {
-    <video 
-      [src]="getVideoSrc()"
+    <pw-video-layer
       class="layer-video"
-      [autoplay]="getVideoAutoplay()"
-      [loop]="getVideoLoop()"
+      [src]="getVideoSrc()"
+      [reverseSrc]="getVideoReverseSrc()"
+      [baseUrl]="videoBaseUrl"
+      [poster]="getVideoPoster()"
+      [controls]="getVideoControls()"
+      [playMode]="getVideoPlayMode()"
+      [startMode]="getVideoStartMode()"
       [muted]="getVideoMuted()"
-      [controls]="getVideoControls()">
-    </video>
+      [startAtMs]="getVideoStartAtMs()"
+      [loopFromMs]="getVideoLoopFromMs()"
+      [streaming]="getVideoStreaming()"
+      [viewMode]="viewMode"
+      [viewActive]="viewActive"
+      [reducedMotion]="reducedMotion"
+      [videoId]="layer.id"
+      [ariaLabel]="getAltText()">
+    </pw-video-layer>
   }
 
   <!-- Text Layer -->

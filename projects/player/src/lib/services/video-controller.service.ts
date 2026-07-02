@@ -38,12 +38,21 @@ export interface VideoStatus {
  * Video Controller Service
  * Ensures only one video plays at a time and manages video lifecycle
  */
+/**
+ * Registered concurrently-playing video.
+ */
+interface RegisteredVideo {
+  element: HTMLVideoElement;
+  muted: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class VideoControllerService {
   /**
-   * Currently active video element
+   * Currently active video element (the most recently started one — retained
+   * for backward-compatible status/pause/seek helpers).
    */
   private activeVideo?: HTMLVideoElement;
 
@@ -51,6 +60,13 @@ export class VideoControllerService {
    * Active video ID
    */
   private activeVideoId?: string;
+
+  /**
+   * Registry of currently-playing videos keyed by videoId. Used to enforce
+   * the "at most one unmuted video at a time" rule while allowing any number
+   * of muted videos to play concurrently.
+   */
+  private readonly registry = new Map<string, RegisteredVideo>();
 
   /**
    * Current state
@@ -83,16 +99,30 @@ export class VideoControllerService {
   private readonly RETRY_DELAY = 1000;
 
   /**
-   * Play video
+   * Play video.
+   *
+   * Enforces "at most one unmuted video at a time": starting an unmuted video
+   * pauses every other currently-playing unmuted video. Muted videos play
+   * concurrently without restriction. The most recently started video becomes
+   * the "active" one for status/pause/seek helpers.
+   *
+   * @param videoElement - The video element to play
+   * @param videoId - Unique id for this video
+   * @param muted - Whether this playback is muted (default false, i.e. unmuted)
    */
-  async play(videoElement: HTMLVideoElement, videoId: string): Promise<void> {
-    // Stop any currently playing video
-    if (this.activeVideo && this.activeVideo !== videoElement) {
-      await this.stop();
+  async play(
+    videoElement: HTMLVideoElement,
+    videoId: string,
+    muted = false
+  ): Promise<void> {
+    // Enforce the single-unmuted rule: pause other unmuted videos.
+    if (!muted) {
+      this.pauseOtherUnmuted(videoId);
     }
 
     try {
-      // Set as active
+      // Register / update this video and set it as the active one.
+      this.registry.set(videoId, { element: videoElement, muted });
       this.activeVideo = videoElement;
       this.activeVideoId = videoId;
       this.setState('loading');
@@ -102,7 +132,7 @@ export class VideoControllerService {
 
       // Attempt playback
       await videoElement.play();
-      
+
       this.setState('playing');
       this.retryCount = 0;
       this.emitEvent('play', videoId);
@@ -110,6 +140,46 @@ export class VideoControllerService {
       console.error(`Failed to play video ${videoId}:`, error);
       this.handleError(videoId, error as Error);
       throw error;
+    }
+  }
+
+  /**
+   * Pause all currently-playing unmuted videos except the given one.
+   */
+  private pauseOtherUnmuted(exceptVideoId: string): void {
+    for (const [id, entry] of this.registry) {
+      if (id === exceptVideoId || entry.muted) {
+        continue;
+      }
+      entry.element.pause();
+      this.registry.delete(id);
+      this.emitEvent('pause', id);
+    }
+  }
+
+  /**
+   * Update the muted state tracked for a registered video (used when an
+   * unmute affordance flips a previously muted video to unmuted).
+   */
+  notifyMutedChanged(videoId: string, muted: boolean): void {
+    const entry = this.registry.get(videoId);
+    if (entry) {
+      entry.muted = muted;
+    }
+    if (!muted) {
+      this.pauseOtherUnmuted(videoId);
+    }
+  }
+
+  /**
+   * Remove a video from the concurrency registry (e.g. when it is paused,
+   * ended, or its component is destroyed).
+   */
+  unregister(videoId: string): void {
+    this.registry.delete(videoId);
+    if (this.activeVideoId === videoId) {
+      this.activeVideo = undefined;
+      this.activeVideoId = undefined;
     }
   }
 
@@ -173,6 +243,9 @@ export class VideoControllerService {
     this.detachEventListeners(this.activeVideo);
 
     // Clear references
+    if (videoId) {
+      this.registry.delete(videoId);
+    }
     this.activeVideo = undefined;
     this.activeVideoId = undefined;
     this.setState('idle');
@@ -280,6 +353,7 @@ export class VideoControllerService {
    * Handle video ended
    */
   private onEnded(videoId: string): void {
+    this.registry.delete(videoId);
     this.setState('idle');
     this.emitEvent('ended', videoId);
   }
@@ -411,6 +485,7 @@ export class VideoControllerService {
    */
   destroy(): void {
     this.stop();
+    this.registry.clear();
     this.eventSubject.complete();
   }
 }

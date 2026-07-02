@@ -12,8 +12,21 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import type { Layer, LocaleCode } from '../../types';
+import type {
+  Layer,
+  LocaleCode,
+  VideoLayer,
+  VideoPlayMode,
+  VideoStartMode,
+  AssetCatalogItemVideo,
+} from '../../types';
 import { ManifestService } from '../../services/manifest.service';
+import { VideoLayerComponent, type LayerViewMode } from '../layers/video-layer/video-layer.component';
+import {
+  resolvePlayMode,
+  resolveStartMode,
+  resolveMuted,
+} from '../../utils/video-config-utils';
 
 /**
  * Layer Renderer Component
@@ -21,7 +34,7 @@ import { ManifestService } from '../../services/manifest.service';
  */
 @Component({
     selector: 'pw-layer-renderer',
-    imports: [CommonModule],
+    imports: [CommonModule, VideoLayerComponent],
     templateUrl: './layer-renderer.component.html',
     styleUrls: ['./layer-renderer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -48,6 +61,27 @@ export class LayerRendererComponent {
    * Alt text for image layers (localized)
    */
   @Input() altText = '';
+
+  /**
+   * View mode of the surrounding viewport (`on-hover` only applies to page view).
+   */
+  @Input() viewMode: LayerViewMode = 'panel';
+
+  /**
+   * Whether the owning panel is currently visible / current. Drives `on-view`
+   * playback for video layers (sequencer surface).
+   */
+  @Input() viewActive = false;
+
+  /**
+   * Reduced-motion preference (degrades video `on-view` to `on-click`).
+   */
+  @Input() reducedMotion = false;
+
+  /**
+   * Base URL used for resolving video/reverse variant paths.
+   */
+  @Input() videoBaseUrl = '';
 
   /**
    * Layer clicked
@@ -150,23 +184,113 @@ export class LayerRendererComponent {
   }
 
   /**
-   * Get video source URL
+   * Get the video catalog item for the current layer (if any).
    */
-  getVideoSrc(): string {
-    if (this.layer.kind !== 'video') return '';
-    
-    // Try to get assetId first (from manifest reference)
+  private getVideoAsset(): AssetCatalogItemVideo | null {
+    if (this.layer.kind !== 'video') return null;
     const assetId = (this.layer as Record<string, unknown>)['assetId'];
     if (assetId && typeof assetId === 'string') {
       const asset = this.manifestService.getAsset(assetId);
-      if (asset && asset.variants && asset.variants.length > 0) {
-        return asset.variants[0].src;
+      if (asset && (asset as AssetCatalogItemVideo).category === 'video') {
+        return asset as AssetCatalogItemVideo;
       }
     }
-    
+    return null;
+  }
+
+  /**
+   * Get the forward (default) video source URL.
+   */
+  getVideoSrc(): string {
+    if (this.layer.kind !== 'video') return '';
+
+    const asset = this.getVideoAsset();
+    if (asset && asset.variants && asset.variants.length > 0) {
+      // Prefer a forward (non-reverse) variant.
+      const forward =
+        asset.variants.find((v) => v.direction !== 'reverse') ?? asset.variants[0];
+      return forward.src;
+    }
+
     // Fall back to direct src if provided
     const src = (this.layer as Record<string, unknown>)['src'];
     return src ? `${this.baseUrl}${src}` : '';
+  }
+
+  /**
+   * Get the reverse-variant URL for pingpong (empty string if none).
+   */
+  getVideoReverseSrc(): string {
+    const asset = this.getVideoAsset();
+    const reverse = asset?.variants?.find((v) => v.direction === 'reverse');
+    return reverse ? reverse.src : '';
+  }
+
+  /**
+   * Get the poster URL for the video (empty string if none).
+   */
+  getVideoPoster(): string {
+    const asset = this.getVideoAsset();
+    const poster = (asset as unknown as Record<string, unknown> | null)?.['poster'];
+    if (typeof poster === 'string') {
+      return poster;
+    }
+    const layerPoster = (this.layer as Record<string, unknown>)['poster'];
+    return typeof layerPoster === 'string' ? layerPoster : '';
+  }
+
+  /**
+   * Whether the active (forward) video variant is streaming/HLS.
+   */
+  getVideoStreaming(): boolean {
+    const asset = this.getVideoAsset();
+    const forward =
+      asset?.variants?.find((v) => v.direction !== 'reverse') ?? asset?.variants?.[0];
+    return forward?.streaming === true;
+  }
+
+  /**
+   * Effective video play mode (layer → settings.ui default → built-in).
+   */
+  getVideoPlayMode(): VideoPlayMode {
+    return resolvePlayMode(this.layer as Partial<VideoLayer>, this.uiDefaults());
+  }
+
+  /**
+   * Effective video start mode (layer → settings.ui default → built-in).
+   */
+  getVideoStartMode(): VideoStartMode {
+    return resolveStartMode(this.layer as Partial<VideoLayer>, this.uiDefaults());
+  }
+
+  /**
+   * Effective video muted state (layer → settings.ui default → built-in true).
+   */
+  getVideoMuted(): boolean {
+    return resolveMuted(this.layer as Partial<VideoLayer>, this.uiDefaults());
+  }
+
+  /**
+   * Effective startAtMs offset.
+   */
+  getVideoStartAtMs(): number {
+    const value = (this.layer as Record<string, unknown>)['startAtMs'];
+    return typeof value === 'number' ? value : 0;
+  }
+
+  /**
+   * loopFromMs (only meaningful for playMode 'loop-from').
+   */
+  getVideoLoopFromMs(): number | undefined {
+    const value = (this.layer as Record<string, unknown>)['loopFromMs'];
+    return typeof value === 'number' ? value : undefined;
+  }
+
+  /**
+   * Work-level UI defaults from the loaded manifest, if any.
+   */
+  private uiDefaults() {
+    return this.manifestService.getManifest()?.settings?.ui;
   }
 
   /**
@@ -182,31 +306,8 @@ export class LayerRendererComponent {
   }
 
   /**
-   * Get video autoplay setting
-   */
-  getVideoAutoplay(): boolean {
-    const autoplay = (this.layer as Record<string, unknown>)['autoplay'];
-    return autoplay === true;
-  }
-
-  /**
-   * Get video loop setting
-   */
-  getVideoLoop(): boolean {
-    const loop = (this.layer as Record<string, unknown>)['loop'];
-    return loop === true;
-  }
-
-  /**
-   * Get video muted setting
-   */
-  getVideoMuted(): boolean {
-    const muted = (this.layer as Record<string, unknown>)['muted'];
-    return muted === true;
-  }
-
-  /**
-   * Get video controls setting
+   * Get video controls setting (defaults to false; native controls hidden
+   * unless the layer explicitly enables them).
    */
   getVideoControls(): boolean {
     const controls = (this.layer as Record<string, unknown>)['controls'];

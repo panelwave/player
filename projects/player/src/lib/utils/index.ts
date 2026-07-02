@@ -15,6 +15,18 @@ export {
   normalizeLocaleCode,
 } from './locale-utils';
 
+// Video config utilities
+export {
+  DEFAULT_VIDEO_PLAY_MODE,
+  DEFAULT_VIDEO_START_MODE,
+  DEFAULT_VIDEO_MUTED,
+  resolvePlayMode,
+  resolveStartMode,
+  resolveMuted,
+  resolveVideoConfig,
+  type EffectiveVideoConfig,
+} from './video-config-utils';
+
 // Asset utilities
 export {
   resolveAssetUrl,
