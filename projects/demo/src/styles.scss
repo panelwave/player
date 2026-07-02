@@ -1,4 +1,10 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Comic balloon fonts shipped with the player library (open-licensed set).
+   Consumers of the published package use:
+   node_modules/@panelwave/player/assets/fonts/balloon/balloon-fonts.css */
+@import '../../player/src/assets/fonts/balloon/balloon-fonts.css';
+
 body {
   margin: 0;
 }

@@ -222,6 +222,36 @@ All UI-chrome icons render through a tiny, **dependency-free** inline-SVG compon
 
 ---
 
+## 🔤 Balloon Fonts
+
+Speech balloons render with real comic lettering fonts. The **open-licensed set**
+(SIL OFL 1.1, from Google Fonts — Bangers, Comic Neue, Caveat, Anton, and 10 more
+families) ships with the package under `assets/fonts/balloon/`. Include the
+`@font-face` declarations once in your application:
+
+```json
+// angular.json → build options
+"styles": [
+  "node_modules/@panelwave/player/src/assets/fonts/balloon/balloon-fonts.css",
+  "src/styles.css"
+]
+```
+
+(or `@import` the file from your global stylesheet — the font URLs are relative
+to the css file, so both work).
+
+**Ames Pro** (Blambot) is a **commercial** font and is *not* included in this
+MIT package. If your works use it, license it from [blambot.com](https://blambot.com)
+and add your own `@font-face` for `'Ames Italic'` / `'Ames Bold Italic'` /
+`'Ames Regular'`. Without it, balloons fall back to Comic Neue (the default
+stack is `'Ames Italic', 'Comic Neue', sans-serif`). See
+[`assets/fonts/balloon/LICENSES.md`](projects/player/src/assets/fonts/balloon/LICENSES.md).
+
+The speech-bubbles overlay re-renders once `document.fonts.ready` resolves, so
+balloons are measured with the real fonts even when they load late.
+
+---
+
 ## 📚 Documentation
 
 ### Getting Started

@@ -5,6 +5,11 @@
     "entryFile": "src/public-api.ts"
   },
   "assets": [
-    "src/assets"
+    {
+      "glob": "**/*",
+      "input": "src/assets",
+      "output": "src/assets",
+      "ignore": ["**/amespro-*"]
+    }
   ]
 }

@@ -1,0 +1,227 @@
+/*
+ * Comic Balloon Fonts — @font-face declarations for the PanelWave player.
+ *
+ * All families here are open-licensed (SIL OFL 1.1, from Google Fonts) and
+ * ship with the @panelwave/player package — see LICENSES.md in this folder.
+ *
+ * The Ames Pro family (Blambot, commercial) is deliberately NOT included.
+ * If your works use it, license it separately and add your own @font-face
+ * for 'Ames Italic' / 'Ames Bold Italic' / 'Ames Regular'; balloons fall
+ * back to Comic Neue otherwise (the default stack is
+ * "'Ames Italic', 'Comic Neue', sans-serif").
+ *
+ * URLs are relative to this file, so it works from
+ * node_modules/@panelwave/player/src/assets/fonts/balloon/ or any copied location.
+ */
+
+/* Anton */
+@font-face {
+  font-family: 'Anton';
+  src: url('./Anton-Regular.woff2') format('woff2'),
+       url('./Anton-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Architects Daughter */
+@font-face {
+  font-family: 'Architects Daughter';
+  src: url('./ArchitectsDaughter-Regular.woff2') format('woff2'),
+       url('./ArchitectsDaughter-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Bangers */
+@font-face {
+  font-family: 'Bangers';
+  src: url('./Bangers-Regular.woff2') format('woff2'),
+       url('./Bangers-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Caveat family */
+@font-face {
+  font-family: 'Caveat';
+  src: url('./Caveat-Regular.woff2') format('woff2'),
+       url('./Caveat-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Caveat Medium';
+  src: url('./Caveat-Medium.woff2') format('woff2'),
+       url('./Caveat-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Caveat SemiBold';
+  src: url('./Caveat-SemiBold.woff2') format('woff2'),
+       url('./Caveat-SemiBold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Caveat Bold';
+  src: url('./Caveat-Bold.woff2') format('woff2'),
+       url('./Caveat-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Comic Neue family */
+@font-face {
+  font-family: 'Comic Neue';
+  src: url('./ComicNeue-Regular.woff2') format('woff2'),
+       url('./ComicNeue-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Comic Neue Italic';
+  src: url('./ComicNeue-Italic.woff2') format('woff2'),
+       url('./ComicNeue-Italic.woff') format('woff');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Comic Neue Light';
+  src: url('./ComicNeue-Light.woff2') format('woff2'),
+       url('./ComicNeue-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Comic Neue Light Italic';
+  src: url('./ComicNeue-LightItalic.woff2') format('woff2'),
+       url('./ComicNeue-LightItalic.woff') format('woff');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Comic Neue Bold';
+  src: url('./ComicNeue-Bold.woff2') format('woff2'),
+       url('./ComicNeue-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Comic Neue Bold Italic';
+  src: url('./ComicNeue-BoldItalic.woff2') format('woff2'),
+       url('./ComicNeue-BoldItalic.woff') format('woff');
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Coming Soon */
+@font-face {
+  font-family: 'Coming Soon';
+  src: url('./ComingSoon-Regular.woff2') format('woff2'),
+       url('./ComingSoon-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Gloria Hallelujah */
+@font-face {
+  font-family: 'Gloria Hallelujah';
+  src: url('./GloriaHallelujah.woff2') format('woff2'),
+       url('./GloriaHallelujah.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Luckiest Guy */
+@font-face {
+  font-family: 'Luckiest Guy';
+  src: url('./LuckiestGuy-Regular.woff2') format('woff2'),
+       url('./LuckiestGuy-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Neucha */
+@font-face {
+  font-family: 'Neucha';
+  src: url('./Neucha.woff2') format('woff2'),
+       url('./Neucha.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Patrick Hand */
+@font-face {
+  font-family: 'Patrick Hand';
+  src: url('./PatrickHand-Regular.woff2') format('woff2'),
+       url('./PatrickHand-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Permanent Marker */
+@font-face {
+  font-family: 'Permanent Marker';
+  src: url('./PermanentMarker-Regular.woff2') format('woff2'),
+       url('./PermanentMarker-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Reenie Beanie */
+@font-face {
+  font-family: 'Reenie Beanie';
+  src: url('./ReenieBeanie.woff2') format('woff2'),
+       url('./ReenieBeanie.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Rock Salt */
+@font-face {
+  font-family: 'Rock Salt';
+  src: url('./RockSalt-Regular.woff2') format('woff2'),
+       url('./RockSalt-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Sigmar */
+@font-face {
+  font-family: 'Sigmar';
+  src: url('./Sigmar-Regular.woff2') format('woff2'),
+       url('./Sigmar-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
