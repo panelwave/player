@@ -7,6 +7,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { VideoLayerComponent } from './video-layer.component';
 import { VideoControllerService } from '../../../services/video-controller.service';
 import { UserGestureService } from '../../../services/user-gesture.service';
+import { TrackingService } from '../../../services/tracking.service';
+import {
+  VideoSequencerService,
+  type SequencedVideo,
+} from '../../../services/video-sequencer.service';
+import { PlayerEvent } from '../../../types';
 
 /** Minimal controllable stand-in for the gesture service. */
 class MockGestureService {
@@ -532,6 +538,309 @@ describe('VideoLayerComponent', () => {
       // event, which is what drives the `videoPause` output.
       videoEl.dispatchEvent(new Event('pause'));
       expect(pauseSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('pending swap cleanup (stop/pause/destroy mid-swap)', () => {
+    function driveIntoReverseSwap(): void {
+      component.playMode = 'pingpong';
+      component.reverseSrc = 'rev.mp4';
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      (component as unknown as { usingReverseVariant: boolean }).usingReverseVariant = true;
+      (component as unknown as { startReversePass(): void }).startReversePass();
+      expect(
+        (component as unknown as { swapInProgress: boolean }).swapInProgress
+      ).toBeTrue();
+    }
+
+    it('stop() removes the pending loadedmetadata swap listener', () => {
+      driveIntoReverseSwap();
+      component.stop();
+      expect(
+        (component as unknown as { swapInProgress: boolean }).swapInProgress
+      ).toBeFalse();
+
+      // The reverse source's metadata arriving later must not restart playback.
+      (videoEl.play as jasmine.Spy).calls.reset();
+      fireLoadedMetadata();
+      expect(videoEl.play).not.toHaveBeenCalled();
+    });
+
+    it('pause() removes the pending swap listener', () => {
+      driveIntoReverseSwap();
+      component.pause();
+      expect(
+        (component as unknown as { swapInProgress: boolean }).swapInProgress
+      ).toBeFalse();
+      (videoEl.play as jasmine.Spy).calls.reset();
+      fireLoadedMetadata();
+      expect(videoEl.play).not.toHaveBeenCalled();
+    });
+
+    it('ngOnDestroy removes the pending swap listener', () => {
+      driveIntoReverseSwap();
+      (videoEl.play as jasmine.Spy).calls.reset();
+      fixture.destroy();
+      fireLoadedMetadata();
+      expect(videoEl.play).not.toHaveBeenCalled();
+    });
+
+    it('stop() mid-reverse-pass also detaches the one-time reverse `ended` listener', () => {
+      driveIntoReverseSwap();
+      component.stop();
+      const finishSpy = spyOn(
+        component as unknown as { finishReversePass(): void },
+        'finishReversePass'
+      );
+      fireEnded();
+      expect(finishSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sequencer registration (page view)', () => {
+    let sequencer: VideoSequencerService;
+    let registerSpy: jasmine.Spy;
+    let unregisterSpy: jasmine.Spy;
+
+    beforeEach(() => {
+      sequencer = TestBed.inject(VideoSequencerService);
+      registerSpy = spyOn(sequencer, 'register');
+      unregisterSpy = spyOn(sequencer, 'unregister');
+    });
+
+    function createPageViewComponent(
+      startMode: 'on-view' | 'on-click' | 'on-hover'
+    ): ComponentFixture<VideoLayerComponent> {
+      const f = TestBed.createComponent(VideoLayerComponent);
+      const c = f.componentInstance;
+      c.videoId = 'page-vid';
+      c.src = 'clip.mp4';
+      c.viewMode = 'page';
+      c.startMode = startMode;
+      c.panelId = 'panel-1';
+      c.readingOrderIndex = 2;
+      f.detectChanges();
+      return f;
+    }
+
+    it('registers on-view videos as sequenced with ordering metadata', () => {
+      createPageViewComponent('on-view');
+      expect(registerSpy).toHaveBeenCalled();
+      const handle = registerSpy.calls.mostRecent().args[0] as SequencedVideo;
+      expect(handle.id).toBe('page-vid');
+      expect(handle.panelId).toBe('panel-1');
+      expect(handle.placementId).toBe('panel-1');
+      expect(handle.readingOrderIndex).toBe(2);
+      expect(handle.sequenced).toBeTrue();
+      expect(handle.element).toBeTruthy();
+    });
+
+    it('registers on-click videos as non-sequenced', () => {
+      createPageViewComponent('on-click');
+      const handle = registerSpy.calls.mostRecent().args[0] as SequencedVideo;
+      expect(handle.sequenced).toBeFalse();
+    });
+
+    it('does not register in panel view', () => {
+      const f = TestBed.createComponent(VideoLayerComponent);
+      const c = f.componentInstance;
+      c.videoId = 'panel-vid';
+      c.src = 'clip.mp4';
+      c.viewMode = 'panel';
+      f.detectChanges();
+      expect(registerSpy).not.toHaveBeenCalled();
+    });
+
+    it('unregisters on destroy', () => {
+      const f = createPageViewComponent('on-view');
+      f.destroy();
+      expect(unregisterSpy).toHaveBeenCalledWith('page-vid');
+    });
+
+    it('activate() plays and deactivate() stops the video', () => {
+      const f = createPageViewComponent('on-view');
+      const c = f.componentInstance;
+      const handle = registerSpy.calls.mostRecent().args[0] as SequencedVideo;
+      const playSpy = spyOn(c, 'play').and.returnValue(Promise.resolve());
+      const stopSpy = spyOn(c, 'stop');
+      handle.activate();
+      expect(playSpy).toHaveBeenCalled();
+      handle.deactivate();
+      expect(stopSpy).toHaveBeenCalled();
+    });
+
+    it('reports pass completion to the sequencer', () => {
+      const notifySpy = spyOn(sequencer, 'notifyPassComplete');
+      component.playMode = 'once';
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      fireEnded();
+      expect(notifySpy).toHaveBeenCalledWith('test-vid');
+    });
+  });
+
+  describe('tracking events', () => {
+    let tracking: TrackingService;
+    let trackSpy: jasmine.Spy;
+
+    beforeEach(() => {
+      tracking = TestBed.inject(TrackingService);
+      trackSpy = spyOn(tracking, 'track');
+      component.panelId = 'panel-1';
+      component.assetId = 'vid-asset';
+    });
+
+    it('emits VIDEO_PLAY with panel/asset/trigger payload on native play', () => {
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      videoEl.dispatchEvent(new Event('play'));
+      expect(trackSpy).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_PLAY,
+        jasmine.objectContaining({
+          panelId: 'panel-1',
+          assetId: 'vid-asset',
+          trigger: 'view',
+        })
+      );
+    });
+
+    it('emits VIDEO_PAUSE on native pause', () => {
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      videoEl.dispatchEvent(new Event('pause'));
+      expect(trackSpy).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_PAUSE,
+        jasmine.objectContaining({ panelId: 'panel-1' })
+      );
+    });
+
+    it('emits VIDEO_ENDED with reason "ended" for a finished once-mode video', () => {
+      component.playMode = 'once';
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      fireEnded();
+      expect(trackSpy).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_ENDED,
+        jasmine.objectContaining({ reason: 'ended' })
+      );
+    });
+
+    it('emits VIDEO_LOOP (not VIDEO_ENDED) at loop cycle boundaries', () => {
+      component.playMode = 'loop';
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      fireEnded();
+      expect(trackSpy).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_LOOP,
+        jasmine.objectContaining({ panelId: 'panel-1' })
+      );
+      expect(trackSpy).not.toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_ENDED,
+        jasmine.anything()
+      );
+    });
+
+    it('emits VIDEO_ENDED with reason "stall-skip" when the sequencer skips it', () => {
+      const sequencer = TestBed.inject(VideoSequencerService);
+      const registerSpy = spyOn(sequencer, 'register');
+      const f = TestBed.createComponent(VideoLayerComponent);
+      const c = f.componentInstance;
+      c.videoId = 'stalled-vid';
+      c.src = 'clip.mp4';
+      c.viewMode = 'page';
+      c.panelId = 'panel-9';
+      f.detectChanges();
+
+      const handle = registerSpy.calls.mostRecent().args[0] as SequencedVideo;
+      handle.onStallSkip?.();
+      expect(trackSpy).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_ENDED,
+        jasmine.objectContaining({ panelId: 'panel-9', reason: 'stall-skip' })
+      );
+    });
+
+    it('is gated by consent: events are dropped without consent and queued with it', () => {
+      trackSpy.and.callThrough();
+      tracking.configure({ consentRequired: true });
+      tracking.setConsent(false);
+      tracking.clear();
+
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      videoEl.dispatchEvent(new Event('play'));
+      expect(tracking.getQueueSize()).toBe(0);
+
+      tracking.setConsent(true);
+      videoEl.dispatchEvent(new Event('play'));
+      expect(tracking.getQueueSize()).toBe(1);
+      tracking.clear();
+    });
+
+    it('is gated by the event whitelist', () => {
+      trackSpy.and.callThrough();
+      tracking.configure({
+        consentRequired: false,
+        eventWhitelist: [PlayerEvent.VIDEO_PLAY],
+      });
+      tracking.clear();
+
+      component.playMode = 'loop';
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      videoEl.dispatchEvent(new Event('play')); // whitelisted
+      fireEnded(); // VIDEO_LOOP — not whitelisted
+      expect(tracking.getQueueSize()).toBe(1);
+      tracking.clear();
+    });
+  });
+
+  describe('unmuted user-initiated video pauses/resumes the sequencer (§4.3.4)', () => {
+    let sequencer: VideoSequencerService;
+    let pauseSpy: jasmine.Spy;
+    let resumeSpy: jasmine.Spy;
+
+    beforeEach(() => {
+      sequencer = TestBed.inject(VideoSequencerService);
+      pauseSpy = spyOn(sequencer, 'pause');
+      resumeSpy = spyOn(sequencer, 'resume');
+    });
+
+    it('pauses the sequencer when an unmuted click video starts and resumes when it pauses', async () => {
+      component.startMode = 'on-click';
+      component.muted = false;
+      gesture.set(true); // gesture registered → plays unmuted
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+
+      component.onClick();
+      await Promise.resolve(); // let play() settle
+      videoEl.dispatchEvent(new Event('play'));
+      expect(pauseSpy).toHaveBeenCalled();
+
+      videoEl.dispatchEvent(new Event('pause'));
+      expect(resumeSpy).toHaveBeenCalled();
+    });
+
+    it('does not pause the sequencer for muted user videos', async () => {
+      component.startMode = 'on-click';
+      component.muted = true;
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+
+      component.onClick();
+      await Promise.resolve();
+      videoEl.dispatchEvent(new Event('play'));
+      expect(pauseSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not pause the sequencer for on-view (policy-muted) playback', () => {
+      component.startMode = 'on-view';
+      component.muted = true;
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      videoEl.dispatchEvent(new Event('play'));
+      expect(pauseSpy).not.toHaveBeenCalled();
     });
   });
 });
