@@ -20,6 +20,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { CustomTranslateLoader } from '../../utils/translation-loader';
 
+import { PlayerEvent } from '../../types';
 import type {
   PanelWaveManifest,
   Panel,
@@ -28,6 +29,7 @@ import type {
   LocaleCode,
   Character as ManifestCharacter,
   VideoLayer,
+  VideoTrackingPayload,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -292,6 +294,21 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   private pendingVideoPasses = new Set<string>();
 
+  /**
+   * Fallback watchdog for panel-view on-view video panels (§4.5): guards
+   * against a video that never reports a pass (corrupt/unreachable source
+   * stalling forever) by force-advancing after a bounded wait. Canceled
+   * when every pending video's pass arrives first, or when autoplay stops.
+   */
+  private videoWatchdogTimer?: ReturnType<typeof setTimeout>;
+
+  /**
+   * The panel the currently-armed watchdog belongs to. Any navigation away
+   * from it invalidates a late-firing watchdog even if the timer itself
+   * hasn't been cleared yet (belt-and-braces against a double advance).
+   */
+  private videoWatchdogPanel?: Panel;
+
   private readonly trackingService = inject(TrackingService);
   private readonly videoController = inject(VideoControllerService);
   private readonly videoSequencer = inject(VideoSequencerService);
@@ -358,6 +375,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (this.pendingVideoPasses.size > 0) {
       return;
     }
+    // Media-driven advance won the race — the stall watchdog is now moot.
+    this.clearVideoWatchdog();
     void this.navigateNext().then(() => {
       if (this.autoplayEnabled) {
         this.startAutoplay();
@@ -938,9 +957,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * `on-view` video layers, the advance is driven by their media events
    * (one full pass each, signalled via `VideoControllerService.passComplete$`)
    * instead of a wall-clock timer — buffering or a user pause can never
-   * desync the dwell time. In page view, pages with visible `on-view` videos
-   * advance when the sequencer queue completes (§4.3 step 6). All other
-   * panels/pages keep the wall-clock `durationMs`/`secondsPerPanel` timer.
+   * desync the dwell time. A watchdog ({@link armVideoWatchdog}) covers the
+   * case where the media event never arrives at all (corrupt/unreachable
+   * source stalling forever). In page view, pages with visible `on-view`
+   * videos advance when the sequencer queue completes (§4.3 step 6). All
+   * other panels/pages keep the wall-clock `durationMs`/`secondsPerPanel`
+   * timer.
    */
   private startAutoplay(): void {
     this.stopAutoplay(); // Clear any existing timer / pending media waits
@@ -956,6 +978,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         this.autoplayProgress = 0;
         this.autoplayStartTime = Date.now();
         this.startAutoplayProgress();
+        this.armVideoWatchdog();
         return;
       }
     } else if (this.viewMode === 'page' && this.pageHasOnViewVideos()) {
@@ -1003,8 +1026,90 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       this.autoplayTimer = undefined;
     }
     this.pendingVideoPasses.clear();
+    this.clearVideoWatchdog();
     this.stopAutoplayProgress();
     this.autoplayProgress = 0;
+  }
+
+  /**
+   * Arm the stall-fallback watchdog for the current panel-view video panel.
+   * Bound = the panel's effective duration (`durationMs`, falling back to
+   * `secondsPerPanel`) plus a grace margin — reusing
+   * `VideoSequencerService`'s configurable stall-skip timeout (§7) rather
+   * than a hardcoded number, so the page-view and panel-view fallbacks share
+   * one knob. If it fires before every pending video reports its pass, the
+   * stalled panel is force-advanced exactly like the sequencer's stall-skip.
+   */
+  private armVideoWatchdog(): void {
+    this.clearVideoWatchdog();
+    if (typeof setTimeout === 'undefined') {
+      return;
+    }
+    this.videoWatchdogPanel = this.currentPanel;
+    const graceMs = this.videoSequencer.getStallTimeout();
+    const boundMs = Math.max(0, this.autoplayDuration) + graceMs;
+    this.videoWatchdogTimer = setTimeout(() => this.onVideoWatchdogTimeout(), boundMs);
+  }
+
+  /** Cancel the video watchdog, if armed, without touching anything else. */
+  private clearVideoWatchdog(): void {
+    if (this.videoWatchdogTimer) {
+      clearTimeout(this.videoWatchdogTimer);
+      this.videoWatchdogTimer = undefined;
+    }
+    this.videoWatchdogPanel = undefined;
+  }
+
+  /**
+   * The watchdog bound elapsed before every pending video reported a pass.
+   * No-ops if autoplay stopped, the view mode changed, the panel navigated
+   * away in the meantime (stale timer — belt-and-braces against a double
+   * advance), or the media event already won the race. Otherwise: emit the
+   * same `VIDEO_ENDED` / `stall-skip` tracking signal the page-view
+   * sequencer's stall-skip uses (`VideoLayerComponent.emitStallSkip`) for
+   * each still-pending video, then advance.
+   */
+  private onVideoWatchdogTimeout(): void {
+    this.videoWatchdogTimer = undefined;
+    if (
+      !this.autoplayEnabled ||
+      this.viewMode !== 'panel' ||
+      this.currentPanel !== this.videoWatchdogPanel ||
+      this.pendingVideoPasses.size === 0
+    ) {
+      return;
+    }
+    const panelId = this.getCurrentPanelId();
+    for (const videoId of this.pendingVideoPasses) {
+      this.trackVideoStallSkip(panelId, videoId);
+    }
+    this.pendingVideoPasses.clear();
+    this.videoWatchdogPanel = undefined;
+    void this.navigateNext().then(() => {
+      if (this.autoplayEnabled) {
+        this.startAutoplay();
+      }
+    });
+  }
+
+  /**
+   * Emit a `VIDEO_ENDED` tracking event with a `stall-skip` reason for a
+   * video the panel-view watchdog force-advanced past — the panel-view
+   * counterpart of `VideoLayerComponent.emitStallSkip()` (page view).
+   */
+  private trackVideoStallSkip(panelId: string | undefined, videoId: string): void {
+    const layer = this.currentPanel?.layers?.find((l) => l.id === videoId);
+    const assetId = typeof layer?.assetId === 'string' ? layer.assetId : undefined;
+    const payload: VideoTrackingPayload = {
+      panelId,
+      assetId,
+      trigger: 'view',
+      reason: 'stall-skip',
+    };
+    this.trackingService.track(
+      PlayerEvent.VIDEO_ENDED,
+      payload as unknown as Record<string, unknown>
+    );
   }
 
   /**

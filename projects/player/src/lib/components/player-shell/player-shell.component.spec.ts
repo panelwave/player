@@ -21,6 +21,7 @@ import { TranslationService } from '../../services/translation.service';
 import { TrackingService } from '../../services/tracking.service';
 import { VideoControllerService } from '../../services/video-controller.service';
 import { VideoSequencerService } from '../../services/video-sequencer.service';
+import { PlayerEvent } from '../../types';
 import type { Panel, PanelWaveManifest } from '../../types';
 
 describe('PlayerShellComponent auto-advance', () => {
@@ -31,8 +32,9 @@ describe('PlayerShellComponent auto-advance', () => {
     queueComplete: unknown;
     start: jasmine.Spy;
     reset: jasmine.Spy;
+    getStallTimeout: jasmine.Spy;
   };
-  let trackingMock: { configure: jasmine.Spy; setConsent: jasmine.Spy };
+  let trackingMock: { configure: jasmine.Spy; setConsent: jasmine.Spy; track: jasmine.Spy };
   let manifest: Partial<PanelWaveManifest> | null;
 
   /** Access to the shell's private members under test. */
@@ -44,6 +46,7 @@ describe('PlayerShellComponent auto-advance', () => {
       configureTracking(m: PanelWaveManifest | null): void;
       autoplayTimer?: unknown;
       pendingVideoPasses: Set<string>;
+      videoWatchdogTimer?: unknown;
     };
 
   const videoPanel = (startMode: string): Panel =>
@@ -71,10 +74,15 @@ describe('PlayerShellComponent auto-advance', () => {
       queueComplete: queueComplete$.asObservable(),
       start: jasmine.createSpy('sequencer.start'),
       reset: jasmine.createSpy('sequencer.reset'),
+      // Mirrors VideoSequencerService.DEFAULT_STALL_TIMEOUT_MS (10s) — the
+      // panel-view watchdog reuses this configurable knob as its grace
+      // margin instead of a hardcoded number.
+      getStallTimeout: jasmine.createSpy('sequencer.getStallTimeout').and.returnValue(10_000),
     };
     trackingMock = {
       configure: jasmine.createSpy('tracking.configure'),
       setConsent: jasmine.createSpy('tracking.setConsent'),
+      track: jasmine.createSpy('tracking.track'),
     };
     const manifestServiceMock = {
       getManifest: () => manifest,
@@ -179,6 +187,82 @@ describe('PlayerShellComponent auto-advance', () => {
       priv().startAutoplay();
       expect(priv().pendingVideoPasses.has('v1')).toBeTrue();
       expect(priv().autoplayTimer).toBeUndefined();
+    });
+  });
+
+  describe('panel view — video watchdog fallback (§4.5 stall guard)', () => {
+    // durationMs 1000 (videoPanel) + getStallTimeout() 10_000 = 11_000ms bound.
+    const WATCHDOG_BOUND_MS = 11_000;
+
+    beforeEach(() => {
+      shell.viewMode = 'panel';
+      shell.autoplayEnabled = true;
+      shell.currentPanel = videoPanel('on-view');
+    });
+
+    it('force-advances once when no pass ever arrives (stalled/corrupt video)', () => {
+      const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+      priv().startAutoplay();
+      expect(priv().videoWatchdogTimer).toBeDefined();
+
+      jasmine.clock().tick(WATCHDOG_BOUND_MS - 1);
+      expect(nav).not.toHaveBeenCalled();
+
+      jasmine.clock().tick(1);
+      expect(nav).toHaveBeenCalledTimes(1);
+      expect(priv().pendingVideoPasses.size).toBe(0);
+
+      // One stall-skip tracking event per still-pending video (v1, v2).
+      expect(trackingMock.track).toHaveBeenCalledTimes(2);
+      expect(trackingMock.track).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_ENDED,
+        jasmine.objectContaining({ assetId: 'a1', reason: 'stall-skip', trigger: 'view' })
+      );
+      expect(trackingMock.track).toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_ENDED,
+        jasmine.objectContaining({ assetId: 'a2', reason: 'stall-skip', trigger: 'view' })
+      );
+    });
+
+    it('cancels the watchdog once every pending video completes its pass (no double advance)', () => {
+      const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+      priv().startAutoplay();
+
+      passComplete$.next('v1');
+      passComplete$.next('v2');
+      expect(nav).toHaveBeenCalledTimes(1);
+      expect(priv().videoWatchdogTimer).toBeUndefined();
+
+      // Even though the watchdog's original bound has long elapsed, it must
+      // not fire a second, stale advance.
+      jasmine.clock().tick(WATCHDOG_BOUND_MS + 5000);
+      expect(nav).toHaveBeenCalledTimes(1);
+      expect(trackingMock.track).not.toHaveBeenCalled();
+    });
+
+    it('tears down the watchdog when autoplay is toggled off', () => {
+      const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+      priv().startAutoplay();
+      expect(priv().videoWatchdogTimer).toBeDefined();
+
+      shell.onToggleAutoplay(); // was enabled → turns off, stops autoplay
+      expect(priv().videoWatchdogTimer).toBeUndefined();
+
+      jasmine.clock().tick(WATCHDOG_BOUND_MS + 1);
+      expect(nav).not.toHaveBeenCalled();
+      expect(trackingMock.track).not.toHaveBeenCalled();
+    });
+
+    it('clears the watchdog on destroy', () => {
+      const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+      priv().startAutoplay();
+      expect(priv().videoWatchdogTimer).toBeDefined();
+
+      shell.ngOnDestroy();
+      expect(priv().videoWatchdogTimer).toBeUndefined();
+
+      jasmine.clock().tick(WATCHDOG_BOUND_MS + 1);
+      expect(nav).not.toHaveBeenCalled();
     });
   });
 
