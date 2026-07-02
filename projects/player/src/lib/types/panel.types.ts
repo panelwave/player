@@ -116,23 +116,52 @@ export interface ImageLayer extends Layer {
 }
 
 /**
+ * Video playback mode (schema 1.1+).
+ * - `once`: play through and freeze on the last frame.
+ * - `loop`: play from startAtMs to the end, seek back, repeat.
+ * - `pingpong`: play forward, then backward, then forward, repeating.
+ * - `loop-from`: play once from startAtMs to the end, then loop from loopFromMs to the end.
+ */
+export type VideoPlayMode = 'once' | 'loop' | 'pingpong' | 'loop-from';
+
+/**
+ * Video start trigger (schema 1.1+).
+ * - `on-view`: starts when the panel becomes current / enters the viewport.
+ * - `on-hover`: starts on mouseover (page view only; falls back to on-click otherwise).
+ * - `on-click`: starts on click/tap and toggles play/pause thereafter.
+ */
+export type VideoStartMode = 'on-view' | 'on-hover' | 'on-click';
+
+/**
  * Video layer
  */
 export interface VideoLayer extends Layer {
   kind: 'video';
   assetId: AssetRef;
-  
-  /** Autoplay video (optional) */
+
+  /** Autoplay video (optional, legacy schema 1.0 — superseded by startMode) */
   autoplay?: boolean;
-  
-  /** Loop video (optional) */
+
+  /** Loop video (optional, legacy schema 1.0 — superseded by playMode) */
   loop?: boolean;
-  
+
   /** Muted by default (optional) */
   muted?: boolean;
-  
+
   /** Start time in milliseconds (optional) */
   startAtMs?: number;
+
+  /** Playback mode (schema 1.1+, default 'once'). Takes precedence over legacy `loop`. */
+  playMode?: VideoPlayMode;
+
+  /**
+   * Loop re-entry point in milliseconds (schema 1.1+), only used when playMode is 'loop-from'.
+   * Absolute media time, independent of startAtMs. Constraint: startAtMs <= loopFromMs < durationMs.
+   */
+  loopFromMs?: number;
+
+  /** Start trigger (schema 1.1+, default 'on-view'). Takes precedence over legacy `autoplay`. */
+  startMode?: VideoStartMode;
 }
 
 /**

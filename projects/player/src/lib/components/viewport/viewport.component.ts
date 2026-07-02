@@ -70,6 +70,12 @@ export class ViewportComponent implements OnChanges {
   @Input() viewMode: ViewMode = 'panel';
 
   /**
+   * Id of the current panel (panel view). Passed to the layer renderer so
+   * video layers carry their panel id for tracking / sequencing.
+   */
+  @Input() currentPanelId: string | null = null;
+
+  /**
    * Current locale for localized content
    */
   @Input() locale: LocaleCode = 'en-US';
@@ -594,6 +600,14 @@ export class ViewportComponent implements OnChanges {
       panY: this.panY - step,
       zoom: this.zoom,
     });
+  }
+
+  /**
+   * Index of a panel in the current page's reading order, or -1 when absent.
+   * Used to order the page-view video sequencer.
+   */
+  readingOrderIndexOf(panelId: string): number {
+    return this.page?.readingOrder ? this.page.readingOrder.indexOf(panelId) : -1;
   }
 
   /**

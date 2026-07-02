@@ -13,6 +13,14 @@ export { FlowEngineService } from './lib/services/flow-engine.service';
 export { ImageCacheService } from './lib/services/image-cache.service';
 export { AudioEngineService, type AudioTrack, type PlaybackState } from './lib/services/audio-engine.service';
 export { VideoControllerService, type VideoState, type VideoEvent, type VideoStatus } from './lib/services/video-controller.service';
+export { UserGestureService } from './lib/services/user-gesture.service';
+export { VisibilityService, VISIBILITY_THRESHOLD, type VisibilityChange } from './lib/services/visibility.service';
+export {
+  VideoSequencerService,
+  DEFAULT_STALL_TIMEOUT_MS,
+  type SequencedVideo,
+  type SequencedVideoInfo,
+} from './lib/services/video-sequencer.service';
 export { PreloadService, type PreloadItem, type PreloadPriority } from './lib/services/preload.service';
 export { TrackingService, type TrackingEvent } from './lib/services/tracking.service';
 export { EntitlementService } from './lib/services/entitlement.service';
@@ -35,6 +43,14 @@ export {
   type BalloonOptions,
   type TailOptions,
   type BalloonRenderResult,
+  DEFAULT_VIDEO_PLAY_MODE,
+  DEFAULT_VIDEO_START_MODE,
+  DEFAULT_VIDEO_MUTED,
+  resolvePlayMode,
+  resolveStartMode,
+  resolveMuted,
+  resolveVideoConfig,
+  type EffectiveVideoConfig,
 } from './lib/utils';
 
 // Components
@@ -45,4 +61,5 @@ export { PaywallOverlayComponent, type PaywallAction } from './lib/components/ov
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';
 export { VariantSelectorComponent } from './lib/components/variant-selector/variant-selector.component';
+export { VideoLayerComponent, type LayerViewMode } from './lib/components/layers/video-layer/video-layer.component';
 export * from './lib/player.component';

@@ -183,9 +183,32 @@ export interface AudioVariant {
  */
 export interface AssetCatalogItemVideo extends AssetCommon {
   category: 'video';
-  
+
   /** Array of video variants (different formats/resolutions) */
   variants: VideoVariant[];
+
+  /**
+   * Poster/preview frame shown before playback starts (schema 1.1+), e.g.
+   * for click-to-play and reduced-motion presentations (optional).
+   */
+  poster?: VideoPoster;
+}
+
+/**
+ * Poster/preview frame for a video asset.
+ */
+export interface VideoPoster {
+  /** Source path or URL */
+  src: string;
+
+  /** MIME type (optional, must be an image/* type) */
+  mime?: string;
+
+  /** Width in pixels (optional) */
+  w?: number;
+
+  /** Height in pixels (optional) */
+  h?: number;
 }
 
 /**
@@ -212,9 +235,16 @@ export interface VideoVariant {
   
   /** Whether this is a streaming format (HLS/DASH) (optional) */
   streaming?: boolean;
-  
+
   /** Locale for this variant (optional) */
   locale?: LocaleCode;
+
+  /**
+   * Playback direction of this variant (schema 1.1+, default 'forward').
+   * `reverse` marks a pre-rendered, time-reversed encode used for smooth
+   * `pingpong` playback; the player frame-steps when no reverse variant exists.
+   */
+  direction?: 'forward' | 'reverse';
 }
 
 /**

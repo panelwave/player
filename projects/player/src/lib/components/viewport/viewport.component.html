@@ -26,6 +26,10 @@
             <pw-layer-renderer
               [layer]="layer"
               [locale]="locale"
+              [viewMode]="viewMode"
+              [viewActive]="true"
+              [reducedMotion]="reducedMotion"
+              [panelId]="currentPanelId || ''"
               (layerClick)="layerClick.emit($event)">
             </pw-layer-renderer>
           }
@@ -89,6 +93,14 @@
                       [layer]="layer"
                       [locale]="locale"
                       [altText]="getAltText(layer)"
+                      [viewMode]="viewMode"
+                      [reducedMotion]="reducedMotion"
+                      [panelId]="placement.panelId"
+                      [placementId]="placement.panelId"
+                      [readingOrderIndex]="readingOrderIndexOf(placement.panelId)"
+                      [placementZ]="placement.z || 0"
+                      [placementY]="placement.y"
+                      [placementX]="placement.x"
                       (layerClick)="layerClick.emit($event)">
                     </pw-layer-renderer>
                   }

@@ -301,6 +301,40 @@ export enum PlayerEvent {
   STATE_CHANGE = 'stateChange',
   PREFERENCE_CHANGE = 'preferenceChange',
   LOCALE_CHANGE = 'localeChange',
+
+  /** A video layer started playing. */
+  VIDEO_PLAY = 'videoPlay',
+  /** A video layer paused. */
+  VIDEO_PAUSE = 'videoPause',
+  /**
+   * A video finished (`once` mode ended) or was skipped by the sequencer
+   * because it stalled (see `VideoTrackingPayload.reason`).
+   */
+  VIDEO_ENDED = 'videoEnded',
+  /** A video completed one loop / pingpong / loop-from cycle. */
+  VIDEO_LOOP = 'videoLoop',
+}
+
+/**
+ * What triggered a video playback event, for analytics.
+ */
+export type VideoTrigger = 'view' | 'hover' | 'click' | 'sequencer';
+
+/**
+ * Payload emitted with the `VIDEO_*` player/tracking events.
+ */
+export interface VideoTrackingPayload {
+  /** Panel the video layer belongs to (when known). */
+  panelId?: string;
+  /** Catalog asset id of the video (when known). */
+  assetId?: string;
+  /** What initiated the playback that produced this event. */
+  trigger: VideoTrigger;
+  /**
+   * Reason qualifier for `VIDEO_ENDED` — `'ended'` for a genuine finish,
+   * `'stall-skip'` when the sequencer skipped a stalled entry.
+   */
+  reason?: 'ended' | 'stall-skip';
 }
 
 /**

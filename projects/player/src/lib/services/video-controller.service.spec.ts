@@ -74,6 +74,88 @@ describe('VideoControllerService', () => {
     });
   });
 
+  describe('one-unmuted-video rule', () => {
+    let secondVideo: HTMLVideoElement;
+
+    beforeEach(() => {
+      secondVideo = document.createElement('video');
+      secondVideo.src = 'second.mp4';
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      spyOn(secondVideo, 'pause');
+    });
+
+    it('pauses another unmuted video when a new unmuted one plays', async () => {
+      await service.play(mockVideo, 'unmuted-1', false);
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      expect(mockVideo.pause).toHaveBeenCalled();
+    });
+
+    it('does NOT pause a muted video when an unmuted one plays', async () => {
+      await service.play(mockVideo, 'muted-1', true);
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+    });
+
+    it('lets multiple muted videos play concurrently', async () => {
+      await service.play(mockVideo, 'muted-1', true);
+      await service.play(secondVideo, 'muted-2', true);
+
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+      expect(secondVideo.play).toHaveBeenCalled();
+    });
+
+    it('pauses others when a muted video is flipped to unmuted', async () => {
+      await service.play(mockVideo, 'unmuted-1', false);
+      await service.play(secondVideo, 'muted-2', true);
+      // mockVideo not paused yet (second was muted)
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+
+      service.notifyMutedChanged('muted-2', false);
+      expect(mockVideo.pause).toHaveBeenCalled();
+    });
+
+    it('notifies the preempted video via its registered onPreempted callback', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'unmuted-1', false, onPreempted);
+
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      expect(mockVideo.pause).toHaveBeenCalled();
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not notify the video that stays active', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'unmuted-1', false);
+      await service.play(secondVideo, 'unmuted-2', false, onPreempted);
+
+      // secondVideo is the newly-started, still-playing one.
+      expect(onPreempted).not.toHaveBeenCalled();
+    });
+
+    it('clears the active video pointer when the active video is preempted', async () => {
+      await service.play(mockVideo, 'unmuted-1', false);
+      expect(service.getActiveVideoId()).toBe('unmuted-1');
+
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // The preempted video must not be left dangling as "active".
+      expect(service.getActiveVideoId()).toBe('unmuted-2');
+    });
+
+    it('notifies preempted videos through notifyMutedChanged as well', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'unmuted-1', false, onPreempted);
+      await service.play(secondVideo, 'muted-2', true);
+
+      service.notifyMutedChanged('muted-2', false);
+
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('pause', () => {
     it('should pause playing video', async () => {
       await service.play(mockVideo, 'test-video');
@@ -261,7 +343,7 @@ describe('VideoControllerService', () => {
       service.events$.subscribe(event => events.push(event));
 
       await service.play(mockVideo, 'test-video');
-      
+
       // Simulate ended event
       const endedEvent = new Event('ended');
       mockVideo.dispatchEvent(endedEvent);
@@ -269,6 +351,61 @@ describe('VideoControllerService', () => {
       const ended = events.find(e => e.type === 'ended');
       expect(ended).toBeDefined();
       expect(service.getState()).toBe('idle');
+    });
+
+    it('keeps a looping video registered (and preemptable) across its internal `ended` cycle boundary', async () => {
+      // Simulates VideoLayerComponent's loop mode: it does NOT call
+      // unregister() on `ended` (only 'once' mode / pause / stop / destroy
+      // do), so the video must stay in the registry when it keeps playing
+      // past a native `ended` event.
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'loop-video', false, onPreempted);
+
+      mockVideo.dispatchEvent(new Event('ended'));
+
+      const secondVideo = document.createElement('video');
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // Still registered -> still subject to the single-unmuted-video rule
+      // and still notified of preemption.
+      expect(mockVideo.pause).toHaveBeenCalled();
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not double-register a looping video across repeated internal `ended` cycles', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'loop-video', false, onPreempted);
+
+      mockVideo.dispatchEvent(new Event('ended'));
+      mockVideo.dispatchEvent(new Event('ended'));
+      mockVideo.dispatchEvent(new Event('ended'));
+
+      const secondVideo = document.createElement('video');
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // Exactly one preemption notification, regardless of how many internal
+      // `ended` cycles occurred beforehand.
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+      expect(mockVideo.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets the owning component clean up a genuinely finished ("once") video via unregister()', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'once-video', false, onPreempted);
+
+      // `ended` fires, then the owning component (once mode) unregisters it.
+      mockVideo.dispatchEvent(new Event('ended'));
+      service.unregister('once-video');
+
+      const secondVideo = document.createElement('video');
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // No longer registered -> not paused, not notified.
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+      expect(onPreempted).not.toHaveBeenCalled();
     });
 
     it('should emit buffering event', async () => {

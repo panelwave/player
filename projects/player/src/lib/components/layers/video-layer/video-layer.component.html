@@ -1,17 +1,35 @@
-<div class="video-layer-container">
+<div
+  class="video-layer-container"
+  [class.interactive]="isKeyboardInteractive()"
+  [attr.tabindex]="isKeyboardInteractive() ? 0 : null"
+  [attr.role]="isKeyboardInteractive() ? 'button' : null"
+  [attr.aria-label]="ariaLabel || null"
+  (click)="onClick()"
+  (keydown)="onKeydown($event)"
+  (mouseenter)="onMouseEnter()"
+  (mouseleave)="onMouseLeave()">
   <video
     #videoElement
     class="video-layer"
     [src]="getVideoUrl()"
     [poster]="getPosterUrl()"
-    [autoplay]="autoplay"
-    [loop]="loop"
-    [muted]="muted"
+    [muted]="displayMuted"
     [controls]="controls"
-    (play)="onPlay()"
-    (pause)="onPause()"
-    (ended)="onEnded()"
+    playsinline
+    preload="metadata"
+    (loadedmetadata)="onLoadedMetadata()"
     (error)="onError($event)">
     Your browser does not support the video tag.
   </video>
+
+  @if (showUnmuteButton) {
+    <button
+      type="button"
+      class="video-unmute-affordance"
+      aria-label="Unmute video"
+      (click)="onUnmuteClick($event)">
+      <span class="video-unmute-icon" aria-hidden="true">🔊</span>
+      <span class="video-unmute-label">Unmute</span>
+    </button>
+  }
 </div>

@@ -38,12 +38,28 @@ export interface VideoStatus {
  * Video Controller Service
  * Ensures only one video plays at a time and manages video lifecycle
  */
+/**
+ * Registered concurrently-playing video.
+ */
+interface RegisteredVideo {
+  element: HTMLVideoElement;
+  muted: boolean;
+  /**
+   * Invoked when the controller preempts (pauses + unregisters) this video
+   * on behalf of a newly-started unmuted video, so the owning component can
+   * react (cancel internal timers, update UI state, emit its pause output)
+   * instead of finding out only indirectly via the paused element.
+   */
+  onPreempted?: () => void;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class VideoControllerService {
   /**
-   * Currently active video element
+   * Currently active video element (the most recently started one — retained
+   * for backward-compatible status/pause/seek helpers).
    */
   private activeVideo?: HTMLVideoElement;
 
@@ -51,6 +67,13 @@ export class VideoControllerService {
    * Active video ID
    */
   private activeVideoId?: string;
+
+  /**
+   * Registry of currently-playing videos keyed by videoId. Used to enforce
+   * the "at most one unmuted video at a time" rule while allowing any number
+   * of muted videos to play concurrently.
+   */
+  private readonly registry = new Map<string, RegisteredVideo>();
 
   /**
    * Current state
@@ -68,6 +91,21 @@ export class VideoControllerService {
   readonly events$: Observable<VideoEvent> = this.eventSubject.asObservable();
 
   /**
+   * Emits the videoId whenever a video completes one full pass (once → ended;
+   * loop / loop-from / pingpong → one cycle). Used by the player shell to
+   * drive precise, media-event-based auto-advance for video panels in panel
+   * view (§4.5), independent of the concurrency registry.
+   */
+  private readonly passCompleteSubject = new Subject<string>();
+  readonly passComplete$: Observable<string> =
+    this.passCompleteSubject.asObservable();
+
+  /** Signal that a video completed one full pass (called by the layer). */
+  notifyPassComplete(videoId: string): void {
+    this.passCompleteSubject.next(videoId);
+  }
+
+  /**
    * Error retry count
    */
   private retryCount = 0;
@@ -83,16 +121,36 @@ export class VideoControllerService {
   private readonly RETRY_DELAY = 1000;
 
   /**
-   * Play video
+   * Play video.
+   *
+   * Enforces "at most one unmuted video at a time": starting an unmuted video
+   * pauses every other currently-playing unmuted video. Muted videos play
+   * concurrently without restriction. The most recently started video becomes
+   * the "active" one for status/pause/seek helpers.
+   *
+   * @param videoElement - The video element to play
+   * @param videoId - Unique id for this video
+   * @param muted - Whether this playback is muted (default false, i.e. unmuted)
+   * @param onPreempted - Optional callback invoked if this video is later
+   *   paused by the controller to enforce the single-unmuted rule (i.e. some
+   *   other video started unmuted). Lets the owning component react (cancel
+   *   timers, update UI, emit pause) instead of only observing a paused
+   *   element.
    */
-  async play(videoElement: HTMLVideoElement, videoId: string): Promise<void> {
-    // Stop any currently playing video
-    if (this.activeVideo && this.activeVideo !== videoElement) {
-      await this.stop();
+  async play(
+    videoElement: HTMLVideoElement,
+    videoId: string,
+    muted = false,
+    onPreempted?: () => void
+  ): Promise<void> {
+    // Enforce the single-unmuted rule: pause other unmuted videos.
+    if (!muted) {
+      this.pauseOtherUnmuted(videoId);
     }
 
     try {
-      // Set as active
+      // Register / update this video and set it as the active one.
+      this.registry.set(videoId, { element: videoElement, muted, onPreempted });
       this.activeVideo = videoElement;
       this.activeVideoId = videoId;
       this.setState('loading');
@@ -102,7 +160,7 @@ export class VideoControllerService {
 
       // Attempt playback
       await videoElement.play();
-      
+
       this.setState('playing');
       this.retryCount = 0;
       this.emitEvent('play', videoId);
@@ -110,6 +168,51 @@ export class VideoControllerService {
       console.error(`Failed to play video ${videoId}:`, error);
       this.handleError(videoId, error as Error);
       throw error;
+    }
+  }
+
+  /**
+   * Pause all currently-playing unmuted videos except the given one.
+   */
+  private pauseOtherUnmuted(exceptVideoId: string): void {
+    for (const [id, entry] of this.registry) {
+      if (id === exceptVideoId || entry.muted) {
+        continue;
+      }
+      entry.element.pause();
+      this.registry.delete(id);
+      if (this.activeVideoId === id) {
+        this.activeVideo = undefined;
+        this.activeVideoId = undefined;
+      }
+      this.emitEvent('pause', id);
+      entry.onPreempted?.();
+    }
+  }
+
+  /**
+   * Update the muted state tracked for a registered video (used when an
+   * unmute affordance flips a previously muted video to unmuted).
+   */
+  notifyMutedChanged(videoId: string, muted: boolean): void {
+    const entry = this.registry.get(videoId);
+    if (entry) {
+      entry.muted = muted;
+    }
+    if (!muted) {
+      this.pauseOtherUnmuted(videoId);
+    }
+  }
+
+  /**
+   * Remove a video from the concurrency registry (e.g. when it is paused,
+   * ended, or its component is destroyed).
+   */
+  unregister(videoId: string): void {
+    this.registry.delete(videoId);
+    if (this.activeVideoId === videoId) {
+      this.activeVideo = undefined;
+      this.activeVideoId = undefined;
     }
   }
 
@@ -173,6 +276,9 @@ export class VideoControllerService {
     this.detachEventListeners(this.activeVideo);
 
     // Clear references
+    if (videoId) {
+      this.registry.delete(videoId);
+    }
     this.activeVideo = undefined;
     this.activeVideoId = undefined;
     this.setState('idle');
@@ -210,7 +316,16 @@ export class VideoControllerService {
   }
 
   /**
-   * Get current state
+   * Get current state.
+   *
+   * NOTE: `currentState` is a single global machine that reflects only the
+   * *most recently started* video. With the relaxed "at most one unmuted"
+   * rule multiple muted videos can play concurrently, so after one of them
+   * fires `ended` (and keeps looping) this can read `idle` while others still
+   * play. The `VideoSequencerService` therefore does NOT consult `getState()`
+   * for queue decisions — it tracks its own per-slot pass completion via
+   * `notifyPassComplete()`. Treat this value as a best-effort hint for the
+   * active video only.
    */
   getState(): VideoState {
     return this.currentState;
@@ -277,7 +392,16 @@ export class VideoControllerService {
   }
 
   /**
-   * Handle video ended
+   * Handle video ended.
+   *
+   * Deliberately does NOT touch the concurrency registry: a native `ended`
+   * event also fires at the internal cycle boundary of a looping/pingpong
+   * video (it keeps playing right after), so unregistering here would drop
+   * the "at most one unmuted video" enforcement and the `onPreempted`
+   * callback for any video that continues past its first cycle. The owning
+   * component knows the play mode and is responsible for calling
+   * `unregister()` when playback is genuinely finished (or on pause/stop/
+   * destroy) — see `VideoLayerComponent.handleEnded()`.
    */
   private onEnded(videoId: string): void {
     this.setState('idle');
@@ -411,6 +535,8 @@ export class VideoControllerService {
    */
   destroy(): void {
     this.stop();
+    this.registry.clear();
     this.eventSubject.complete();
+    this.passCompleteSubject.complete();
   }
 }

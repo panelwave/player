@@ -4,7 +4,13 @@
  */
 
 // Import types from other modules
-import type { Panel, BalloonConfig, BalloonConfigOverride } from './panel.types';
+import type {
+  Panel,
+  BalloonConfig,
+  BalloonConfigOverride,
+  VideoPlayMode,
+  VideoStartMode,
+} from './panel.types';
 import type { Graph } from './graph.types';
 import type { Assets } from './asset.types';
 import type { Variables } from './variable.types';
@@ -396,6 +402,15 @@ export interface UIDefaults {
   
   /** Enable scrolling mode by default (optional, default: true) */
   scrollingDefault?: boolean;
+
+  /** Work-level default VideoLayer playback mode (schema 1.1+, default 'once') */
+  videoPlayModeDefault?: VideoPlayMode;
+
+  /** Work-level default VideoLayer start trigger (schema 1.1+, default 'on-view') */
+  videoStartModeDefault?: VideoStartMode;
+
+  /** Work-level default for VideoLayer muted state (schema 1.1+, default true) */
+  videoMutedDefault?: boolean;
 }
 
 /**

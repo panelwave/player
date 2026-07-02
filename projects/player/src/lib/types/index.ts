@@ -43,6 +43,8 @@ export type {
   Layer,
   ImageLayer,
   VideoLayer,
+  VideoPlayMode,
+  VideoStartMode,
   TextLayer,
   AudioLayer,
   PluginLayer,
@@ -88,6 +90,7 @@ export type {
   AudioVariant,
   AssetCatalogItemVideo,
   VideoVariant,
+  VideoPoster,
   AssetCatalogItemSubtitle,
   SubtitleVariant,
   AssetCatalogItemVector,
@@ -155,6 +158,8 @@ export type {
 } from './player.types';
 
 export { PlayerEvent } from './player.types';
+
+export type { VideoTrigger, VideoTrackingPayload } from './player.types';
 
 // Entitlement types
 export type {

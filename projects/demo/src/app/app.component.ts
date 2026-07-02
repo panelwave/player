@@ -16,14 +16,39 @@ export class AppComponent implements OnInit {
   loading = true;
   error: string | null = null;
 
+  /** Available demo manifests (the player is re-created on switch). */
+  readonly demos = [
+    { id: 'sample', label: 'Sample Comic', url: 'assets/sample-manifest.json' },
+    {
+      id: 'video-sequencing',
+      label: 'Video Sequencing',
+      url: 'assets/video-sequencing-manifest.json',
+    },
+  ];
+
+  activeDemo = 'sample';
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    this.loadManifest();
+    this.loadManifest('assets/sample-manifest.json');
   }
 
-  private loadManifest() {
-    this.http.get<PanelWaveManifest>('assets/sample-manifest.json')
+  /** Switch to another demo manifest (destroys and re-creates the player). */
+  selectDemo(demoId: string) {
+    const demo = this.demos.find((d) => d.id === demoId);
+    if (!demo || this.activeDemo === demoId) {
+      return;
+    }
+    this.activeDemo = demoId;
+    this.manifest = null;
+    this.loadManifest(demo.url);
+  }
+
+  private loadManifest(url: string) {
+    this.loading = true;
+    this.error = null;
+    this.http.get<PanelWaveManifest>(url)
       .subscribe({
         next: (manifest) => {
           this.manifest = manifest;
