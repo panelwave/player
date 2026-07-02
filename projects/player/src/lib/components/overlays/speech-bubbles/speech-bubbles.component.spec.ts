@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { SpeechBubblesComponent } from './speech-bubbles.component';
+import type { SpeechBubble } from '../../../types';
+
+const asBubble = (b: object): SpeechBubble => b as SpeechBubble;
 
 describe('SpeechBubblesComponent', () => {
   let fixture: ComponentFixture<SpeechBubblesComponent>;
@@ -47,17 +50,17 @@ describe('SpeechBubblesComponent', () => {
     beforeEach(() => {
       component.containerWidth = 400; // authored at 800 → half-size viewport
       component.containerHeight = 300;
-      (component as any).initialized = true;
+      (component as unknown as { initialized: boolean }).initialized = true;
     });
 
     it('scales the rendered balloon so its natural width matches the authored shape width', () => {
-      component.bubbles = [{
+      component.bubbles = [asBubble({
         id: 'b1',
         text: { 'en-US': 'Hello!' },
         // Authored at 800×600: a 160×90 balloon → w=0.2, h=0.15 → 80px in this viewport
         shape: { x: 0.4, y: 0.4, w: 0.2, h: 0.15 },
         balloonConfig: {},
-      } as any];
+      })];
 
       component.renderAllBalloons();
 
@@ -68,7 +71,7 @@ describe('SpeechBubblesComponent', () => {
     });
 
     it('applies no scale when the shape box is missing (legacy manifests)', () => {
-      component.bubbles = [{ id: 'b1', text: { 'en-US': 'Hi' }, shape: undefined } as any];
+      component.bubbles = [asBubble({ id: 'b1', text: { 'en-US': 'Hi' }, shape: undefined })];
 
       component.renderAllBalloons();
 
@@ -78,12 +81,12 @@ describe('SpeechBubblesComponent', () => {
     });
 
     it('clamps extreme scales from unreconciled legacy geometry', () => {
-      component.bubbles = [{
+      component.bubbles = [asBubble({
         id: 'b1',
         text: { 'en-US': 'Hi' },
         shape: { x: 0.4, y: 0.4, w: 0.001, h: 0.001 }, // would be a near-zero scale
         balloonConfig: {},
-      } as any];
+      })];
 
       component.renderAllBalloons();
 
