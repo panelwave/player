@@ -159,6 +159,8 @@ export type {
 
 export { PlayerEvent } from './player.types';
 
+export type { VideoTrigger, VideoTrackingPayload } from './player.types';
+
 // Entitlement types
 export type {
   EntitlementAdapter,

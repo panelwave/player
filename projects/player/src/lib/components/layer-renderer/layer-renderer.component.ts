@@ -79,9 +79,29 @@ export class LayerRendererComponent {
   @Input() reducedMotion = false;
 
   /**
-   * Base URL used for resolving video/reverse variant paths.
+   * Panel id the current layer belongs to (for video tracking + sequencing).
    */
-  @Input() videoBaseUrl = '';
+  @Input() panelId = '';
+
+  /**
+   * Placement id used for page-view visibility observation (video sequencing).
+   */
+  @Input() placementId = '';
+
+  /**
+   * Index of the owning panel in `Page.readingOrder` (or -1). Drives video
+   * sequencing order in page view.
+   */
+  @Input() readingOrderIndex = -1;
+
+  /** Placement z-index (video sequencer fallback ordering). */
+  @Input() placementZ = 0;
+
+  /** Placement y position 0-1 (video sequencer fallback ordering). */
+  @Input() placementY = 0;
+
+  /** Placement x position 0-1 (video sequencer fallback ordering). */
+  @Input() placementX = 0;
 
   /**
    * Layer clicked
@@ -228,8 +248,9 @@ export class LayerRendererComponent {
 
   /**
    * Get the poster URL for the video (empty string if none). Sourced from
-   * the catalog asset's `poster.src` (schema 1.1+); resolved against
-   * `videoBaseUrl` downstream by `pw-video-layer`, same as `getVideoSrc()`.
+   * the catalog asset's `poster.src` (schema 1.1+); resolved against the
+   * renderer's `baseUrl` downstream by `pw-video-layer`, same as
+   * `getVideoSrc()`.
    */
   getVideoPoster(): string {
     const asset = this.getVideoAsset();
@@ -300,6 +321,14 @@ export class LayerRendererComponent {
     }
     const alt = (this.layer as Record<string, unknown>)['alt'];
     return alt ? String(alt) : '';
+  }
+
+  /**
+   * Catalog asset id of the current video layer (empty string if none).
+   */
+  getVideoAssetId(): string {
+    const assetId = (this.layer as Record<string, unknown>)['assetId'];
+    return typeof assetId === 'string' ? assetId : '';
   }
 
   /**

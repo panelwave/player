@@ -20,6 +20,7 @@ import {
   ElementRef,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  OnInit,
   OnChanges,
   OnDestroy,
   SimpleChanges,
@@ -28,9 +29,17 @@ import {
 import type {
   VideoPlayMode,
   VideoStartMode,
+  VideoTrigger,
+  VideoTrackingPayload,
 } from '../../../types';
+import { PlayerEvent } from '../../../types';
 import { VideoControllerService } from '../../../services/video-controller.service';
 import { UserGestureService } from '../../../services/user-gesture.service';
+import { TrackingService } from '../../../services/tracking.service';
+import {
+  VideoSequencerService,
+  type SequencedVideo,
+} from '../../../services/video-sequencer.service';
 import { shouldReduceMotion } from '../../../utils/animation-utils';
 
 /** View mode the layer is rendered in. */
@@ -48,10 +57,13 @@ let nextVideoInstanceId = 0;
   styleUrls: ['./video-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class VideoLayerComponent implements OnChanges, OnDestroy {
+export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   private readonly controller = inject(VideoControllerService);
   private readonly gesture = inject(UserGestureService);
+  private readonly tracking = inject(TrackingService);
+  private readonly sequencer = inject(VideoSequencerService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** Video source URL (forward variant). */
   @Input() src = '';
@@ -103,6 +115,27 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
 
   /** Unique id for controller registration; auto-generated when absent. */
   @Input() videoId = `pw-video-${nextVideoInstanceId++}`;
+
+  /** Panel id this video belongs to (for tracking + sequencer slotting). */
+  @Input() panelId = '';
+
+  /** Catalog asset id of this video (for tracking payloads). */
+  @Input() assetId = '';
+
+  /** Placement id used for page-view visibility observation (defaults to panelId). */
+  @Input() placementId = '';
+
+  /** Index in `Page.readingOrder` for sequencing, or -1 when absent. */
+  @Input() readingOrderIndex = -1;
+
+  /** Placement z-index (sequencer fallback ordering). */
+  @Input() placementZ = 0;
+
+  /** Placement y position 0-1 (sequencer fallback ordering). */
+  @Input() placementY = 0;
+
+  /** Placement x position 0-1 (sequencer fallback ordering). */
+  @Input() placementX = 0;
 
   /** Video started playing. */
   @Output() videoPlay = new EventEmitter<void>();
@@ -156,13 +189,38 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
    */
   private swapInProgress = false;
 
+  /**
+   * Pending one-time `loadedmetadata` listener registered by a src swap (see
+   * `startReversePass`/`finishReversePass`). Held so `stop()`/`pause()`/
+   * `ngOnDestroy` can remove it and clear `swapInProgress`, preventing an
+   * orphaned listener from calling `play()` on an already-stopped video when
+   * the swapped source's metadata finally loads.
+   */
+  private pendingSwapListener: (() => void) | null = null;
+
   /** Whether we already warned about pingpong degradation (warn once). */
   private static pingpongWarned = false;
 
+  /** Whether this component is currently registered with the sequencer. */
+  private registeredWithSequencer = false;
+
+  /** Whether this video is currently the sequencer's active slot member. */
+  private activatedBySequencer = false;
+
+  /**
+   * What triggered the most recent playback, for tracking payloads. Set when
+   * playback starts (sequencer / view / hover / click).
+   */
+  private currentTrigger: VideoTrigger = 'view';
+
   /** Bound media-event handlers (so they can be detached). */
   private readonly onEndedBound = (): void => this.handleEnded();
-  private readonly onPlayBound = (): void => this.videoPlay.emit();
-  private readonly onPauseBound = (): void => this.videoPause.emit();
+  private readonly onPlayBound = (): void => this.handleNativePlay();
+  private readonly onPauseBound = (): void => this.handleNativePause();
+  private readonly onWaitingBound = (): void =>
+    this.sequencer.notifyStalling(this.videoId);
+  private readonly onTimeUpdateBound = (): void =>
+    this.sequencer.notifyProgress(this.videoId);
 
   // ---------------------------------------------------------------------------
   // URL resolution
@@ -227,17 +285,83 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
   // Lifecycle
   // ---------------------------------------------------------------------------
 
+  ngOnInit(): void {
+    this.syncSequencerRegistration();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     // React to viewActive changes for on-view start mode.
     if (changes['viewActive'] && !changes['viewActive'].firstChange) {
       this.handleViewActiveChange();
     }
+    // Re-evaluate sequencer participation when a relevant input changes
+    // (the initial registration happens in ngOnInit).
+    const relevant =
+      changes['viewMode'] ?? changes['startMode'] ?? changes['panelId'];
+    if (relevant && !relevant.firstChange) {
+      this.syncSequencerRegistration();
+    }
+  }
+
+  /**
+   * Register/unregister with the {@link VideoSequencerService} depending on
+   * context. Only page-view videos participate; `on-view` videos are queued
+   * (sequenced) while hover/click videos are not (they play independently).
+   * In panel view the sequencer is bypassed entirely — `viewActive` drives
+   * playback directly. Re-syncing while registered refreshes the handle
+   * (e.g. a changed start mode flips the `sequenced` flag).
+   */
+  private syncSequencerRegistration(): void {
+    if (this.registeredWithSequencer) {
+      this.sequencer.unregister(this.videoId);
+      this.registeredWithSequencer = false;
+    }
+    if (this.viewMode === 'page') {
+      this.sequencer.register(this.asSequencedVideo());
+      this.registeredWithSequencer = true;
+    }
+  }
+
+  /** Build the sequencer control handle for this component. */
+  private asSequencedVideo(): SequencedVideo {
+    return {
+      id: this.videoId,
+      panelId: this.panelId,
+      placementId: this.placementId || this.panelId,
+      readingOrderIndex: this.readingOrderIndex,
+      z: this.placementZ,
+      y: this.placementY,
+      x: this.placementX,
+      sequenced: this.effectiveStartMode() === 'on-view',
+      element: this.host.nativeElement,
+      activate: () => this.activateFromSequencer(),
+      deactivate: () => this.deactivateFromSequencer(),
+      // §4.2: hover/click videos leaving the viewport pause keeping position.
+      suspend: () => this.pause(),
+      onStallSkip: () => this.emitStallSkip(),
+    };
+  }
+
+  /** Sequencer asks this video to play (it is the active slot). */
+  private activateFromSequencer(): void {
+    this.activatedBySequencer = true;
+    this.currentTrigger = 'sequencer';
+    void this.play();
+  }
+
+  /** Sequencer removes this video from the active slot / queue. */
+  private deactivateFromSequencer(): void {
+    this.activatedBySequencer = false;
+    this.stop();
   }
 
   ngOnDestroy(): void {
     this.stopFrameStepping();
+    this.cancelPendingSwap();
+    this.detachReverseVariantListener();
     this.detachMediaListeners();
     this.controller.unregister(this.videoId);
+    this.sequencer.unregister(this.videoId);
   }
 
   /** Native video error handler. */
@@ -276,6 +400,7 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
       return;
     }
     if (this.viewActive) {
+      this.currentTrigger = 'view';
       void this.play();
     } else {
       // on-view: pause and reset so re-entry replays from the start.
@@ -307,6 +432,7 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     if (this.effectiveStartMode() !== 'on-hover') {
       return;
     }
+    this.currentTrigger = 'hover';
     void this.play();
   }
 
@@ -323,6 +449,7 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     if (video && !video.paused) {
       this.pause();
     } else {
+      this.currentTrigger = 'click';
       void this.play();
     }
   }
@@ -382,9 +509,73 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  /**
+   * Native `play` event handler: emits the `videoPlay` output + a
+   * `VIDEO_PLAY` tracking event, and (for a user-initiated *unmuted* video)
+   * pauses the sequencer so at most one unmuted video plays and the sequence
+   * resumes afterwards (§4.3.4).
+   */
+  private handleNativePlay(): void {
+    this.videoPlay.emit();
+    this.trackVideoEvent(PlayerEvent.VIDEO_PLAY);
+    if (this.isUnmutedUserVideo()) {
+      this.sequencer.pause();
+    }
+  }
+
+  /**
+   * Native `pause` event handler: emits `videoPause` + a `VIDEO_PAUSE`
+   * tracking event, and resumes the sequencer if this was the unmuted
+   * user-initiated video that had paused it.
+   */
+  private handleNativePause(): void {
+    this.videoPause.emit();
+    this.trackVideoEvent(PlayerEvent.VIDEO_PAUSE);
+    if (this.isUnmutedUserVideo()) {
+      this.sequencer.resume();
+    }
+  }
+
+  /**
+   * Whether this is a user-initiated (hover/click) video currently playing
+   * unmuted — the case that must pause/resume the sequencer.
+   */
+  private isUnmutedUserVideo(): boolean {
+    return (
+      !this.activatedBySequencer &&
+      (this.currentTrigger === 'hover' || this.currentTrigger === 'click') &&
+      !this.displayMuted
+    );
+  }
+
+  /** Emit a video tracking event through the consent/whitelist pipeline. */
+  private trackVideoEvent(
+    event: PlayerEvent,
+    reason?: VideoTrackingPayload['reason']
+  ): void {
+    const payload: VideoTrackingPayload = {
+      panelId: this.panelId || undefined,
+      assetId: this.assetId || undefined,
+      trigger: this.currentTrigger,
+      reason,
+    };
+    this.tracking.track(event, payload as unknown as Record<string, unknown>);
+  }
+
+  /**
+   * Sequencer stall-skip hook: emit a `VIDEO_ENDED` tracking event with a
+   * `stall-skip` reason (keeps the event surface minimal — reuses the ended
+   * event with a reason rather than adding a new event type).
+   */
+  private emitStallSkip(): void {
+    this.trackVideoEvent(PlayerEvent.VIDEO_ENDED, 'stall-skip');
+  }
+
   /** Pause keeping the current position. */
   pause(): void {
     this.stopFrameStepping();
+    this.cancelPendingSwap();
+    this.detachReverseVariantListener();
     const video = this.video;
     if (video) {
       video.pause();
@@ -397,6 +588,8 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
   /** Pause and reset to the configured start offset. */
   stop(): void {
     this.stopFrameStepping();
+    this.cancelPendingSwap();
+    this.detachReverseVariantListener();
     this.reversePhase = false;
     const video = this.video;
     if (video) {
@@ -467,6 +660,8 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     video.addEventListener('ended', this.onEndedBound);
     video.addEventListener('play', this.onPlayBound);
     video.addEventListener('pause', this.onPauseBound);
+    video.addEventListener('waiting', this.onWaitingBound);
+    video.addEventListener('timeupdate', this.onTimeUpdateBound);
   }
 
   private detachMediaListeners(): void {
@@ -475,6 +670,8 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     video.removeEventListener('ended', this.onEndedBound);
     video.removeEventListener('play', this.onPlayBound);
     video.removeEventListener('pause', this.onPauseBound);
+    video.removeEventListener('waiting', this.onWaitingBound);
+    video.removeEventListener('timeupdate', this.onTimeUpdateBound);
   }
 
   private handleEnded(): void {
@@ -485,24 +682,25 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     // event, so it must not fire at those internal boundaries.
     if (mode === 'once') {
       this.videoEnd.emit();
+      this.trackVideoEvent(PlayerEvent.VIDEO_ENDED, 'ended');
     }
 
     switch (mode) {
       case 'once':
         // Freeze on last frame — do not rewind.
         this.controller.unregister(this.videoId);
-        this.passComplete.emit();
+        this.emitPassComplete();
         break;
       case 'loop':
         this.seekToStart();
-        this.videoLoop.emit();
-        this.passComplete.emit();
+        this.emitLoop();
+        this.emitPassComplete();
         void this.video?.play();
         break;
       case 'loop-from':
         this.seekToLoopFrom();
-        this.videoLoop.emit();
-        this.passComplete.emit();
+        this.emitLoop();
+        this.emitPassComplete();
         void this.video?.play();
         break;
       case 'pingpong':
@@ -514,6 +712,22 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
       default:
         break;
     }
+  }
+
+  /**
+   * Emit the `passComplete` output and notify the sequencer that this video
+   * finished one full pass, so the queue can advance.
+   */
+  private emitPassComplete(): void {
+    this.passComplete.emit();
+    this.sequencer.notifyPassComplete(this.videoId);
+    this.controller.notifyPassComplete(this.videoId);
+  }
+
+  /** Emit the `videoLoop` output and a `VIDEO_LOOP` tracking event. */
+  private emitLoop(): void {
+    this.videoLoop.emit();
+    this.trackVideoEvent(PlayerEvent.VIDEO_LOOP);
   }
 
   private seekToLoopFrom(): void {
@@ -580,22 +794,16 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
       // via a dedicated one-time listener rather than the template's
       // persistent `onLoadedMetadata` (guarded off via swapInProgress).
       this.setElementMuted(true);
-      this.swapInProgress = true;
-      video.addEventListener(
-        'loadedmetadata',
-        () => {
-          this.swapInProgress = false;
-          const v = this.video;
-          if (!v) return;
-          try {
-            v.currentTime = 0;
-          } catch {
-            // currentTime may throw if metadata still isn't ready; ignored.
-          }
-          void v.play();
-        },
-        { once: true }
-      );
+      this.beginSwap(video, () => {
+        const v = this.video;
+        if (!v) return;
+        try {
+          v.currentTime = 0;
+        } catch {
+          // currentTime may throw if metadata still isn't ready; ignored.
+        }
+        void v.play();
+      });
       video.src = this.resolveUrl(this.reverseSrc);
       video.addEventListener('ended', this.onReverseVariantEndedBound, { once: true });
       return;
@@ -625,19 +833,13 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
       // Swap back to the forward variant. Same metadata-timing hazard as
       // the reverse swap: defer the seek/play until the new source's
       // `loadedmetadata`, guarding the template's initial-setup handler.
-      this.swapInProgress = true;
-      video.addEventListener(
-        'loadedmetadata',
-        () => {
-          this.swapInProgress = false;
-          const v = this.video;
-          if (!v) return;
-          this.setElementMuted(this.computeEffectiveMuted());
-          this.seekToStart();
-          void v.play();
-        },
-        { once: true }
-      );
+      this.beginSwap(video, () => {
+        const v = this.video;
+        if (!v) return;
+        this.setElementMuted(this.computeEffectiveMuted());
+        this.seekToStart();
+        void v.play();
+      });
       video.src = this.getVideoUrl();
     } else {
       // Frame-stepping fallback: already on the forward source, already at
@@ -646,8 +848,46 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
       void video.play();
     }
 
-    this.videoLoop.emit();
-    this.passComplete.emit();
+    this.emitLoop();
+    this.emitPassComplete();
+  }
+
+  /**
+   * Register a one-time `loadedmetadata` listener for a src swap and mark
+   * `swapInProgress`. The stored reference lets `cancelPendingSwap()` remove
+   * it (and clear the flag) if playback is stopped mid-swap, avoiding an
+   * orphaned callback that would `play()` a stopped video.
+   */
+  private beginSwap(video: HTMLVideoElement, afterLoad: () => void): void {
+    this.cancelPendingSwap();
+    this.swapInProgress = true;
+    const listener = (): void => {
+      this.swapInProgress = false;
+      this.pendingSwapListener = null;
+      afterLoad();
+    };
+    this.pendingSwapListener = listener;
+    video.addEventListener('loadedmetadata', listener, { once: true });
+  }
+
+  /**
+   * Remove any pending swap `loadedmetadata` listener and clear the
+   * in-progress flag. Safe to call when no swap is pending.
+   */
+  private cancelPendingSwap(): void {
+    if (this.pendingSwapListener) {
+      this.video?.removeEventListener('loadedmetadata', this.pendingSwapListener);
+      this.pendingSwapListener = null;
+    }
+    this.swapInProgress = false;
+  }
+
+  /**
+   * Remove the one-time `ended` listener registered for the reverse-variant
+   * pass, so a stop mid-reverse-pass cannot later trigger `finishReversePass`.
+   */
+  private detachReverseVariantListener(): void {
+    this.video?.removeEventListener('ended', this.onReverseVariantEndedBound);
   }
 
   private startFrameStepping(): void {

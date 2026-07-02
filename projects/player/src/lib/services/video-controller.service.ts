@@ -91,6 +91,21 @@ export class VideoControllerService {
   readonly events$: Observable<VideoEvent> = this.eventSubject.asObservable();
 
   /**
+   * Emits the videoId whenever a video completes one full pass (once → ended;
+   * loop / loop-from / pingpong → one cycle). Used by the player shell to
+   * drive precise, media-event-based auto-advance for video panels in panel
+   * view (§4.5), independent of the concurrency registry.
+   */
+  private readonly passCompleteSubject = new Subject<string>();
+  readonly passComplete$: Observable<string> =
+    this.passCompleteSubject.asObservable();
+
+  /** Signal that a video completed one full pass (called by the layer). */
+  notifyPassComplete(videoId: string): void {
+    this.passCompleteSubject.next(videoId);
+  }
+
+  /**
    * Error retry count
    */
   private retryCount = 0;
@@ -301,7 +316,16 @@ export class VideoControllerService {
   }
 
   /**
-   * Get current state
+   * Get current state.
+   *
+   * NOTE: `currentState` is a single global machine that reflects only the
+   * *most recently started* video. With the relaxed "at most one unmuted"
+   * rule multiple muted videos can play concurrently, so after one of them
+   * fires `ended` (and keeps looping) this can read `idle` while others still
+   * play. The `VideoSequencerService` therefore does NOT consult `getState()`
+   * for queue decisions — it tracks its own per-slot pass completion via
+   * `notifyPassComplete()`. Treat this value as a best-effort hint for the
+   * active video only.
    */
   getState(): VideoState {
     return this.currentState;
@@ -513,5 +537,6 @@ export class VideoControllerService {
     this.stop();
     this.registry.clear();
     this.eventSubject.complete();
+    this.passCompleteSubject.complete();
   }
 }

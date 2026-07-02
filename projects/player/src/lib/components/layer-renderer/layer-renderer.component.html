@@ -22,7 +22,7 @@
       class="layer-video"
       [src]="getVideoSrc()"
       [reverseSrc]="getVideoReverseSrc()"
-      [baseUrl]="videoBaseUrl"
+      [baseUrl]="baseUrl"
       [poster]="getVideoPoster()"
       [controls]="getVideoControls()"
       [playMode]="getVideoPlayMode()"
@@ -35,6 +35,13 @@
       [viewActive]="viewActive"
       [reducedMotion]="reducedMotion"
       [videoId]="layer.id"
+      [panelId]="panelId"
+      [assetId]="getVideoAssetId()"
+      [placementId]="placementId || panelId"
+      [readingOrderIndex]="readingOrderIndex"
+      [placementZ]="placementZ"
+      [placementY]="placementY"
+      [placementX]="placementX"
       [ariaLabel]="getAltText()">
     </pw-video-layer>
   }

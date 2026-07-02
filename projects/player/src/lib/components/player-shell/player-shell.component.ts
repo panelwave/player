@@ -12,6 +12,7 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
 
 import { HttpClient } from '@angular/common/http';
@@ -26,6 +27,7 @@ import type {
   Chapter,
   LocaleCode,
   Character as ManifestCharacter,
+  VideoLayer,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -34,6 +36,11 @@ import { ManifestService } from '../../services/manifest.service';
 import { VariableStoreService } from '../../services/variable-store.service';
 import { FlowEngineService } from '../../services/flow-engine.service';
 import { TranslationService } from '../../services/translation.service';
+import { TrackingService } from '../../services/tracking.service';
+import { VideoControllerService } from '../../services/video-controller.service';
+import { VideoSequencerService } from '../../services/video-sequencer.service';
+import { resolveStartMode } from '../../utils/video-config-utils';
+import { shouldReduceMotion } from '../../utils/animation-utils';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
@@ -278,6 +285,17 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   private autoplayDuration = 0;
 
+  /**
+   * Video layer ids of the current panel that still owe a pass completion
+   * before autoplay may advance (panel view, video panels — §4.5). Empty when
+   * the wall-clock timer drives the advance instead.
+   */
+  private pendingVideoPasses = new Set<string>();
+
+  private readonly trackingService = inject(TrackingService);
+  private readonly videoController = inject(VideoControllerService);
+  private readonly videoSequencer = inject(VideoSequencerService);
+
   constructor(
     private playerState: PlayerStateService,
     private manifestService: ManifestService,
@@ -291,6 +309,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   ngOnInit(): void {
     this.toolbarVisible = this.showToolbar;
+    this.subscribeToVideoSignals();
     this.initializePlayer();
   }
 
@@ -300,8 +319,58 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.stopAutoplay();
     this.stopAutoplayProgress();
+    this.videoSequencer.reset();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /**
+   * Subscribe to the media-driven auto-advance signals:
+   * - `VideoControllerService.passComplete$` drives panel-view advance for
+   *   video panels (precise, media-event based — §4.5);
+   * - `VideoSequencerService.queueComplete` drives page-view advance once the
+   *   last visible on-view video finished one pass (§4.3 step 6).
+   * Both only navigate while autoplay is enabled.
+   */
+  private subscribeToVideoSignals(): void {
+    this.videoController.passComplete$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((videoId) => this.onVideoPassComplete(videoId));
+
+    this.videoSequencer.queueComplete
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.onVideoQueueComplete());
+  }
+
+  /** Panel-view auto-advance for video panels (§4.5). */
+  private onVideoPassComplete(videoId: string): void {
+    if (
+      !this.autoplayEnabled ||
+      this.viewMode !== 'panel' ||
+      this.pendingVideoPasses.size === 0 ||
+      !this.pendingVideoPasses.has(videoId)
+    ) {
+      return;
+    }
+    this.pendingVideoPasses.delete(videoId);
+    // Multiple video layers in one panel: advance when the longest pass
+    // (i.e. the last outstanding video) completes.
+    if (this.pendingVideoPasses.size > 0) {
+      return;
+    }
+    void this.navigateNext().then(() => {
+      if (this.autoplayEnabled) {
+        this.startAutoplay();
+      }
+    });
+  }
+
+  /** Page-view auto-advance when the video queue finishes (§4.3 step 6). */
+  private onVideoQueueComplete(): void {
+    if (!this.autoplayEnabled || this.viewMode !== 'page') {
+      return;
+    }
+    this.navigateToNextPage();
   }
 
   /**
@@ -336,10 +405,14 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       const loadedManifest = this.manifestService.getManifest();
       if (loadedManifest?.chapters) {
         const chapters = Object.values(loadedManifest.chapters);
-        this.pageViewAvailable = chapters.some(chapter => 
+        this.pageViewAvailable = chapters.some(chapter =>
           chapter.pages && chapter.pages.length > 0
         );
       }
+
+      // Configure tracking (consent requirements + event whitelist) from the
+      // manifest so video events flow through the consent/whitelist pipeline.
+      this.configureTracking(loadedManifest);
 
       // Navigate to initial position
       if (this.initialChapterId && this.initialPanelId) {
@@ -357,6 +430,27 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       this.ready.emit();
     } catch (err) {
       this.handleError(err as Error);
+    }
+  }
+
+  /**
+   * Configure the TrackingService from the manifest's `tracking` section:
+   * consent requirement, event whitelist and endpoint. Consent itself follows
+   * the manifest's `defaultOptIn` (until an explicit consent UI overrides it
+   * via `PlayerStateService.setTrackingConsent`).
+   */
+  private configureTracking(manifest: PanelWaveManifest | null): void {
+    const tracking = manifest?.tracking;
+    if (!tracking) {
+      return;
+    }
+    this.trackingService.configure({
+      consentRequired: tracking.consent?.required ?? true,
+      eventWhitelist: tracking.eventWhitelist,
+      endpoint: tracking.endpoint,
+    });
+    if (tracking.consent?.defaultOptIn) {
+      this.trackingService.setConsent(true);
     }
   }
 
@@ -602,20 +696,29 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   onToggleView(): void {
     const newMode = this.viewMode === 'panel' ? 'page' : 'panel';
-    
+
     if (newMode === 'page') {
       // Switch to page view - find page containing current panel
       this.currentPage = this.findPageContainingPanel();
       if (this.currentPage) {
         this.viewMode = 'page';
+        // Start the page-view video sequence; video components register as
+        // they render and visibility drives the queue.
+        this.videoSequencer.start();
       } else {
         console.warn('No page found for current panel');
       }
     } else {
       // Switch to panel view
       this.viewMode = 'panel';
+      this.videoSequencer.reset();
     }
-    
+
+    // Re-arm autoplay for the new view mode (video panels vs wall clock).
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
+    }
+
     console.log('View mode:', this.viewMode);
   }
 
@@ -829,14 +932,41 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Start autoplay
+   * Start autoplay.
+   *
+   * Video-aware (§4.5): in panel view, when the current panel contains
+   * `on-view` video layers, the advance is driven by their media events
+   * (one full pass each, signalled via `VideoControllerService.passComplete$`)
+   * instead of a wall-clock timer — buffering or a user pause can never
+   * desync the dwell time. In page view, pages with visible `on-view` videos
+   * advance when the sequencer queue completes (§4.3 step 6). All other
+   * panels/pages keep the wall-clock `durationMs`/`secondsPerPanel` timer.
    */
   private startAutoplay(): void {
-    this.stopAutoplay(); // Clear any existing timer
-    
+    this.stopAutoplay(); // Clear any existing timer / pending media waits
+
+    if (this.viewMode === 'panel') {
+      const videoIds = this.onViewVideoLayerIds(this.currentPanel);
+      if (videoIds.length > 0) {
+        // Media-event driven: wait for every on-view video's pass (the
+        // longest pass wins). Progress display uses durationMs as estimate.
+        this.pendingVideoPasses = new Set(videoIds);
+        this.autoplayDuration =
+          this.currentPanel?.durationMs ?? this.secondsPerPanel * 1000;
+        this.autoplayProgress = 0;
+        this.autoplayStartTime = Date.now();
+        this.startAutoplayProgress();
+        return;
+      }
+    } else if (this.viewMode === 'page' && this.pageHasOnViewVideos()) {
+      // Page view with on-view videos: the sequencer's queueComplete event
+      // advances the page — no wall-clock timer.
+      return;
+    }
+
     // Use panel-specific durationMs if available, otherwise use global setting (in seconds)
     const durationMs = this.currentPanel?.durationMs ?? (this.secondsPerPanel * 1000);
-    
+
     // Ensure we have a valid duration
     if (!durationMs || durationMs <= 0) {
       console.warn('Invalid autoplay duration, using default 5s');
@@ -844,12 +974,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     } else {
       this.autoplayDuration = durationMs;
     }
-    
+
     // Reset and start progress tracking
     this.autoplayProgress = 0;
     this.autoplayStartTime = Date.now();
     this.startAutoplayProgress();
-    
+
     this.autoplayTimer = setTimeout(() => {
       // Continue autoplay if still enabled
       if (this.autoplayEnabled) {
@@ -872,8 +1002,48 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       clearTimeout(this.autoplayTimer);
       this.autoplayTimer = undefined;
     }
+    this.pendingVideoPasses.clear();
     this.stopAutoplayProgress();
     this.autoplayProgress = 0;
+  }
+
+  /**
+   * Ids of the given panel's video layers whose *effective* start mode is
+   * `on-view` (i.e. the ones that will actually autoplay and produce media
+   * events). Mirrors `VideoLayerComponent.effectiveStartMode()`: reduced
+   * motion degrades `on-view` to `on-click`.
+   */
+  private onViewVideoLayerIds(panel: Panel | undefined): string[] {
+    if (!panel?.layers) {
+      return [];
+    }
+    const ui = this.manifestService.getManifest()?.settings?.ui;
+    const reduced = this.reducedMotion || shouldReduceMotion();
+    const ids: string[] = [];
+    for (const layer of panel.layers) {
+      if (layer.kind !== 'video') {
+        continue;
+      }
+      const startMode = resolveStartMode(layer as Partial<VideoLayer>, ui);
+      if (startMode === 'on-view' && !reduced) {
+        ids.push(layer.id);
+      }
+    }
+    return ids;
+  }
+
+  /** Whether the current page contains any panel with on-view video layers. */
+  private pageHasOnViewVideos(): boolean {
+    if (!this.currentPage || !this.currentChapter) {
+      return false;
+    }
+    for (const placement of this.currentPage.layout?.placements ?? []) {
+      const panel = this.currentChapter.panels[placement.panelId];
+      if (this.onViewVideoLayerIds(panel).length > 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -936,14 +1106,28 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     
     // Move to next page
     this.currentPage = pages[currentIndex + 1];
-    
+
     // Update current panel to first panel in reading order
     if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
       const firstPanelId = this.currentPage.readingOrder[0];
       this.currentPanel = this.currentChapter.panels[firstPanelId];
     }
-    
+
+    this.onPageChanged();
     console.log('Navigated to next page:', this.currentPage.id);
+  }
+
+  /**
+   * Restart the page-view video sequence (and autoplay arming) after the
+   * current page changed.
+   */
+  private onPageChanged(): void {
+    if (this.viewMode === 'page') {
+      this.videoSequencer.start();
+    }
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
+    }
   }
 
   /**
@@ -962,13 +1146,14 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     
     // Move to previous page
     this.currentPage = pages[currentIndex - 1];
-    
+
     // Update current panel to first panel in reading order
     if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
       const firstPanelId = this.currentPage.readingOrder[0];
       this.currentPanel = this.currentChapter.panels[firstPanelId];
     }
-    
+
+    this.onPageChanged();
     console.log('Navigated to previous page:', this.currentPage.id);
   }
 
