@@ -1,0 +1,285 @@
+{
+  "panelwave": {
+    "version": "1.1.0",
+    "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
+    "generator": "panelwave-video-demo/1.0"
+  },
+  "meta": {
+    "id": "work-video-sequencing-demo",
+    "title": {
+      "en-US": "Video Panels: Sequencing Demo",
+      "de-DE": "Video-Panels: Sequenzierungs-Demo"
+    },
+    "description": {
+      "en-US": "Demonstrates page-view video sequencing: three on-view video panels play one after another in reading order; a fourth panel plays on click.",
+      "de-DE": "Demonstriert die Video-Sequenzierung in der Seitenansicht: drei On-View-Videopanels spielen nacheinander in Leserichtung; ein viertes Panel spielt bei Klick."
+    },
+    "creators": [
+      {
+        "role": "artist",
+        "name": "PanelWave Demo"
+      }
+    ],
+    "publisher": "PanelWave Press",
+    "release_date": "2026-07-02",
+    "age_rating": "all",
+    "tags": ["demo", "video", "sequencing"],
+    "locales": ["en-US", "de-DE"],
+    "default_locale": "en-US"
+  },
+  "settings": {
+    "ui": {
+      "videoPlayModeDefault": "once",
+      "videoStartModeDefault": "on-view",
+      "videoMutedDefault": true
+    }
+  },
+  "tracking": {
+    "enabled": true,
+    "consent": {
+      "required": true,
+      "defaultOptIn": true
+    },
+    "eventWhitelist": ["videoPlay", "videoPause", "videoEnded", "videoLoop"]
+  },
+  "assets": {
+    "catalog": [
+      {
+        "id": "vid-demo-a",
+        "category": "video",
+        "durationMs": 2000,
+        "alt": {
+          "en-US": "Test pattern clip A (2 seconds).",
+          "de-DE": "Testbild-Clip A (2 Sekunden)."
+        },
+        "poster": {
+          "src": "assets/video/video-demo-a-poster.jpg",
+          "mime": "image/jpeg",
+          "w": 160,
+          "h": 90
+        },
+        "variants": [
+          {
+            "src": "assets/video/video-demo-a.mp4",
+            "mime": "video/mp4",
+            "w": 160,
+            "h": 90,
+            "fps": 12
+          }
+        ]
+      },
+      {
+        "id": "vid-demo-b",
+        "category": "video",
+        "durationMs": 3000,
+        "alt": {
+          "en-US": "Test pattern clip B (3 seconds).",
+          "de-DE": "Testbild-Clip B (3 Sekunden)."
+        },
+        "poster": {
+          "src": "assets/video/video-demo-b-poster.jpg",
+          "mime": "image/jpeg",
+          "w": 160,
+          "h": 90
+        },
+        "variants": [
+          {
+            "src": "assets/video/video-demo-b.mp4",
+            "mime": "video/mp4",
+            "w": 160,
+            "h": 90,
+            "fps": 12
+          }
+        ]
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "id": "ch-video-demo",
+      "title": {
+        "en-US": "Video Sequencing",
+        "de-DE": "Video-Sequenzierung"
+      },
+      "pages": [
+        {
+          "id": "pg-video-1",
+          "title": {
+            "en-US": "Sequenced Videos",
+            "de-DE": "Sequenzierte Videos"
+          },
+          "layout": {
+            "format": "bigscreen-landscape",
+            "canvasSize": {
+              "width": 1920,
+              "height": 1080
+            },
+            "placements": [
+              {
+                "panelId": "pv-1",
+                "x": 0,
+                "y": 0,
+                "w": 0.5,
+                "h": 0.5,
+                "z": 0
+              },
+              {
+                "panelId": "pv-2",
+                "x": 0.5,
+                "y": 0,
+                "w": 0.5,
+                "h": 0.5,
+                "z": 0
+              },
+              {
+                "panelId": "pv-3",
+                "x": 0,
+                "y": 0.5,
+                "w": 0.5,
+                "h": 0.5,
+                "z": 0
+              },
+              {
+                "panelId": "pv-4",
+                "x": 0.5,
+                "y": 0.5,
+                "w": 0.5,
+                "h": 0.5,
+                "z": 0
+              }
+            ]
+          },
+          "readingOrder": ["pv-1", "pv-2", "pv-3", "pv-4"]
+        }
+      ],
+      "panels": {
+        "pv-1": {
+          "title": {
+            "en-US": "1 — on-view, once",
+            "de-DE": "1 — on-view, einmal"
+          },
+          "durationMs": 2000,
+          "layers": [
+            {
+              "kind": "video",
+              "id": "ly-pv1-video",
+              "assetId": "vid-demo-a",
+              "z": 0,
+              "playMode": "once",
+              "startMode": "on-view",
+              "muted": true
+            },
+            {
+              "kind": "text",
+              "id": "ly-pv1-label",
+              "z": 1,
+              "text": {
+                "en-US": "1: on-view · once",
+                "de-DE": "1: on-view · einmal"
+              }
+            }
+          ]
+        },
+        "pv-2": {
+          "title": {
+            "en-US": "2 — on-view, loop",
+            "de-DE": "2 — on-view, Schleife"
+          },
+          "durationMs": 3000,
+          "layers": [
+            {
+              "kind": "video",
+              "id": "ly-pv2-video",
+              "assetId": "vid-demo-b",
+              "z": 0,
+              "playMode": "loop",
+              "startMode": "on-view",
+              "muted": true
+            },
+            {
+              "kind": "text",
+              "id": "ly-pv2-label",
+              "z": 1,
+              "text": {
+                "en-US": "2: on-view · loop (keeps looping muted after its pass)",
+                "de-DE": "2: on-view · Schleife (loopt nach dem Durchlauf stumm weiter)"
+              }
+            }
+          ]
+        },
+        "pv-3": {
+          "title": {
+            "en-US": "3 — on-view, once",
+            "de-DE": "3 — on-view, einmal"
+          },
+          "durationMs": 2000,
+          "layers": [
+            {
+              "kind": "video",
+              "id": "ly-pv3-video",
+              "assetId": "vid-demo-a",
+              "z": 0,
+              "playMode": "once",
+              "startMode": "on-view",
+              "muted": true
+            },
+            {
+              "kind": "text",
+              "id": "ly-pv3-label",
+              "z": 1,
+              "text": {
+                "en-US": "3: on-view · once",
+                "de-DE": "3: on-view · einmal"
+              }
+            }
+          ]
+        },
+        "pv-4": {
+          "title": {
+            "en-US": "4 — on-click",
+            "de-DE": "4 — on-click"
+          },
+          "durationMs": 3000,
+          "layers": [
+            {
+              "kind": "video",
+              "id": "ly-pv4-video",
+              "assetId": "vid-demo-b",
+              "z": 0,
+              "playMode": "loop",
+              "startMode": "on-click",
+              "muted": true,
+              "controls": false
+            },
+            {
+              "kind": "text",
+              "id": "ly-pv4-label",
+              "z": 1,
+              "text": {
+                "en-US": "4: on-click (not part of the sequence — click to toggle)",
+                "de-DE": "4: on-click (nicht Teil der Sequenz — Klick zum Starten/Stoppen)"
+              }
+            }
+          ]
+        }
+      },
+      "graph": {
+        "entry": "pv-1",
+        "edges": [
+          {
+            "from": "pv-1",
+            "to": "pv-2"
+          },
+          {
+            "from": "pv-2",
+            "to": "pv-3"
+          },
+          {
+            "from": "pv-3",
+            "to": "pv-4"
+          }
+        ]
+      }
+    }
+  ]
+}

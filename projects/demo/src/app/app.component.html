@@ -129,6 +129,28 @@
     background: color-mix(in srgb, var(--pill-accent) 15%, transparent);
   }
 
+  .demo-switcher {
+    display: flex;
+    gap: 0.5rem;
+    margin-block: 0.75rem;
+  }
+
+  .demo-switcher .pill {
+    cursor: pointer;
+  }
+
+  .demo-switcher .pill.active {
+    background: color-mix(in srgb, var(--pill-accent) 20%, transparent);
+    font-weight: 600;
+  }
+
+  .demo-hint {
+    max-width: 48rem;
+    margin-block: 0.25rem 0.75rem;
+    color: var(--gray-700);
+    font-size: 0.9rem;
+  }
+
   .pill-group .pill:nth-child(6n + 1) {
     --pill-accent: var(--bright-blue);
   }
@@ -179,6 +201,26 @@
 <div class="demo-container">
   <header class="demo-header">
     <h1>{{ title }}</h1>
+    <nav class="demo-switcher" aria-label="Demo selection">
+      @for (demo of demos; track demo.id) {
+        <button
+          type="button"
+          class="pill"
+          [class.active]="activeDemo === demo.id"
+          [attr.aria-pressed]="activeDemo === demo.id"
+          (click)="selectDemo(demo.id)">
+          {{ demo.label }}
+        </button>
+      }
+    </nav>
+    @if (activeDemo === 'video-sequencing') {
+      <p class="demo-hint">
+        Switch to <strong>page view</strong> (toolbar) to see the three
+        on-view videos play one after another in reading order; the
+        fourth panel starts on click and is not part of the sequence.
+        Enable autoplay to advance when the sequence finishes.
+      </p>
+    }
     @if (error) {
       <div class="error-banner">{{ error }}</div>
     }
