@@ -343,7 +343,7 @@ describe('VideoControllerService', () => {
       service.events$.subscribe(event => events.push(event));
 
       await service.play(mockVideo, 'test-video');
-      
+
       // Simulate ended event
       const endedEvent = new Event('ended');
       mockVideo.dispatchEvent(endedEvent);
@@ -351,6 +351,61 @@ describe('VideoControllerService', () => {
       const ended = events.find(e => e.type === 'ended');
       expect(ended).toBeDefined();
       expect(service.getState()).toBe('idle');
+    });
+
+    it('keeps a looping video registered (and preemptable) across its internal `ended` cycle boundary', async () => {
+      // Simulates VideoLayerComponent's loop mode: it does NOT call
+      // unregister() on `ended` (only 'once' mode / pause / stop / destroy
+      // do), so the video must stay in the registry when it keeps playing
+      // past a native `ended` event.
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'loop-video', false, onPreempted);
+
+      mockVideo.dispatchEvent(new Event('ended'));
+
+      const secondVideo = document.createElement('video');
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // Still registered -> still subject to the single-unmuted-video rule
+      // and still notified of preemption.
+      expect(mockVideo.pause).toHaveBeenCalled();
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not double-register a looping video across repeated internal `ended` cycles', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'loop-video', false, onPreempted);
+
+      mockVideo.dispatchEvent(new Event('ended'));
+      mockVideo.dispatchEvent(new Event('ended'));
+      mockVideo.dispatchEvent(new Event('ended'));
+
+      const secondVideo = document.createElement('video');
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // Exactly one preemption notification, regardless of how many internal
+      // `ended` cycles occurred beforehand.
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+      expect(mockVideo.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets the owning component clean up a genuinely finished ("once") video via unregister()', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'once-video', false, onPreempted);
+
+      // `ended` fires, then the owning component (once mode) unregisters it.
+      mockVideo.dispatchEvent(new Event('ended'));
+      service.unregister('once-video');
+
+      const secondVideo = document.createElement('video');
+      spyOn(secondVideo, 'play').and.returnValue(Promise.resolve());
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // No longer registered -> not paused, not notified.
+      expect(mockVideo.pause).not.toHaveBeenCalled();
+      expect(onPreempted).not.toHaveBeenCalled();
     });
 
     it('should emit buffering event', async () => {

@@ -368,10 +368,18 @@ export class VideoControllerService {
   }
 
   /**
-   * Handle video ended
+   * Handle video ended.
+   *
+   * Deliberately does NOT touch the concurrency registry: a native `ended`
+   * event also fires at the internal cycle boundary of a looping/pingpong
+   * video (it keeps playing right after), so unregistering here would drop
+   * the "at most one unmuted video" enforcement and the `onPreempted`
+   * callback for any video that continues past its first cycle. The owning
+   * component knows the play mode and is responsible for calling
+   * `unregister()` when playback is genuinely finished (or on pause/stop/
+   * destroy) — see `VideoLayerComponent.handleEnded()`.
    */
   private onEnded(videoId: string): void {
-    this.registry.delete(videoId);
     this.setState('idle');
     this.emitEvent('ended', videoId);
   }

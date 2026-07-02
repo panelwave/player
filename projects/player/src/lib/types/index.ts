@@ -90,6 +90,7 @@ export type {
   AudioVariant,
   AssetCatalogItemVideo,
   VideoVariant,
+  VideoPoster,
   AssetCatalogItemSubtitle,
   SubtitleVariant,
   AssetCatalogItemVector,

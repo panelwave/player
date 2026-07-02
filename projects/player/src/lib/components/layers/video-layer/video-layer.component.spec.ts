@@ -492,12 +492,10 @@ describe('VideoLayerComponent', () => {
 
     it('cancels frame-stepping and emits pause when preempted by another unmuted video', async () => {
       // Real controller (not spied) so pauseOtherUnmuted's preemption path runs.
-      // Note: the controller's own internal `ended` listener (attached in
-      // attachEventListeners) deletes the registry entry on every native
-      // `ended` event, including a pingpong forward-pass's internal restart
-      // -- so this test drives the reverse/frame-stepping phase directly
-      // (as other specs in this file do for finishReversePass) rather than
-      // via a real `ended` dispatch, to isolate the preemption contract.
+      // Drives the reverse/frame-stepping phase directly (as other specs in
+      // this file do for finishReversePass) rather than via a real `ended`
+      // dispatch, to isolate the preemption contract from the play-mode
+      // engine under test elsewhere.
       gesture.set(true);
       component.playMode = 'pingpong';
       component.reverseSrc = ''; // force the frame-stepping fallback path

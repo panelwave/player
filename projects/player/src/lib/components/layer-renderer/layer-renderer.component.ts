@@ -227,16 +227,13 @@ export class LayerRendererComponent {
   }
 
   /**
-   * Get the poster URL for the video (empty string if none).
+   * Get the poster URL for the video (empty string if none). Sourced from
+   * the catalog asset's `poster.src` (schema 1.1+); resolved against
+   * `videoBaseUrl` downstream by `pw-video-layer`, same as `getVideoSrc()`.
    */
   getVideoPoster(): string {
     const asset = this.getVideoAsset();
-    const poster = (asset as unknown as Record<string, unknown> | null)?.['poster'];
-    if (typeof poster === 'string') {
-      return poster;
-    }
-    const layerPoster = (this.layer as Record<string, unknown>)['poster'];
-    return typeof layerPoster === 'string' ? layerPoster : '';
+    return asset?.poster?.src ?? '';
   }
 
   /**
