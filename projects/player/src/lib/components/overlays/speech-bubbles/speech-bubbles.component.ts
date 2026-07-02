@@ -96,8 +96,18 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
 
   ngAfterViewInit(): void {
     this.initialized = true;
-    // Small delay to ensure container dimensions are available
+    // First paint without blocking on fonts (font-display: swap shows a
+    // fallback), small delay to ensure container dimensions are available.
     setTimeout(() => this.renderAllBalloons(), 50);
+    // Re-render once the comic fonts are loaded so text measurement is exact
+    // even when the balloon fonts arrive late.
+    if (typeof document !== 'undefined' && document.fonts) {
+      document.fonts.ready.then(() => {
+        if (this.initialized) {
+          this.renderAllBalloons();
+        }
+      });
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -117,6 +127,7 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   }
 
   ngOnDestroy(): void {
+    this.initialized = false;
     this.resizeObserver?.disconnect();
     this.renderedBalloons.clear();
   }
@@ -242,6 +253,18 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
 
         wrapper.style.left = `${pos.left - svgWidth / 2}px`;
         wrapper.style.top = `${pos.top - svgHeight / 2}px`;
+
+        // Scale the natural-size balloon to the authored size: the CMS stores
+        // the measured balloon size in the normalized shape box, so
+        // shape.w * containerWidth is the intended on-screen width. Clamped to
+        // a sane range to protect against unreconciled legacy geometry.
+        if (bubble.shape && pos.width > 0 && svgWidth > 0) {
+          const scale = Math.min(4, Math.max(0.25, pos.width / svgWidth));
+          if (Math.abs(scale - 1) > 0.01) {
+            wrapper.style.transform = `scale(${scale})`;
+            wrapper.style.transformOrigin = 'center center';
+          }
+        }
 
         // Click handler
         wrapper.addEventListener('click', (event: MouseEvent) => {
