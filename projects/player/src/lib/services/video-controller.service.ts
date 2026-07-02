@@ -44,6 +44,13 @@ export interface VideoStatus {
 interface RegisteredVideo {
   element: HTMLVideoElement;
   muted: boolean;
+  /**
+   * Invoked when the controller preempts (pauses + unregisters) this video
+   * on behalf of a newly-started unmuted video, so the owning component can
+   * react (cancel internal timers, update UI state, emit its pause output)
+   * instead of finding out only indirectly via the paused element.
+   */
+  onPreempted?: () => void;
 }
 
 @Injectable({
@@ -109,11 +116,17 @@ export class VideoControllerService {
    * @param videoElement - The video element to play
    * @param videoId - Unique id for this video
    * @param muted - Whether this playback is muted (default false, i.e. unmuted)
+   * @param onPreempted - Optional callback invoked if this video is later
+   *   paused by the controller to enforce the single-unmuted rule (i.e. some
+   *   other video started unmuted). Lets the owning component react (cancel
+   *   timers, update UI, emit pause) instead of only observing a paused
+   *   element.
    */
   async play(
     videoElement: HTMLVideoElement,
     videoId: string,
-    muted = false
+    muted = false,
+    onPreempted?: () => void
   ): Promise<void> {
     // Enforce the single-unmuted rule: pause other unmuted videos.
     if (!muted) {
@@ -122,7 +135,7 @@ export class VideoControllerService {
 
     try {
       // Register / update this video and set it as the active one.
-      this.registry.set(videoId, { element: videoElement, muted });
+      this.registry.set(videoId, { element: videoElement, muted, onPreempted });
       this.activeVideo = videoElement;
       this.activeVideoId = videoId;
       this.setState('loading');
@@ -153,7 +166,12 @@ export class VideoControllerService {
       }
       entry.element.pause();
       this.registry.delete(id);
+      if (this.activeVideoId === id) {
+        this.activeVideo = undefined;
+        this.activeVideoId = undefined;
+      }
       this.emitEvent('pause', id);
+      entry.onPreempted?.();
     }
   }
 

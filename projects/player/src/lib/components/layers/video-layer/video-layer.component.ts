@@ -146,6 +146,16 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
   /** Whether pingpong degraded to loop (streaming, no reverse variant). */
   private pingpongDegraded = false;
 
+  /**
+   * True while a `video.src` swap (reverse ↔ forward variant, seamless
+   * pingpong) is in flight. Guards `onLoadedMetadata` so the initial-setup
+   * path (attach listeners, seek to start, maybe autoplay) does not re-run
+   * when the swap's own `loadedmetadata` fires — that event is instead
+   * consumed by a dedicated one-time listener that performs the post-swap
+   * seek/play once the new source's metadata is actually ready.
+   */
+  private swapInProgress = false;
+
   /** Whether we already warned about pingpong degradation (warn once). */
   private static pingpongWarned = false;
 
@@ -237,6 +247,14 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
 
   /** Called from the template once the <video> element is available. */
   onLoadedMetadata(): void {
+    // A pingpong src swap (reverse <-> forward variant) also fires
+    // `loadedmetadata`; that occurrence is handled by a dedicated one-time
+    // listener registered by the swap itself, so the initial-setup path
+    // below must not re-run (it would re-attach listeners and could
+    // re-trigger autoplay).
+    if (this.swapInProgress) {
+      return;
+    }
     this.attachMediaListeners();
     this.seekToStart();
     // If on-view and already active at init, kick off playback.
@@ -338,11 +356,30 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     }
 
     try {
-      await this.controller.play(video, this.videoId, effectiveMuted);
+      await this.controller.play(video, this.videoId, effectiveMuted, () =>
+        this.handlePreempted()
+      );
       this.cdr.markForCheck();
     } catch {
       // Controller already logs/handles retries.
     }
+  }
+
+  /**
+   * Invoked by the controller when it pauses this video to enforce the
+   * single-unmuted-video rule (some other layer started unmuted). The
+   * element itself is already paused by the controller at this point;
+   * this brings the component's own state in line: stop any pingpong
+   * frame-stepping timer (it would otherwise keep ticking against a paused
+   * element) and drop the unmute affordance. The native `pause` media event
+   * (fired by the element itself when `.pause()` is called) drives the
+   * `videoPause` output via the existing `onPauseBound` listener, so it is
+   * not re-emitted here.
+   */
+  private handlePreempted(): void {
+    this.stopFrameStepping();
+    this.showUnmuteButton = false;
+    this.cdr.markForCheck();
   }
 
   /** Pause keeping the current position. */
@@ -441,9 +478,16 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
   }
 
   private handleEnded(): void {
-    this.videoEnd.emit();
+    const mode = this.pingpongDegraded ? 'loop' : this.playMode;
 
-    switch (this.pingpongDegraded ? 'loop' : this.playMode) {
+    // `videoEnd` means "the video is finished" (once mode). Loop /
+    // loop-from / pingpong all restart internally on the native `ended`
+    // event, so it must not fire at those internal boundaries.
+    if (mode === 'once') {
+      this.videoEnd.emit();
+    }
+
+    switch (mode) {
       case 'once':
         // Freeze on last frame — do not rewind.
         this.controller.unregister(this.videoId);
@@ -462,8 +506,10 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
         void this.video?.play();
         break;
       case 'pingpong':
+        // Forward pass ended; the reverse pass begins now and completes
+        // the cycle. `videoLoop`/`passComplete` for this cycle are emitted
+        // once, from `finishReversePass`, when the cycle actually completes.
         this.startReversePass();
-        this.passComplete.emit();
         break;
       default:
         break;
@@ -525,15 +571,33 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
     const video = this.video;
     if (!video) return;
     this.reversePhase = true;
-    this.videoLoop.emit();
 
     if (this.usingReverseVariant && this.reverseSrc) {
-      // Seamless swap: play the pre-rendered reverse encode (muted).
+      // Seamless swap: play the pre-rendered reverse encode (muted). The
+      // new source's metadata (and therefore a meaningful `currentTime`)
+      // is not available synchronously after assigning `src` — seeking/
+      // playing must wait for `loadedmetadata` on some browsers, so defer
+      // via a dedicated one-time listener rather than the template's
+      // persistent `onLoadedMetadata` (guarded off via swapInProgress).
       this.setElementMuted(true);
+      this.swapInProgress = true;
+      video.addEventListener(
+        'loadedmetadata',
+        () => {
+          this.swapInProgress = false;
+          const v = this.video;
+          if (!v) return;
+          try {
+            v.currentTime = 0;
+          } catch {
+            // currentTime may throw if metadata still isn't ready; ignored.
+          }
+          void v.play();
+        },
+        { once: true }
+      );
       video.src = this.resolveUrl(this.reverseSrc);
-      video.currentTime = 0;
       video.addEventListener('ended', this.onReverseVariantEndedBound, { once: true });
-      void video.play();
       return;
     }
 
@@ -546,16 +610,44 @@ export class VideoLayerComponent implements OnChanges, OnDestroy {
   private readonly onReverseVariantEndedBound = (): void =>
     this.finishReversePass();
 
+  /**
+   * Complete the backward pass: swap back to the forward variant (if a
+   * seamless reverse variant was used) and start the next forward pass.
+   * This marks the completion of one full pingpong cycle, so the cycle's
+   * single `videoLoop`/`passComplete` emissions happen here.
+   */
   private finishReversePass(): void {
     this.reversePhase = false;
     const video = this.video;
     if (!video) return;
-    // Swap back to the forward variant and start the next forward pass.
-    video.src = this.getVideoUrl();
-    this.setElementMuted(this.computeEffectiveMuted());
-    this.seekToStart();
+
+    if (this.usingReverseVariant && this.reverseSrc) {
+      // Swap back to the forward variant. Same metadata-timing hazard as
+      // the reverse swap: defer the seek/play until the new source's
+      // `loadedmetadata`, guarding the template's initial-setup handler.
+      this.swapInProgress = true;
+      video.addEventListener(
+        'loadedmetadata',
+        () => {
+          this.swapInProgress = false;
+          const v = this.video;
+          if (!v) return;
+          this.setElementMuted(this.computeEffectiveMuted());
+          this.seekToStart();
+          void v.play();
+        },
+        { once: true }
+      );
+      video.src = this.getVideoUrl();
+    } else {
+      // Frame-stepping fallback: already on the forward source, already at
+      // the start offset (set by startFrameStepping's tick loop).
+      this.setElementMuted(this.computeEffectiveMuted());
+      void video.play();
+    }
+
     this.videoLoop.emit();
-    void video.play();
+    this.passComplete.emit();
   }
 
   private startFrameStepping(): void {

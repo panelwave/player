@@ -115,6 +115,45 @@ describe('VideoControllerService', () => {
       service.notifyMutedChanged('muted-2', false);
       expect(mockVideo.pause).toHaveBeenCalled();
     });
+
+    it('notifies the preempted video via its registered onPreempted callback', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'unmuted-1', false, onPreempted);
+
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      expect(mockVideo.pause).toHaveBeenCalled();
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not notify the video that stays active', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'unmuted-1', false);
+      await service.play(secondVideo, 'unmuted-2', false, onPreempted);
+
+      // secondVideo is the newly-started, still-playing one.
+      expect(onPreempted).not.toHaveBeenCalled();
+    });
+
+    it('clears the active video pointer when the active video is preempted', async () => {
+      await service.play(mockVideo, 'unmuted-1', false);
+      expect(service.getActiveVideoId()).toBe('unmuted-1');
+
+      await service.play(secondVideo, 'unmuted-2', false);
+
+      // The preempted video must not be left dangling as "active".
+      expect(service.getActiveVideoId()).toBe('unmuted-2');
+    });
+
+    it('notifies preempted videos through notifyMutedChanged as well', async () => {
+      const onPreempted = jasmine.createSpy('onPreempted');
+      await service.play(mockVideo, 'unmuted-1', false, onPreempted);
+      await service.play(secondVideo, 'muted-2', true);
+
+      service.notifyMutedChanged('muted-2', false);
+
+      expect(onPreempted).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('pause', () => {

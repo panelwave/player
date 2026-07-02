@@ -46,6 +46,11 @@ describe('VideoLayerComponent', () => {
     videoEl.dispatchEvent(new Event('ended'));
   }
 
+  /** Simulate the native `loadedmetadata` media event (e.g. after a src swap). */
+  function fireLoadedMetadata(): void {
+    videoEl.dispatchEvent(new Event('loadedmetadata'));
+  }
+
   beforeEach(async () => {
     gesture = new MockGestureService();
     await TestBed.configureTestingModule({
@@ -90,13 +95,16 @@ describe('VideoLayerComponent', () => {
       videoEl.currentTime = 10;
 
       const passSpy = jasmine.createSpy('pass');
+      const endSpy = jasmine.createSpy('end');
       component.passComplete.subscribe(passSpy);
+      component.videoEnd.subscribe(endSpy);
 
       fireEnded();
 
       expect(videoEl.currentTime).toBe(10); // not reset to start
       expect(videoEl.play).not.toHaveBeenCalled();
       expect(passSpy).toHaveBeenCalled();
+      expect(endSpy).toHaveBeenCalledTimes(1); // once mode: the video is finished
     });
   });
 
@@ -108,10 +116,15 @@ describe('VideoLayerComponent', () => {
       setupVideoElement(10);
       videoEl.currentTime = 10;
 
+      const endSpy = jasmine.createSpy('end');
+      component.videoEnd.subscribe(endSpy);
+
       fireEnded();
 
       expect(videoEl.currentTime).toBe(2); // 2000ms
       expect(videoEl.play).toHaveBeenCalled();
+      // loop restarts internally on `ended`; that's not "finished".
+      expect(endSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -176,6 +189,136 @@ describe('VideoLayerComponent', () => {
 
       expect(videoEl.src).toContain('clip-rev.mp4');
       expect(videoEl.muted).toBe(true); // muted during reverse phase
+    });
+
+    describe('reverse-swap race (deferred seek/play + guarded re-init)', () => {
+      beforeEach(() => {
+        component.playMode = 'pingpong';
+        component.reverseSrc = 'clip-rev.mp4';
+        component.baseUrl = 'https://cdn/';
+        component.startAtMs = 0;
+        component.onLoadedMetadata();
+        setupVideoElement(10);
+      });
+
+      it('does not seek/play the reverse variant until its loadedmetadata fires', () => {
+        videoEl.currentTime = 10;
+        void component.play(); // starts the forward pass (1 play() call)
+        (videoEl.play as jasmine.Spy).calls.reset();
+
+        fireEnded(); // forward pass ends -> starts reverse pass, swaps src
+
+        expect(videoEl.src).toContain('clip-rev.mp4');
+        // currentTime must be untouched (still 10) until loadedmetadata.
+        expect(videoEl.currentTime).toBe(10);
+        // play() must not be (re-)invoked for the reverse variant yet.
+        expect((videoEl.play as jasmine.Spy).calls.count()).toBe(0);
+
+        fireLoadedMetadata();
+
+        expect(videoEl.currentTime).toBe(0);
+        expect(videoEl.play).toHaveBeenCalled();
+      });
+
+      it('does not re-run initial setup (listener re-attach / autoplay) when the swap loadedmetadata fires', () => {
+        const attachSpy = spyOn(
+          component as unknown as { attachMediaListeners(): void },
+          'attachMediaListeners'
+        ).and.callThrough();
+        void component.play();
+        fireEnded();
+        attachSpy.calls.reset();
+
+        fireLoadedMetadata(); // reverse-variant swap's own loadedmetadata
+
+        expect(attachSpy).not.toHaveBeenCalled();
+      });
+
+      it('defers the forward-swap-back seek/play until its own loadedmetadata (finishReversePass)', () => {
+        void component.play();
+        fireEnded(); // -> reverse pass begins, src swapped to reverse
+        fireLoadedMetadata(); // reverse variant ready, playing reverse
+
+        (videoEl.play as jasmine.Spy).calls.reset();
+        videoEl.currentTime = 7; // mid-reverse-playback position
+
+        // Reverse variant finishes -> finishReversePass() swaps back to forward.
+        videoEl.dispatchEvent(new Event('ended'));
+
+        expect(videoEl.src).not.toContain('clip-rev.mp4');
+        // Must not have jumped to start yet -- waiting for loadedmetadata.
+        expect(videoEl.currentTime).toBe(7);
+        expect((videoEl.play as jasmine.Spy).calls.count()).toBe(0);
+
+        fireLoadedMetadata(); // forward variant ready again
+
+        expect(videoEl.currentTime).toBe(0); // startAtMs
+        expect(videoEl.play).toHaveBeenCalled();
+      });
+    });
+
+    describe('pingpong cycle emission contract', () => {
+      beforeEach(() => {
+        component.playMode = 'pingpong';
+        component.reverseSrc = 'clip-rev.mp4';
+        component.baseUrl = 'https://cdn/';
+        component.startAtMs = 0;
+        component.onLoadedMetadata();
+        setupVideoElement(10);
+      });
+
+      it('emits exactly one videoLoop and one passComplete per completed cycle, and no videoEnd at internal boundaries (reverse-variant path)', () => {
+        const loopSpy = jasmine.createSpy('loop');
+        const passSpy = jasmine.createSpy('pass');
+        const endSpy = jasmine.createSpy('end');
+        component.videoLoop.subscribe(loopSpy);
+        component.passComplete.subscribe(passSpy);
+        component.videoEnd.subscribe(endSpy);
+
+        void component.play();
+        fireEnded(); // forward pass ends -> reverse pass starts
+        fireLoadedMetadata(); // reverse variant playable
+
+        // Cycle is not complete yet: forward pass end is an internal boundary.
+        expect(loopSpy).not.toHaveBeenCalled();
+        expect(passSpy).not.toHaveBeenCalled();
+        expect(endSpy).not.toHaveBeenCalled();
+
+        videoEl.dispatchEvent(new Event('ended')); // reverse variant ends -> cycle complete
+        fireLoadedMetadata(); // forward variant swapped back in, ready
+
+        expect(loopSpy).toHaveBeenCalledTimes(1);
+        expect(passSpy).toHaveBeenCalledTimes(1);
+        expect(endSpy).not.toHaveBeenCalled();
+      });
+
+      it('emits exactly one videoLoop and one passComplete per completed cycle for the frame-stepping fallback (no reverse variant)', () => {
+        component.reverseSrc = ''; // forces the frame-stepping fallback path
+
+        const loopSpy = jasmine.createSpy('loop');
+        const passSpy = jasmine.createSpy('pass');
+        const endSpy = jasmine.createSpy('end');
+        component.videoLoop.subscribe(loopSpy);
+        component.passComplete.subscribe(passSpy);
+        component.videoEnd.subscribe(endSpy);
+
+        void component.play();
+        videoEl.currentTime = 10;
+        fireEnded(); // forward pass ends -> frame-stepping backward begins
+
+        expect(loopSpy).not.toHaveBeenCalled();
+        expect(passSpy).not.toHaveBeenCalled();
+
+        // Drive currentTime to the start offset and invoke the private
+        // finishReversePass() directly to simulate the frame-stepping tick
+        // loop reaching startAtMs (avoids depending on rAF/timer internals).
+        videoEl.currentTime = 0;
+        (component as unknown as { finishReversePass(): void }).finishReversePass();
+
+        expect(loopSpy).toHaveBeenCalledTimes(1);
+        expect(passSpy).toHaveBeenCalledTimes(1);
+        expect(endSpy).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -339,7 +482,58 @@ describe('VideoLayerComponent', () => {
 
       await component.play();
 
-      expect(ctrlSpy).toHaveBeenCalledWith(jasmine.any(HTMLVideoElement), 'test-vid', false);
+      expect(ctrlSpy).toHaveBeenCalledWith(
+        jasmine.any(HTMLVideoElement),
+        'test-vid',
+        false,
+        jasmine.any(Function)
+      );
+    });
+
+    it('cancels frame-stepping and emits pause when preempted by another unmuted video', async () => {
+      // Real controller (not spied) so pauseOtherUnmuted's preemption path runs.
+      // Note: the controller's own internal `ended` listener (attached in
+      // attachEventListeners) deletes the registry entry on every native
+      // `ended` event, including a pingpong forward-pass's internal restart
+      // -- so this test drives the reverse/frame-stepping phase directly
+      // (as other specs in this file do for finishReversePass) rather than
+      // via a real `ended` dispatch, to isolate the preemption contract.
+      gesture.set(true);
+      component.playMode = 'pingpong';
+      component.reverseSrc = ''; // force the frame-stepping fallback path
+      component.muted = false;
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+
+      const pauseSpy = jasmine.createSpy('pause');
+      component.videoPause.subscribe(pauseSpy);
+
+      await component.play();
+      expect(controller.getActiveVideoId()).toBe('test-vid');
+
+      videoEl.currentTime = 10;
+      (component as unknown as { startReversePass(): void }).startReversePass();
+      expect((component as unknown as { frameStepHandle: number | null }).frameStepHandle).not.toBeNull();
+
+      const frameStepSpy = spyOn(
+        component as unknown as { stopFrameStepping(): void },
+        'stopFrameStepping'
+      ).and.callThrough();
+
+      // A second, independent unmuted video registration preempts this one.
+      const otherVideo = document.createElement('video');
+      spyOn(otherVideo, 'play').and.returnValue(Promise.resolve());
+      await controller.play(otherVideo, 'other-video', false);
+
+      expect(videoEl.pause).toHaveBeenCalled();
+      expect(frameStepSpy).toHaveBeenCalled();
+      expect((component as unknown as { frameStepHandle: number | null }).frameStepHandle).toBeNull();
+      expect(component.showUnmuteButton).toBe(false);
+
+      // The controller pausing the real element fires the native `pause`
+      // event, which is what drives the `videoPause` output.
+      videoEl.dispatchEvent(new Event('pause'));
+      expect(pauseSpy).toHaveBeenCalled();
     });
   });
 });
