@@ -620,9 +620,11 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private computeEffectiveMuted(): boolean {
-    // Pingpong: muted during the reverse phase regardless of setting.
+    // Pingpong: muted during the reverse phase regardless of setting, and
+    // muted before any user gesture (autoplay policy) even though pingpong
+    // is otherwise excluded from the unmute affordance (see wantsSound()).
     if (this.playMode === 'pingpong' && !this.pingpongDegraded) {
-      return this.muted || this.reversePhase;
+      return this.muted || this.reversePhase || !this.gesture.hasInteracted();
     }
     if (this.muted) {
       return true;

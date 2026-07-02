@@ -468,6 +468,22 @@ describe('VideoLayerComponent', () => {
       expect(videoEl.muted).toBe(false);
       expect(component.showUnmuteButton).toBe(false);
     });
+
+    it('starts muted for on-view pingpong with muted:false and no gesture yet (no affordance, since pingpong is silent)', async () => {
+      gesture.set(false);
+      component.startMode = 'on-view';
+      component.playMode = 'pingpong';
+      component.muted = false;
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+
+      await component.play();
+
+      expect(videoEl.muted).toBe(true);
+      // pingpong is excluded from wantsSound(), so no unmute affordance is shown
+      // even though the forced-mute reason here is "no gesture yet".
+      expect(component.showUnmuteButton).toBe(false);
+    });
   });
 
   describe('reduced motion', () => {
