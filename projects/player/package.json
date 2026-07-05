@@ -1,6 +1,7 @@
 {
   "name": "player",
   "version": "0.0.1",
+  "homepage": "https://docs.panelwave.org/player/overview",
   "peerDependencies": {
     "@angular/common": "^17.3.0",
     "@angular/core": "^17.3.0"

@@ -6,6 +6,8 @@
 [![Angular](https://img.shields.io/badge/Angular-20%2B-red)](https://angular.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)](https://www.typescriptlang.org/)
 
+> **Documentation:** [docs.panelwave.org/player/overview](https://docs.panelwave.org/player/overview)
+
 ---
 
 ## 🎯 Overview
