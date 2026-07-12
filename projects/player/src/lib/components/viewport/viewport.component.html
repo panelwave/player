@@ -36,7 +36,7 @@
               </pw-layer-renderer>
             }
 
-            @if (leavingPanel.speechBubbles && leavingPanel.speechBubbles.length > 0) {
+            @if (speechEnabled && leavingPanel.speechBubbles && leavingPanel.speechBubbles.length > 0) {
               <pw-speech-bubbles
                 [bubbles]="leavingPanel.speechBubbles"
                 [locale]="locale"
@@ -67,7 +67,7 @@
             }
 
             <!-- Speech bubbles overlay for panel view -->
-            @if (panel.speechBubbles && panel.speechBubbles.length > 0) {
+            @if (speechEnabled && panel.speechBubbles && panel.speechBubbles.length > 0) {
               <pw-speech-bubbles
                 [bubbles]="panel.speechBubbles"
                 [locale]="locale"
@@ -126,7 +126,7 @@
                         </pw-layer-renderer>
                       }
 
-                      @if (panelData.speechBubbles && panelData.speechBubbles.length > 0) {
+                      @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
                         <pw-speech-bubbles
                           [bubbles]="panelData.speechBubbles"
                           [locale]="locale"
@@ -197,7 +197,7 @@
                   }
                   
                   <!-- Speech bubbles overlay for page view panels -->
-                  @if (panelData.speechBubbles && panelData.speechBubbles.length > 0) {
+                  @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
                     <pw-speech-bubbles
                       [bubbles]="panelData.speechBubbles"
                       [locale]="locale"

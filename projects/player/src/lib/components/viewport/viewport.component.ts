@@ -141,6 +141,13 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   @Input() characters: Character[] = [];
 
   /**
+   * Global speech toggle. Every speech bubble is implicitly subject to it
+   * (schema 1.3+); when false, no bubbles are rendered regardless of their
+   * story-logic visibleIf.
+   */
+  @Input() speechEnabled = true;
+
+  /**
    * Viewport clicked
    */
   @Output() viewportClick = new EventEmitter<{ x: number; y: number }>();

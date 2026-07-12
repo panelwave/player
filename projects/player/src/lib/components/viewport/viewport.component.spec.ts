@@ -99,6 +99,33 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('Implicit speech toggle (schema 1.3)', () => {
+    const panelWithBubbles: Panel = {
+      title: { 'en-US': 'Talkie' },
+      layers: [],
+      speechBubbles: [
+        { id: 'b1', text: { 'en-US': 'Hi!' }, shape: { x: 0.1, y: 0.1, w: 0.3, h: 0.2 } },
+      ],
+    };
+
+    it('renders speech bubbles while speech is enabled (default)', async () => {
+      fixture.componentRef.setInput('panel', panelWithBubbles);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('pw-speech-bubbles')).toBeTruthy();
+    });
+
+    it('hides all speech bubbles when speech is disabled, without any per-bubble visibleIf', async () => {
+      fixture.componentRef.setInput('panel', panelWithBubbles);
+      fixture.componentRef.setInput('speechEnabled', false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('pw-speech-bubbles')).toBeNull();
+    });
+  });
+
   describe('Transform', () => {
     it('should generate correct transform style', () => {
       component.panX = 10;

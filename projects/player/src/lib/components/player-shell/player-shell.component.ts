@@ -276,6 +276,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   autoplayEnabled = false;
 
   /**
+   * Speech-bubble toggle state. Every bubble is implicitly subject to this
+   * (schema 1.3) — per-bubble visibleIf is reserved for story logic.
+   * Initialized from the manifest's settings.ui.speechDefault.
+   */
+  speechEnabled = true;
+
+  /**
    * Autoplay progress (0-100)
    */
   autoplayProgress = 0;
@@ -436,6 +443,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
           chapter.pages && chapter.pages.length > 0
         );
       }
+
+      // Initial speech-toggle state from the work's settings (default: on)
+      this.speechEnabled = loadedManifest?.settings?.ui?.speechDefault !== false;
 
       // Configure tracking (consent requirements + event whitelist) from the
       // manifest so video events flow through the consent/whitelist pipeline.
@@ -773,7 +783,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onToggleSpeech(): void {
-    console.log('Toggle speech bubbles - not yet implemented');
+    this.speechEnabled = !this.speechEnabled;
   }
 
   onToggleAudio(): void {
