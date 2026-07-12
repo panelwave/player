@@ -353,6 +353,107 @@ describe('FlowEngineService', () => {
     });
   });
 
+  describe('Transitions (schema 1.2 default inheritance)', () => {
+    const transitionGraph: Graph = {
+      entry: 'p1',
+      edges: [
+        { from: 'p1', to: 'p2', transition: { type: 'slide', dir: 'left', durationMs: 400 } },
+        { from: 'p2', to: 'p3' }, // no transition -> inherits default
+      ],
+    };
+    const slideDefault = { type: 'fade' as const, durationMs: 300 };
+
+    describe('getNextPanel transition fallback', () => {
+      it('should keep an explicit edge transition', () => {
+        const result = service.getNextPanel(transitionGraph, 'p1', {}, slideDefault);
+        expect(result.transition).toEqual({ type: 'slide', dir: 'left', durationMs: 400 });
+      });
+
+      it('should fall back to the default transition when the edge has none', () => {
+        const result = service.getNextPanel(transitionGraph, 'p2', {}, slideDefault);
+        expect(result.transition).toEqual(slideDefault);
+      });
+
+      it('should leave the transition undefined without a default', () => {
+        const result = service.getNextPanel(transitionGraph, 'p2', {});
+        expect(result.transition).toBeUndefined();
+      });
+    });
+
+    describe('getDefaultTransition', () => {
+      it('should return the named format preset default', () => {
+        const settings = {
+          outputPresets: {
+            'bigscreen-landscape': { defaultTransition: { type: 'slide' as const, dir: 'left' as const } },
+            'mobile-portrait': { defaultTransition: { type: 'fade' as const } },
+          },
+        };
+        expect(service.getDefaultTransition(settings, 'mobile-portrait')).toEqual({ type: 'fade' });
+      });
+
+      it('should return the shared default when no format is given and all presets agree', () => {
+        const settings = {
+          outputPresets: {
+            'bigscreen-landscape': { defaultTransition: { type: 'fade' as const, durationMs: 300 } },
+            'a4-portrait': { defaultTransition: { type: 'fade' as const, durationMs: 300 } },
+          },
+        };
+        expect(service.getDefaultTransition(settings)).toEqual({ type: 'fade', durationMs: 300 });
+      });
+
+      it('should return undefined when presets disagree and no format is given', () => {
+        const settings = {
+          outputPresets: {
+            'bigscreen-landscape': { defaultTransition: { type: 'slide' as const, dir: 'left' as const } },
+            'mobile-portrait': { defaultTransition: { type: 'fade' as const } },
+          },
+        };
+        expect(service.getDefaultTransition(settings)).toBeUndefined();
+      });
+
+      it('should return undefined without outputPresets', () => {
+        expect(service.getDefaultTransition(undefined)).toBeUndefined();
+        expect(service.getDefaultTransition({})).toBeUndefined();
+      });
+    });
+
+    describe('reverseTransition', () => {
+      it('should flip horizontal and vertical directions', () => {
+        expect(service.reverseTransition({ type: 'slide', dir: 'left' })).toEqual({ type: 'slide', dir: 'right' });
+        expect(service.reverseTransition({ type: 'push', dir: 'right' })).toEqual({ type: 'push', dir: 'left' });
+        expect(service.reverseTransition({ type: 'slide', dir: 'up' })).toEqual({ type: 'slide', dir: 'down' });
+        expect(service.reverseTransition({ type: 'cover', dir: 'down', durationMs: 250 }))
+          .toEqual({ type: 'cover', dir: 'up', durationMs: 250 });
+      });
+
+      it('should pass direction-less transitions through unchanged', () => {
+        expect(service.reverseTransition({ type: 'fade', durationMs: 300 })).toEqual({ type: 'fade', durationMs: 300 });
+      });
+
+      it('should return undefined for undefined input', () => {
+        expect(service.reverseTransition(undefined)).toBeUndefined();
+      });
+    });
+
+    describe('getReturnTransition', () => {
+      it('should reverse the traversed edge transition', () => {
+        const result = service.getReturnTransition(transitionGraph, 'p1', 'p2');
+        expect(result).toEqual({ type: 'slide', dir: 'right', durationMs: 400 });
+      });
+
+      it('should reverse the default when the edge has no transition', () => {
+        const result = service.getReturnTransition(
+          transitionGraph, 'p2', 'p3', { type: 'slide', dir: 'up' }
+        );
+        expect(result).toEqual({ type: 'slide', dir: 'down' });
+      });
+
+      it('should return undefined when neither edge nor default define a transition', () => {
+        expect(service.getReturnTransition(transitionGraph, 'p2', 'p3')).toBeUndefined();
+      });
+    });
+  });
+
   describe('hasCycles', () => {
     it('should detect cycles', () => {
       expect(service.hasCycles(cyclicGraph)).toBe(true);

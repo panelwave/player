@@ -44,6 +44,115 @@
   max-height: 100%;
 }
 
+/*
+ * Panel-change transitions (manifest edge transitions).
+ * The entering panel renders inside `.t-frame`; during a transition the
+ * outgoing panel stays visible in the absolutely-positioned `.t-frame-leave`
+ * beneath it. Duration/easing come from the manifest transition via the
+ * --pw-t-duration / --pw-t-easing custom properties.
+ */
+.t-frame {
+  position: relative;
+  z-index: 1;
+}
+
+.t-frame-leave {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.t-fade-in {
+  animation: pw-t-fade-in var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-zoom-in {
+  animation: pw-t-zoom-in var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-from-right {
+  animation: pw-t-from-right var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-from-left {
+  animation: pw-t-from-left var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-from-bottom {
+  animation: pw-t-from-bottom var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-from-top {
+  animation: pw-t-from-top var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-to-left {
+  animation: pw-t-to-left var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-to-right {
+  animation: pw-t-to-right var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-to-top {
+  animation: pw-t-to-top var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-to-bottom {
+  animation: pw-t-to-bottom var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+@keyframes pw-t-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pw-t-zoom-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pw-t-from-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pw-t-from-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pw-t-from-bottom {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pw-t-from-top {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pw-t-to-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes pw-t-to-right {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes pw-t-to-top {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+
+@keyframes pw-t-to-bottom {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
 .layer {
   position: absolute;
   top: 0;

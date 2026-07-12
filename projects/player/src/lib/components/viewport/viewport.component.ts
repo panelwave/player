@@ -9,9 +9,11 @@ import {
   Output,
   EventEmitter,
   OnChanges,
+  OnDestroy,
   SimpleChanges,
   HostListener,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   ElementRef,
   inject,
 } from '@angular/core';
@@ -19,7 +21,7 @@ import {
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
-import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character } from '../../types';
+import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Transition } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 
 /**
@@ -45,9 +47,10 @@ export interface PerformanceMetrics {
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ViewportComponent implements OnChanges {
+export class ViewportComponent implements OnChanges, OnDestroy {
   private manifestService = inject(ManifestService);
   private elementRef = inject(ElementRef<HTMLElement>);
+  private cdr = inject(ChangeDetectorRef);
 
   /**
    * Panel to render (panel view)
@@ -99,6 +102,13 @@ export class ViewportComponent implements OnChanges {
    * Enable reduced motion
    */
   @Input() reducedMotion = false;
+
+  /**
+   * Transition to play when the panel changes (manifest edge transition,
+   * already resolved against settings.outputPresets defaultTransition by
+   * the flow engine). Null/`none`/`cut` swap instantly.
+   */
+  @Input() transition: Transition | null = null;
 
   /**
    * Enable interactive mode (hotspots, etc.)
@@ -217,13 +227,131 @@ export class ViewportComponent implements OnChanges {
   hasOverflowTop = false;
   hasOverflowBottom = false;
 
+  // Panel-change transition state (panel view). While a transition runs the
+  // outgoing panel stays rendered in a `.t-frame-leave` overlay and both
+  // frames carry CSS keyframe animation classes.
+  leavingPanel: Panel | null = null;
+  leavingPanelId = '';
+  enterAnimationClass = '';
+  leaveAnimationClass = '';
+  transitionDuration = '400ms';
+  transitionEasing = 'ease';
+  private transitionTimer: ReturnType<typeof setTimeout> | null = null;
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['panel']) {
       // Reset pan/zoom when panel changes
       if (changes['panel'].currentValue !== changes['panel'].previousValue) {
         this.resetTransform();
+
+        const previousPanel = changes['panel'].previousValue as Panel | null;
+        const animations = this.getTransitionAnimationClasses(this.transition);
+        if (previousPanel && animations && this.viewMode === 'panel' && !this.reducedMotion) {
+          this.beginPanelTransition(
+            previousPanel,
+            (changes['currentPanelId']?.previousValue as string | null) ?? this.leavingPanelId,
+            animations
+          );
+        } else {
+          this.endPanelTransition();
+        }
       }
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.transitionTimer !== null) {
+      clearTimeout(this.transitionTimer);
+      this.transitionTimer = null;
+    }
+  }
+
+  /**
+   * Map a manifest Transition onto the enter/leave CSS animation classes.
+   * Returns null when nothing should animate (`none`, `cut`, or no type).
+   *
+   * `dir` is the direction of motion (schema semantics): `left` means the
+   * content moves leftward, i.e. the new panel enters from the right.
+   * Mapping: `fade`/`zoom` enter over the static old panel; `slide`/`push`
+   * move both panels; `cover` slides the new panel over the static old one.
+   */
+  getTransitionAnimationClasses(
+    transition: Transition | null | undefined
+  ): { enter: string; leave: string } | null {
+    const type = transition?.type;
+    if (!type || type === 'none' || type === 'cut') {
+      return null;
+    }
+
+    const dir = transition?.dir ?? 'left';
+    const from: Record<string, string> = {
+      left: 't-from-right',
+      right: 't-from-left',
+      up: 't-from-bottom',
+      down: 't-from-top',
+    };
+    const to: Record<string, string> = {
+      left: 't-to-left',
+      right: 't-to-right',
+      up: 't-to-top',
+      down: 't-to-bottom',
+    };
+
+    switch (type) {
+      case 'fade':
+        return { enter: 't-fade-in', leave: '' };
+      case 'zoom':
+        return { enter: 't-zoom-in', leave: '' };
+      case 'cover':
+        return { enter: from[dir], leave: '' };
+      case 'slide':
+      case 'push':
+        return { enter: from[dir], leave: to[dir] };
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Start rendering the outgoing panel in the leave frame and arm the
+   * cleanup timer for the transition duration.
+   */
+  private beginPanelTransition(
+    previousPanel: Panel,
+    previousPanelId: string,
+    animations: { enter: string; leave: string }
+  ): void {
+    this.leavingPanel = previousPanel;
+    this.leavingPanelId = previousPanelId;
+    this.enterAnimationClass = animations.enter;
+    this.leaveAnimationClass = animations.leave;
+
+    const durationMs = this.transition?.durationMs ?? 400;
+    this.transitionDuration = `${durationMs}ms`;
+    this.transitionEasing = this.transition?.easing ?? 'ease';
+
+    if (this.transitionTimer !== null) {
+      clearTimeout(this.transitionTimer);
+    }
+    this.transitionTimer = setTimeout(() => {
+      this.endPanelTransition();
+      this.cdr.markForCheck();
+    }, durationMs);
+  }
+
+  /**
+   * Drop the leave frame and animation classes (transition finished,
+   * interrupted, or not applicable).
+   */
+  private endPanelTransition(): void {
+    if (this.transitionTimer !== null) {
+      clearTimeout(this.transitionTimer);
+      this.transitionTimer = null;
+    }
+    this.leavingPanel = null;
+    this.leavingPanelId = '';
+    this.enterAnimationClass = '';
+    this.leaveAnimationClass = '';
   }
 
   /**

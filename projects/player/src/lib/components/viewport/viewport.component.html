@@ -14,43 +14,76 @@
   
   <!-- Panel View -->
   @if (viewMode === 'panel') {
-    <div 
+    <div
       class="viewport-content"
       [style.transform]="getTransformStyle()"
-      [style.transition]="reducedMotion ? 'none' : 'transform 0.3s ease'">
-      
-      @if (panel) {
-        <div class="panel-container">
-          <!-- Render layers using LayerRenderer -->
-          @for (layer of panel.layers; track layer.id) {
-            <pw-layer-renderer
-              [layer]="layer"
-              [locale]="locale"
-              [viewMode]="viewMode"
-              [viewActive]="true"
-              [reducedMotion]="reducedMotion"
-              [panelId]="currentPanelId || ''"
-              (layerClick)="layerClick.emit($event)">
-            </pw-layer-renderer>
-          }
-          
-          <!-- Speech bubbles overlay for panel view -->
-          @if (panel.speechBubbles && panel.speechBubbles.length > 0) {
-            <pw-speech-bubbles
-              [bubbles]="panel.speechBubbles"
-              [locale]="locale"
-              [containerWidth]="getContainerWidth()"
-              [containerHeight]="getContainerHeight()"
-              [workBalloonConfig]="workBalloonConfig"
-              [characters]="characters">
-            </pw-speech-bubbles>
-          }
-        </div>
-      } @else {
-        <div class="no-panel">
-          <p>No panel to display</p>
+      [style.transition]="reducedMotion ? 'none' : 'transform 0.3s ease'"
+      [style.--pw-t-duration]="transitionDuration"
+      [style.--pw-t-easing]="transitionEasing">
+
+      <!-- Outgoing panel during a manifest edge transition -->
+      @if (leavingPanel) {
+        <div [class]="'t-frame-leave ' + leaveAnimationClass" aria-hidden="true">
+          <div class="panel-container">
+            @for (layer of leavingPanel.layers; track layer.id) {
+              <pw-layer-renderer
+                [layer]="layer"
+                [locale]="locale"
+                [viewMode]="viewMode"
+                [viewActive]="false"
+                [reducedMotion]="reducedMotion"
+                [panelId]="leavingPanelId">
+              </pw-layer-renderer>
+            }
+
+            @if (leavingPanel.speechBubbles && leavingPanel.speechBubbles.length > 0) {
+              <pw-speech-bubbles
+                [bubbles]="leavingPanel.speechBubbles"
+                [locale]="locale"
+                [containerWidth]="getContainerWidth()"
+                [containerHeight]="getContainerHeight()"
+                [workBalloonConfig]="workBalloonConfig"
+                [characters]="characters">
+              </pw-speech-bubbles>
+            }
+          </div>
         </div>
       }
+
+      <div [class]="'t-frame ' + enterAnimationClass">
+        @if (panel) {
+          <div class="panel-container">
+            <!-- Render layers using LayerRenderer -->
+            @for (layer of panel.layers; track layer.id) {
+              <pw-layer-renderer
+                [layer]="layer"
+                [locale]="locale"
+                [viewMode]="viewMode"
+                [viewActive]="true"
+                [reducedMotion]="reducedMotion"
+                [panelId]="currentPanelId || ''"
+                (layerClick)="layerClick.emit($event)">
+              </pw-layer-renderer>
+            }
+
+            <!-- Speech bubbles overlay for panel view -->
+            @if (panel.speechBubbles && panel.speechBubbles.length > 0) {
+              <pw-speech-bubbles
+                [bubbles]="panel.speechBubbles"
+                [locale]="locale"
+                [containerWidth]="getContainerWidth()"
+                [containerHeight]="getContainerHeight()"
+                [workBalloonConfig]="workBalloonConfig"
+                [characters]="characters">
+              </pw-speech-bubbles>
+            }
+          </div>
+        } @else {
+          <div class="no-panel">
+            <p>No panel to display</p>
+          </div>
+        }
+      </div>
     </div>
   }
   

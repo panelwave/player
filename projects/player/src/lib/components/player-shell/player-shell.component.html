@@ -24,6 +24,7 @@
     <div class="player-content">
       <!-- Viewport -->
       <pw-viewport
+        [transition]="viewportTransition"
         [panel]="currentPanel"
         [page]="currentPage || null"
         [panels]="currentChapter?.panels || {}"

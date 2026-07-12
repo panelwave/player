@@ -4,6 +4,7 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { ViewportComponent, PerformanceMetrics } from './viewport.component';
 import type { Panel, Page, PanelPlacement } from '../../types';
 
@@ -44,6 +45,7 @@ describe('ViewportComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ViewportComponent],
+      providers: [provideHttpClient()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ViewportComponent);
@@ -70,7 +72,7 @@ describe('ViewportComponent', () => {
 
   describe('Panel Rendering', () => {
     it('should render panel when provided', async () => {
-      component.panel = mockPanel;
+      fixture.componentRef.setInput('panel', mockPanel);
       fixture.detectChanges();
       await fixture.whenStable();
 
@@ -79,11 +81,11 @@ describe('ViewportComponent', () => {
     });
 
     it('should render all layers', async () => {
-      component.panel = mockPanel;
+      fixture.componentRef.setInput('panel', mockPanel);
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const layers = fixture.nativeElement.querySelectorAll('.layer');
+      const layers = fixture.nativeElement.querySelectorAll('pw-layer-renderer');
       expect(layers.length).toBe(2);
     });
 
@@ -104,17 +106,18 @@ describe('ViewportComponent', () => {
       component.zoom = 1.5;
 
       const transform = component.getTransformStyle();
-      expect(transform).toBe('translate(10px, 20px) scale(1.5)');
+      // First translate centers the panel, then pan/zoom apply
+      expect(transform).toBe('translate(-50%, -50%) translate(10px, 20px) scale(1.5)');
     });
 
-    it('should return identity transform in reduced motion mode', () => {
+    it('should return centered identity transform in reduced motion mode', () => {
       component.reducedMotion = true;
       component.panX = 10;
       component.panY = 20;
       component.zoom = 1.5;
 
       const transform = component.getTransformStyle();
-      expect(transform).toBe('translate(0, 0) scale(1)');
+      expect(transform).toBe('translate(-50%, -50%) scale(1)');
     });
 
     it('should reset transform', () => {
@@ -294,6 +297,165 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('Panel-change transitions (manifest edge transitions)', () => {
+    const otherPanel: Panel = { title: { 'en-US': 'Other Panel' }, layers: [] };
+
+    const panelChange = (previousValue: Panel | null, currentValue: Panel | null) => ({
+      panel: {
+        currentValue,
+        previousValue,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+      currentPanelId: {
+        currentValue: 'p-new',
+        previousValue: 'p-old',
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    describe('getTransitionAnimationClasses', () => {
+      it('should map fade and zoom to enter-only animations', () => {
+        expect(component.getTransitionAnimationClasses({ type: 'fade' }))
+          .toEqual({ enter: 't-fade-in', leave: '' });
+        expect(component.getTransitionAnimationClasses({ type: 'zoom' }))
+          .toEqual({ enter: 't-zoom-in', leave: '' });
+      });
+
+      it('should move both panels for slide/push (dir = direction of motion)', () => {
+        expect(component.getTransitionAnimationClasses({ type: 'slide', dir: 'left' }))
+          .toEqual({ enter: 't-from-right', leave: 't-to-left' });
+        expect(component.getTransitionAnimationClasses({ type: 'push', dir: 'right' }))
+          .toEqual({ enter: 't-from-left', leave: 't-to-right' });
+        expect(component.getTransitionAnimationClasses({ type: 'slide', dir: 'up' }))
+          .toEqual({ enter: 't-from-bottom', leave: 't-to-top' });
+        expect(component.getTransitionAnimationClasses({ type: 'slide', dir: 'down' }))
+          .toEqual({ enter: 't-from-top', leave: 't-to-bottom' });
+      });
+
+      it('should default the slide direction to left', () => {
+        expect(component.getTransitionAnimationClasses({ type: 'slide' }))
+          .toEqual({ enter: 't-from-right', leave: 't-to-left' });
+      });
+
+      it('should slide the new panel over a static old one for cover', () => {
+        expect(component.getTransitionAnimationClasses({ type: 'cover', dir: 'left' }))
+          .toEqual({ enter: 't-from-right', leave: '' });
+      });
+
+      it('should return null for cut, none, and missing transitions', () => {
+        expect(component.getTransitionAnimationClasses({ type: 'cut' })).toBeNull();
+        expect(component.getTransitionAnimationClasses({ type: 'none' })).toBeNull();
+        expect(component.getTransitionAnimationClasses(null)).toBeNull();
+        expect(component.getTransitionAnimationClasses(undefined)).toBeNull();
+      });
+    });
+
+    describe('transition lifecycle', () => {
+      beforeEach(() => {
+        jasmine.clock().install();
+      });
+
+      afterEach(() => {
+        jasmine.clock().uninstall();
+      });
+
+      it('should keep the outgoing panel in the leave frame for the transition duration', () => {
+        component.transition = { type: 'slide', dir: 'left', durationMs: 250, easing: 'ease-out' };
+        component.panel = otherPanel;
+        component.ngOnChanges(panelChange(mockPanel, otherPanel));
+
+        expect(component.leavingPanel).toBe(mockPanel);
+        expect(component.leavingPanelId).toBe('p-old');
+        expect(component.enterAnimationClass).toBe('t-from-right');
+        expect(component.leaveAnimationClass).toBe('t-to-left');
+        expect(component.transitionDuration).toBe('250ms');
+        expect(component.transitionEasing).toBe('ease-out');
+
+        jasmine.clock().tick(251);
+
+        expect(component.leavingPanel).toBeNull();
+        expect(component.enterAnimationClass).toBe('');
+        expect(component.leaveAnimationClass).toBe('');
+      });
+
+      it('should default duration to 400ms and easing to ease', () => {
+        component.transition = { type: 'fade' };
+        component.ngOnChanges(panelChange(mockPanel, otherPanel));
+
+        expect(component.transitionDuration).toBe('400ms');
+        expect(component.transitionEasing).toBe('ease');
+      });
+
+      it('should swap instantly without a transition', () => {
+        component.transition = null;
+        component.ngOnChanges(panelChange(mockPanel, otherPanel));
+
+        expect(component.leavingPanel).toBeNull();
+        expect(component.enterAnimationClass).toBe('');
+      });
+
+      it('should swap instantly for cut transitions', () => {
+        component.transition = { type: 'cut' };
+        component.ngOnChanges(panelChange(mockPanel, otherPanel));
+
+        expect(component.leavingPanel).toBeNull();
+      });
+
+      it('should swap instantly under reduced motion', () => {
+        component.reducedMotion = true;
+        component.transition = { type: 'slide', dir: 'left' };
+        component.ngOnChanges(panelChange(mockPanel, otherPanel));
+
+        expect(component.leavingPanel).toBeNull();
+      });
+
+      it('should not animate the very first panel (no previous value)', () => {
+        component.transition = { type: 'fade' };
+        component.ngOnChanges(panelChange(null, mockPanel));
+
+        expect(component.leavingPanel).toBeNull();
+      });
+
+      it('should replace a running transition when navigating again mid-flight', () => {
+        component.transition = { type: 'slide', dir: 'left', durationMs: 300 };
+        component.ngOnChanges(panelChange(mockPanel, otherPanel));
+        expect(component.leavingPanel).toBe(mockPanel);
+
+        jasmine.clock().tick(150);
+        component.ngOnChanges(panelChange(otherPanel, mockPanel));
+        expect(component.leavingPanel).toBe(otherPanel);
+
+        jasmine.clock().tick(301);
+        expect(component.leavingPanel).toBeNull();
+      });
+
+      it('should render the leave frame while a transition runs', () => {
+        fixture.componentRef.setInput('panel', mockPanel);
+        fixture.componentRef.setInput('currentPanelId', 'p-old');
+        fixture.detectChanges();
+
+        fixture.componentRef.setInput('transition', { type: 'push', dir: 'left', durationMs: 300 });
+        fixture.componentRef.setInput('panel', otherPanel);
+        fixture.componentRef.setInput('currentPanelId', 'p-new');
+        fixture.detectChanges();
+
+        const leaveFrame = fixture.nativeElement.querySelector('.t-frame-leave');
+        expect(leaveFrame).toBeTruthy();
+        expect(leaveFrame.className).toContain('t-to-left');
+        expect(component.leavingPanelId).toBe('p-old');
+
+        const enterFrame = fixture.nativeElement.querySelector('.t-frame');
+        expect(enterFrame.className).toContain('t-from-right');
+
+        jasmine.clock().tick(301);
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('.t-frame-leave')).toBeFalsy();
+      });
+    });
+  });
+
   describe('Panel Dimensions', () => {
     it('should return default dimensions when no panel', () => {
       component.panel = null;
@@ -350,7 +512,7 @@ describe('ViewportComponent', () => {
 
     it('should stop touching on touch end', () => {
       component.isTouching = true;
-      const event = { touches: [] } as unknown as TouchEvent;
+      const event = { touches: [], changedTouches: [] } as unknown as TouchEvent;
 
       component.onTouchEnd(event);
 
@@ -409,7 +571,7 @@ describe('ViewportComponent', () => {
     it('should switch from pinch to pan when one finger lifted', () => {
       component.isPinching = true;
       const touch = { clientX: 100, clientY: 100 } as Touch;
-      const event = { touches: [touch], length: 1 } as unknown as TouchEvent;
+      const event = { touches: [touch], changedTouches: [], length: 1 } as unknown as TouchEvent;
 
       component.onTouchEnd(event);
 

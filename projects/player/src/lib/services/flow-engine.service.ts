@@ -70,6 +70,50 @@ export class FlowEngineService {
   }
 
   /**
+   * Transition to play when navigating BACK from `currentPanelId` to
+   * `previousPanelId`: the transition of the edge originally traversed
+   * (previous -> current, falling back to the format default), reversed.
+   *
+   * @param graph - Navigation graph
+   * @param previousPanelId - Panel being returned to
+   * @param currentPanelId - Panel being left
+   * @param defaultTransition - Resolved outputPresets default, if any
+   * @returns The reversed transition, or undefined
+   */
+  getReturnTransition(
+    graph: Graph,
+    previousPanelId: string,
+    currentPanelId: string,
+    defaultTransition?: Transition
+  ): Transition | undefined {
+    const edge = graph.edges.find(
+      (candidate) => candidate.from === previousPanelId && candidate.to === currentPanelId
+    );
+    return this.reverseTransition(edge?.transition ?? defaultTransition);
+  }
+
+  /**
+   * Reverse a transition's direction of motion (slide left <-> right,
+   * up <-> down). Direction-less transitions (fade, zoom, cut) are
+   * returned unchanged.
+   */
+  reverseTransition(transition?: Transition): Transition | undefined {
+    if (!transition) {
+      return undefined;
+    }
+    if (!transition.dir) {
+      return { ...transition };
+    }
+    const opposite: Record<string, Transition['dir']> = {
+      left: 'right',
+      right: 'left',
+      up: 'down',
+      down: 'up',
+    };
+    return { ...transition, dir: opposite[transition.dir] ?? transition.dir };
+  }
+
+  /**
    * Resolve the default edge transition from settings.outputPresets.
    *
    * Per the manifest spec, an edge without a `transition` inherits the active

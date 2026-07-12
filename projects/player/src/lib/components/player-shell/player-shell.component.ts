@@ -28,6 +28,7 @@ import type {
   Chapter,
   LocaleCode,
   Character as ManifestCharacter,
+  Transition,
   VideoLayer,
   VideoTrackingPayload,
 } from '../../types';
@@ -219,6 +220,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Current panel
    */
   currentPanel?: Panel;
+
+  /**
+   * Transition for the current panel change, passed to the viewport
+   * (resolved edge transition on next, reversed edge transition on
+   * previous, null for jumps).
+   */
+  viewportTransition: Transition | null = null;
 
   /**
    * Current page (for page view)
@@ -552,9 +560,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
 
   /**
    * Navigate to panel
+   * @param transition - Optional transition to render for this panel change
+   *   (already resolved against the outputPresets default). Omitted for
+   *   non-adjacent jumps (TOC, initial load), which swap instantly.
    */
-  async navigateToPanel(chapterId: string, panelId: string): Promise<void> {
+  async navigateToPanel(chapterId: string, panelId: string, transition?: Transition): Promise<void> {
     try {
+      this.viewportTransition = transition ?? null;
       // Check entitlement
       if (this.entitlementAdapter) {
         const hasAccess = await this.entitlementAdapter.hasAccess(panelId);
@@ -606,7 +618,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       );
 
       if (result.nextPanelId) {
-        await this.navigateToPanel(this.currentChapter.id, result.nextPanelId);
+        await this.navigateToPanel(this.currentChapter.id, result.nextPanelId, result.transition);
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -633,8 +645,15 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       );
 
       if (previousPanels.length > 0) {
-        // Navigate to the first previous panel
-        await this.navigateToPanel(this.currentChapter.id, previousPanels[0]);
+        // Navigate to the first previous panel, replaying the traversed
+        // edge's transition in reverse (slide left becomes slide right).
+        const transition = this.flowEngine.getReturnTransition(
+          this.currentChapter.graph,
+          previousPanels[0],
+          currentPanelId,
+          this.flowEngine.getDefaultTransition(this.manifestService.getManifest()?.settings)
+        );
+        await this.navigateToPanel(this.currentChapter.id, previousPanels[0], transition);
       }
     } catch (err) {
       this.handleError(err as Error);
