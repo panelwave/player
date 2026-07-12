@@ -1,6 +1,6 @@
 {
   "panelwave": {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
     "generator": "panelwave-video-demo/1.0"
   },
@@ -23,8 +23,15 @@
     "publisher": "PanelWave Press",
     "release_date": "2026-07-02",
     "age_rating": "all",
-    "tags": ["demo", "video", "sequencing"],
-    "locales": ["en-US", "de-DE"],
+    "tags": [
+      "demo",
+      "video",
+      "sequencing"
+    ],
+    "locales": [
+      "en-US",
+      "de-DE"
+    ],
     "default_locale": "en-US"
   },
   "settings": {
@@ -40,7 +47,12 @@
       "required": true,
       "defaultOptIn": true
     },
-    "eventWhitelist": ["videoPlay", "videoPause", "videoEnded", "videoLoop"]
+    "eventWhitelist": [
+      "videoPlay",
+      "videoPause",
+      "videoEnded",
+      "videoLoop"
+    ]
   },
   "assets": {
     "catalog": [
@@ -54,14 +66,12 @@
         },
         "poster": {
           "src": "assets/video/video-demo-a-poster.jpg",
-          "mime": "image/jpeg",
           "w": 160,
           "h": 90
         },
         "variants": [
           {
             "src": "assets/video/video-demo-a.mp4",
-            "mime": "video/mp4",
             "w": 160,
             "h": 90,
             "fps": 12
@@ -78,14 +88,12 @@
         },
         "poster": {
           "src": "assets/video/video-demo-b-poster.jpg",
-          "mime": "image/jpeg",
           "w": 160,
           "h": 90
         },
         "variants": [
           {
             "src": "assets/video/video-demo-b.mp4",
-            "mime": "video/mp4",
             "w": 160,
             "h": 90,
             "fps": 12
@@ -120,36 +128,37 @@
                 "x": 0,
                 "y": 0,
                 "w": 0.5,
-                "h": 0.5,
-                "z": 0
+                "h": 0.5
               },
               {
                 "panelId": "pv-2",
                 "x": 0.5,
                 "y": 0,
                 "w": 0.5,
-                "h": 0.5,
-                "z": 0
+                "h": 0.5
               },
               {
                 "panelId": "pv-3",
                 "x": 0,
                 "y": 0.5,
                 "w": 0.5,
-                "h": 0.5,
-                "z": 0
+                "h": 0.5
               },
               {
                 "panelId": "pv-4",
                 "x": 0.5,
                 "y": 0.5,
                 "w": 0.5,
-                "h": 0.5,
-                "z": 0
+                "h": 0.5
               }
             ]
           },
-          "readingOrder": ["pv-1", "pv-2", "pv-3", "pv-4"]
+          "readingOrder": [
+            "pv-1",
+            "pv-2",
+            "pv-3",
+            "pv-4"
+          ]
         }
       ],
       "panels": {

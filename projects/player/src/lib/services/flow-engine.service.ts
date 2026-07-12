@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import type { Edge, Graph, Transition } from '../types';
+import type { Edge, Graph, Settings, Transition } from '../types';
 import { evaluateJsonLogic } from '../utils';
 import { EntitlementService } from './entitlement.service';
 
@@ -37,7 +37,8 @@ export class FlowEngineService {
   getNextPanel(
     graph: Graph,
     currentPanelId: string,
-    context: Record<string, unknown>
+    context: Record<string, unknown>,
+    defaultTransition?: Transition
   ): NavigationResult {
     // Get edges from current panel
     const edges = this.getEdgesFromPanel(graph, currentPanelId);
@@ -61,9 +62,46 @@ export class FlowEngineService {
 
     return {
       nextPanelId: selectedEdge.to,
-      transition: selectedEdge.transition,
+      // Edges without a transition inherit the output format's default
+      // (settings.outputPresets[format].defaultTransition, schema 1.2).
+      transition: selectedEdge.transition ?? defaultTransition,
       action: selectedEdge.action,
     };
+  }
+
+  /**
+   * Resolve the default edge transition from settings.outputPresets.
+   *
+   * Per the manifest spec, an edge without a `transition` inherits the active
+   * output format's `defaultTransition`. When no format is given (the player
+   * does not track an active format yet), the default is only used if every
+   * defined preset agrees on it; otherwise undefined (renderer falls back to
+   * a plain cut).
+   *
+   * @param settings - Manifest settings
+   * @param format - Active output format key, if known
+   * @returns The default transition, or undefined
+   */
+  getDefaultTransition(settings?: Settings, format?: string): Transition | undefined {
+    const presets = settings?.outputPresets;
+    if (!presets) {
+      return undefined;
+    }
+
+    if (format) {
+      return presets[format]?.defaultTransition;
+    }
+
+    const defaults = Object.values(presets)
+      .map((preset) => preset?.defaultTransition)
+      .filter((transition): transition is Transition => !!transition);
+    if (defaults.length === 0) {
+      return undefined;
+    }
+    const first = JSON.stringify(defaults[0]);
+    return defaults.every((transition) => JSON.stringify(transition) === first)
+      ? defaults[0]
+      : undefined;
   }
 
   /**

@@ -1,976 +1,941 @@
 {
-   "panelwave":{
-      "version":"1.0.0",
-      "schema":"https://panelwave.org/schema/1.0/panelwave.schema.json",
-      "generator":"panelwave-sample-gen/1.0"
-   },
-   "meta":{
-      "id":"work-sample-3pages",
-      "title":{
-         "en-US":"City Noir: Sample",
-         "de-DE":"Stadt Noir: Beispiel"
-      },
-      "description":{
-         "en-US":"A sample PanelWave graphic novel with 3 pages and multiple panels per page.",
-         "de-DE":"Ein Beispiel-PanelWave-Graphic-Novel mit 3 Seiten und mehreren Panels pro Seite."
-      },
-      "creators":[
-         {
-            "role":"writer",
-            "name":"Dana Kim"
-         },
-         {
-            "role":"artist",
-            "name":"Leo Park"
-         }
-      ],
-      "publisher":"PanelWave Press",
-      "series":"City Noir",
-      "issue":"Sample One-Shot",
-      "release_date":"2025-09-01",
-      "age_rating":"13+",
-      "tags":[
-         "sample",
-         "noir",
-         "demo"
-      ],
-      "locales":[
-         "en-US",
-         "de-DE"
-      ],
-      "default_locale":"en-US",
-      "cover":"img-cover",
-      "characters":[
-         {
-            "id":"char-alex",
-            "name":{
-               "en-US":"Detective Alex Chen",
-               "de-DE":"Detektiv Alex Chen"
-            },
-            "description":{
-               "en-US":"A seasoned detective navigating the neon-lit streets of the city.",
-               "de-DE":"Ein erfahrener Detektiv, der durch die neonbeleuchteten Straßen der Stadt navigiert."
-            },
-            "images":{
-               "portrait":"https://i.pravatar.cc/150?img=12"
-            }
-         },
-         {
-            "id":"char-marcus",
-            "name":{
-               "en-US":"Marcus Kane",
-               "de-DE":"Marcus Kane"
-            },
-            "description":{
-               "en-US":"Alex's partner, always ready with a witty comment and a sharp eye.",
-               "de-DE":"Alex' Partner, immer bereit mit einem witzigen Kommentar und einem scharfen Auge."
-            },
-            "images":{
-               "portrait":"https://i.pravatar.cc/150?img=33"
-            }
-         },
-         {
-            "id":"char-informant",
-            "name":{
-               "en-US":"The Informant",
-               "de-DE":"Der Informant"
-            },
-            "description":{
-               "en-US":"A mysterious figure who knows more than they should about the city's secrets.",
-               "de-DE":"Eine mysteriöse Gestalt, die mehr über die Geheimnisse der Stadt weiß, als sie sollte."
-            },
-            "images":{
-               "portrait":"https://i.pravatar.cc/150?img=52"
-            }
-         }
-      ]
-   },
-   "assets":{
-      "catalog":[
-         {
-            "id":"img-cover",
-            "category":"image",
-            "alt":{
-               "en-US":"A neon-lit city skyline at dusk.",
-               "de-DE":"Eine neonbeleuchtete Stadtsilhouette in der Dämmerung."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1000/1200/1600",
-                  "w":1200,
-                  "h":1600,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p1-1",
-            "category":"image",
-            "alt":{
-               "en-US":"Rainy street with reflections.",
-               "de-DE":"Regennasse Straße mit Spiegelungen."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1011/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p1-2",
-            "category":"image",
-            "alt":{
-               "en-US":"Close-up of a neon sign.",
-               "de-DE":"Nahaufnahme eines Neonschilds."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1012/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p1-3",
-            "category":"image",
-            "alt":{
-               "en-US":"Mysterious alleyway.",
-               "de-DE":"Geheimnisvolle Gasse."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1013/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p1-4",
-            "category":"image",
-            "alt":{
-               "en-US":"Footsteps in a puddle.",
-               "de-DE":"Fußspuren in einer Pfütze."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1014/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p1-5",
-            "category":"image",
-            "alt":{
-               "en-US":"Silhouette under an umbrella.",
-               "de-DE":"Silhouette unter einem Regenschirm."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1015/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p2-1",
-            "category":"image",
-            "alt":{
-               "en-US":"City bridge at night.",
-               "de-DE":"Stadtbrücke bei Nacht."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1016/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p2-2",
-            "category":"image",
-            "alt":{
-               "en-US":"Window with raindrops.",
-               "de-DE":"Fenster mit Regentropfen."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1018/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p2-3",
-            "category":"image",
-            "alt":{
-               "en-US":"Phone booth glowing.",
-               "de-DE":"Leuchtende Telefonzelle."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1020/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p2-4",
-            "category":"image",
-            "alt":{
-               "en-US":"Cafe interior with steam.",
-               "de-DE":"Café-Innenraum mit Dampf."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1021/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p2-5",
-            "category":"image",
-            "alt":{
-               "en-US":"Crosswalk and headlights.",
-               "de-DE":"Zebrastreifen und Scheinwerfer."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1022/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p3-1",
-            "category":"image",
-            "alt":{
-               "en-US":"Rooftop overlooking city.",
-               "de-DE":"Dachterrasse mit Blick über die Stadt."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1023/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p3-2",
-            "category":"image",
-            "alt":{
-               "en-US":"Streetcar passing.",
-               "de-DE":"Vorbeifahrende Straßenbahn."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1024/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p3-3",
-            "category":"image",
-            "alt":{
-               "en-US":"Graffiti wall.",
-               "de-DE":"Graffiti-Wand."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1025/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p3-4",
-            "category":"image",
-            "alt":{
-               "en-US":"Elevator lobby lights.",
-               "de-DE":"Aufzugslobby mit Lichtern."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1026/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         },
-         {
-            "id":"img-p3-5",
-            "category":"image",
-            "alt":{
-               "en-US":"Quiet street at dawn.",
-               "de-DE":"Ruhige Straße im Morgengrauen."
-            },
-            "variants":[
-               {
-                  "src":"https://picsum.photos/id/1027/1280/720",
-                  "w":1280,
-                  "h":720,
-                  "mime":"image/jpeg"
-               }
-            ]
-         }
-      ]
-   },
-   "chapters":[
+  "panelwave": {
+    "version": "1.0.0",
+    "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
+    "generator": "panelwave-sample-gen/1.0"
+  },
+  "meta": {
+    "id": "work-sample-3pages",
+    "title": {
+      "en-US": "City Noir: Sample",
+      "de-DE": "Stadt Noir: Beispiel"
+    },
+    "description": {
+      "en-US": "A sample PanelWave graphic novel with 3 pages and multiple panels per page.",
+      "de-DE": "Ein Beispiel-PanelWave-Graphic-Novel mit 3 Seiten und mehreren Panels pro Seite."
+    },
+    "creators": [
       {
-         "id":"ch-1",
-         "title":{
-            "en-US":"Nightfall",
-            "de-DE":"Einbruch der Nacht"
-         },
-         "pages":[
-            {
-               "id":"pg-1",
-               "title":{
-                  "en-US":"Page 1",
-                  "de-DE":"Seite 1"
-               },
-               "layout":{
-                  "format":"bigscreen-landscape",
-                  "canvasSize":{
-                     "width":3840,
-                     "height":2160
-                  },
-                  "gridHelper":{
-                     "cols":12,
-                     "rows":8,
-                     "visible":true,
-                     "snapEnabled":true,
-                     "snapDistance":0.01
-                  },
-                  "placements":[
-                     {
-                        "panelId":"p1-1",
-                        "x":0.0,
-                        "y":0.0,
-                        "w":0.5,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p1-2",
-                        "x":0.5,
-                        "y":0.0,
-                        "w":0.5,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p1-3",
-                        "x":0.0,
-                        "y":0.5,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p1-4",
-                        "x":0.3333,
-                        "y":0.5,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p1-5",
-                        "x":0.6667,
-                        "y":0.5,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     }
-                  ]
-               },
-               "readingOrder":[
-                  "p1-1",
-                  "p1-2",
-                  "p1-3",
-                  "p1-4",
-                  "p1-5"
-               ]
+        "role": "writer",
+        "name": "Dana Kim"
+      },
+      {
+        "role": "artist",
+        "name": "Leo Park"
+      }
+    ],
+    "publisher": "PanelWave Press",
+    "series": "City Noir",
+    "issue": "Sample One-Shot",
+    "release_date": "2025-09-01",
+    "age_rating": "13+",
+    "tags": [
+      "sample",
+      "noir",
+      "demo"
+    ],
+    "locales": [
+      "en-US",
+      "de-DE"
+    ],
+    "default_locale": "en-US",
+    "cover": "img-cover",
+    "characters": [
+      {
+        "id": "char-alex",
+        "name": {
+          "en-US": "Detective Alex Chen",
+          "de-DE": "Detektiv Alex Chen"
+        },
+        "description": {
+          "en-US": "A seasoned detective navigating the neon-lit streets of the city.",
+          "de-DE": "Ein erfahrener Detektiv, der durch die neonbeleuchteten Straßen der Stadt navigiert."
+        },
+        "images": {
+          "portrait": "https://i.pravatar.cc/150?img=12"
+        }
+      },
+      {
+        "id": "char-marcus",
+        "name": {
+          "en-US": "Marcus Kane",
+          "de-DE": "Marcus Kane"
+        },
+        "description": {
+          "en-US": "Alex's partner, always ready with a witty comment and a sharp eye.",
+          "de-DE": "Alex' Partner, immer bereit mit einem witzigen Kommentar und einem scharfen Auge."
+        },
+        "images": {
+          "portrait": "https://i.pravatar.cc/150?img=33"
+        }
+      },
+      {
+        "id": "char-informant",
+        "name": {
+          "en-US": "The Informant",
+          "de-DE": "Der Informant"
+        },
+        "description": {
+          "en-US": "A mysterious figure who knows more than they should about the city's secrets.",
+          "de-DE": "Eine mysteriöse Gestalt, die mehr über die Geheimnisse der Stadt weiß, als sie sollte."
+        },
+        "images": {
+          "portrait": "https://i.pravatar.cc/150?img=52"
+        }
+      }
+    ]
+  },
+  "assets": {
+    "catalog": [
+      {
+        "id": "img-cover",
+        "category": "image",
+        "alt": {
+          "en-US": "A neon-lit city skyline at dusk.",
+          "de-DE": "Eine neonbeleuchtete Stadtsilhouette in der Dämmerung."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1000/1200/1600",
+            "w": 1200,
+            "h": 1600,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1-1",
+        "category": "image",
+        "alt": {
+          "en-US": "Rainy street with reflections.",
+          "de-DE": "Regennasse Straße mit Spiegelungen."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1011/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1-2",
+        "category": "image",
+        "alt": {
+          "en-US": "Close-up of a neon sign.",
+          "de-DE": "Nahaufnahme eines Neonschilds."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1012/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1-3",
+        "category": "image",
+        "alt": {
+          "en-US": "Mysterious alleyway.",
+          "de-DE": "Geheimnisvolle Gasse."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1013/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1-4",
+        "category": "image",
+        "alt": {
+          "en-US": "Footsteps in a puddle.",
+          "de-DE": "Fußspuren in einer Pfütze."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1014/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1-5",
+        "category": "image",
+        "alt": {
+          "en-US": "Silhouette under an umbrella.",
+          "de-DE": "Silhouette unter einem Regenschirm."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1015/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2-1",
+        "category": "image",
+        "alt": {
+          "en-US": "City bridge at night.",
+          "de-DE": "Stadtbrücke bei Nacht."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1016/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2-2",
+        "category": "image",
+        "alt": {
+          "en-US": "Window with raindrops.",
+          "de-DE": "Fenster mit Regentropfen."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1018/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2-3",
+        "category": "image",
+        "alt": {
+          "en-US": "Phone booth glowing.",
+          "de-DE": "Leuchtende Telefonzelle."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1020/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2-4",
+        "category": "image",
+        "alt": {
+          "en-US": "Cafe interior with steam.",
+          "de-DE": "Café-Innenraum mit Dampf."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1021/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2-5",
+        "category": "image",
+        "alt": {
+          "en-US": "Crosswalk and headlights.",
+          "de-DE": "Zebrastreifen und Scheinwerfer."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1022/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3-1",
+        "category": "image",
+        "alt": {
+          "en-US": "Rooftop overlooking city.",
+          "de-DE": "Dachterrasse mit Blick über die Stadt."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1023/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3-2",
+        "category": "image",
+        "alt": {
+          "en-US": "Streetcar passing.",
+          "de-DE": "Vorbeifahrende Straßenbahn."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1024/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3-3",
+        "category": "image",
+        "alt": {
+          "en-US": "Graffiti wall.",
+          "de-DE": "Graffiti-Wand."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1025/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3-4",
+        "category": "image",
+        "alt": {
+          "en-US": "Elevator lobby lights.",
+          "de-DE": "Aufzugslobby mit Lichtern."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1026/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3-5",
+        "category": "image",
+        "alt": {
+          "en-US": "Quiet street at dawn.",
+          "de-DE": "Ruhige Straße im Morgengrauen."
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1027/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "id": "ch-1",
+      "title": {
+        "en-US": "Nightfall",
+        "de-DE": "Einbruch der Nacht"
+      },
+      "pages": [
+        {
+          "id": "pg-1",
+          "title": {
+            "en-US": "Page 1",
+            "de-DE": "Seite 1"
+          },
+          "layout": {
+            "format": "bigscreen-landscape",
+            "canvasSize": {
+              "width": 3840,
+              "height": 2160
             },
-            {
-               "id":"pg-2",
-               "title":{
-                  "en-US":"Page 2",
-                  "de-DE":"Seite 2"
-               },
-               "layout":{
-                  "format":"bigscreen-landscape",
-                  "canvasSize":{
-                     "width":3840,
-                     "height":2160
-                  },
-                  "gridHelper":{
-                     "cols":12,
-                     "rows":8,
-                     "visible":true,
-                     "snapEnabled":true,
-                     "snapDistance":0.01
-                  },
-                  "placements":[
-                     {
-                        "panelId":"p2-1",
-                        "x":0.0,
-                        "y":0.0,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p2-2",
-                        "x":0.3333,
-                        "y":0.0,
-                        "w":0.6667,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p2-3",
-                        "x":0.0,
-                        "y":0.5,
-                        "w":0.4167,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p2-4",
-                        "x":0.4167,
-                        "y":0.5,
-                        "w":0.25,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p2-5",
-                        "x":0.6667,
-                        "y":0.5,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     }
-                  ]
-               },
-               "readingOrder":[
-                  "p2-1",
-                  "p2-2",
-                  "p2-3",
-                  "p2-4",
-                  "p2-5"
-               ]
+            "gridHelper": {
+              "cols": 12,
+              "rows": 8,
+              "visible": true,
+              "snapEnabled": true,
+              "snapDistance": 0.01
             },
-            {
-               "id":"pg-3",
-               "title":{
-                  "en-US":"Page 3",
-                  "de-DE":"Seite 3"
-               },
-               "layout":{
-                  "format":"bigscreen-landscape",
-                  "canvasSize":{
-                     "width":3840,
-                     "height":2160
-                  },
-                  "gridHelper":{
-                     "cols":12,
-                     "rows":8,
-                     "visible":true,
-                     "snapEnabled":true,
-                     "snapDistance":0.01
-                  },
-                  "placements":[
-                     {
-                        "panelId":"p3-1",
-                        "x":0.0,
-                        "y":0.0,
-                        "w":0.6667,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p3-2",
-                        "x":0.6667,
-                        "y":0.0,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p3-3",
-                        "x":0.0,
-                        "y":0.5,
-                        "w":0.25,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p3-4",
-                        "x":0.25,
-                        "y":0.5,
-                        "w":0.4167,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     },
-                     {
-                        "panelId":"p3-5",
-                        "x":0.6667,
-                        "y":0.5,
-                        "w":0.3333,
-                        "h":0.5,
-                        "z":0,
-                        "r":0
-                     }
-                  ]
-               },
-               "readingOrder":[
-                  "p3-1",
-                  "p3-2",
-                  "p3-3",
-                  "p3-4",
-                  "p3-5"
-               ]
-            }
-         ],
-         "panels":{
-            "p1-1":{
-               "title":{
-                  "en-US":"Rainy Street",
-                  "de-DE":"Regennasse Straße"
-               },
-               "durationMs":3000,
-               "formatViews":{
-                  "mobile-portrait":{
-                     "minimalFocusRect":{
-                        "x":0.1,
-                        "y":0.1,
-                        "w":0.8,
-                        "h":0.8
-                     },
-                     "allowPageView":false,
-                     "allowPanelView":true
-                  }
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p1-1-bg",
-                     "assetId":"img-p1-1",
-                     "z":0
-                  }
-               ],
-               "shareable":true
-            },
-            "p1-2":{
-               "title":{
-                  "en-US":"Neon Sign",
-                  "de-DE":"Neonschild"
-               },
-               "durationMs":6000,
-               "formatViews":{
-                  "mobile-portrait":{
-                     "minimalFocusRect":{
-                        "x":0.15,
-                        "y":0.15,
-                        "w":0.7,
-                        "h":0.7
-                     }
-                  }
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p1-2-bg",
-                     "assetId":"img-p1-2",
-                     "z":0
-                  }
-               ],
-               "shareable":true
-            },
-            "p1-3":{
-               "title":{
-                  "en-US":"Alleyway",
-                  "de-DE":"Gasse"
-               },
-               "durationMs":2500,
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p1-3-bg",
-                     "assetId":"img-p1-3",
-                     "z":0
-                  }
-               ],
-               "shareable":true
-            },
-            "p1-4":{
-               "title":{
-                  "en-US":"Footsteps",
-                  "de-DE":"Fußspuren"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p1-4-bg",
-                     "assetId":"img-p1-4",
-                     "z":0
-                  }
-               ]
-            },
-            "p1-5":{
-               "title":{
-                  "en-US":"Umbrella Figure",
-                  "de-DE":"Schirmgestalt"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p1-5-bg",
-                     "assetId":"img-p1-5",
-                     "z":0
-                  }
-               ]
-            },
-            "p2-1":{
-               "title":{
-                  "en-US":"Bridge",
-                  "de-DE":"Brücke"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p2-1-bg",
-                     "assetId":"img-p2-1",
-                     "z":0
-                  }
-               ]
-            },
-            "p2-2":{
-               "title":{
-                  "en-US":"Raindrops",
-                  "de-DE":"Regentropfen"
-               },
-               "durationMs":7000,
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p2-2-bg",
-                     "assetId":"img-p2-2",
-                     "z":0
-                  }
-               ]
-            },
-            "p2-3":{
-               "title":{
-                  "en-US":"Phone Booth",
-                  "de-DE":"Telefonzelle"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p2-3-bg",
-                     "assetId":"img-p2-3",
-                     "z":0
-                  }
-               ]
-            },
-            "p2-4":{
-               "title":{
-                  "en-US":"Cafe Steam",
-                  "de-DE":"Café-Dampf"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p2-4-bg",
-                     "assetId":"img-p2-4",
-                     "z":0
-                  }
-               ]
-            },
-            "p2-5":{
-               "title":{
-                  "en-US":"Crosswalk",
-                  "de-DE":"Zebrastreifen"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p2-5-bg",
-                     "assetId":"img-p2-5",
-                     "z":0
-                  }
-               ]
-            },
-            "p3-1":{
-               "title":{
-                  "en-US":"Rooftop",
-                  "de-DE":"Dachterrasse"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p3-1-bg",
-                     "assetId":"img-p3-1",
-                     "z":0
-                  }
-               ]
-            },
-            "p3-2":{
-               "title":{
-                  "en-US":"Streetcar",
-                  "de-DE":"Straßenbahn"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p3-2-bg",
-                     "assetId":"img-p3-2",
-                     "z":0
-                  }
-               ]
-            },
-            "p3-3":{
-               "title":{
-                  "en-US":"Graffiti",
-                  "de-DE":"Graffiti"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p3-3-bg",
-                     "assetId":"img-p3-3",
-                     "z":0
-                  }
-               ]
-            },
-            "p3-4":{
-               "title":{
-                  "en-US":"Lobby Lights",
-                  "de-DE":"Lobbylichter"
-               },
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p3-4-bg",
-                     "assetId":"img-p3-4",
-                     "z":0
-                  }
-               ]
-            },
-            "p3-5":{
-               "title":{
-                  "en-US":"Dawn",
-                  "de-DE":"Morgengrauen"
-               },
-               "durationMs":8000,
-               "layers":[
-                  {
-                     "kind":"image",
-                     "id":"ly-p3-5-bg",
-                     "assetId":"img-p3-5",
-                     "z":0
-                  }
-               ],
-               "shareable":true
-            }
-         },
-         "graph":{
-            "entry":"p1-1",
-            "edges":[
-               {
-                  "from":"p1-1",
-                  "to":"p1-2",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p1-2",
-                  "to":"p1-3",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p1-3",
-                  "to":"p1-4",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p1-4",
-                  "to":"p1-5",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p1-5",
-                  "to":"p2-1",
-                  "transition":{
-                     "type":"fade",
-                     "durationMs":300
-                  }
-               },
-               {
-                  "from":"p2-1",
-                  "to":"p2-2",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p2-2",
-                  "to":"p2-3",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p2-3",
-                  "to":"p2-4",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p2-4",
-                  "to":"p2-5",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p2-5",
-                  "to":"p3-1",
-                  "transition":{
-                     "type":"fade",
-                     "durationMs":300
-                  }
-               },
-               {
-                  "from":"p3-1",
-                  "to":"p3-2",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p3-2",
-                  "to":"p3-3",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p3-3",
-                  "to":"p3-4",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               },
-               {
-                  "from":"p3-4",
-                  "to":"p3-5",
-                  "transition":{
-                     "type":"slide",
-                     "dir":"left",
-                     "durationMs":400
-                  }
-               }
+            "placements": [
+              {
+                "panelId": "p1-1",
+                "x": 0,
+                "y": 0,
+                "w": 0.5,
+                "h": 0.5
+              },
+              {
+                "panelId": "p1-2",
+                "x": 0.5,
+                "y": 0,
+                "w": 0.5,
+                "h": 0.5
+              },
+              {
+                "panelId": "p1-3",
+                "x": 0,
+                "y": 0.5,
+                "w": 0.3333,
+                "h": 0.5
+              },
+              {
+                "panelId": "p1-4",
+                "x": 0.3333,
+                "y": 0.5,
+                "w": 0.3333,
+                "h": 0.5
+              },
+              {
+                "panelId": "p1-5",
+                "x": 0.6667,
+                "y": 0.5,
+                "w": 0.3333,
+                "h": 0.5
+              }
             ]
-         }
-      }
-   ],
-   "extras":{
-      "cover":{
-         "id":"ex-cover",
-         "title":{
-            "en-US":"Cover",
-            "de-DE":"Umschlag"
-         },
-         "images":[
-            {
-               "assetId":"img-cover",
-               "caption":{
-                  "en-US":"City Noir cover",
-                  "de-DE":"Stadt Noir Umschlag"
-               }
+          },
+          "readingOrder": [
+            "p1-1",
+            "p1-2",
+            "p1-3",
+            "p1-4",
+            "p1-5"
+          ]
+        },
+        {
+          "id": "pg-2",
+          "title": {
+            "en-US": "Page 2",
+            "de-DE": "Seite 2"
+          },
+          "layout": {
+            "format": "bigscreen-landscape",
+            "canvasSize": {
+              "width": 3840,
+              "height": 2160
+            },
+            "gridHelper": {
+              "cols": 12,
+              "rows": 8,
+              "visible": true,
+              "snapEnabled": true,
+              "snapDistance": 0.01
+            },
+            "placements": [
+              {
+                "panelId": "p2-1",
+                "x": 0,
+                "y": 0,
+                "w": 0.3333,
+                "h": 0.5
+              },
+              {
+                "panelId": "p2-2",
+                "x": 0.3333,
+                "y": 0,
+                "w": 0.6667,
+                "h": 0.5
+              },
+              {
+                "panelId": "p2-3",
+                "x": 0,
+                "y": 0.5,
+                "w": 0.4167,
+                "h": 0.5
+              },
+              {
+                "panelId": "p2-4",
+                "x": 0.4167,
+                "y": 0.5,
+                "w": 0.25,
+                "h": 0.5
+              },
+              {
+                "panelId": "p2-5",
+                "x": 0.6667,
+                "y": 0.5,
+                "w": 0.3333,
+                "h": 0.5
+              }
+            ]
+          },
+          "readingOrder": [
+            "p2-1",
+            "p2-2",
+            "p2-3",
+            "p2-4",
+            "p2-5"
+          ]
+        },
+        {
+          "id": "pg-3",
+          "title": {
+            "en-US": "Page 3",
+            "de-DE": "Seite 3"
+          },
+          "layout": {
+            "format": "bigscreen-landscape",
+            "canvasSize": {
+              "width": 3840,
+              "height": 2160
+            },
+            "gridHelper": {
+              "cols": 12,
+              "rows": 8,
+              "visible": true,
+              "snapEnabled": true,
+              "snapDistance": 0.01
+            },
+            "placements": [
+              {
+                "panelId": "p3-1",
+                "x": 0,
+                "y": 0,
+                "w": 0.6667,
+                "h": 0.5
+              },
+              {
+                "panelId": "p3-2",
+                "x": 0.6667,
+                "y": 0,
+                "w": 0.3333,
+                "h": 0.5
+              },
+              {
+                "panelId": "p3-3",
+                "x": 0,
+                "y": 0.5,
+                "w": 0.25,
+                "h": 0.5
+              },
+              {
+                "panelId": "p3-4",
+                "x": 0.25,
+                "y": 0.5,
+                "w": 0.4167,
+                "h": 0.5
+              },
+              {
+                "panelId": "p3-5",
+                "x": 0.6667,
+                "y": 0.5,
+                "w": 0.3333,
+                "h": 0.5
+              }
+            ]
+          },
+          "readingOrder": [
+            "p3-1",
+            "p3-2",
+            "p3-3",
+            "p3-4",
+            "p3-5"
+          ]
+        }
+      ],
+      "panels": {
+        "p1-1": {
+          "title": {
+            "en-US": "Rainy Street",
+            "de-DE": "Regennasse Straße"
+          },
+          "durationMs": 3000,
+          "formatViews": {
+            "mobile-portrait": {
+              "minimalFocusRect": {
+                "x": 0.1,
+                "y": 0.1,
+                "w": 0.8,
+                "h": 0.8
+              },
+              "allowPageView": false,
+              "allowPanelView": true
             }
-         ],
-         "shareable":true,
-         "gated":false
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-1-bg",
+              "assetId": "img-p1-1",
+              "z": 0
+            }
+          ]
+        },
+        "p1-2": {
+          "title": {
+            "en-US": "Neon Sign",
+            "de-DE": "Neonschild"
+          },
+          "durationMs": 6000,
+          "formatViews": {
+            "mobile-portrait": {
+              "minimalFocusRect": {
+                "x": 0.15,
+                "y": 0.15,
+                "w": 0.7,
+                "h": 0.7
+              }
+            }
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-2-bg",
+              "assetId": "img-p1-2",
+              "z": 0
+            }
+          ]
+        },
+        "p1-3": {
+          "title": {
+            "en-US": "Alleyway",
+            "de-DE": "Gasse"
+          },
+          "durationMs": 2500,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-3-bg",
+              "assetId": "img-p1-3",
+              "z": 0
+            }
+          ]
+        },
+        "p1-4": {
+          "title": {
+            "en-US": "Footsteps",
+            "de-DE": "Fußspuren"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-4-bg",
+              "assetId": "img-p1-4",
+              "z": 0
+            }
+          ]
+        },
+        "p1-5": {
+          "title": {
+            "en-US": "Umbrella Figure",
+            "de-DE": "Schirmgestalt"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-5-bg",
+              "assetId": "img-p1-5",
+              "z": 0
+            }
+          ]
+        },
+        "p2-1": {
+          "title": {
+            "en-US": "Bridge",
+            "de-DE": "Brücke"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-1-bg",
+              "assetId": "img-p2-1",
+              "z": 0
+            }
+          ]
+        },
+        "p2-2": {
+          "title": {
+            "en-US": "Raindrops",
+            "de-DE": "Regentropfen"
+          },
+          "durationMs": 7000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-2-bg",
+              "assetId": "img-p2-2",
+              "z": 0
+            }
+          ]
+        },
+        "p2-3": {
+          "title": {
+            "en-US": "Phone Booth",
+            "de-DE": "Telefonzelle"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-3-bg",
+              "assetId": "img-p2-3",
+              "z": 0
+            }
+          ]
+        },
+        "p2-4": {
+          "title": {
+            "en-US": "Cafe Steam",
+            "de-DE": "Café-Dampf"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-4-bg",
+              "assetId": "img-p2-4",
+              "z": 0
+            }
+          ]
+        },
+        "p2-5": {
+          "title": {
+            "en-US": "Crosswalk",
+            "de-DE": "Zebrastreifen"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-5-bg",
+              "assetId": "img-p2-5",
+              "z": 0
+            }
+          ]
+        },
+        "p3-1": {
+          "title": {
+            "en-US": "Rooftop",
+            "de-DE": "Dachterrasse"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-1-bg",
+              "assetId": "img-p3-1",
+              "z": 0
+            }
+          ]
+        },
+        "p3-2": {
+          "title": {
+            "en-US": "Streetcar",
+            "de-DE": "Straßenbahn"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-2-bg",
+              "assetId": "img-p3-2",
+              "z": 0
+            }
+          ]
+        },
+        "p3-3": {
+          "title": {
+            "en-US": "Graffiti",
+            "de-DE": "Graffiti"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-3-bg",
+              "assetId": "img-p3-3",
+              "z": 0
+            }
+          ]
+        },
+        "p3-4": {
+          "title": {
+            "en-US": "Lobby Lights",
+            "de-DE": "Lobbylichter"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-4-bg",
+              "assetId": "img-p3-4",
+              "z": 0
+            }
+          ]
+        },
+        "p3-5": {
+          "title": {
+            "en-US": "Dawn",
+            "de-DE": "Morgengrauen"
+          },
+          "durationMs": 8000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-5-bg",
+              "assetId": "img-p3-5",
+              "z": 0
+            }
+          ]
+        }
+      },
+      "graph": {
+        "entry": "p1-1",
+        "edges": [
+          {
+            "from": "p1-1",
+            "to": "p1-2",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p1-2",
+            "to": "p1-3",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p1-3",
+            "to": "p1-4",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p1-4",
+            "to": "p1-5",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p1-5",
+            "to": "p2-1",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p2-1",
+            "to": "p2-2",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p2-2",
+            "to": "p2-3",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p2-3",
+            "to": "p2-4",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p2-4",
+            "to": "p2-5",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p2-5",
+            "to": "p3-1",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p3-1",
+            "to": "p3-2",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p3-2",
+            "to": "p3-3",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p3-3",
+            "to": "p3-4",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          },
+          {
+            "from": "p3-4",
+            "to": "p3-5",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 400
+            }
+          }
+        ]
       }
-   }
+    }
+  ],
+  "extras": {
+    "cover": {
+      "id": "ex-cover",
+      "title": {
+        "en-US": "Cover",
+        "de-DE": "Umschlag"
+      },
+      "images": [
+        {
+          "assetId": "img-cover",
+          "caption": {
+            "en-US": "City Noir cover",
+            "de-DE": "Stadt Noir Umschlag"
+          }
+        }
+      ],
+      "gated": false
+    }
+  }
 }

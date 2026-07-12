@@ -114,9 +114,9 @@ export interface AssetCatalogItemImage extends AssetCommon {
 export interface ImageVariant {
   /** Source path or URL */
   src: string;
-  
-  /** MIME type */
-  mime: string;
+
+  /** MIME type (optional since schema 1.2; derived from the src file extension when omitted) */
+  mime?: string;
   
   /** Width in pixels */
   w: number;
@@ -158,9 +158,9 @@ export type AudioRole =
 export interface AudioVariant {
   /** Source path or URL */
   src: string;
-  
-  /** MIME type */
-  mime: string;
+
+  /** MIME type (optional since schema 1.2; derived from the src file extension when omitted) */
+  mime?: string;
   
   /** Bitrate in kbps (optional) */
   bitrateKbps?: number;
@@ -217,9 +217,9 @@ export interface VideoPoster {
 export interface VideoVariant {
   /** Source path or URL */
   src: string;
-  
-  /** MIME type */
-  mime: string;
+
+  /** MIME type (optional since schema 1.2; derived from the src file extension when omitted) */
+  mime?: string;
   
   /** Width in pixels */
   w: number;

@@ -169,7 +169,7 @@ export function selectBestImageVariant(
  * // Returns: { src: 'image.avif', ... } (first available in preference order)
  * ```
  */
-export function selectVariantByFormat<T extends { mime: string }>(
+export function selectVariantByFormat<T extends { src: string; mime?: string }>(
   variants: T[],
   preferredFormats: string[]
 ): T | undefined {
@@ -177,9 +177,10 @@ export function selectVariantByFormat<T extends { mime: string }>(
     return undefined;
   }
 
-  // Try each preferred format in order
+  // Try each preferred format in order. A variant without an explicit mime
+  // (optional since schema 1.2) is matched via its src file extension.
   for (const format of preferredFormats) {
-    const match = variants.find((v) => v.mime === format);
+    const match = variants.find((v) => (v.mime ?? guessMimeType(v.src)) === format);
     if (match) {
       return match;
     }
@@ -279,6 +280,7 @@ export function guessMimeType(filename: string): string {
     webm: 'video/webm',
     ogv: 'video/ogg',
     mov: 'video/quicktime',
+    m3u8: 'application/vnd.apple.mpegurl',
     
     // Subtitles
     vtt: 'text/vtt',

@@ -154,6 +154,7 @@
       @if (shareVisible) {
         <pw-share-modal
           [visible]="shareVisible"
+          [shareable]="currentPanel.shareable ?? true"
           (close)="shareVisible = false">
         </pw-share-modal>
       }

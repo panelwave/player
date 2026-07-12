@@ -601,7 +601,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       const result = this.flowEngine.getNextPanel(
         this.currentChapter.graph,
         currentPanelId,
-        context
+        context,
+        this.flowEngine.getDefaultTransition(this.manifestService.getManifest()?.settings)
       );
 
       if (result.nextPanelId) {
