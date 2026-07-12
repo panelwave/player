@@ -387,6 +387,24 @@ export class LayerRendererComponent {
   }
 
   /**
+   * Effective TextStyle for a text layer: styleRef preset from
+   * settings.typography.textStyles (schema 1.3+) merged with the layer's
+   * inline `style` object (inline fields win). Unknown styleRefs are ignored.
+   */
+  private resolveTextStyle(): Record<string, unknown> {
+    const layer = this.layer as Record<string, unknown>;
+    const styleRef = layer['styleRef'];
+    const preset = typeof styleRef === 'string'
+      ? this.manifestService.getManifest()?.settings?.typography?.textStyles?.[styleRef]
+      : undefined;
+    const inline = layer['style'];
+    return {
+      ...(preset ?? {}),
+      ...(inline && typeof inline === 'object' ? inline as Record<string, unknown> : {}),
+    };
+  }
+
+  /**
    * Get text styles
    */
   getTextStyles(): Record<string, string> {
@@ -394,6 +412,29 @@ export class LayerRendererComponent {
 
     const styles: Record<string, string> = {};
     const layer = this.layer as Record<string, unknown>;
+
+    // Schema TextStyle (styleRef preset + inline style object) first; flat
+    // editor props below keep their historical precedence and win over it.
+    const textStyle = this.resolveTextStyle();
+    if (textStyle['font']) {
+      styles['font-family'] = textStyle['font'] as string;
+    }
+    if (textStyle['sizePt']) {
+      styles['font-size'] = `${textStyle['sizePt']}pt`;
+    }
+    if (textStyle['color']) {
+      styles['color'] = textStyle['color'] as string;
+    }
+    if (textStyle['weight']) {
+      styles['font-weight'] = `${textStyle['weight']}`;
+    }
+    if (textStyle['align']) {
+      styles['text-align'] = textStyle['align'] as string;
+    }
+    if (textStyle['strokeColor'] && textStyle['strokeWidth']) {
+      styles['-webkit-text-stroke'] = `${textStyle['strokeWidth']}px ${textStyle['strokeColor']}`;
+      styles['paint-order'] = 'stroke fill';
+    }
 
     if (layer['fontSize']) {
       styles['font-size'] = `${layer['fontSize']}px`;

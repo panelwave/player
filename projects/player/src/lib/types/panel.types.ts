@@ -169,11 +169,17 @@ export interface VideoLayer extends Layer {
  */
 export interface TextLayer extends Layer {
   kind: 'text';
-  
+
   /** Localized text content */
   text: LocalizedString;
-  
-  /** Text styling */
+
+  /**
+   * Name of a reusable text style preset in settings.typography.textStyles (schema 1.3+).
+   * Resolution: work typography defaults -> preset -> inline `style` (inline wins).
+   */
+  styleRef?: string;
+
+  /** Text styling (inline; overrides the styleRef preset field-by-field) */
   style?: TextStyle;
 }
 
@@ -279,8 +285,14 @@ export interface SpeechBubble {
   
   /** Bubble styling (optional) */
   style?: BubbleStyle;
-  
-  /** Per-bubble balloon style overrides (merged onto character or work-level defaults) */
+
+  /**
+   * Name of a reusable balloon preset in settings.typography.balloonPresets (schema 1.3+).
+   * Merge cascade: work balloon_config -> character balloonConfig -> preset -> inline balloonConfig.
+   */
+  styleRef?: string;
+
+  /** Per-bubble balloon style overrides (merged onto the styleRef preset, character, or work-level defaults) */
   balloonConfig?: BalloonConfigOverride;
   
   /** Audio asset ID for voice-over (optional) */

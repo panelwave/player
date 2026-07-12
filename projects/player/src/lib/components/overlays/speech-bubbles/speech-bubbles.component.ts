@@ -30,6 +30,7 @@ import type {
 import { ComicBalloon } from '../../../utils/comic-balloon';
 import type { TailOptions } from '../../../utils/comic-balloon';
 import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig, balloonConfigToRenderOptions, balloonConfigToTailOptions } from '../../../utils/balloon-config';
+import { ManifestService } from '../../../services/manifest.service';
 
 /**
  * Speech Bubbles Component
@@ -94,6 +95,8 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
 
   private elementRef = inject(ElementRef<HTMLElement>);
 
+  private manifestService = inject(ManifestService);
+
   ngAfterViewInit(): void {
     this.initialized = true;
     // First paint without blocking on fonts (font-display: swap shows a
@@ -134,29 +137,47 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
 
   /**
    * Resolve the effective BalloonConfig for a bubble.
-   * Merges: work defaults -> character overrides -> bubble overrides
+   * Merges: work defaults -> character overrides -> styleRef preset -> bubble overrides
    */
   resolveEffectiveConfig(bubble: SpeechBubble): BalloonConfig {
-    // Start with work-level defaults or global defaults
-    const baseConfig = this.workBalloonConfig
-      ? { ...this.workBalloonConfig }
+    const manifest = this.manifestService.getManifest();
+
+    // Start with work-level defaults (input, else manifest) layered onto the
+    // library defaults, so partial work configs keep sane values for the rest
+    const workConfig = this.workBalloonConfig
+      ?? manifest?.settings?.typography?.balloon_config
+      ?? null;
+    const baseConfig = workConfig
+      ? mergeBalloonConfig(DEFAULT_BALLOON_CONFIG, workConfig as BalloonConfigOverride)
       : { ...DEFAULT_BALLOON_CONFIG };
 
     // Apply character-level overrides if characterId is set
-    let withCharacter = baseConfig;
-    if (bubble.characterId && this.characters.length > 0) {
-      const character = this.characters.find(c => c.id === bubble.characterId);
+    let config = baseConfig;
+    if (bubble.characterId) {
+      const characters = this.characters.length > 0
+        ? this.characters
+        : manifest?.meta?.characters ?? [];
+      const character = characters.find(c => c.id === bubble.characterId);
       if (character?.balloonConfig) {
-        withCharacter = mergeBalloonConfig(baseConfig, character.balloonConfig);
+        config = mergeBalloonConfig(config, character.balloonConfig);
+      }
+    }
+
+    // Apply the named preset from settings.typography.balloonPresets (schema 1.3+).
+    // Unknown styleRefs are ignored.
+    if (bubble.styleRef) {
+      const preset = manifest?.settings?.typography?.balloonPresets?.[bubble.styleRef];
+      if (preset) {
+        config = mergeBalloonConfig(config, preset);
       }
     }
 
     // Apply bubble-level overrides
     if (bubble.balloonConfig) {
-      return mergeBalloonConfig(withCharacter, bubble.balloonConfig as BalloonConfigOverride);
+      return mergeBalloonConfig(config, bubble.balloonConfig as BalloonConfigOverride);
     }
 
-    return withCharacter;
+    return config;
   }
 
   /**

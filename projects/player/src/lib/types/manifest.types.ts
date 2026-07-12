@@ -8,6 +8,7 @@ import type {
   Panel,
   BalloonConfig,
   BalloonConfigOverride,
+  TextStyle,
   VideoPlayMode,
   VideoStartMode,
 } from './panel.types';
@@ -375,6 +376,17 @@ export interface Settings {
     default_page_bg_color?: string;
     /** Default balloon styling for all speech bubbles in this work */
     balloon_config?: BalloonConfig;
+    /**
+     * Named reusable text style presets (schema 1.3+).
+     * Referenced by TextLayer.styleRef; inline `style` fields win over the preset.
+     */
+    textStyles?: Record<string, TextStyle>;
+    /**
+     * Named reusable balloon style presets (schema 1.3+).
+     * Referenced by SpeechBubble.styleRef; merged as
+     * work balloon_config -> character balloonConfig -> preset -> inline balloonConfig.
+     */
+    balloonPresets?: Record<string, BalloonConfigOverride>;
   };
   
   /** UI defaults (optional) */

@@ -70,4 +70,71 @@ describe('LayerRendererComponent', () => {
       expect(component.getVideoPoster()).toBe('');
     });
   });
+
+  describe('getTextStyles with styleRef presets (schema 1.3+)', () => {
+    const manifestWithPresets = {
+      settings: {
+        typography: {
+          textStyles: {
+            caption: { font: 'CrimsonPro', sizePt: 14, color: '#fdf6e3', strokeColor: '#0a1a24', strokeWidth: 3 },
+          },
+        },
+      },
+    } as never;
+
+    it('resolves a styleRef against settings.typography.textStyles', () => {
+      spyOn(manifestService, 'getManifest').and.returnValue(manifestWithPresets);
+      component.layer = { kind: 'text', id: 't1', text: { 'en-US': 'Hi' }, styleRef: 'caption' };
+
+      const styles = component.getTextStyles();
+      expect(styles['font-family']).toBe('CrimsonPro');
+      expect(styles['font-size']).toBe('14pt');
+      expect(styles['color']).toBe('#fdf6e3');
+      expect(styles['-webkit-text-stroke']).toBe('3px #0a1a24');
+    });
+
+    it('lets inline style fields override the referenced preset', () => {
+      spyOn(manifestService, 'getManifest').and.returnValue(manifestWithPresets);
+      component.layer = {
+        kind: 'text', id: 't1', text: { 'en-US': 'Hi' },
+        styleRef: 'caption', style: { color: '#ff0000', sizePt: 20 },
+      };
+
+      const styles = component.getTextStyles();
+      expect(styles['color']).toBe('#ff0000');
+      expect(styles['font-size']).toBe('20pt');
+      expect(styles['font-family']).toBe('CrimsonPro'); // still from the preset
+    });
+
+    it('lets flat editor props win over the preset', () => {
+      spyOn(manifestService, 'getManifest').and.returnValue(manifestWithPresets);
+      component.layer = {
+        kind: 'text', id: 't1', text: { 'en-US': 'Hi' },
+        styleRef: 'caption', fontSize: 22, color: '#00ff00',
+      };
+
+      const styles = component.getTextStyles();
+      expect(styles['font-size']).toBe('22px');
+      expect(styles['color']).toBe('#00ff00');
+    });
+
+    it('ignores an unknown styleRef', () => {
+      spyOn(manifestService, 'getManifest').and.returnValue(manifestWithPresets);
+      component.layer = { kind: 'text', id: 't1', text: { 'en-US': 'Hi' }, styleRef: 'does-not-exist' };
+
+      expect(component.getTextStyles()).toEqual({});
+    });
+
+    it('applies an inline style object without any styleRef', () => {
+      spyOn(manifestService, 'getManifest').and.returnValue(null);
+      component.layer = {
+        kind: 'text', id: 't1', text: { 'en-US': 'Hi' },
+        style: { font: 'Helvetica', sizePt: 12 },
+      };
+
+      const styles = component.getTextStyles();
+      expect(styles['font-family']).toBe('Helvetica');
+      expect(styles['font-size']).toBe('12pt');
+    });
+  });
 });
