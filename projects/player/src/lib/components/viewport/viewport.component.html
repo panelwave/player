@@ -90,7 +90,65 @@
   <!-- Page View -->
   @if (viewMode === 'page' && page) {
     <div class="viewport-page">
-      <div 
+      <div class="page-stage">
+        <!-- Outgoing page during a Page.transitions in/out change -->
+        @if (leavingPage) {
+          <div
+            [class]="'pt-frame-leave ' + pageLeaveClass + (pageLeaveAbove ? ' pt-frame-leave--above' : '')"
+            [style.--pw-t-duration]="pageLeaveDuration"
+            [style.--pw-t-easing]="pageLeaveEasing"
+            aria-hidden="true">
+            <div class="page-canvas">
+              @for (placement of getLeavingPagePlacements(); track placement.panelId) {
+                <div
+                  class="panel-container"
+                  [style.left.%]="toPercent(placement.x)"
+                  [style.top.%]="toPercent(placement.y)"
+                  [style.width.%]="toPercent(placement.w)"
+                  [style.height.%]="toPercent(placement.h)"
+                  [style.z-index]="placement.z || 0"
+                  [style.transform]="getPanelTransform(placement)"
+                  [style.transform-origin]="getTransformOrigin(placement)">
+
+                  @if (getLeavingPanel(placement.panelId); as panelData) {
+                    <div class="panel-content"
+                         [style.clip-path]="getPanelContentClipPath(placement)"
+                         [style.transform]="getPanelContentTransform(placement)">
+                      @for (layer of panelData.layers; track layer.id) {
+                        <pw-layer-renderer
+                          [layer]="layer"
+                          [locale]="locale"
+                          [viewMode]="viewMode"
+                          [viewActive]="false"
+                          [reducedMotion]="reducedMotion"
+                          [panelId]="placement.panelId"
+                          [placementId]="placement.panelId">
+                        </pw-layer-renderer>
+                      }
+
+                      @if (panelData.speechBubbles && panelData.speechBubbles.length > 0) {
+                        <pw-speech-bubbles
+                          [bubbles]="panelData.speechBubbles"
+                          [locale]="locale"
+                          [containerWidth]="getPagePanelWidth(placement)"
+                          [containerHeight]="getPagePanelHeight(placement)"
+                          [workBalloonConfig]="workBalloonConfig"
+                          [characters]="characters">
+                        </pw-speech-bubbles>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <div
+          [class]="'pt-frame ' + pageEnterClass"
+          [style.--pw-t-duration]="pageEnterDuration"
+          [style.--pw-t-easing]="pageEnterEasing">
+      <div
         class="page-canvas"
         [attr.tabindex]="-1"
         (click)="onPanelClickWithFocus($event)"
@@ -160,9 +218,11 @@
           }
         }
       </div>
+        </div>
+      </div>
     </div>
   }
-  
+
   @if (viewMode === 'page' && !page) {
     <div class="no-panel">
       <p>No page to display</p>

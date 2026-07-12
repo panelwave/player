@@ -456,6 +456,170 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('Page-change transitions (Page.transitions in/out)', () => {
+    const pageA: Page = {
+      ...mockPage,
+      id: 'page-a',
+      transitions: { out: { type: 'slide', dir: 'left', durationMs: 300, easing: 'ease-in' } },
+    };
+    const pageB: Page = {
+      ...mockPage,
+      id: 'page-b',
+      transitions: { in: { type: 'slide', dir: 'left', durationMs: 500 } },
+    };
+    const plainPage: Page = { ...mockPage, id: 'page-plain' };
+
+    const pageChange = (
+      previousValue: Page | null,
+      currentValue: Page | null,
+      previousPanels?: Record<string, Panel>
+    ) => ({
+      page: {
+        currentValue,
+        previousValue,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+      ...(previousPanels
+        ? {
+            panels: {
+              currentValue: {},
+              previousValue: previousPanels,
+              firstChange: false,
+              isFirstChange: () => false,
+            },
+          }
+        : {}),
+    });
+
+    beforeEach(() => {
+      component.viewMode = 'page';
+      jasmine.clock().install();
+    });
+
+    afterEach(() => {
+      jasmine.clock().uninstall();
+    });
+
+    describe('getPageOutAnimationClass', () => {
+      it('should map out transitions to leave animations (dir = direction of motion)', () => {
+        expect(component.getPageOutAnimationClass({ type: 'fade' })).toBe('t-fade-out');
+        expect(component.getPageOutAnimationClass({ type: 'zoom' })).toBe('t-zoom-out');
+        expect(component.getPageOutAnimationClass({ type: 'slide', dir: 'left' })).toBe('t-to-left');
+        expect(component.getPageOutAnimationClass({ type: 'push', dir: 'up' })).toBe('t-to-top');
+        expect(component.getPageOutAnimationClass({ type: 'cover', dir: 'down' })).toBe('t-to-bottom');
+      });
+
+      it('should return empty for cut, none, and missing transitions', () => {
+        expect(component.getPageOutAnimationClass({ type: 'cut' })).toBe('');
+        expect(component.getPageOutAnimationClass({ type: 'none' })).toBe('');
+        expect(component.getPageOutAnimationClass(undefined)).toBe('');
+      });
+    });
+
+    it('should play the old page out and the new page in with their own timings', () => {
+      component.panels = mockPanels;
+      component.ngOnChanges(pageChange(pageA, pageB));
+
+      expect(component.leavingPage).toBe(pageA);
+      expect(component.leavingPagePanels).toBe(mockPanels);
+      expect(component.pageEnterClass).toBe('t-from-right');
+      expect(component.pageLeaveClass).toBe('t-to-left');
+      expect(component.pageLeaveAbove).toBe(false);
+      expect(component.pageEnterDuration).toBe('500ms');
+      expect(component.pageLeaveDuration).toBe('300ms');
+      expect(component.pageLeaveEasing).toBe('ease-in');
+
+      // Cleanup waits for the longer of the two animations
+      jasmine.clock().tick(301);
+      expect(component.leavingPage).toBe(pageA);
+      jasmine.clock().tick(200);
+      expect(component.leavingPage).toBeNull();
+      expect(component.pageEnterClass).toBe('');
+      expect(component.pageLeaveClass).toBe('');
+    });
+
+    it('should snapshot the previous panels map when it changes in the same cycle', () => {
+      const oldPanels: Record<string, Panel> = { old: { title: { 'en-US': 'Old' }, layers: [] } };
+      component.ngOnChanges(pageChange(pageA, pageB, oldPanels));
+
+      expect(component.leavingPagePanels).toBe(oldPanels);
+    });
+
+    it('should stack the leave frame above for an out-effect without an in-effect', () => {
+      component.ngOnChanges(pageChange(pageA, plainPage));
+
+      expect(component.pageLeaveClass).toBe('t-to-left');
+      expect(component.pageEnterClass).toBe('');
+      expect(component.pageLeaveAbove).toBe(true);
+    });
+
+    it('should keep the leave frame below for an in-effect without an out-effect', () => {
+      component.ngOnChanges(pageChange(plainPage, pageB));
+
+      expect(component.pageEnterClass).toBe('t-from-right');
+      expect(component.pageLeaveClass).toBe('');
+      expect(component.pageLeaveAbove).toBe(false);
+    });
+
+    it('should swap instantly when neither page declares transitions', () => {
+      component.ngOnChanges(pageChange(plainPage, { ...mockPage, id: 'page-plain-2' }));
+
+      expect(component.leavingPage).toBeNull();
+      expect(component.pageEnterClass).toBe('');
+    });
+
+    it('should swap instantly for cut/none page transitions', () => {
+      const cutOut: Page = { ...mockPage, id: 'cut-a', transitions: { out: { type: 'cut' } } };
+      const noneIn: Page = { ...mockPage, id: 'cut-b', transitions: { in: { type: 'none' } } };
+      component.ngOnChanges(pageChange(cutOut, noneIn));
+
+      expect(component.leavingPage).toBeNull();
+    });
+
+    it('should not animate the very first page or same-page updates', () => {
+      component.ngOnChanges(pageChange(null, pageB));
+      expect(component.leavingPage).toBeNull();
+
+      component.ngOnChanges(pageChange(pageB, { ...pageB }));
+      expect(component.leavingPage).toBeNull();
+    });
+
+    it('should not animate page changes in panel view or under reduced motion', () => {
+      component.viewMode = 'panel';
+      component.ngOnChanges(pageChange(pageA, pageB));
+      expect(component.leavingPage).toBeNull();
+
+      component.viewMode = 'page';
+      component.reducedMotion = true;
+      component.ngOnChanges(pageChange(pageA, pageB));
+      expect(component.leavingPage).toBeNull();
+    });
+
+    it('should render the leaving page frame while a page transition runs', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', pageA);
+      fixture.detectChanges();
+
+      fixture.componentRef.setInput('page', pageB);
+      fixture.detectChanges();
+
+      const leaveFrame = fixture.nativeElement.querySelector('.pt-frame-leave');
+      expect(leaveFrame).toBeTruthy();
+      expect(leaveFrame.className).toContain('t-to-left');
+      // The leaving page's three placements keep rendering during the transition
+      expect(leaveFrame.querySelectorAll('.panel-container').length).toBe(3);
+
+      const enterFrame = fixture.nativeElement.querySelector('.pt-frame');
+      expect(enterFrame.className).toContain('t-from-right');
+
+      jasmine.clock().tick(501);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.pt-frame-leave')).toBeFalsy();
+    });
+  });
+
   describe('Panel Dimensions', () => {
     it('should return default dimensions when no panel', () => {
       component.panel = null;

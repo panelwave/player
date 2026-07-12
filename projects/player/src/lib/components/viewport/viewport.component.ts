@@ -238,6 +238,22 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   transitionEasing = 'ease';
   private transitionTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Page-change transition state (page view). Driven by the pages' own
+  // declared `transitions.in` / `transitions.out` (schema Page.transitions):
+  // the outgoing page plays its `out` effect in `.pt-frame-leave` while the
+  // incoming page plays its `in` effect.
+  leavingPage: Page | null = null;
+  leavingPagePanels: Record<string, Panel> = {};
+  pageEnterClass = '';
+  pageLeaveClass = '';
+  pageEnterDuration = '400ms';
+  pageEnterEasing = 'ease';
+  pageLeaveDuration = '400ms';
+  pageLeaveEasing = 'ease';
+  /** Leave frame stacks above the entering page (out-effect without in-effect). */
+  pageLeaveAbove = false;
+  private pageTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['panel']) {
       // Reset pan/zoom when panel changes
@@ -257,12 +273,36 @@ export class ViewportComponent implements OnChanges, OnDestroy {
         }
       }
     }
+
+    if (changes['page']) {
+      const previousPage = changes['page'].previousValue as Page | null;
+      const nextPage = changes['page'].currentValue as Page | null;
+      if (
+        previousPage &&
+        nextPage &&
+        previousPage.id !== nextPage.id &&
+        this.viewMode === 'page' &&
+        !this.reducedMotion
+      ) {
+        this.beginPageTransition(
+          previousPage,
+          nextPage,
+          (changes['panels']?.previousValue as Record<string, Panel> | undefined) ?? this.panels
+        );
+      } else {
+        this.endPageTransition();
+      }
+    }
   }
 
   ngOnDestroy(): void {
     if (this.transitionTimer !== null) {
       clearTimeout(this.transitionTimer);
       this.transitionTimer = null;
+    }
+    if (this.pageTransitionTimer !== null) {
+      clearTimeout(this.pageTransitionTimer);
+      this.pageTransitionTimer = null;
     }
   }
 
@@ -352,6 +392,120 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     this.leavingPanelId = '';
     this.enterAnimationClass = '';
     this.leaveAnimationClass = '';
+  }
+
+  /**
+   * Map a page `out` transition onto its leave-frame CSS animation class.
+   * Mirrors getTransitionAnimationClasses(): `dir` is the direction of
+   * motion, so an out-slide to the left plays `t-to-left`. Returns '' when
+   * nothing should animate (`none`, `cut`, or no type).
+   */
+  getPageOutAnimationClass(transition: Transition | null | undefined): string {
+    const type = transition?.type;
+    if (!type || type === 'none' || type === 'cut') {
+      return '';
+    }
+
+    const dir = transition?.dir ?? 'left';
+    const to: Record<string, string> = {
+      left: 't-to-left',
+      right: 't-to-right',
+      up: 't-to-top',
+      down: 't-to-bottom',
+    };
+
+    switch (type) {
+      case 'fade':
+        return 't-fade-out';
+      case 'zoom':
+        return 't-zoom-out';
+      case 'slide':
+      case 'push':
+      case 'cover':
+        return to[dir];
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * Start a page change animation: the outgoing page keeps rendering in the
+   * `.pt-frame-leave` overlay with its own `transitions.out` effect while
+   * the incoming page plays its `transitions.in` effect. Without declared
+   * page transitions the swap stays instant.
+   */
+  private beginPageTransition(
+    previousPage: Page,
+    nextPage: Page,
+    previousPanels: Record<string, Panel>
+  ): void {
+    const inTransition = nextPage.transitions?.in;
+    const outTransition = previousPage.transitions?.out;
+
+    const enterClass = inTransition
+      ? (this.getTransitionAnimationClasses(inTransition)?.enter ?? '')
+      : '';
+    const leaveClass = this.getPageOutAnimationClass(outTransition);
+
+    if (!enterClass && !leaveClass) {
+      this.endPageTransition();
+      return;
+    }
+
+    this.leavingPage = previousPage;
+    this.leavingPagePanels = previousPanels;
+    this.pageEnterClass = enterClass;
+    this.pageLeaveClass = leaveClass;
+    // An out-effect without an in-effect must play above the (static) new
+    // page - e.g. the old page slides away and reveals the new one.
+    this.pageLeaveAbove = !!leaveClass && !enterClass;
+
+    const enterDurationMs = enterClass ? (inTransition?.durationMs ?? 400) : 0;
+    const leaveDurationMs = leaveClass ? (outTransition?.durationMs ?? 400) : 0;
+    this.pageEnterDuration = `${enterDurationMs}ms`;
+    this.pageEnterEasing = inTransition?.easing ?? 'ease';
+    this.pageLeaveDuration = `${leaveDurationMs}ms`;
+    this.pageLeaveEasing = outTransition?.easing ?? 'ease';
+
+    if (this.pageTransitionTimer !== null) {
+      clearTimeout(this.pageTransitionTimer);
+    }
+    this.pageTransitionTimer = setTimeout(() => {
+      this.endPageTransition();
+      this.cdr.markForCheck();
+    }, Math.max(enterDurationMs, leaveDurationMs));
+  }
+
+  /**
+   * Drop the page leave frame and animation classes (page transition
+   * finished, interrupted, or not applicable).
+   */
+  private endPageTransition(): void {
+    if (this.pageTransitionTimer !== null) {
+      clearTimeout(this.pageTransitionTimer);
+      this.pageTransitionTimer = null;
+    }
+    this.leavingPage = null;
+    this.leavingPagePanels = {};
+    this.pageEnterClass = '';
+    this.pageLeaveClass = '';
+    this.pageLeaveAbove = false;
+  }
+
+  /**
+   * Sorted placements of the leaving page (ascending z), resolved against
+   * the panels snapshot taken when the transition started.
+   */
+  getLeavingPagePlacements(): PanelPlacement[] {
+    const placements = this.leavingPage?.layout?.placements ?? [];
+    return [...placements].sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
+  }
+
+  /**
+   * Panel lookup for the leaving page's placements.
+   */
+  getLeavingPanel(panelId: string): Panel | undefined {
+    return this.leavingPagePanels[panelId];
   }
 
   /**

@@ -256,15 +256,24 @@ export interface Chapter {
 export interface Page {
   /** Unique page identifier */
   id: string;
-  
+
   /** Localized page title (optional) */
   title?: LocalizedString;
-  
+
   /** Layout configuration */
   layout: PageLayout;
-  
+
   /** Reading order of panels on this page */
   readingOrder: string[];
+
+  /** Transition effects for entering and leaving this page (optional) */
+  transitions?: {
+    /** Transition effect when entering this page */
+    in?: Transition;
+
+    /** Transition effect when leaving this page */
+    out?: Transition;
+  };
 }
 
 /**

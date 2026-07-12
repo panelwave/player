@@ -282,6 +282,74 @@
   overflow: hidden;
 }
 
+/*
+ * Page-change transitions (Page.transitions in/out).
+ * The stage takes over the canvas sizing so the entering page (`.pt-frame`)
+ * and the outgoing page (`.pt-frame-leave` overlay) stack exactly; page
+ * movement is clipped to the stage like a page flip.
+ */
+.page-stage {
+  position: relative;
+  width: 100%;
+  max-width: 1400px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.page-stage .page-canvas {
+  max-width: none;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.pt-frame {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.pt-frame-leave {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* An out-effect without an in-effect plays above the static new page
+   (the old page slides/fades away and reveals it). */
+.pt-frame-leave--above {
+  z-index: 2;
+}
+
+.pt-frame.t-fade-in,
+.pt-frame.t-zoom-in,
+.pt-frame.t-from-right,
+.pt-frame.t-from-left,
+.pt-frame.t-from-bottom,
+.pt-frame.t-from-top {
+  will-change: transform, opacity;
+}
+
+.t-fade-out {
+  animation: pw-t-fade-out var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+.t-zoom-out {
+  animation: pw-t-zoom-out var(--pw-t-duration, 400ms) var(--pw-t-easing, ease) both;
+}
+
+@keyframes pw-t-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes pw-t-zoom-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.06); }
+}
+
 /* Panel container for page view - absolute positioning */
 .viewport-page .panel-container {
   position: absolute;
@@ -350,7 +418,8 @@
 
 /* Responsive adjustments for page view */
 @media (max-width: 1024px) {
-  .page-canvas {
+  .page-canvas,
+  .page-stage {
     max-width: 900px;
   }
 }
@@ -359,8 +428,9 @@
   .viewport-page {
     padding: 8px;
   }
-  
-  .page-canvas {
+
+  .page-canvas,
+  .page-stage {
     max-width: 100%;
   }
 }
