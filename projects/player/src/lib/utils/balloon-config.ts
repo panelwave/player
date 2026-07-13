@@ -62,7 +62,8 @@ export function balloonConfigToRenderOptions(config: BalloonConfig): Record<stri
   return {
     maxWidth: config.maxWidth,
     maxHeight: config.maxHeight,
-    cornerRadius: type === 'rectangle' ? 0 : config.cornerRadius,
+    cornerRadius: type === 'rectangle' || type === 'narrator' ? 0 : config.cornerRadius,
+    sharpCorners: type === 'narrator',
     isThought: type === 'thought',
     isShout: type === 'shout',
     isWhisper: type === 'whisper',

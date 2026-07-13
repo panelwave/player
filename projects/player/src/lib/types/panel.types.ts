@@ -357,6 +357,7 @@ export interface BubbleStyle {
 export type BalloonType =
   | 'normal'
   | 'rectangle'
+  | 'narrator'
   | 'cutTop'
   | 'cutTopRight'
   | 'cutTopLeft'

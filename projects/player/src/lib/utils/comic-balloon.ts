@@ -27,6 +27,8 @@ export interface BalloonOptions {
   isThought: boolean;
   isShout: boolean;
   isWhisper: boolean;
+  /** Truly square corners (narrator caption boxes); only meaningful with cornerRadius 0. */
+  sharpCorners: boolean;
   cutTop: boolean;
   cutRight: boolean;
   cutLeft: boolean;
@@ -98,6 +100,7 @@ export class ComicBalloon {
       isThought: options.isThought || false,
       isShout: options.isShout || false,
       isWhisper: options.isWhisper || false,
+      sharpCorners: options.sharpCorners || false,
       cutTop: options.cutTop || false,
       cutRight: options.cutRight || false,
       cutLeft: options.cutLeft || false,
@@ -374,7 +377,9 @@ export class ComicBalloon {
     const points: PathPoint[] = [];
 
     if (cornerRadius === 0) {
-      const r = Math.min(8, rx, ry);
+      // sharpCorners (narrator boxes) => truly square corners; otherwise a
+      // small 8px rounding keeps the 'rectangle' type friendly.
+      const r = this.options.sharpCorners ? 0 : Math.min(8, rx, ry);
       const edgeT = Math.max(0, 2 * rx - 2 * r);
       const edgeR = Math.max(0, 2 * ry - 2 * r);
       const arc = (Math.PI / 2) * r;
