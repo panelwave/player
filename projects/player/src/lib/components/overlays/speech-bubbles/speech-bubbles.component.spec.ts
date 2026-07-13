@@ -50,19 +50,19 @@ describe('SpeechBubblesComponent', () => {
     }));
   });
 
-  describe('viewport size parity (scaling to the authored bounding box)', () => {
+  describe('per-screen lettering (reading scale)', () => {
     beforeEach(() => {
-      component.containerWidth = 400; // authored at 800 → half-size viewport
+      component.containerWidth = 400;
       component.containerHeight = 300;
       (component as unknown as { initialized: boolean }).initialized = true;
     });
 
-    it('scales the rendered balloon so its natural width matches the authored shape width', () => {
+    it('scales the rendered balloon by the reading scale, not the authored box size', () => {
+      component.readingScale = 0.5; // small screen: lettering shrinks with the screen
       component.bubbles = [asBubble({
         id: 'b1',
         text: { 'en-US': 'Hello!' },
-        // Authored at 800×600: a 160×90 balloon → w=0.2, h=0.15 → 80px in this viewport
-        shape: { x: 0.4, y: 0.4, w: 0.2, h: 0.15 },
+        shape: { x: 0.4, y: 0.4, w: 0.9, h: 0.9 }, // huge authored box must NOT blow up the text
         balloonConfig: {},
       })];
 
@@ -70,12 +70,17 @@ describe('SpeechBubblesComponent', () => {
 
       const [wrapper] = renderedWrappers();
       expect(wrapper).toBeTruthy();
-      expect(wrapper.style.transform).toMatch(/scale\(0\.\d+\)/); // shrunk below natural size
+      expect(wrapper.style.transform).toBe('scale(0.5)');
       expect(wrapper.style.transformOrigin).toBe('center center');
     });
 
-    it('applies no scale when the shape box is missing (legacy manifests)', () => {
-      component.bubbles = [asBubble({ id: 'b1', text: { 'en-US': 'Hi' }, shape: undefined })];
+    it('applies no transform at reading scale 1', () => {
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Hi' },
+        shape: { x: 0.3, y: 0.3, w: 0.4, h: 0.3 },
+        balloonConfig: {},
+      })];
 
       component.renderAllBalloons();
 
@@ -84,11 +89,12 @@ describe('SpeechBubblesComponent', () => {
       expect(wrapper.style.transform).toBe('');
     });
 
-    it('clamps extreme scales from unreconciled legacy geometry', () => {
+    it('clamps a broken reading scale to a sane minimum', () => {
+      component.readingScale = 0.01;
       component.bubbles = [asBubble({
         id: 'b1',
         text: { 'en-US': 'Hi' },
-        shape: { x: 0.4, y: 0.4, w: 0.001, h: 0.001 }, // would be a near-zero scale
+        shape: { x: 0.4, y: 0.4, w: 0.2, h: 0.15 },
         balloonConfig: {},
       })];
 
@@ -98,6 +104,43 @@ describe('SpeechBubblesComponent', () => {
       const match = /scale\(([\d.]+)\)/.exec(wrapper.style.transform);
       expect(match).toBeTruthy();
       expect(parseFloat(match![1])).toBeGreaterThanOrEqual(0.25);
+    });
+
+    it('caps the scale so the balloon never exceeds its panel container', () => {
+      component.containerWidth = 60; // tiny page-view panel
+      component.containerHeight = 40;
+      component.readingScale = 2;
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'A long line of dialogue' },
+        shape: { x: 0.2, y: 0.2, w: 0.5, h: 0.5 },
+        balloonConfig: {},
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      const match = /scale\(([\d.]+)\)/.exec(wrapper.style.transform);
+      expect(match).toBeTruthy();
+      expect(parseFloat(match![1])).toBeLessThan(2);
+    });
+
+    it('keeps a border-flush caption glued to the panel top', () => {
+      component.bubbles = [asBubble({
+        id: 'narr-1',
+        text: { 'en-US': 'Narration.' },
+        shape: { x: 0.1, y: 0, w: 0.5, h: 0.2 }, // authored flush at the top
+        balloonConfig: { balloonType: 'narrator', tail: { enabled: false } },
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      expect(wrapper).toBeTruthy();
+      // Scaled about its center, the wrapper's visual top edge sits at 0:
+      // top style = centerY - svgH/2 with centerY = visualH/2; at scale 1
+      // that is exactly 0px.
+      expect(parseFloat(wrapper.style.top)).toBeCloseTo(0, 0);
     });
   });
 

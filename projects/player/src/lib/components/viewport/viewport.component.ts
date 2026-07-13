@@ -537,6 +537,17 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
+   * Balloon lettering scale: the player viewport height relative to the DIN A4
+   * authoring frame (1123 px). Bubble text keeps the same comfortable reading
+   * size on every screen — larger players get moderately larger lettering,
+   * phones get smaller — instead of growing proportionally with the panel.
+   */
+  getReadingScale(): number {
+    const h = this.elementRef.nativeElement.clientHeight || 0;
+    return h > 0 ? h / 1123 : 1;
+  }
+
+  /**
    * Get the container width in pixels (panel view).
    * Used by pw-speech-bubbles to convert normalized coordinates to pixels.
    */

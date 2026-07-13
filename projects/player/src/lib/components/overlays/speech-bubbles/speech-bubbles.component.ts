@@ -66,6 +66,14 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   @Input() containerHeight = 0;
 
   /**
+   * Per-screen lettering scale (player viewport height relative to the DIN A4
+   * authoring frame). Balloon text keeps the same comfortable reading size on
+   * every screen — it does NOT grow proportionally with the panel; only small
+   * screens (phones) get smaller lettering.
+   */
+  @Input() readingScale = 1;
+
+  /**
    * Work-level balloon config defaults (from settings.typography.balloon_config)
    */
   @Input() workBalloonConfig: BalloonConfig | null = null;
@@ -121,6 +129,7 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
       changes['locale'] ||
       changes['containerWidth'] ||
       changes['containerHeight'] ||
+      changes['readingScale'] ||
       changes['workBalloonConfig'] ||
       changes['characters'];
 
@@ -267,24 +276,45 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         const balloonInstance = new ComicBalloon(balloonContainer, renderOpts);
         const result = balloonInstance.render(text, tailOpts as TailOptions | null);
 
-        // Position the wrapper centered on the bubble's shape center
-        // The SVG is self-sized, so we center the wrapper on the computed position
+        // The SVG is self-sized (natural, text-fitting balloon size)
         const svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : config.maxWidth;
         const svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : config.maxHeight;
 
-        wrapper.style.left = `${pos.left - svgWidth / 2}px`;
-        wrapper.style.top = `${pos.top - svgHeight / 2}px`;
+        // Per-screen lettering: the natural-size balloon is scaled by the
+        // reading scale — the same comfortable text size on every screen —
+        // NOT proportionally with the authored shape box (which would blow
+        // text up on large screens). Capped so a balloon never exceeds its
+        // panel container, and clamped against broken measurements.
+        let scale = Math.min(4, Math.max(0.25, this.readingScale || 1));
+        if (svgWidth > 0 && svgHeight > 0) {
+          scale = Math.max(0.25, Math.min(scale, this.containerWidth / svgWidth, this.containerHeight / svgHeight));
+        }
+        const visualW = svgWidth * scale;
+        const visualH = svgHeight * scale;
 
-        // Scale the natural-size balloon to the authored size: the CMS stores
-        // the measured balloon size in the normalized shape box, so
-        // shape.w * containerWidth is the intended on-screen width. Clamped to
-        // a sane range to protect against unreconciled legacy geometry.
-        if (bubble.shape && pos.width > 0 && svgWidth > 0) {
-          const scale = Math.min(4, Math.max(0.25, pos.width / svgWidth));
-          if (Math.abs(scale - 1) > 0.01) {
-            wrapper.style.transform = `scale(${scale})`;
-            wrapper.style.transformOrigin = 'center center';
-          }
+        // Anchor at the shape box's center — but edges the authored box
+        // touches stay glued to the panel border (narrator / Panel-Top
+        // caption boxes keep sitting exactly on the border even though the
+        // visual size no longer equals the stored box).
+        const boxLeft = (bubble.shape?.x ?? 0) * this.containerWidth;
+        const boxTop = (bubble.shape?.y ?? 0) * this.containerHeight;
+        const boxRight = boxLeft + (bubble.shape?.w ?? 0) * this.containerWidth;
+        const boxBottom = boxTop + (bubble.shape?.h ?? 0) * this.containerHeight;
+        const eps = Math.max(4, 0.02 * Math.min(this.containerWidth, this.containerHeight));
+        let centerX = pos.left;
+        let centerY = pos.top;
+        if (boxLeft <= eps) centerX = visualW / 2;
+        else if (boxRight >= this.containerWidth - eps) centerX = this.containerWidth - visualW / 2;
+        if (boxTop <= eps) centerY = visualH / 2;
+        else if (boxBottom >= this.containerHeight - eps) centerY = this.containerHeight - visualH / 2;
+
+        // The wrapper is scaled about its center, so its visual center lands
+        // exactly on (centerX, centerY).
+        wrapper.style.left = `${centerX - svgWidth / 2}px`;
+        wrapper.style.top = `${centerY - svgHeight / 2}px`;
+        if (Math.abs(scale - 1) > 0.01) {
+          wrapper.style.transform = `scale(${scale})`;
+          wrapper.style.transformOrigin = 'center center';
         }
 
         // Click handler
