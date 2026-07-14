@@ -500,8 +500,8 @@ export class ComicBalloon {
       }
     }
 
-    // Find base points
-    const tailHalfWidth = cornerRadius === 0 ? 5 : 8;
+    // Find base points (connector/open tails are drawn narrower than pointed tails)
+    const tailHalfWidth = this.options.openTail ? 5 : (cornerRadius === 0 ? 5 : 8);
     let idx1 = (centerIdx - 1 + numFilteredPoints) % numFilteredPoints;
     let idx2 = (centerIdx + 1) % numFilteredPoints;
     const centerPt = filteredPoints[centerIdx];
