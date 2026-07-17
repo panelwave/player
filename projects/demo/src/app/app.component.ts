@@ -31,7 +31,13 @@ export class AppComponent implements OnInit {
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    this.loadManifest('assets/sample-manifest.json');
+    // Load an arbitrary manifest via ?manifest=<url> — e.g. a CMS preview link
+    // (http://localhost:4200/api/preview/<token>/manifest). Falls back to the
+    // bundled sample. The manifest endpoint sends Access-Control-Allow-Origin: *
+    // so this works cross-origin (run the demo on a free port, e.g. --port 4300,
+    // while the CMS frontend keeps :4200 for its /api proxy).
+    const manifestUrl = new URLSearchParams(window.location.search).get('manifest');
+    this.loadManifest(manifestUrl || 'assets/sample-manifest.json');
   }
 
   /** Switch to another demo manifest (destroys and re-creates the player). */
