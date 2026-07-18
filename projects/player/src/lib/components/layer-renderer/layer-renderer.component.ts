@@ -19,6 +19,7 @@ import type {
   VideoPlayMode,
   VideoStartMode,
   AssetCatalogItemVideo,
+  VideoVariant,
 } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { VideoLayerComponent, type LayerViewMode } from '../layers/video-layer/video-layer.component';
@@ -219,31 +220,51 @@ export class LayerRendererComponent {
   }
 
   /**
-   * Get the forward (default) video source URL.
+   * The forward (non-reverse) video variant, falling back to the first
+   * variant. Single source of truth for forward-variant selection (used by
+   * both {@link getVideoSrc} and {@link getVideoStreaming}).
+   */
+  private forwardVideoVariant(
+    asset: AssetCatalogItemVideo | null
+  ): VideoVariant | undefined {
+    return (
+      asset?.variants?.find((v) => v.direction !== 'reverse') ??
+      asset?.variants?.[0]
+    );
+  }
+
+  /** The reverse video variant for pingpong, if any. */
+  private reverseVideoVariant(
+    asset: AssetCatalogItemVideo | null
+  ): VideoVariant | undefined {
+    return asset?.variants?.find((v) => v.direction === 'reverse');
+  }
+
+  /**
+   * Get the forward (default) video source URL. Catalog and direct-src paths
+   * both return the RAW src — baseUrl resolution (and skipping already-absolute
+   * URLs) is owned downstream by `pw-video-layer` (`resolveUrl`), so prefixing
+   * here would double-apply it.
    */
   getVideoSrc(): string {
     if (this.layer.kind !== 'video') return '';
 
-    const asset = this.getVideoAsset();
-    if (asset && asset.variants && asset.variants.length > 0) {
-      // Prefer a forward (non-reverse) variant.
-      const forward =
-        asset.variants.find((v) => v.direction !== 'reverse') ?? asset.variants[0];
+    const forward = this.forwardVideoVariant(this.getVideoAsset());
+    if (forward) {
       return forward.src;
     }
 
-    // Fall back to direct src if provided
+    // Fall back to direct src if provided.
     const src = (this.layer as Record<string, unknown>)['src'];
-    return src ? `${this.baseUrl}${src}` : '';
+    return typeof src === 'string' ? src : '';
   }
 
   /**
-   * Get the reverse-variant URL for pingpong (empty string if none).
+   * Get the reverse-variant URL for pingpong (empty string if none). Raw src;
+   * resolved downstream by `pw-video-layer`, same as {@link getVideoSrc}.
    */
   getVideoReverseSrc(): string {
-    const asset = this.getVideoAsset();
-    const reverse = asset?.variants?.find((v) => v.direction === 'reverse');
-    return reverse ? reverse.src : '';
+    return this.reverseVideoVariant(this.getVideoAsset())?.src ?? '';
   }
 
   /**
@@ -261,10 +282,7 @@ export class LayerRendererComponent {
    * Whether the active (forward) video variant is streaming/HLS.
    */
   getVideoStreaming(): boolean {
-    const asset = this.getVideoAsset();
-    const forward =
-      asset?.variants?.find((v) => v.direction !== 'reverse') ?? asset?.variants?.[0];
-    return forward?.streaming === true;
+    return this.forwardVideoVariant(this.getVideoAsset())?.streaming === true;
   }
 
   /**

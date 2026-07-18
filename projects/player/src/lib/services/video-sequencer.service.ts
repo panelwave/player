@@ -238,6 +238,12 @@ export class VideoSequencerService implements OnDestroy {
     if (!video) {
       return;
     }
+    // Stop observing just this video's host — siblings sharing the placement
+    // id keep driving the panel's visibility (a wholesale unobserve here would
+    // freeze visibility for a multi-video panel when one layer leaves first).
+    if (video.element) {
+      this.visibility.unobserveElement(video.element);
+    }
     // If it was part of the active slot, drop it from the pending set and
     // complete the slot early if it was the last outstanding video.
     if (video.panelId === this.activePanelId) {
@@ -250,7 +256,6 @@ export class VideoSequencerService implements OnDestroy {
     // If no more sequenced videos remain for this panel, drop the slot.
     if (!this.panelHasSequencedVideos(video.panelId)) {
       this.queue = this.queue.filter((pid) => pid !== video.panelId);
-      this.visibility.unobserve(video.placementId);
     }
   }
 

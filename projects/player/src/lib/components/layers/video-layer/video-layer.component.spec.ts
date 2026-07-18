@@ -721,13 +721,27 @@ describe('VideoLayerComponent', () => {
       );
     });
 
-    it('emits VIDEO_PAUSE on native pause', () => {
+    it('does NOT emit VIDEO_PAUSE for an on-view/sequencer pause (noise)', () => {
+      // Default trigger is 'view' — the sequencer pauses these constantly as
+      // slots rotate; tracking each would flood analytics.
       component.onLoadedMetadata();
       setupVideoElement(10);
       videoEl.dispatchEvent(new Event('pause'));
+      expect(trackSpy).not.toHaveBeenCalledWith(
+        PlayerEvent.VIDEO_PAUSE,
+        jasmine.anything()
+      );
+    });
+
+    it('emits VIDEO_PAUSE for a user-driven (click/hover) pause', () => {
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      // Simulate a user-initiated video (hover/click), not sequencer-driven.
+      (component as unknown as { currentTrigger: string }).currentTrigger = 'click';
+      videoEl.dispatchEvent(new Event('pause'));
       expect(trackSpy).toHaveBeenCalledWith(
         PlayerEvent.VIDEO_PAUSE,
-        jasmine.objectContaining({ panelId: 'panel-1' })
+        jasmine.objectContaining({ panelId: 'panel-1', trigger: 'click' })
       );
     });
 

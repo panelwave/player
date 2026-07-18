@@ -530,22 +530,35 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
    */
   private handleNativePause(): void {
     this.videoPause.emit();
-    this.trackVideoEvent(PlayerEvent.VIDEO_PAUSE);
+    // Track only user-driven pauses: on-view / sequencer videos are paused
+    // constantly as slots rotate (deactivate/reset), which would flood
+    // analytics with VIDEO_PAUSE noise. A pause of a hover/click video is the
+    // only meaningful "user paused" signal.
+    if (this.isUserDrivenVideo()) {
+      this.trackVideoEvent(PlayerEvent.VIDEO_PAUSE);
+    }
     if (this.isUnmutedUserVideo()) {
       this.sequencer.resume();
     }
   }
 
   /**
-   * Whether this is a user-initiated (hover/click) video currently playing
-   * unmuted — the case that must pause/resume the sequencer.
+   * Whether this is a user-initiated (hover/click) video — i.e. not driven by
+   * the page-view sequencer.
    */
-  private isUnmutedUserVideo(): boolean {
+  private isUserDrivenVideo(): boolean {
     return (
       !this.activatedBySequencer &&
-      (this.currentTrigger === 'hover' || this.currentTrigger === 'click') &&
-      !this.displayMuted
+      (this.currentTrigger === 'hover' || this.currentTrigger === 'click')
     );
+  }
+
+  /**
+   * Whether this is a user-initiated video currently playing unmuted — the
+   * case that must pause/resume the sequencer.
+   */
+  private isUnmutedUserVideo(): boolean {
+    return this.isUserDrivenVideo() && !this.displayMuted;
   }
 
   /** Emit a video tracking event through the consent/whitelist pipeline. */

@@ -71,6 +71,45 @@ describe('LayerRendererComponent', () => {
     });
   });
 
+  describe('video variant selection', () => {
+    it('picks the forward (non-reverse) variant for src and streaming', () => {
+      const asset: AssetCatalogItemVideo = {
+        id: 'asset-video-1',
+        category: 'video',
+        variants: [
+          { src: 'clip-rev.mp4', mime: 'video/mp4', w: 1920, h: 1080, direction: 'reverse' },
+          { src: 'clip.mp4', mime: 'video/mp4', w: 1920, h: 1080, streaming: true },
+        ],
+      } as AssetCatalogItemVideo;
+      spyOn(manifestService, 'getAsset').and.returnValue(asset);
+
+      expect(component.getVideoSrc()).toBe('clip.mp4');
+      expect(component.getVideoReverseSrc()).toBe('clip-rev.mp4');
+      expect(component.getVideoStreaming()).toBeTrue();
+    });
+
+    it('falls back to the first variant when none is marked forward', () => {
+      const asset: AssetCatalogItemVideo = {
+        id: 'asset-video-1',
+        category: 'video',
+        variants: [{ src: 'only.mp4', mime: 'video/mp4', w: 1, h: 1 }],
+      };
+      spyOn(manifestService, 'getAsset').and.returnValue(asset);
+
+      expect(component.getVideoSrc()).toBe('only.mp4');
+      expect(component.getVideoReverseSrc()).toBe('');
+    });
+
+    it('returns the RAW direct src (baseUrl resolved downstream, not double-applied)', () => {
+      spyOn(manifestService, 'getAsset').and.returnValue(null);
+      component.baseUrl = 'https://cdn.example/';
+      component.layer = { kind: 'video', id: 'v1', src: 'clip.mp4' } as unknown as VideoLayer;
+
+      // No baseUrl prefixing here — pw-video-layer.resolveUrl owns it.
+      expect(component.getVideoSrc()).toBe('clip.mp4');
+    });
+  });
+
   describe('getTextStyles with styleRef presets (schema 1.3+)', () => {
     const manifestWithPresets = {
       settings: {

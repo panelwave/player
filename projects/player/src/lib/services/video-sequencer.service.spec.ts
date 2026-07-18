@@ -63,6 +63,7 @@ describe('VideoSequencerService', () => {
       isVisible: (id: string) => visibleIds.has(id),
       observe: jasmine.createSpy('observe'),
       unobserve: jasmine.createSpy('unobserve'),
+      unobserveElement: jasmine.createSpy('unobserveElement'),
       clear: jasmine.createSpy('clear'),
     };
 

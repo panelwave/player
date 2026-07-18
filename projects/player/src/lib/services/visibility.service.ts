@@ -12,6 +12,12 @@
  *
  * The service is intentionally generic (keyed by a caller-supplied id) so it
  * can be reused for lazy-loading later.
+ *
+ * An id may map to MORE THAN ONE element (e.g. a panel with several video
+ * layers all keyed by the same placement id): the id counts as visible while
+ * *any* of its elements meets the threshold. Callers add elements with
+ * {@link observe}, remove one with {@link unobserveElement}, or drop the whole
+ * id with {@link unobserve}.
  */
 
 import { Injectable, OnDestroy } from '@angular/core';
@@ -35,10 +41,13 @@ export class VisibilityService implements OnDestroy {
   /** element → id, so callbacks can resolve the caller's id. */
   private readonly idByElement = new Map<Element, string>();
 
-  /** id → element, to support unobserve/replace by id. */
-  private readonly elementById = new Map<string, Element>();
+  /** id → its observed elements (a panel may have several video hosts). */
+  private readonly elementsById = new Map<string, Set<Element>>();
 
-  /** Last known visibility per id. */
+  /** Elements currently intersecting at/above the threshold. */
+  private readonly visibleElements = new Set<Element>();
+
+  /** Last known aggregate visibility per id (true when any element visible). */
   private readonly visible = new Map<string, boolean>();
 
   private readonly changes$ = new Subject<VisibilityChange>();
@@ -58,18 +67,21 @@ export class VisibilityService implements OnDestroy {
   }
 
   /**
-   * Start observing `element` under the given `id`. Re-observing the same id
-   * replaces the previous element. No-op when unsupported.
+   * Start observing `element` under the given `id`. Multiple elements may be
+   * observed under one id — they accumulate, and the id is visible while any
+   * of them meets the threshold. Re-observing the same element under a new id
+   * moves it. No-op when unsupported.
    */
   observe(id: string, element: Element): void {
     if (!this.isSupported() || !element) {
       return;
     }
-    // Replace any previous element registered under this id.
-    const previous = this.elementById.get(id);
-    if (previous && previous !== element) {
-      this.observer?.unobserve(previous);
-      this.idByElement.delete(previous);
+    // Element already tracked under a different id → move it (drop from the
+    // old id's set and recompute that id's aggregate).
+    const previousId = this.idByElement.get(element);
+    if (previousId !== undefined && previousId !== id) {
+      this.detachElement(element, previousId);
+      this.recomputeAggregate(previousId);
     }
 
     if (!this.observer) {
@@ -80,19 +92,50 @@ export class VisibilityService implements OnDestroy {
     }
 
     this.idByElement.set(element, id);
-    this.elementById.set(id, element);
+    let set = this.elementsById.get(id);
+    if (!set) {
+      set = new Set<Element>();
+      this.elementsById.set(id, set);
+    }
+    set.add(element);
     this.observer.observe(element);
   }
 
-  /** Stop observing the target registered under `id`. */
+  /** Stop observing every element registered under `id`. */
   unobserve(id: string): void {
-    const element = this.elementById.get(id);
-    if (element) {
-      this.observer?.unobserve(element);
-      this.idByElement.delete(element);
+    const set = this.elementsById.get(id);
+    if (set) {
+      for (const element of set) {
+        this.observer?.unobserve(element);
+        this.idByElement.delete(element);
+        this.visibleElements.delete(element);
+      }
     }
-    this.elementById.delete(id);
+    this.elementsById.delete(id);
     this.visible.delete(id);
+  }
+
+  /**
+   * Stop observing a single `element`, leaving any siblings under the same id
+   * in place. The id's aggregate visibility is recomputed (and may transition
+   * to hidden if that element was the only visible one).
+   */
+  unobserveElement(element: Element): void {
+    if (!element) {
+      return;
+    }
+    const id = this.idByElement.get(element);
+    if (id === undefined) {
+      return;
+    }
+    this.detachElement(element, id);
+    const set = this.elementsById.get(id);
+    if (!set || set.size === 0) {
+      this.elementsById.delete(id);
+      this.visible.delete(id);
+    } else {
+      this.recomputeAggregate(id);
+    }
   }
 
   /** Synchronous last-known visibility for an id (defaults to false). */
@@ -106,7 +149,8 @@ export class VisibilityService implements OnDestroy {
       this.observer.disconnect();
     }
     this.idByElement.clear();
-    this.elementById.clear();
+    this.elementsById.clear();
+    this.visibleElements.clear();
     this.visible.clear();
   }
 
@@ -115,20 +159,55 @@ export class VisibilityService implements OnDestroy {
     this.changes$.complete();
   }
 
+  /** Detach one element from bookkeeping (observer + maps), no recompute. */
+  private detachElement(element: Element, id: string): void {
+    this.observer?.unobserve(element);
+    this.idByElement.delete(element);
+    this.visibleElements.delete(element);
+    this.elementsById.get(id)?.delete(element);
+  }
+
   private onEntries(entries: IntersectionObserverEntry[]): void {
+    const affectedIds = new Set<string>();
     for (const entry of entries) {
       const id = this.idByElement.get(entry.target);
       if (id === undefined) {
         continue;
       }
-      const nowVisible =
+      const elementVisible =
         entry.isIntersecting &&
         entry.intersectionRatio >= VISIBILITY_THRESHOLD;
-      const wasVisible = this.visible.get(id) ?? false;
-      if (nowVisible !== wasVisible) {
-        this.visible.set(id, nowVisible);
-        this.changes$.next({ id, visible: nowVisible });
+      if (elementVisible) {
+        this.visibleElements.add(entry.target);
+      } else {
+        this.visibleElements.delete(entry.target);
       }
+      affectedIds.add(id);
+    }
+    for (const id of affectedIds) {
+      this.recomputeAggregate(id);
+    }
+  }
+
+  /**
+   * Recompute an id's aggregate visibility (visible when any of its elements
+   * is), emitting only on a transition.
+   */
+  private recomputeAggregate(id: string): void {
+    const set = this.elementsById.get(id);
+    let nowVisible = false;
+    if (set) {
+      for (const element of set) {
+        if (this.visibleElements.has(element)) {
+          nowVisible = true;
+          break;
+        }
+      }
+    }
+    const wasVisible = this.visible.get(id) ?? false;
+    if (nowVisible !== wasVisible) {
+      this.visible.set(id, nowVisible);
+      this.changes$.next({ id, visible: nowVisible });
     }
   }
 }

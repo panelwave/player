@@ -132,18 +132,75 @@ describe('VisibilityService', () => {
     expect(lastObserver().observed).not.toContain(el);
   });
 
-  it('should replace the element when re-observing the same id', () => {
+  it('should observe multiple elements under one id (multi-video panel)', () => {
     const el1 = document.createElement('div');
     const el2 = document.createElement('div');
     service.observe('a', el1);
     service.observe('a', el2);
-    // Identity checks — jasmine's toContain would treat two empty <div>s
-    // as structurally equal.
-    expect(lastObserver().observed.includes(el1)).toBeFalse();
+    // Both elements are observed (no eviction) — identity checks because
+    // jasmine's toContain treats two empty <div>s as structurally equal.
+    expect(lastObserver().observed.includes(el1)).toBeTrue();
     expect(lastObserver().observed.includes(el2)).toBeTrue();
-    // Events from the new element map to the id.
-    lastObserver().fire(el2, 1);
+  });
+
+  it('is visible while ANY element of the id meets the threshold', () => {
+    const el1 = document.createElement('div');
+    const el2 = document.createElement('div');
+    service.observe('a', el1);
+    service.observe('a', el2);
+
+    // First element becomes visible → one transition to visible.
+    lastObserver().fire(el1, 0.8);
     expect(changes).toEqual([{ id: 'a', visible: true }]);
+
+    // Second element also visible → still visible, no duplicate emit.
+    lastObserver().fire(el2, 0.9);
+    expect(changes.length).toBe(1);
+
+    // One leaves → the other keeps the id visible, no transition.
+    lastObserver().fire(el1, 0.1);
+    expect(changes.length).toBe(1);
+    expect(service.isVisible('a')).toBeTrue();
+
+    // Last visible element leaves → transition to hidden.
+    lastObserver().fire(el2, 0.1);
+    expect(changes).toEqual([
+      { id: 'a', visible: true },
+      { id: 'a', visible: false },
+    ]);
+  });
+
+  it('unobserveElement removes one element and does not freeze the id', () => {
+    const el1 = document.createElement('div');
+    const el2 = document.createElement('div');
+    service.observe('a', el1);
+    service.observe('a', el2);
+    lastObserver().fire(el2, 1);
+    expect(service.isVisible('a')).toBeTrue();
+
+    // Remove the visible element; el1 remains observed and drives the id.
+    service.unobserveElement(el2);
+    expect(lastObserver().observed.includes(el2)).toBeFalse();
+    expect(lastObserver().observed.includes(el1)).toBeTrue();
+    // Aggregate recomputed to hidden (el1 was never visible).
+    expect(service.isVisible('a')).toBeFalse();
+
+    // el1 can still turn the id visible after its sibling was removed.
+    lastObserver().fire(el1, 1);
+    expect(service.isVisible('a')).toBeTrue();
+  });
+
+  it('moves an element when re-observed under a new id', () => {
+    const el = document.createElement('div');
+    service.observe('a', el);
+    lastObserver().fire(el, 1);
+    expect(service.isVisible('a')).toBeTrue();
+
+    service.observe('b', el);
+    // No longer contributes to 'a'; now drives 'b'.
+    expect(service.isVisible('a')).toBeFalse();
+    lastObserver().fire(el, 1);
+    expect(service.isVisible('b')).toBeTrue();
   });
 
   it('should clear all observation state', () => {
