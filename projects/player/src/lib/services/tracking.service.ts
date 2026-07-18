@@ -275,6 +275,62 @@ export class TrackingService {
   }
 
   /**
+   * Override the session ID so tracking shares one session with the player
+   * state (PlayerStateService also mints an ID; analytics must use a single
+   * one or the backend sees two half-sessions). Call before events are
+   * queued; already-queued events keep their stamped ID.
+   */
+  setSessionId(sessionId: string): void {
+    if (sessionId && sessionId.trim().length > 0) {
+      this.sessionId = sessionId;
+    }
+  }
+
+  /**
+   * Synchronous flush for pagehide/unload, where async fetch is unreliable.
+   * Uses navigator.sendBeacon with a text/plain payload — a "simple" content
+   * type, so the cross-origin POST needs no CORS preflight during unload
+   * (the ingest endpoint reads the raw body regardless of content type).
+   * Falls back to fetch({keepalive}) where sendBeacon is unavailable.
+   */
+  flushSync(): void {
+    if (this.eventQueue.length === 0 || !this.config.endpoint) {
+      this.eventQueue = [];
+      return;
+    }
+
+    const events = [...this.eventQueue];
+    this.eventQueue = [];
+
+    const body = JSON.stringify({
+      sessionId: this.sessionId,
+      events,
+      timestamp: Date.now(),
+    });
+
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const ok = navigator.sendBeacon(
+        this.config.endpoint,
+        new Blob([body], { type: 'text/plain' })
+      );
+      if (ok) {
+        return;
+      }
+    }
+
+    try {
+      void fetch(this.config.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      });
+    } catch {
+      // Unload path — nothing sensible left to do.
+    }
+  }
+
+  /**
    * Get queue size
    */
   getQueueSize(): number {

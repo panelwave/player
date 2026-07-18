@@ -22,7 +22,7 @@ import { TrackingService } from '../../services/tracking.service';
 import { VideoControllerService } from '../../services/video-controller.service';
 import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { PlayerEvent } from '../../types';
-import type { Panel, PanelWaveManifest } from '../../types';
+import type { Chapter, Panel, PanelWaveManifest } from '../../types';
 
 describe('PlayerShellComponent auto-advance', () => {
   let shell: PlayerShellComponent;
@@ -34,7 +34,13 @@ describe('PlayerShellComponent auto-advance', () => {
     reset: jasmine.Spy;
     getStallTimeout: jasmine.Spy;
   };
-  let trackingMock: { configure: jasmine.Spy; setConsent: jasmine.Spy; track: jasmine.Spy };
+  let trackingMock: {
+    configure: jasmine.Spy;
+    setConsent: jasmine.Spy;
+    track: jasmine.Spy;
+    setSessionId: jasmine.Spy;
+    flushSync: jasmine.Spy;
+  };
   let manifest: Partial<PanelWaveManifest> | null;
 
   /** Access to the shell's private members under test. */
@@ -43,7 +49,9 @@ describe('PlayerShellComponent auto-advance', () => {
       startAutoplay(): void;
       stopAutoplay(): void;
       subscribeToVideoSignals(): void;
-      configureTracking(m: PanelWaveManifest | null): void;
+      configureTracking(m: Partial<PanelWaveManifest> | null): void;
+      trackPanelView(panel: Panel, chapter: Chapter): void;
+      analyticsPanelOrder: Map<string, number>;
       autoplayTimer?: unknown;
       pendingVideoPasses: Set<string>;
       videoWatchdogTimer?: unknown;
@@ -83,6 +91,8 @@ describe('PlayerShellComponent auto-advance', () => {
       configure: jasmine.createSpy('tracking.configure'),
       setConsent: jasmine.createSpy('tracking.setConsent'),
       track: jasmine.createSpy('tracking.track'),
+      setSessionId: jasmine.createSpy('tracking.setSessionId'),
+      flushSync: jasmine.createSpy('tracking.flushSync'),
     };
     const manifestServiceMock = {
       getManifest: () => manifest,
@@ -416,6 +426,97 @@ describe('PlayerShellComponent auto-advance', () => {
     it('does nothing without a tracking section', () => {
       priv().configureTracking(null);
       expect(trackingMock.configure).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('analytics session instrumentation', () => {
+    /** Two-chapter manifest: ch1 p1→p2, ch2 p3→p4 (p4 = end of work). */
+    const analyticsManifest = (): PanelWaveManifest =>
+      ({
+        tracking: { enabled: true, consent: { required: false } },
+        chapters: [
+          {
+            id: 'ch1',
+            panels: { p1: { layers: [] }, p2: { layers: [] } },
+            graph: { entry: 'p1', edges: [{ from: 'p1', to: 'p2' }] },
+          },
+          {
+            id: 'ch2',
+            panels: { p3: { layers: [] }, p4: { layers: [] } },
+            graph: { entry: 'p3', edges: [{ from: 'p3', to: 'p4' }] },
+          },
+        ],
+      }) as unknown as PanelWaveManifest;
+
+    beforeEach(() => {
+      TestBed.inject(FlowEngineService).getEntry = ((graph: { entry: string }) =>
+        graph.entry) as never;
+    });
+
+    it('emits session_start with device, locale and the cross-chapter panel count', () => {
+      manifest = analyticsManifest();
+      priv().configureTracking(manifest);
+
+      expect(trackingMock.track).toHaveBeenCalledWith(
+        'session_start',
+        jasmine.objectContaining({ totalPanels: 4, locale: shell.locale })
+      );
+      // BFS reading order across chapters: p1, p2, p3, p4
+      expect(priv().analyticsPanelOrder.get('p1')).toBe(1);
+      expect(priv().analyticsPanelOrder.get('p4')).toBe(4);
+    });
+
+    it('tracks panel_view with panelOrder and work_complete only on the final panel', () => {
+      manifest = analyticsManifest();
+      priv().configureTracking(manifest);
+      trackingMock.track.calls.reset();
+
+      const ch1 = (manifest as never as { chapters: Chapter[] }).chapters[0];
+      const ch2 = (manifest as never as { chapters: Chapter[] }).chapters[1];
+
+      priv().trackPanelView(ch1.panels['p2'], ch1);
+      expect(trackingMock.track).toHaveBeenCalledWith('panel_view', {
+        panelId: 'p2',
+        chapterId: 'ch1',
+        panelOrder: 2,
+      });
+      // p2 has no outgoing edges but ch1 is not the last chapter
+      expect(trackingMock.track).not.toHaveBeenCalledWith(
+        'work_complete',
+        jasmine.anything()
+      );
+
+      priv().trackPanelView(ch2.panels['p4'], ch2);
+      expect(trackingMock.track).toHaveBeenCalledWith('work_complete', {
+        panelId: 'p4',
+        chapterId: 'ch2',
+      });
+    });
+
+    it('deduplicates immediate re-emissions of the same panel', () => {
+      manifest = analyticsManifest();
+      priv().configureTracking(manifest);
+      trackingMock.track.calls.reset();
+
+      const ch1 = (manifest as never as { chapters: Chapter[] }).chapters[0];
+      priv().trackPanelView(ch1.panels['p1'], ch1);
+      priv().trackPanelView(ch1.panels['p1'], ch1);
+
+      expect(trackingMock.track).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits session_end and beacon-flushes exactly once on destroy', () => {
+      manifest = analyticsManifest();
+      priv().configureTracking(manifest);
+
+      shell.ngOnDestroy();
+      shell.ngOnDestroy();
+
+      const endCalls = trackingMock.track.calls
+        .allArgs()
+        .filter((args) => args[0] === 'session_end');
+      expect(endCalls.length).toBe(1);
+      expect(trackingMock.flushSync).toHaveBeenCalledTimes(1);
     });
   });
 });

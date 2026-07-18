@@ -317,6 +317,66 @@ describe('TrackingService', () => {
     });
   });
 
+  describe('session id override', () => {
+    it('should override the session id for subsequent events', () => {
+      service.setConsent(true);
+      service.setSessionId('host-session-1');
+
+      expect(service.getSessionId()).toBe('host-session-1');
+    });
+
+    it('should ignore blank session ids', () => {
+      const original = service.getSessionId();
+      service.setSessionId('   ');
+      expect(service.getSessionId()).toBe(original);
+    });
+  });
+
+  describe('flushSync', () => {
+    it('should send the queue via sendBeacon with the session id', () => {
+      service.setConsent(true);
+      service.configure({ endpoint: 'https://test.com/events' });
+      const beaconSpy = spyOn(navigator, 'sendBeacon').and.returnValue(true);
+
+      service.track('session_end');
+      service.flushSync();
+
+      expect(beaconSpy).toHaveBeenCalled();
+      const [url, blob] = beaconSpy.calls.mostRecent().args;
+      expect(url).toBe('https://test.com/events');
+      // text/plain avoids a CORS preflight during unload
+      expect((blob as Blob).type).toBe('text/plain');
+      expect(service.getQueueSize()).toBe(0);
+    });
+
+    it('should fall back to keepalive fetch when sendBeacon fails', () => {
+      service.setConsent(true);
+      service.configure({ endpoint: 'https://test.com/events' });
+      spyOn(navigator, 'sendBeacon').and.returnValue(false);
+      const fetchSpy = spyOn(window, 'fetch').and.returnValue(
+        Promise.resolve(new Response(null, { status: 202 }))
+      );
+
+      service.track('session_end');
+      service.flushSync();
+
+      expect(fetchSpy).toHaveBeenCalled();
+      const [, init] = fetchSpy.calls.mostRecent().args;
+      expect((init as RequestInit).keepalive).toBeTrue();
+    });
+
+    it('should be a no-op without an endpoint', () => {
+      service.setConsent(true);
+      const beaconSpy = spyOn(navigator, 'sendBeacon');
+
+      service.track('session_end');
+      service.flushSync();
+
+      expect(beaconSpy).not.toHaveBeenCalled();
+      expect(service.getQueueSize()).toBe(0);
+    });
+  });
+
   describe('destroy', () => {
     it('should cleanup resources', async () => {
       service.setConsent(true);

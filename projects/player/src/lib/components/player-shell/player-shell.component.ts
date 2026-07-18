@@ -328,6 +328,24 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private readonly videoController = inject(VideoControllerService);
   private readonly videoSequencer = inject(VideoSequencerService);
 
+  /**
+   * Reading order per panel id (1-based, across chapters), computed once per
+   * manifest. Reported as `panelOrder` on panel_view / funnel events and as
+   * `totalPanels` on session_start so the backend can compute exact
+   * completion and funnel steps.
+   */
+  private analyticsPanelOrder = new Map<string, number>();
+  private analyticsTotalPanels = 0;
+
+  /** Analytics session lifecycle guards (one session per shell instance). */
+  private analyticsSessionStarted = false;
+  private analyticsSessionEnded = false;
+  private workCompleteTracked = false;
+  private lastTrackedPanelId?: string;
+
+  /** Bound pagehide handler so add/removeEventListener match. */
+  private readonly onPageHide = (): void => this.endAnalyticsSession();
+
   constructor(
     private playerState: PlayerStateService,
     private manifestService: ManifestService,
@@ -343,12 +361,21 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.toolbarVisible = this.showToolbar;
     this.subscribeToVideoSignals();
     this.initializePlayer();
+    // pagehide fires for both tab close and navigation (incl. bfcache) —
+    // the last chance to flush the analytics queue.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', this.onPageHide);
+    }
   }
 
   /**
    * Cleanup on destroy
    */
   ngOnDestroy(): void {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pagehide', this.onPageHide);
+    }
+    this.endAnalyticsSession();
     this.stopAutoplay();
     this.stopAutoplayProgress();
     this.videoSequencer.reset();
@@ -489,6 +516,143 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (tracking.consent?.defaultOptIn) {
       this.trackingService.setConsent(true);
     }
+
+    // TrackingService's UUID is the single analytics session ID (embedding
+    // hosts can override it via TrackingService.setSessionId before init).
+    this.startAnalyticsSession(manifest!);
+  }
+
+  /**
+   * Open the analytics session: compute the reading order across chapters
+   * (graph traversal from each chapter's entry) and emit `session_start`
+   * with device/locale/work-size context. Runs before the initial
+   * navigation, so session_start precedes the first panel_view.
+   */
+  private startAnalyticsSession(manifest: PanelWaveManifest): void {
+    if (this.analyticsSessionStarted) {
+      return;
+    }
+    this.analyticsSessionStarted = true;
+
+    this.analyticsPanelOrder.clear();
+    let order = 0;
+    for (const chapter of manifest.chapters ?? []) {
+      for (const panelId of this.readingOrderForChapter(chapter)) {
+        if (!this.analyticsPanelOrder.has(panelId)) {
+          this.analyticsPanelOrder.set(panelId, ++order);
+        }
+      }
+    }
+    this.analyticsTotalPanels = order;
+
+    this.trackingService.track('session_start', {
+      deviceType: this.detectDeviceType(),
+      locale: this.locale,
+      totalPanels: this.analyticsTotalPanels,
+    });
+  }
+
+  /**
+   * Deterministic reading order for a chapter: breadth-first over the graph
+   * from the entry panel(s), then any unreachable panels in declaration
+   * order (branching narratives have no single true order — BFS approximates
+   * "distance from start", which is what the funnel needs).
+   */
+  private readingOrderForChapter(chapter: Chapter): string[] {
+    const orderedIds: string[] = [];
+    const seen = new Set<string>();
+    const graph = chapter.graph;
+
+    const entry = graph ? this.flowEngine.getEntry(graph) : undefined;
+    const queue: string[] = entry === undefined ? [] : typeof entry === 'string' ? [entry] : [...entry];
+
+    while (queue.length > 0) {
+      const panelId = queue.shift()!;
+      if (seen.has(panelId)) {
+        continue;
+      }
+      seen.add(panelId);
+      orderedIds.push(panelId);
+      for (const edge of graph?.edges ?? []) {
+        if (edge.from === panelId && !seen.has(edge.to)) {
+          queue.push(edge.to);
+        }
+      }
+    }
+
+    for (const panelId of Object.keys(chapter.panels ?? {})) {
+      if (!seen.has(panelId)) {
+        orderedIds.push(panelId);
+      }
+    }
+    return orderedIds;
+  }
+
+  /**
+   * Coarse device class for analytics breakdowns (matches the dashboard's
+   * device segments): touch + narrow = phone, touch + wide = tablet,
+   * everything else desktop.
+   */
+  private detectDeviceType(): string {
+    if (typeof window === 'undefined') {
+      return 'desktop';
+    }
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+    if (coarsePointer) {
+      return window.innerWidth < 768 ? 'phone' : 'tablet';
+    }
+    return 'desktop';
+  }
+
+  /**
+   * Track a panel view (deduplicated against immediate re-emissions of the
+   * same panel) and, on reaching an end panel of the last chapter, the
+   * one-time `work_complete` signal.
+   */
+  private trackPanelView(panel: Panel, chapter: Chapter): void {
+    // Panels don't carry their own id — resolve it from the chapter's map
+    // (same identity lookup as getCurrentPanelId).
+    const panelId = Object.entries(chapter.panels ?? {}).find(([, p]) => p === panel)?.[0];
+    if (!panelId || panelId === this.lastTrackedPanelId) {
+      return;
+    }
+    this.lastTrackedPanelId = panelId;
+
+    this.trackingService.track('panel_view', {
+      panelId,
+      chapterId: chapter.id,
+      panelOrder: this.analyticsPanelOrder.get(panelId) ?? 0,
+    });
+
+    if (!this.workCompleteTracked && this.isEndOfWork(panelId, chapter)) {
+      this.workCompleteTracked = true;
+      this.trackingService.track('work_complete', {
+        panelId,
+        chapterId: chapter.id,
+      });
+    }
+  }
+
+  /** An end panel (no outgoing edges) of the manifest's last chapter. */
+  private isEndOfWork(panelId: string, chapter: Chapter): boolean {
+    const chapters = this.manifestService.getManifest()?.chapters ?? [];
+    if (chapters.length > 0 && chapters[chapters.length - 1]?.id !== chapter.id) {
+      return false;
+    }
+    return !(chapter.graph?.edges ?? []).some((edge) => edge.from === panelId);
+  }
+
+  /**
+   * Close the analytics session exactly once: emit `session_end` and flush
+   * the queue via sendBeacon (survives tab close / navigation).
+   */
+  private endAnalyticsSession(): void {
+    if (!this.analyticsSessionStarted || this.analyticsSessionEnded) {
+      return;
+    }
+    this.analyticsSessionEnded = true;
+    this.trackingService.track('session_end', {});
+    this.trackingService.flushSync();
   }
 
   /**
@@ -511,6 +675,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         if (panel && this.currentChapter) {
           this.currentPanel = panel;
           this.panelChange.emit({ panel, chapter: this.currentChapter });
+          this.trackPanelView(panel, this.currentChapter);
         }
       });
 
