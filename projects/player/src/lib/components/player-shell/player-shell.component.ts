@@ -1128,6 +1128,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     return this.manifestService.getManifest()?.meta?.characters ?? [];
   }
 
+  /** Manifest preload settings for the canvas stage's neighbor warming. */
+  get manifestPreloadSettings() {
+    return this.manifestService.getManifest()?.settings?.preload ?? null;
+  }
+
   onLocaleChange(locale: LocaleCode): void {
     // Update content locale
     this.locale = locale;

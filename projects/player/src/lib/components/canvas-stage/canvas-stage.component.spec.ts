@@ -3,6 +3,8 @@ import { provideHttpClient } from '@angular/common/http';
 
 import { CanvasStageComponent, CANVAS_PANEL_BUDGET } from './canvas-stage.component';
 import { CanvasCameraService } from '../../services/canvas-camera.service';
+import { ManifestService } from '../../services/manifest.service';
+import { PreloadService } from '../../services/preload.service';
 import type { CanvasLayout, Panel } from '../../types';
 
 describe('CanvasStageComponent', () => {
@@ -151,6 +153,64 @@ describe('CanvasStageComponent', () => {
       const host: HTMLElement = fixture.nativeElement;
       const veils = host.querySelectorAll('.canvas-panel-veil');
       expect(veils.length).toBe(1);
+    });
+
+    it('warms out-edge targets with the zoom-appropriate variant on camera settle', () => {
+      const preloadService = TestBed.inject(PreloadService);
+      const manifestService = TestBed.inject(ManifestService);
+      const addSpy = spyOn(preloadService, 'add');
+      spyOn(manifestService, 'getAsset').and.returnValue({
+        id: 'img-next',
+        category: 'image',
+        variants: [
+          { src: 'thumb.jpg', w: 256, h: 144 },
+          { src: 'full.jpg', w: 2048, h: 1152 },
+        ],
+      } as never);
+
+      const canvas: CanvasLayout = {
+        placements: {
+          a: { x: 0, y: 0, w: 1024, h: 576 },
+          b: { x: 0, y: 1200, w: 1024, h: 576 },
+        },
+      };
+      const panels: Record<string, Panel> = {
+        a: { layers: [] } as Panel,
+        b: { layers: [{ id: 'bg', kind: 'image', assetId: 'img-next' }] } as unknown as Panel,
+      };
+      component.graph = { entry: 'a', edges: [{ from: 'a', to: 'b' }] };
+      setInputs(canvas, panels, 'a');
+      camera.setViewportSize(1000, 1000);
+      camera.jumpTo({ x: 512, y: 288, zoom: 0.2 });
+
+      // Trigger the settle path directly (the 180ms debounce is timing glue).
+      (component as unknown as { onCameraSettled(): void }).onCameraSettled();
+
+      expect(addSpy).toHaveBeenCalled();
+      const item = addSpy.calls.mostRecent().args[0];
+      expect(item.priority).toBe('high');
+      expect(item.panelId).toBe('b');
+      // 1024 wu at zoom 0.2 (× dpr 1) needs ~205px -> quantized 256 -> thumb
+      expect(item.url).toBe('thumb.jpg');
+    });
+
+    it('variant widths only ever upgrade while a panel stays mounted', () => {
+      const { canvas, panels } = columnLayout(2);
+      setInputs(canvas, panels, 'p0');
+      camera.setViewportSize(1000, 1000);
+
+      camera.jumpTo({ x: 512, y: 288, zoom: 1 });
+      (component as unknown as { onCameraSettled(): void }).onCameraSettled();
+      const atZoom1 = component.targetWidthFor('p0');
+      expect(atZoom1).toBeGreaterThan(0);
+
+      camera.jumpTo({ x: 512, y: 288, zoom: 0.1 });
+      (component as unknown as { onCameraSettled(): void }).onCameraSettled();
+      expect(component.targetWidthFor('p0')).toBe(atZoom1);
+
+      camera.jumpTo({ x: 512, y: 288, zoom: 2 });
+      (component as unknown as { onCameraSettled(): void }).onCameraSettled();
+      expect(component.targetWidthFor('p0')).toBeGreaterThan(atZoom1);
     });
 
     it('marks non-current panels aria-hidden and inert', () => {

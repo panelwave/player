@@ -48,6 +48,7 @@
               viewMode="panel"
               [viewActive]="isCurrent(entry.panelId)"
               [reducedMotion]="reducedMotion"
+              [targetWidth]="targetWidthFor(entry.panelId)"
               [panelId]="entry.panelId">
             </pw-layer-renderer>
           }

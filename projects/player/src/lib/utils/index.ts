@@ -89,3 +89,8 @@ export {
   animate,
   easings,
 } from './animation-utils';
+
+export {
+  selectImageVariantForWidth,
+  quantizeTargetWidth,
+} from './image-variant-utils';

@@ -20,6 +20,7 @@ import type {
   VideoStartMode,
   AssetCatalogItemVideo,
   VideoVariant,
+  ImageVariant,
 } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { VideoLayerComponent, type LayerViewMode } from '../layers/video-layer/video-layer.component';
@@ -28,6 +29,7 @@ import {
   resolveStartMode,
   resolveMuted,
 } from '../../utils/video-config-utils';
+import { selectImageVariantForWidth } from '../../utils/image-variant-utils';
 
 /**
  * Layer Renderer Component
@@ -57,6 +59,12 @@ export class LayerRendererComponent {
    * Base URL for resolving asset paths
    */
   @Input() baseUrl = '';
+
+  /**
+   * Required display width in physical pixels for image variant selection
+   * (canvas view variant-by-zoom). 0 keeps the legacy first-variant pick.
+   */
+  @Input() targetWidth = 0;
 
   /**
    * Alt text for image layers (localized)
@@ -189,16 +197,22 @@ export class LayerRendererComponent {
    */
   getImageSrc(): string {
     if (this.layer.kind !== 'image') return '';
-    
+
     // Try to get assetId first (from manifest reference)
     const assetId = (this.layer as Record<string, unknown>)['assetId'];
     if (assetId && typeof assetId === 'string') {
       const asset = this.manifestService.getAsset(assetId);
       if (asset && asset.variants && asset.variants.length > 0) {
-        return asset.variants[0].src;
+        // Variant-by-zoom (canvas view): the smallest variant covering the
+        // required display width; targetWidth 0 keeps the legacy first pick.
+        const variant = selectImageVariantForWidth(
+          asset.variants as ImageVariant[],
+          this.targetWidth
+        );
+        return variant?.src ?? asset.variants[0].src;
       }
     }
-    
+
     // Fall back to direct src if provided
     const src = (this.layer as Record<string, unknown>)['src'];
     return src ? `${this.baseUrl}${src}` : '';

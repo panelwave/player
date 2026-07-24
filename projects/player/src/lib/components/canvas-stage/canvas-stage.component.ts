@@ -33,6 +33,7 @@ import type {
   Graph,
   LocaleCode,
   Panel,
+  PreloadSettings,
   WorldRect,
 } from '../../types';
 import type { BalloonConfig } from '../../types';
@@ -40,6 +41,8 @@ import type { Character } from '../../types';
 
 import { CanvasCameraService, CameraState } from '../../services/canvas-camera.service';
 import { ManifestService } from '../../services/manifest.service';
+import { PreloadService } from '../../services/preload.service';
+import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 
@@ -96,6 +99,9 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
   @Input() reducedMotion = false;
   @Input() interactive = true;
 
+  /** Manifest preload settings (settings.preload); null = defaults. */
+  @Input() preload: PreloadSettings | null = null;
+
   /** Tap on a placed panel (shell decides whether it is an edge target). */
   @Output() panelTap = new EventEmitter<string>();
 
@@ -111,6 +117,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   readonly camera = inject(CanvasCameraService);
   private readonly manifestService = inject(ManifestService);
+  private readonly preloadService = inject(PreloadService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -127,6 +134,14 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   private resizeObserver?: ResizeObserver;
   private lastCameraEmit = 0;
+
+  /**
+   * Required display width per mounted panel (physical px, quantized) for
+   * image variant selection. Upgrade-only while mounted so an already-loaded
+   * high-res variant is never swapped back to a thumbnail (no flicker).
+   */
+  private readonly variantWidths = new Map<string, number>();
+  private settleTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** `on-approach` panels that have been revealed this session. */
   private readonly approached = new Set<string>();
@@ -158,6 +173,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
         this.camera.jumpTo(this.camera.frameForPlacement(placement));
       }
       this.approached.clear();
+      this.variantWidths.clear();
     }
 
     // Reduced motion: the shell reframes with jumpTo instead of gliding —
@@ -180,6 +196,9 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
+    if (this.settleTimer) {
+      clearTimeout(this.settleTimer);
+    }
     this.camera.cancel();
     this.destroy$.next();
     this.destroy$.complete();
@@ -200,10 +219,116 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     this.refreshStage();
     this.cdr.markForCheck();
 
+    // Variant/preload work runs on camera settle, never per frame.
+    if (this.settleTimer) {
+      clearTimeout(this.settleTimer);
+    }
+    this.settleTimer = setTimeout(() => {
+      this.settleTimer = null;
+      this.onCameraSettled();
+    }, 180);
+
     const now = Date.now();
     if (now - this.lastCameraEmit >= CAMERA_EMIT_INTERVAL_MS) {
       this.lastCameraEmit = now;
       this.cameraChange.emit(state);
+    }
+  }
+
+  /** Zoom settled: re-resolve image variants and warm neighbor assets. */
+  private onCameraSettled(): void {
+    this.updateVariantWidths();
+    this.preloadNeighbors();
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Required display width per mounted panel at the settled zoom
+   * (placement width × zoom × devicePixelRatio, quantized). Upgrade-only.
+   */
+  private updateVariantWidths(): void {
+    const zoom = this.camera.state.zoom;
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    for (const entry of this.stagePlacements) {
+      const needed = quantizeTargetWidth(entry.placement.w * zoom * dpr);
+      const current = this.variantWidths.get(entry.panelId) ?? 0;
+      if (needed > current) {
+        this.variantWidths.set(entry.panelId, needed);
+      }
+    }
+  }
+
+  /** Variant-selection width for a mounted panel (0 = legacy first variant). */
+  targetWidthFor(panelId: string): number {
+    return this.variantWidths.get(panelId) ?? 0;
+  }
+
+  /**
+   * Warm the assets the reader is likely to see next (integration spec §5):
+   * out-edge targets of the current panel first, then the spatially nearest
+   * placements. Honors settings.preload (strategy, panelsAhead,
+   * maxConcurrent); each candidate preloads the variant it would render at.
+   */
+  private preloadNeighbors(): void {
+    if (!this.canvas || this.preload?.strategy === 'none') {
+      return;
+    }
+    if (this.preload?.maxConcurrent) {
+      this.preloadService.setMaxConcurrent(this.preload.maxConcurrent);
+    }
+    const panelsAhead = this.preload?.panelsAhead ?? 2;
+
+    const currentId = this.currentPanelId;
+    const edgeTargets = (this.graph?.edges ?? [])
+      .filter((edge) => edge.from === currentId)
+      .map((edge) => edge.to)
+      .slice(0, Math.max(panelsAhead, 1));
+
+    const state = this.camera.state;
+    const spatial = Object.entries(this.canvas.placements)
+      .filter(([panelId]) => panelId !== currentId && !edgeTargets.includes(panelId))
+      .map(([panelId, placement]) => ({
+        panelId,
+        placement,
+        distance: Math.hypot(
+          placement.x + placement.w / 2 - state.x,
+          placement.y + placement.h / 2 - state.y
+        ),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 4)
+      .map((entry) => entry.panelId);
+
+    const zoom = state.zoom;
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    const queue: { panelId: string; priority: 'high' | 'medium' }[] = [
+      ...edgeTargets.map((panelId) => ({ panelId, priority: 'high' as const })),
+      ...spatial.map((panelId) => ({ panelId, priority: 'medium' as const })),
+    ];
+
+    for (const candidate of queue) {
+      const panel = this.panels[candidate.panelId];
+      const placement = this.canvas.placements[candidate.panelId];
+      if (!panel || !placement) {
+        continue;
+      }
+      const width = quantizeTargetWidth(placement.w * zoom * dpr);
+      for (const layer of panel.layers ?? []) {
+        if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
+          continue;
+        }
+        const asset = this.manifestService.getAsset(layer.assetId);
+        const variant = selectImageVariantForWidth(asset?.variants as never, width);
+        if (variant?.src) {
+          this.preloadService.add({
+            id: variant.src,
+            type: 'image',
+            url: variant.src,
+            priority: candidate.priority,
+            panelId: candidate.panelId,
+          });
+        }
+      }
     }
   }
 
