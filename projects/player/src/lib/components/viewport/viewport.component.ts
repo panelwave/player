@@ -21,8 +21,10 @@ import {
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
-import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Transition } from '../../types';
+import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Graph, PreloadSettings, Transition } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
+import { PreloadService } from '../../services/preload.service';
+import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 
 /**
  * Performance metrics interface
@@ -37,6 +39,12 @@ export interface PerformanceMetrics {
 }
 
 /**
+ * Debounce before re-resolving image variants after a zoom or resize change
+ * (mirrors the canvas stage's camera-settle debounce) — never per frame.
+ */
+const VARIANT_SETTLE_MS = 180;
+
+/**
  * Viewport Component
  * Renders a panel with pan/zoom/transform capabilities
  */
@@ -49,6 +57,7 @@ export interface PerformanceMetrics {
 })
 export class ViewportComponent implements OnChanges, OnDestroy {
   private manifestService = inject(ManifestService);
+  private preloadService = inject(PreloadService);
   private elementRef = inject(ElementRef<HTMLElement>);
   private cdr = inject(ChangeDetectorRef);
 
@@ -146,6 +155,17 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * story-logic visibleIf.
    */
   @Input() speechEnabled = true;
+
+  /**
+   * The chapter's graph (panel view warms the current panel's out-edge
+   * targets); null disables out-edge preloading.
+   */
+  @Input() graph: Graph | null = null;
+
+  /**
+   * Manifest preload settings (settings.preload); null = defaults.
+   */
+  @Input() preload: PreloadSettings | null = null;
 
   /**
    * Viewport clicked
@@ -261,6 +281,15 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   pageLeaveAbove = false;
   private pageTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Required display width per mounted panel (physical px, quantized) for
+   * image variant selection. Upgrade-only while mounted so an already-loaded
+   * high-res variant is never swapped back to a smaller rung (no refetch
+   * thrash on zoom-out); entries are dropped when their panel unmounts.
+   */
+  private readonly variantWidths = new Map<string, number>();
+  private variantSettleTimer: ReturnType<typeof setTimeout> | null = null;
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['panel']) {
       // Reset pan/zoom when panel changes
@@ -300,6 +329,22 @@ export class ViewportComponent implements OnChanges, OnDestroy {
         this.endPageTransition();
       }
     }
+
+    // Responsive image variants: recompute per-panel target widths when the
+    // mounted content changes; zoom-only changes go through the settle
+    // debounce so continuous pinch/wheel zoom never re-resolves per frame.
+    const panelChanged =
+      changes['panel'] && changes['panel'].currentValue !== changes['panel'].previousValue;
+    const pageChanged =
+      changes['page'] && changes['page'].currentValue !== changes['page'].previousValue;
+    if (panelChanged || pageChanged || changes['viewMode']) {
+      this.pruneVariantWidths();
+      this.updateVariantWidths();
+      this.preloadOutEdgeTargets();
+      this.scheduleVariantSettle();
+    } else if (changes['zoom']) {
+      this.scheduleVariantSettle();
+    }
   }
 
   ngOnDestroy(): void {
@@ -310,6 +355,163 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     if (this.pageTransitionTimer !== null) {
       clearTimeout(this.pageTransitionTimer);
       this.pageTransitionTimer = null;
+    }
+    if (this.variantSettleTimer !== null) {
+      clearTimeout(this.variantSettleTimer);
+      this.variantSettleTimer = null;
+    }
+  }
+
+  /**
+   * Re-resolve variants after the viewport size changed (debounced like the
+   * canvas stage's camera settle).
+   */
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.scheduleVariantSettle();
+  }
+
+  // --------------------------------------------------------------------------
+  // Responsive image variants (spec §3.4 — page/panel view)
+  // --------------------------------------------------------------------------
+
+  /** Variant-selection width for a mounted panel (0 = legacy first variant). */
+  targetWidthFor(panelId: string | null | undefined): number {
+    if (!panelId) {
+      return 0;
+    }
+    return this.variantWidths.get(panelId) ?? 0;
+  }
+
+  /** Arm (or re-arm) the debounced variant/preload pass. */
+  private scheduleVariantSettle(): void {
+    if (this.variantSettleTimer !== null) {
+      clearTimeout(this.variantSettleTimer);
+    }
+    this.variantSettleTimer = setTimeout(() => {
+      this.variantSettleTimer = null;
+      this.onVariantSettled();
+    }, VARIANT_SETTLE_MS);
+  }
+
+  /** Zoom/resize settled: re-resolve image variants and warm out-edges. */
+  private onVariantSettled(): void {
+    this.updateVariantWidths();
+    this.preloadOutEdgeTargets();
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Required display width per mounted panel (physical px, quantized).
+   * Panel view: container CSS width × zoom × devicePixelRatio.
+   * Page view: placement fraction of the page canvas × devicePixelRatio
+   * (no per-panel zoom in page view). Upgrade-only while mounted.
+   */
+  private updateVariantWidths(): void {
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    if (this.viewMode === 'panel') {
+      if (!this.currentPanelId) {
+        return;
+      }
+      const cssWidth = this.getContainerWidth();
+      if (cssWidth > 0) {
+        this.bumpVariantWidth(this.currentPanelId, quantizeTargetWidth(cssWidth * this.zoom * dpr));
+      }
+      return;
+    }
+    if (this.viewMode === 'page' && this.page) {
+      for (const placement of this.page.layout?.placements ?? []) {
+        const cssWidth = this.getPagePanelWidth(placement);
+        if (cssWidth > 0) {
+          this.bumpVariantWidth(placement.panelId, quantizeTargetWidth(cssWidth * dpr));
+        }
+      }
+    }
+  }
+
+  /** Upgrade-only write: a mounted panel's width never decreases. */
+  private bumpVariantWidth(panelId: string, needed: number): void {
+    const current = this.variantWidths.get(panelId) ?? 0;
+    if (needed > current) {
+      this.variantWidths.set(panelId, needed);
+    }
+  }
+
+  /**
+   * Drop widths of panels that are no longer mounted so a revisit starts
+   * fresh (the upgrade-only rule applies per mount, not per session).
+   */
+  private pruneVariantWidths(): void {
+    const mounted = new Set<string>();
+    if (this.viewMode === 'panel') {
+      if (this.currentPanelId) {
+        mounted.add(this.currentPanelId);
+      }
+      if (this.leavingPanelId) {
+        mounted.add(this.leavingPanelId);
+      }
+    } else if (this.viewMode === 'page') {
+      for (const placement of this.page?.layout?.placements ?? []) {
+        mounted.add(placement.panelId);
+      }
+      for (const placement of this.leavingPage?.layout?.placements ?? []) {
+        mounted.add(placement.panelId);
+      }
+    }
+    for (const panelId of [...this.variantWidths.keys()]) {
+      if (!mounted.has(panelId)) {
+        this.variantWidths.delete(panelId);
+      }
+    }
+  }
+
+  /**
+   * Warm the current panel's out-edge target panels' image variants at the
+   * current panel-view target width (same pattern as the canvas stage's
+   * preloadNeighbors, minus its spatial neighbors). Honors settings.preload:
+   * strategy `none` disables, panelsAhead caps the edge count, maxConcurrent
+   * is passed through to the preload service.
+   */
+  private preloadOutEdgeTargets(): void {
+    if (this.viewMode !== 'panel' || this.preload?.strategy === 'none') {
+      return;
+    }
+    const currentId = this.currentPanelId;
+    if (!currentId) {
+      return;
+    }
+    if (this.preload?.maxConcurrent) {
+      this.preloadService.setMaxConcurrent(this.preload.maxConcurrent);
+    }
+    const panelsAhead = this.preload?.panelsAhead ?? 2;
+
+    const edgeTargets = (this.graph?.edges ?? [])
+      .filter((edge) => edge.from === currentId)
+      .map((edge) => edge.to)
+      .slice(0, Math.max(panelsAhead, 1));
+
+    const width = this.targetWidthFor(currentId);
+    for (const panelId of edgeTargets) {
+      const panel = this.panels[panelId];
+      if (!panel) {
+        continue;
+      }
+      for (const layer of panel.layers ?? []) {
+        if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
+          continue;
+        }
+        const asset = this.manifestService.getAsset(layer.assetId);
+        const variant = selectImageVariantForWidth(asset?.variants as never, width);
+        if (variant?.src) {
+          this.preloadService.add({
+            id: variant.src,
+            type: 'image',
+            url: variant.src,
+            priority: 'high',
+            panelId,
+          });
+        }
+      }
     }
   }
 

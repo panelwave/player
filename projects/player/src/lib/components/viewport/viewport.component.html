@@ -32,6 +32,7 @@
                 [viewMode]="viewMode"
                 [viewActive]="false"
                 [reducedMotion]="reducedMotion"
+                [targetWidth]="targetWidthFor(leavingPanelId)"
                 [panelId]="leavingPanelId">
               </pw-layer-renderer>
             }
@@ -62,6 +63,7 @@
                 [viewMode]="viewMode"
                 [viewActive]="true"
                 [reducedMotion]="reducedMotion"
+                [targetWidth]="targetWidthFor(currentPanelId)"
                 [panelId]="currentPanelId || ''"
                 (layerClick)="layerClick.emit($event)">
               </pw-layer-renderer>
@@ -123,6 +125,7 @@
                           [viewMode]="viewMode"
                           [viewActive]="false"
                           [reducedMotion]="reducedMotion"
+                          [targetWidth]="targetWidthFor(placement.panelId)"
                           [panelId]="placement.panelId"
                           [placementId]="placement.panelId">
                         </pw-layer-renderer>
@@ -189,6 +192,7 @@
                       [altText]="getAltText(layer)"
                       [viewMode]="viewMode"
                       [reducedMotion]="reducedMotion"
+                      [targetWidth]="targetWidthFor(placement.panelId)"
                       [panelId]="placement.panelId"
                       [placementId]="placement.panelId"
                       [readingOrderIndex]="readingOrderIndexOf(placement.panelId)"

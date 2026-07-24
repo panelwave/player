@@ -5,7 +5,12 @@
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { By } from '@angular/platform-browser';
 import { ViewportComponent, PerformanceMetrics } from './viewport.component';
+import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
+import { ManifestService } from '../../services/manifest.service';
+import { PreloadService } from '../../services/preload.service';
+import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import type { Panel, Page, PanelPlacement } from '../../types';
 
 describe('ViewportComponent', () => {
@@ -1227,6 +1232,147 @@ describe('ViewportComponent', () => {
       };
 
       expect(component.getPanelTransform(placement)).toBe('none');
+    });
+  });
+
+  // ======================
+  // Responsive image variants (spec §3.4 — page/panel view)
+  // ======================
+
+  describe('Responsive image variants (targetWidth + out-edge preload)', () => {
+    const otherPanel: Panel = { title: { 'en-US': 'Other Panel' }, layers: [] };
+
+    /** Trigger the debounced variant/preload pass directly (the 180ms timer is timing glue). */
+    const settle = () =>
+      (component as unknown as { onVariantSettled(): void }).onVariantSettled();
+
+    const panelChange = (previousValue: Panel | null, currentValue: Panel | null) => ({
+      panel: {
+        currentValue,
+        previousValue,
+        firstChange: previousValue === null,
+        isFirstChange: () => previousValue === null,
+      },
+    });
+
+    it('binds a quantized container-width × zoom × dpr targetWidth in panel view', () => {
+      spyOn(component, 'getContainerWidth').and.returnValue(800);
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.componentRef.setInput('currentPanelId', 'p-current');
+      fixture.componentRef.setInput('zoom', 1.5);
+      fixture.detectChanges();
+      settle();
+      fixture.detectChanges();
+
+      const dpr = window.devicePixelRatio || 1;
+      const expected = quantizeTargetWidth(800 * 1.5 * dpr);
+      expect(component.targetWidthFor('p-current')).toBe(expected);
+
+      const renderer = fixture.debugElement.query(By.directive(LayerRendererComponent));
+      expect((renderer.componentInstance as LayerRendererComponent).targetWidth).toBe(expected);
+    });
+
+    it('derives page-view targetWidth from the placement width fraction (no per-panel zoom)', () => {
+      spyOn(component, 'getPagePanelWidth').and.callFake(
+        (placement: PanelPlacement) => placement.w * 2000
+      );
+      component.viewMode = 'page';
+      component.page = mockPage;
+      component.panels = mockPanels;
+      settle();
+
+      const dpr = window.devicePixelRatio || 1;
+      // p1 spans half the page canvas: 0.5 × 2000 css px.
+      expect(component.targetWidthFor('p1')).toBe(quantizeTargetWidth(0.5 * 2000 * dpr));
+    });
+
+    it('never lowers a mounted panel targetWidth when zooming out (upgrade-only)', () => {
+      spyOn(component, 'getContainerWidth').and.returnValue(1000);
+      component.viewMode = 'panel';
+      component.currentPanelId = 'pc';
+
+      component.zoom = 2;
+      settle();
+      const atZoom2 = component.targetWidthFor('pc');
+      expect(atZoom2).toBeGreaterThan(0);
+
+      component.zoom = 0.25;
+      settle();
+      expect(component.targetWidthFor('pc')).toBe(atZoom2);
+
+      component.zoom = 4;
+      settle();
+      expect(component.targetWidthFor('pc')).toBeGreaterThan(atZoom2);
+    });
+
+    it('resets the stored width when the panel unmounts (panel change)', () => {
+      spyOn(component, 'getContainerWidth').and.returnValue(1000);
+      component.viewMode = 'panel';
+      component.panel = mockPanel;
+      component.currentPanelId = 'p-old';
+      component.zoom = 3;
+      settle();
+      expect(component.targetWidthFor('p-old')).toBeGreaterThan(0);
+
+      component.currentPanelId = 'p-new';
+      component.panel = otherPanel;
+      component.zoom = 1;
+      component.ngOnChanges(panelChange(mockPanel, otherPanel));
+
+      // The unmounted panel starts fresh on revisit; the new one is tracked.
+      expect(component.targetWidthFor('p-old')).toBe(0);
+      expect(component.targetWidthFor('p-new')).toBeGreaterThan(0);
+      expect(component.targetWidthFor('p-new')).toBeLessThan(3000);
+    });
+
+    it('warms out-edge targets with the current-width variant on panel change', () => {
+      const preloadService = TestBed.inject(PreloadService);
+      const manifestService = TestBed.inject(ManifestService);
+      const addSpy = spyOn(preloadService, 'add');
+      const variants = [
+        { src: 'thumb.jpg', w: 256, h: 144 },
+        { src: 'mid.jpg', w: 1024, h: 576 },
+        { src: 'full.jpg', w: 4096, h: 2304 },
+      ];
+      spyOn(manifestService, 'getAsset').and.returnValue({
+        id: 'img-next',
+        category: 'image',
+        variants,
+      } as never);
+      spyOn(component, 'getContainerWidth').and.returnValue(700);
+
+      component.viewMode = 'panel';
+      component.graph = { entry: 'pa', edges: [{ from: 'pa', to: 'pb' }] };
+      component.panels = {
+        pb: { layers: [{ id: 'bg', kind: 'image', assetId: 'img-next' }] } as unknown as Panel,
+      };
+      component.currentPanelId = 'pa';
+      component.panel = mockPanel;
+      component.ngOnChanges(panelChange(null, mockPanel));
+
+      const dpr = window.devicePixelRatio || 1;
+      const width = quantizeTargetWidth(700 * dpr);
+      expect(addSpy).toHaveBeenCalled();
+      const item = addSpy.calls.mostRecent().args[0];
+      expect(item.priority).toBe('high');
+      expect(item.panelId).toBe('pb');
+      // 700 css px at zoom 1 (× dpr 1) -> quantized 768 -> mid.jpg (1024w)
+      expect(item.url).toBe(selectImageVariantForWidth(variants, width)!.src);
+    });
+
+    it('does not preload when settings.preload.strategy is none', () => {
+      const addSpy = spyOn(TestBed.inject(PreloadService), 'add');
+      component.viewMode = 'panel';
+      component.preload = { strategy: 'none' };
+      component.graph = { entry: 'pa', edges: [{ from: 'pa', to: 'pb' }] };
+      component.panels = {
+        pb: { layers: [{ id: 'bg', kind: 'image', assetId: 'img-next' }] } as unknown as Panel,
+      };
+      component.currentPanelId = 'pa';
+      component.panel = mockPanel;
+      component.ngOnChanges(panelChange(null, mockPanel));
+
+      expect(addSpy).not.toHaveBeenCalled();
     });
   });
 });
