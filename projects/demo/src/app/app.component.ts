@@ -14,6 +14,8 @@ interface EmbedConfigMessage {
     manifest?: PanelWaveManifest;
     locale?: string;
     autoplay?: boolean;
+    /** 'auto' | 'panel' | 'canvas' — passed to the shell's viewModeOverride. */
+    viewMode?: string;
     [key: string]: unknown;
   };
 }
@@ -39,6 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
   embedMode = false;
   locale = 'en-US';
   autoplay = false;
+  viewModeOverride: 'auto' | 'panel' | 'canvas' = 'auto';
 
   private readonly onEmbedMessage = (event: MessageEvent): void => {
     const message = event.data as EmbedConfigMessage | undefined;
@@ -49,6 +52,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.error = null;
     this.locale = typeof message.data.locale === 'string' ? message.data.locale : 'en-US';
     this.autoplay = message.data.autoplay === true;
+    this.viewModeOverride =
+      message.data.viewMode === 'panel' || message.data.viewMode === 'canvas'
+        ? message.data.viewMode
+        : 'auto';
     if (message.data.manifest) {
       // Recreate the shell so the new manifest initializes cleanly.
       this.manifest = null;

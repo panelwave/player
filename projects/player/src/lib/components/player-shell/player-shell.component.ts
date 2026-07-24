@@ -170,6 +170,14 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   @Input() showToolbar = false;
 
   /**
+   * View-mode override for hosts (e.g. the CMS preview harness):
+   * 'auto' (default) keeps the manifest-driven behavior (canvas chapters
+   * auto-enter canvas view); 'panel' forces classic panel view; 'canvas'
+   * enters canvas view whenever the chapter allows it.
+   */
+  @Input() viewModeOverride: 'auto' | 'panel' | 'canvas' = 'auto';
+
+  /**
    * Player ready
    */
   @Output() ready = new EventEmitter<void>();
@@ -833,6 +841,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     const enabled = Object.values(presets).some((preset) => preset?.canvasView === true);
     this.canvasViewAvailable = enabled && !!this.currentChapter?.canvas;
 
+    if (this.viewModeOverride === 'panel') {
+      if (this.viewMode === 'canvas') {
+        this.viewMode = 'panel';
+      }
+      return;
+    }
     if (this.canvasViewAvailable && this.viewMode === 'panel') {
       this.viewMode = 'canvas';
     } else if (!this.canvasViewAvailable && this.viewMode === 'canvas') {

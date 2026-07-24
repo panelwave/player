@@ -159,6 +159,22 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
       }
       this.approached.clear();
     }
+
+    // Reduced motion: the shell reframes with jumpTo instead of gliding —
+    // soften the hard cut with a short cross-fade (CameraMove's
+    // reducedMotionFallback contract; no gliding, ever).
+    if (
+      changes['currentPanelId'] &&
+      !changes['currentPanelId'].firstChange &&
+      this.reducedMotion &&
+      typeof this.elementRef.nativeElement.animate === 'function'
+    ) {
+      this.elementRef.nativeElement.animate(
+        [{ opacity: 0.15 }, { opacity: 1 }],
+        { duration: 220, easing: 'ease-out' }
+      );
+    }
+
     this.refreshStage();
   }
 
