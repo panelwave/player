@@ -198,7 +198,8 @@
   }
 </style>
 
-<div class="demo-container">
+<div class="demo-container" [class.embed-mode]="embedMode">
+  @if (!embedMode) {
   <header class="demo-header">
     <h1>{{ title }}</h1>
     <nav class="demo-switcher" aria-label="Demo selection">
@@ -225,6 +226,7 @@
       <div class="error-banner">{{ error }}</div>
     }
   </header>
+  }
 
   @if (loading) {
     <div class="loading-message">
@@ -235,8 +237,9 @@
     @if (manifest && !loading) {
       <pw-player-shell
         [manifest]="manifest"
-        [locale]="'en-US'"
-        [showToolbar]="true"
+        [locale]="locale"
+        [autoplay]="autoplay"
+        [showToolbar]="!embedMode"
         (ready)="onPlayerReady()"
         (panelChange)="onPanelChange($event)"
         (error)="onError($event)">

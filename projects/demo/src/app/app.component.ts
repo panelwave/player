@@ -1,8 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PlayerShellComponent } from 'player';
 import type { PanelWaveManifest } from 'player';
+
+/**
+ * Config message posted by an embedding host (the CMS preview iframe):
+ * { type: 'config', data: { manifest, locale?, autoplay?, variables?, ... } }
+ */
+interface EmbedConfigMessage {
+  type: 'config';
+  data: {
+    manifest?: PanelWaveManifest;
+    locale?: string;
+    autoplay?: boolean;
+    [key: string]: unknown;
+  };
+}
 
 @Component({
     selector: 'app-root',
@@ -10,11 +24,40 @@ import type { PanelWaveManifest } from 'player';
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'PanelWave Player Demo';
   manifest: PanelWaveManifest | null = null;
   loading = true;
   error: string | null = null;
+
+  /**
+   * Embed mode: driven by a host page via postMessage (the CMS preview
+   * embeds this app at /player/index.html and posts config into the
+   * iframe — see panelwave-cms docs/PLAYER_EMBED.md). Hides the demo
+   * chrome and waits for config instead of loading a bundled sample.
+   */
+  embedMode = false;
+  locale = 'en-US';
+  autoplay = false;
+
+  private readonly onEmbedMessage = (event: MessageEvent): void => {
+    const message = event.data as EmbedConfigMessage | undefined;
+    if (!message || message.type !== 'config' || !message.data) {
+      return;
+    }
+    this.embedMode = true;
+    this.error = null;
+    this.locale = typeof message.data.locale === 'string' ? message.data.locale : 'en-US';
+    this.autoplay = message.data.autoplay === true;
+    if (message.data.manifest) {
+      // Recreate the shell so the new manifest initializes cleanly.
+      this.manifest = null;
+      this.loading = false;
+      setTimeout(() => {
+        this.manifest = message.data.manifest as PanelWaveManifest;
+      });
+    }
+  };
 
   /** Available demo manifests (the player is re-created on switch). */
   readonly demos = [
@@ -36,13 +79,29 @@ export class AppComponent implements OnInit {
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
+    window.addEventListener('message', this.onEmbedMessage);
+
+    const params = new URLSearchParams(window.location.search);
+
+    // Embed mode without an explicit manifest: wait for the host's config
+    // message instead of flashing the bundled sample.
+    if (params.get('embed') === '1' || window.self !== window.top) {
+      this.embedMode = true;
+      this.loading = false;
+      return;
+    }
+
     // Load an arbitrary manifest via ?manifest=<url> — e.g. a CMS preview link
     // (http://localhost:4200/api/preview/<token>/manifest). Falls back to the
     // bundled sample. The manifest endpoint sends Access-Control-Allow-Origin: *
     // so this works cross-origin (run the demo on a free port, e.g. --port 4300,
     // while the CMS frontend keeps :4200 for its /api proxy).
-    const manifestUrl = new URLSearchParams(window.location.search).get('manifest');
+    const manifestUrl = params.get('manifest');
     this.loadManifest(manifestUrl || 'assets/sample-manifest.json');
+  }
+
+  ngOnDestroy() {
+    window.removeEventListener('message', this.onEmbedMessage);
   }
 
   /** Switch to another demo manifest (destroys and re-creates the player). */
