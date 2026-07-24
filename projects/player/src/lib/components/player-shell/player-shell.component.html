@@ -22,24 +22,48 @@
   <!-- Main player -->
   @if (!loading && !hasError && currentPanel) {
     <div class="player-content">
-      <!-- Viewport -->
-      <pw-viewport
-        [transition]="viewportTransition"
-        [panel]="currentPanel"
-        [page]="currentPage || null"
-        [panels]="currentChapter?.panels || {}"
-        [currentPanelId]="getCurrentPanelId() || null"
-        [viewMode]="viewMode"
-        [reducedMotion]="reducedMotion"
-        [locale]="locale"
-        [interactive]="true"
-        [showOverflowArrows]="true"
-        [speechEnabled]="speechEnabled"
-        (viewportClick)="onViewportClick()"
-        (swipe)="onSwipe($event)"
-        (navigatePrevious)="navigatePrevious()"
-        (navigateNext)="navigateNext()">
-      </pw-viewport>
+      <!-- Viewport (panel / page view) -->
+      @if (viewMode !== 'canvas') {
+        <pw-viewport
+          [transition]="viewportTransition"
+          [panel]="currentPanel"
+          [page]="currentPage || null"
+          [panels]="currentChapter?.panels || {}"
+          [currentPanelId]="getCurrentPanelId() || null"
+          [viewMode]="viewMode"
+          [reducedMotion]="reducedMotion"
+          [locale]="locale"
+          [interactive]="true"
+          [showOverflowArrows]="true"
+          [speechEnabled]="speechEnabled"
+          (viewportClick)="onViewportClick()"
+          (swipe)="onSwipe($event)"
+          (navigatePrevious)="navigatePrevious()"
+          (navigateNext)="navigateNext()">
+        </pw-viewport>
+      }
+
+      <!-- Canvas stage (infinite-canvas view, schema 1.4) -->
+      @if (viewMode === 'canvas') {
+        <pw-canvas-stage
+          [canvas]="currentChapter?.canvas || null"
+          [panels]="currentChapter?.panels || {}"
+          [graph]="currentChapter?.graph || null"
+          [currentPanelId]="getCurrentPanelId() || null"
+          [visitedPanelIds]="visitedPanelIds"
+          [locale]="locale"
+          [speechEnabled]="speechEnabled"
+          [workBalloonConfig]="manifestBalloonConfig"
+          [characters]="manifestCharacters"
+          [reducedMotion]="reducedMotion"
+          [interactive]="true"
+          (panelTap)="onCanvasPanelTap($event)"
+          (navigateNext)="navigateNext()"
+          (navigatePrevious)="navigatePrevious()"
+          (viewportClick)="onViewportClick()"
+          (cameraChange)="cameraChange.emit($event)">
+        </pw-canvas-stage>
+      }
 
       <!-- Full Toolbar -->
       <pw-toolbar

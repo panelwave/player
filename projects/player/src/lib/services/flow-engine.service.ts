@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import type { Edge, Graph, Settings, Transition } from '../types';
+import type { CameraMove, Edge, Graph, Settings, Transition } from '../types';
 import { evaluateJsonLogic } from '../utils';
 import { EntitlementService } from './entitlement.service';
 
@@ -14,6 +14,8 @@ import { EntitlementService } from './entitlement.service';
 export interface NavigationResult {
   nextPanelId: string | null;
   transition?: Transition;
+  /** Camera travel for canvas view (edge cameraMove or the format default). */
+  cameraMove?: CameraMove;
   action?: unknown[];
 }
 
@@ -38,7 +40,8 @@ export class FlowEngineService {
     graph: Graph,
     currentPanelId: string,
     context: Record<string, unknown>,
-    defaultTransition?: Transition
+    defaultTransition?: Transition,
+    defaultCameraMove?: CameraMove
   ): NavigationResult {
     // Get edges from current panel
     const edges = this.getEdgesFromPanel(graph, currentPanelId);
@@ -65,8 +68,63 @@ export class FlowEngineService {
       // Edges without a transition inherit the output format's default
       // (settings.outputPresets[format].defaultTransition, schema 1.2).
       transition: selectedEdge.transition ?? defaultTransition,
+      // Same inheritance for canvas-view camera moves (schema 1.4).
+      cameraMove: selectedEdge.cameraMove ?? defaultCameraMove,
       action: selectedEdge.action,
     };
+  }
+
+  /**
+   * Camera move to play when navigating BACK from `currentPanelId` to
+   * `previousPanelId`: the move of the edge originally traversed
+   * (previous -> current, falling back to the format default) with its
+   * waypoints reversed — the camera retraces the authored path.
+   */
+  getReturnCameraMove(
+    graph: Graph,
+    previousPanelId: string,
+    currentPanelId: string,
+    defaultCameraMove?: CameraMove
+  ): CameraMove | undefined {
+    const edge = graph.edges.find(
+      (candidate) => candidate.from === previousPanelId && candidate.to === currentPanelId
+    );
+    const move = edge?.cameraMove ?? defaultCameraMove;
+    if (!move) {
+      return undefined;
+    }
+    if (!move.waypoints || move.waypoints.length === 0) {
+      return { ...move };
+    }
+    return { ...move, waypoints: [...move.waypoints].reverse() };
+  }
+
+  /**
+   * Resolve the default camera move from settings.outputPresets — the
+   * canvas-view counterpart of {@link getDefaultTransition}, with the same
+   * no-format rule: without an active format, the default is only used when
+   * every defined preset agrees on it.
+   */
+  getDefaultCameraMove(settings?: Settings, format?: string): CameraMove | undefined {
+    const presets = settings?.outputPresets;
+    if (!presets) {
+      return undefined;
+    }
+
+    if (format) {
+      return presets[format]?.defaultCameraMove;
+    }
+
+    const defaults = Object.values(presets)
+      .map((preset) => preset?.defaultCameraMove)
+      .filter((move): move is CameraMove => !!move);
+    if (defaults.length === 0) {
+      return undefined;
+    }
+    const first = JSON.stringify(defaults[0]);
+    return defaults.every((move) => JSON.stringify(move) === first)
+      ? defaults[0]
+      : undefined;
   }
 
   /**

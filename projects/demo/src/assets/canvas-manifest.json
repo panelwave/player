@@ -1,0 +1,457 @@
+{
+  "panelwave": {
+    "version": "1.4.0",
+    "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
+    "generator": "panelwave-sample-gen/1.0"
+  },
+  "meta": {
+    "id": "work-infinite-canvas-demo",
+    "title": {
+      "en-US": "The Descent",
+      "de-DE": "Der Abstieg"
+    },
+    "description": {
+      "en-US": "Infinite-canvas demo (schema 1.4): one continuous world-space plane, camera moves along the graph, distance-as-time gaps, a hidden side branch, and an overview zoom. A single-column subset of the same model yields a webtoon-style vertical strip."
+    },
+    "creators": [
+      {
+        "role": "writer",
+        "name": "Test Author"
+      }
+    ],
+    "publisher": "Test Publisher",
+    "series": "Format Samples",
+    "issue": "#12",
+    "release_date": "2026-07-24",
+    "age_rating": "13+",
+    "tags": [
+      "test",
+      "infinite-canvas",
+      "canvas-view"
+    ],
+    "locales": [
+      "en-US",
+      "de-DE"
+    ],
+    "default_locale": "en-US",
+    "cover": "img-cover"
+  },
+  "assets": {
+    "catalog": [
+      {
+        "id": "img-cover",
+        "category": "image",
+        "alt": {
+          "en-US": "Cover: a rope disappearing into a dark shaft"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1018/1200/1600",
+            "w": 1200,
+            "h": 1600
+          }
+        ]
+      },
+      {
+        "id": "img-top",
+        "category": "image",
+        "alt": {
+          "en-US": "The cave mouth at daylight"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1015/1024/576",
+            "w": 1024,
+            "h": 576
+          },
+          {
+            "src": "https://picsum.photos/id/1015/256/144",
+            "w": 256,
+            "h": 144
+          }
+        ]
+      },
+      {
+        "id": "img-fall",
+        "category": "image",
+        "alt": {
+          "en-US": "Falling through darkness"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1016/768/576",
+            "w": 768,
+            "h": 576
+          }
+        ]
+      },
+      {
+        "id": "img-mid",
+        "category": "image",
+        "alt": {
+          "en-US": "A ledge with an abandoned lantern"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1019/768/576",
+            "w": 768,
+            "h": 576
+          }
+        ]
+      },
+      {
+        "id": "img-deep",
+        "category": "image",
+        "alt": {
+          "en-US": "The long climb down the chasm wall"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1021/768/1600",
+            "w": 768,
+            "h": 1600
+          }
+        ]
+      },
+      {
+        "id": "img-secret",
+        "category": "image",
+        "alt": {
+          "en-US": "A hidden glittering grotto"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1024/512/512",
+            "w": 512,
+            "h": 512
+          }
+        ]
+      },
+      {
+        "id": "img-end",
+        "category": "image",
+        "alt": {
+          "en-US": "The underground lake at the bottom"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1025/1024/576",
+            "w": 1024,
+            "h": 576
+          }
+        ]
+      },
+      {
+        "id": "img-deco-rope",
+        "category": "image",
+        "alt": {
+          "en-US": "A dangling rope connecting the panels"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1035/120/900",
+            "w": 120,
+            "h": 900
+          }
+        ]
+      }
+    ]
+  },
+  "variables": {
+    "definitions": [
+      {
+        "id": "hasLantern",
+        "type": "boolean",
+        "scope": "chapter",
+        "default": false
+      }
+    ]
+  },
+  "settings": {
+    "outputPresets": {
+      "flex-landscape": {
+        "panelView": true,
+        "canvasView": true,
+        "defaultCameraMove": {
+          "path": "direct",
+          "zoomProfile": "pull-back",
+          "durationMs": 900,
+          "easing": "ease-in-out"
+        }
+      },
+      "mobile-portrait": {
+        "panelView": true,
+        "canvasView": false
+      }
+    }
+  },
+  "chapters": [
+    {
+      "id": "ch-descent",
+      "title": {
+        "en-US": "Down",
+        "de-DE": "Hinab"
+      },
+      "panels": {
+        "p-top": {
+          "id": "p-top",
+          "title": {
+            "en-US": "The Cave Mouth"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-top-bg",
+              "assetId": "img-top",
+              "z": 0
+            }
+          ]
+        },
+        "p-fall": {
+          "id": "p-fall",
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-fall-bg",
+              "assetId": "img-fall",
+              "z": 0
+            }
+          ]
+        },
+        "p-mid": {
+          "id": "p-mid",
+          "title": {
+            "en-US": "The Ledge"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-mid-bg",
+              "assetId": "img-mid",
+              "z": 0
+            }
+          ],
+          "hotspots": [
+            {
+              "id": "hs-lantern",
+              "shape": {
+                "type": "rect",
+                "x": 0.62,
+                "y": 0.55,
+                "w": 0.18,
+                "h": 0.3
+              },
+              "label": {
+                "en-US": "Pick up the lantern",
+                "de-DE": "Die Laterne aufheben"
+              },
+              "action": {
+                "type": "setVariables",
+                "mutations": [
+                  {
+                    "op": "set",
+                    "var": "hasLantern",
+                    "value": true
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "p-deep": {
+          "id": "p-deep",
+          "title": {
+            "en-US": "The Chasm Wall"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-deep-bg",
+              "assetId": "img-deep",
+              "z": 0
+            }
+          ]
+        },
+        "p-secret": {
+          "id": "p-secret",
+          "title": {
+            "en-US": "The Grotto"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-secret-bg",
+              "assetId": "img-secret",
+              "z": 0
+            }
+          ]
+        },
+        "p-end": {
+          "id": "p-end",
+          "title": {
+            "en-US": "The Lake"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-end-bg",
+              "assetId": "img-end",
+              "z": 0
+            }
+          ]
+        }
+      },
+      "graph": {
+        "entry": "p-top",
+        "edges": [
+          {
+            "from": "p-top",
+            "to": "p-fall",
+            "cameraMove": {
+              "path": "direct",
+              "zoomProfile": "hold",
+              "durationMs": 1200,
+              "easing": "ease-in"
+            }
+          },
+          {
+            "from": "p-fall",
+            "to": "p-mid"
+          },
+          {
+            "from": "p-mid",
+            "to": "p-deep",
+            "condition": {
+              "!": [
+                {
+                  "var": "hasLantern"
+                }
+              ]
+            },
+            "priority": 1
+          },
+          {
+            "from": "p-mid",
+            "to": "p-secret",
+            "condition": {
+              "var": "hasLantern"
+            },
+            "priority": 2,
+            "cameraMove": {
+              "path": "waypoints",
+              "waypoints": [
+                {
+                  "x": 1350,
+                  "y": 2100
+                }
+              ],
+              "zoomProfile": "dive",
+              "durationMs": 1400,
+              "easing": "ease-in-out"
+            }
+          },
+          {
+            "from": "p-deep",
+            "to": "p-end",
+            "cameraMove": {
+              "zoomProfile": "pull-back",
+              "durationMs": 1100,
+              "reducedMotionFallback": {
+                "type": "fade",
+                "durationMs": 200
+              }
+            }
+          },
+          {
+            "from": "p-secret",
+            "to": "p-end",
+            "cameraMove": {
+              "zoomProfile": "pull-back",
+              "durationMs": 1300,
+              "reducedMotionFallback": {
+                "type": "fade",
+                "durationMs": 200
+              }
+            }
+          }
+        ]
+      },
+      "canvas": {
+        "background": {
+          "color": "#0b0b10"
+        },
+        "placements": {
+          "p-top": {
+            "x": 0,
+            "y": 0,
+            "w": 1024,
+            "h": 576
+          },
+          "p-fall": {
+            "x": 128,
+            "y": 1200,
+            "w": 768,
+            "h": 576
+          },
+          "p-mid": {
+            "x": 128,
+            "y": 2200,
+            "w": 768,
+            "h": 576
+          },
+          "p-deep": {
+            "x": 128,
+            "y": 3400,
+            "w": 768,
+            "h": 1600,
+            "enterFraming": {
+              "x": 0,
+              "y": 0,
+              "w": 1,
+              "h": 0.36
+            }
+          },
+          "p-secret": {
+            "x": 1500,
+            "y": 2900,
+            "w": 512,
+            "h": 512,
+            "r": -4,
+            "revealMode": "on-visit"
+          },
+          "p-end": {
+            "x": 0,
+            "y": 5400,
+            "w": 1024,
+            "h": 576,
+            "z": 1
+          }
+        },
+        "camera": {
+          "fitMode": "contain",
+          "overview": {
+            "enabled": true,
+            "maxZoomOut": 0.05
+          },
+          "freeRoam": "between-moves",
+          "bounds": "auto"
+        },
+        "decorations": [
+          {
+            "assetId": "img-deco-rope",
+            "x": 480,
+            "y": 600,
+            "w": 96,
+            "h": 580,
+            "z": 0,
+            "opacity": 0.8,
+            "parallaxDepth": 0.15
+          }
+        ]
+      }
+    }
+  ],
+  "tracking": {
+    "enabled": false
+  }
+}

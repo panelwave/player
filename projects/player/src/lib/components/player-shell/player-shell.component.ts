@@ -31,6 +31,9 @@ import type {
   Transition,
   VideoLayer,
   VideoTrackingPayload,
+  CameraMove,
+  ViewMode,
+  BalloonConfig,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -44,8 +47,11 @@ import { VideoControllerService } from '../../services/video-controller.service'
 import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { resolveStartMode } from '../../utils/video-config-utils';
 import { shouldReduceMotion } from '../../utils/animation-utils';
+import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 
 import { ViewportComponent } from '../viewport/viewport.component';
+import { CanvasStageComponent } from '../canvas-stage/canvas-stage.component';
+import { CanvasCameraService, CameraState } from '../../services/canvas-camera.service';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
 import { LanguageModalComponent } from '../modals/language-modal/language-modal.component';
 import { ThumbnailStripComponent } from '../overlays/thumbnail-strip/thumbnail-strip.component';
@@ -92,9 +98,11 @@ export interface EntitlementAdapter {
  */
 @Component({
     selector: 'pw-player-shell',
+    providers: [CanvasCameraService],
     imports: [
     TranslateModule,
     ViewportComponent,
+    CanvasStageComponent,
     ToolbarComponent,
     ThumbnailStripComponent,
     TocOverlayComponent,
@@ -197,6 +205,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   @Output() navigationAttempt = new EventEmitter<{ direction: 'next' | 'previous' | 'panel'; target?: string }>();
 
   /**
+   * Camera moved in canvas view (throttled).
+   */
+  @Output() cameraChange = new EventEmitter<CameraState>();
+
+  /**
    * Destroy subject
    */
   private destroy$ = new Subject<void>();
@@ -258,12 +271,24 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   /**
    * View mode
    */
-  viewMode: 'page' | 'panel' = 'panel';
+  viewMode: ViewMode = 'panel';
 
   /**
    * Page view available (has pages defined)
    */
   pageViewAvailable = false;
+
+  /**
+   * Canvas view available for the current chapter (chapter has a canvas
+   * layout AND some output preset enables canvasView — schema 1.4).
+   */
+  canvasViewAvailable = false;
+
+  /**
+   * Panels the trail has visited in the current chapter (drives canvas
+   * reveal modes and revisit-jumps).
+   */
+  visitedPanelIds: string[] = [];
 
   /**
    * Autoplay timer
@@ -351,7 +376,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     private manifestService: ManifestService,
     private variableStore: VariableStoreService,
     private flowEngine: FlowEngineService,
-    private translationService: TranslationService
+    private translationService: TranslationService,
+    private canvasCamera: CanvasCameraService
   ) {}
 
   /**
@@ -717,6 +743,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
 
       this.currentChapter = chapter;
       this.chapterChange.emit(chapter);
+      this.visitedPanelIds = [];
+      this.updateCanvasAvailability();
 
       // Get first panel in chapter from graph entry
       const entry = this.flowEngine.getEntry(chapter.graph);
@@ -739,7 +767,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    *   (already resolved against the outputPresets default). Omitted for
    *   non-adjacent jumps (TOC, initial load), which swap instantly.
    */
-  async navigateToPanel(chapterId: string, panelId: string, transition?: Transition): Promise<void> {
+  async navigateToPanel(
+    chapterId: string,
+    panelId: string,
+    transition?: Transition,
+    cameraMove?: CameraMove
+  ): Promise<void> {
     try {
       this.viewportTransition = transition ?? null;
       // Check entitlement
@@ -760,14 +793,74 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         throw new Error(`Panel not found: ${panelId}`);
       }
 
+      const chapterChanged = this.currentChapter !== chapter;
+      const leavingPanelId = this.getCurrentPanelId();
       this.currentChapter = chapter;
       this.currentPanel = panelData.panel;
       this.playerState.setCurrentPanel(panelData.panel);
+
+      if (chapterChanged) {
+        this.visitedPanelIds = [];
+        this.updateCanvasAvailability();
+      }
+      if (leavingPanelId && !chapterChanged && !this.visitedPanelIds.includes(leavingPanelId)) {
+        this.visitedPanelIds = [...this.visitedPanelIds, leavingPanelId];
+      }
+      if (!this.visitedPanelIds.includes(panelId)) {
+        this.visitedPanelIds = [...this.visitedPanelIds, panelId];
+      }
+
+      // Canvas view: glide the camera to the target panel's framing.
+      if (this.viewMode === 'canvas') {
+        this.flyCameraToPanel(chapter, panelId, cameraMove);
+      }
 
       this.panelChange.emit({ panel: panelData.panel, chapter });
     } catch (err) {
       this.handleError(err as Error);
     }
+  }
+
+  /**
+   * Canvas view is available when the current chapter has a canvas layout
+   * and at least one output preset enables `canvasView` (the player does not
+   * track an active output format — same pragmatic rule as
+   * `FlowEngineService.getDefaultTransition`). Entering a canvas chapter
+   * auto-switches to canvas view; leaving one falls back to panel view.
+   */
+  private updateCanvasAvailability(): void {
+    const presets = this.manifestService.getManifest()?.settings?.outputPresets ?? {};
+    const enabled = Object.values(presets).some((preset) => preset?.canvasView === true);
+    this.canvasViewAvailable = enabled && !!this.currentChapter?.canvas;
+
+    if (this.canvasViewAvailable && this.viewMode === 'panel') {
+      this.viewMode = 'canvas';
+    } else if (!this.canvasViewAvailable && this.viewMode === 'canvas') {
+      this.viewMode = 'panel';
+    }
+  }
+
+  /**
+   * Fly (or, under reduced motion, jump) the canvas camera to a panel's
+   * authored framing. The camera service caps travel speed; user input
+   * during the glide cancels it (the reader owns the camera).
+   */
+  private flyCameraToPanel(chapter: Chapter, panelId: string, cameraMove?: CameraMove): void {
+    const placement = chapter.canvas?.placements?.[panelId];
+    if (!placement) {
+      return;
+    }
+    const target = this.canvasCamera.frameForPlacement(placement);
+    if (this.reducedMotion || shouldReduceMotion()) {
+      // Reduced motion: no gliding, ever. (CameraMove.reducedMotionFallback
+      // degrades to an instant reframe; a cross-fade is a future refinement.)
+      this.canvasCamera.jumpTo(target);
+      return;
+    }
+    void this.canvasCamera.flyTo(
+      target,
+      cameraMove ?? this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings)
+    );
   }
 
   /**
@@ -789,11 +882,17 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         this.currentChapter.graph,
         currentPanelId,
         context,
-        this.flowEngine.getDefaultTransition(this.manifestService.getManifest()?.settings)
+        this.flowEngine.getDefaultTransition(this.manifestService.getManifest()?.settings),
+        this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings)
       );
 
       if (result.nextPanelId) {
-        await this.navigateToPanel(this.currentChapter.id, result.nextPanelId, result.transition);
+        await this.navigateToPanel(
+          this.currentChapter.id,
+          result.nextPanelId,
+          result.transition,
+          result.cameraMove
+        );
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -828,7 +927,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
           currentPanelId,
           this.flowEngine.getDefaultTransition(this.manifestService.getManifest()?.settings)
         );
-        await this.navigateToPanel(this.currentChapter.id, previousPanels[0], transition);
+        const cameraMove = this.flowEngine.getReturnCameraMove(
+          this.currentChapter.graph,
+          previousPanels[0],
+          currentPanelId,
+          this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings)
+        );
+        await this.navigateToPanel(this.currentChapter.id, previousPanels[0], transition, cameraMove);
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -909,7 +1014,18 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Toolbar event handlers
    */
   onToggleView(): void {
-    const newMode = this.viewMode === 'panel' ? 'page' : 'panel';
+    // Cycle through the modes available for the current chapter:
+    // panel -> page (if pages exist) -> canvas (if canvas exists) -> panel.
+    // Page view keeps its historical behavior of being attempted whenever a
+    // page contains the current panel, even without the manifest-level flag.
+    const modes: ViewMode[] = ['panel'];
+    if (this.pageViewAvailable || this.findPageContainingPanel()) {
+      modes.push('page');
+    }
+    if (this.canvasViewAvailable) {
+      modes.push('canvas');
+    }
+    const newMode = modes[(modes.indexOf(this.viewMode) + 1) % modes.length];
 
     if (newMode === 'page') {
       // Switch to page view - find page containing current panel
@@ -921,6 +1037,19 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         this.videoSequencer.start();
       } else {
         console.warn('No page found for current panel');
+      }
+    } else if (newMode === 'canvas') {
+      this.viewMode = 'canvas';
+      this.videoSequencer.reset();
+      // Land the camera on the current panel when entering canvas view.
+      if (this.currentChapter) {
+        const panelId = this.getCurrentPanelId();
+        if (panelId) {
+          const placement = this.currentChapter.canvas?.placements?.[panelId];
+          if (placement) {
+            this.canvasCamera.jumpTo(this.canvasCamera.frameForPlacement(placement));
+          }
+        }
       }
     } else {
       // Switch to panel view
@@ -934,6 +1063,55 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     }
 
     console.log('View mode:', this.viewMode);
+  }
+
+  /**
+   * Tap on a placed panel in canvas view. Traverses the matching out-edge of
+   * the current panel when its condition passes (the graph still gates
+   * movement); otherwise allows a revisit-jump to already-visited panels.
+   * Taps on unrelated panels are ignored — free roaming never mutates story
+   * state.
+   */
+  onCanvasPanelTap(panelId: string): void {
+    if (!this.currentChapter) {
+      return;
+    }
+    const currentPanelId = this.getCurrentPanelId();
+    if (!currentPanelId || panelId === currentPanelId) {
+      return;
+    }
+    const context = this.variableStore.createContext(this.currentChapter.id);
+    const edge = this.currentChapter.graph.edges.find(
+      (candidate) =>
+        candidate.from === currentPanelId &&
+        candidate.to === panelId &&
+        (!candidate.condition || evaluateJsonLogic(candidate.condition, context))
+    );
+    if (edge) {
+      this.navigationAttempt.emit({ direction: 'panel', target: panelId });
+      void this.navigateToPanel(
+        this.currentChapter.id,
+        panelId,
+        edge.transition,
+        edge.cameraMove ??
+          this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings)
+      );
+      return;
+    }
+    if (this.visitedPanelIds.includes(panelId)) {
+      this.navigationAttempt.emit({ direction: 'panel', target: panelId });
+      void this.navigateToPanel(this.currentChapter.id, panelId);
+    }
+  }
+
+  /** Balloon defaults for the canvas stage (same source as the viewport). */
+  get manifestBalloonConfig(): BalloonConfig | null {
+    return this.manifestService.getManifest()?.settings?.typography?.balloon_config ?? null;
+  }
+
+  /** Manifest characters for speech-bubble styling in canvas view. */
+  get manifestCharacters(): ManifestCharacter[] {
+    return this.manifestService.getManifest()?.meta?.characters ?? [];
   }
 
   onLocaleChange(locale: LocaleCode): void {
@@ -1108,6 +1286,31 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         this.toggleToolbar();
         break;
 
+      case 'o':
+      case 'O':
+        // Canvas overview: see the whole shape of the story.
+        if (this.viewMode === 'canvas') {
+          event.preventDefault();
+          void this.canvasCamera.toggleOverview(!(this.reducedMotion || shouldReduceMotion()));
+        }
+        break;
+
+      case '+':
+      case '=':
+        if (this.viewMode === 'canvas') {
+          event.preventDefault();
+          this.canvasZoomAtCenter(1.25);
+        }
+        break;
+
+      case '-':
+      case '_':
+        if (this.viewMode === 'canvas') {
+          event.preventDefault();
+          this.canvasZoomAtCenter(0.8);
+        }
+        break;
+
       case 'Escape':
         event.preventDefault();
         if (this.toolbarVisible) {
@@ -1122,6 +1325,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   onViewportClick(): void {
     this.showToolbarTemporarily();
+  }
+
+  /** Keyboard zoom for canvas view (viewport-center anchored). */
+  private canvasZoomAtCenter(factor: number): void {
+    this.canvasCamera.zoomAtCenter(factor);
   }
 
   /**

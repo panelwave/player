@@ -1,0 +1,67 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #101014;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+
+.canvas-viewport:active {
+  cursor: grabbing;
+}
+
+.canvas-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.canvas-backdrop {
+  position: absolute;
+  pointer-events: none;
+}
+
+.canvas-decoration {
+  position: absolute;
+  pointer-events: none;
+  max-width: none;
+}
+
+.canvas-panel {
+  position: absolute;
+  overflow: hidden;
+  background: #000;
+  contain: layout paint;
+  content-visibility: auto;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+}
+
+.canvas-panel.current {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.18),
+    0 8px 48px rgba(0, 0, 0, 0.6);
+}
+
+.canvas-panel-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(30, 30, 38, 0.92), rgba(10, 10, 14, 0.98));
+}
+
+.reduced-motion .canvas-world {
+  will-change: auto;
+}

@@ -15,6 +15,7 @@ import type {
 import type { Graph } from './graph.types';
 import type { Assets } from './asset.types';
 import type { Variables } from './variable.types';
+import type { CanvasLayout, CameraMove } from './canvas.types';
 
 /**
  * Root manifest structure for a PanelWave graphic novel
@@ -246,9 +247,16 @@ export interface Chapter {
   
   /** Navigation graph defining flow between panels */
   graph: Graph;
-  
+
   /** Sequence audio tracks that span multiple panels (optional) */
   sequenceAudioTracks?: SequenceAudioTrack[];
+
+  /**
+   * Infinite-canvas layout placing this chapter's panels on one continuous
+   * world-space plane (schema 1.4+). Chapters without it render in
+   * panel/page view as before.
+   */
+  canvas?: CanvasLayout;
 }
 
 /**
@@ -454,12 +462,22 @@ export interface PreloadSettings {
 export interface OutputPreset {
   /** Allow panel view mode */
   panelView?: boolean;
-  
+
   /** Allow page view mode */
   pageView?: boolean;
-  
+
+  /**
+   * Enable infinite-canvas view for this format (schema 1.4+, default false).
+   * Canvas view renders only when this is true AND the chapter has a canvas;
+   * otherwise the player falls back to panel view.
+   */
+  canvasView?: boolean;
+
   /** Default transition for this format (optional) */
   defaultTransition?: Transition;
+
+  /** Default camera move for edges without an explicit cameraMove (schema 1.4+). */
+  defaultCameraMove?: CameraMove;
 }
 
 /**

@@ -11,7 +11,7 @@
         [attr.aria-label]="'toolbar.view_toggle' | translate"
         [attr.title]="'toolbar.view_toggle' | translate"
         (click)="onToggleView()">
-        <span class="btn-icon"><pw-icon [name]="viewMode === 'page' ? 'lucideLayoutGrid' : 'lucideSquare'" /></span>
+        <span class="btn-icon"><pw-icon [name]="viewMode === 'page' ? 'lucideLayoutGrid' : viewMode === 'canvas' ? 'lucideGlobe' : 'lucideSquare'" /></span>
         <span class="btn-label">{{ 'toolbar.view' | translate }}</span>
       </button>
 

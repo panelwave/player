@@ -24,6 +24,11 @@ export class AppComponent implements OnInit {
       label: 'Video Sequencing',
       url: 'assets/video-sequencing-manifest.json',
     },
+    {
+      id: 'canvas',
+      label: 'Infinite Canvas',
+      url: 'assets/canvas-manifest.json',
+    },
   ];
 
   activeDemo = 'sample';

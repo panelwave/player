@@ -1,0 +1,73 @@
+<div
+  class="canvas-viewport"
+  [class.reduced-motion]="reducedMotion"
+  [style]="backgroundStyle()"
+  role="region"
+  aria-label="Canvas viewport"
+  tabindex="0"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerUp($event)"
+  (wheel)="onWheel($event)">
+
+  <div class="canvas-world" [style.transform]="worldTransform">
+
+    <!-- Tiled/stretched backdrop covering the canvas bounds -->
+    @if (worldBackgroundStyle(); as bgStyle) {
+      <div class="canvas-backdrop" [style]="bgStyle" aria-hidden="true"></div>
+    }
+
+    <!-- Non-panel set dressing -->
+    @for (decoration of visibleDecorations; track decoration.assetId + decoration.x + decoration.y) {
+      <img
+        class="canvas-decoration"
+        [src]="assetUrl(decoration.assetId)"
+        [style]="decorationStyle(decoration)"
+        alt=""
+        aria-hidden="true"
+        loading="lazy" />
+    }
+
+    <!-- Placed panels (virtualized) -->
+    @for (entry of stagePlacements; track trackPlacement($index, entry)) {
+      <div
+        class="canvas-panel"
+        [class.current]="isCurrent(entry.panelId)"
+        [class.unrevealed]="!entry.revealed"
+        [style]="placementStyle(entry)"
+        [attr.data-panel-id]="entry.panelId"
+        [attr.aria-hidden]="isCurrent(entry.panelId) ? null : true"
+        [attr.inert]="isCurrent(entry.panelId) ? null : ''">
+
+        @if (entry.revealed) {
+          @for (layer of entry.panel.layers; track layer.id) {
+            <pw-layer-renderer
+              [layer]="layer"
+              [locale]="locale"
+              viewMode="panel"
+              [viewActive]="isCurrent(entry.panelId)"
+              [reducedMotion]="reducedMotion"
+              [panelId]="entry.panelId">
+            </pw-layer-renderer>
+          }
+
+          @if (speechEnabled && entry.panel.speechBubbles && entry.panel.speechBubbles.length > 0) {
+            <pw-speech-bubbles
+              [bubbles]="entry.panel.speechBubbles"
+              [locale]="locale"
+              [containerWidth]="entry.placement.w"
+              [containerHeight]="entry.placement.h"
+              [readingScale]="getReadingScale()"
+              [workBalloonConfig]="workBalloonConfig"
+              [characters]="characters">
+            </pw-speech-bubbles>
+          }
+        } @else {
+          <!-- Unrevealed panel: dark veil, no content (spoiler protection) -->
+          <div class="canvas-panel-veil" aria-hidden="true"></div>
+        }
+      </div>
+    }
+  </div>
+</div>

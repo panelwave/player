@@ -120,7 +120,7 @@ export interface PlayerState {
 /**
  * View mode
  */
-export type ViewMode = 'page' | 'panel';
+export type ViewMode = 'page' | 'panel' | 'canvas';
 
 /**
  * Viewport state

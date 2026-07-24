@@ -5,6 +5,7 @@
 
 import type { Transition } from './manifest.types';
 import type { Mutation, JsonLogic } from './panel.types';
+import type { CameraMove } from './canvas.types';
 
 /**
  * Navigation graph defining panel flow
@@ -38,7 +39,14 @@ export interface Edge {
   
   /** Transition animation for this edge (optional) */
   transition?: Transition;
-  
+
+  /**
+   * Camera travel used when this edge is traversed in canvas view
+   * (schema 1.4+). Inherits like `transition`: edge → format preset
+   * `defaultCameraMove` → built-in direct move. Ignored outside canvas view.
+   */
+  cameraMove?: CameraMove;
+
   /** Priority for edge selection (lower = higher priority) (optional) */
   priority?: number;
   

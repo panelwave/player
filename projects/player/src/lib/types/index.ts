@@ -102,6 +102,24 @@ export type {
   AssetReference,
 } from './asset.types';
 
+// Infinite canvas types (schema 1.4)
+export type {
+  WorldPoint,
+  WorldRect,
+  CameraMove,
+  CameraMovePath,
+  CameraZoomProfile,
+  CanvasRevealMode,
+  CanvasPlacement,
+  CanvasDecoration,
+  CanvasFitMode,
+  CanvasFreeRoam,
+  CanvasOverviewPolicy,
+  CanvasCameraPolicy,
+  CanvasBackground,
+  CanvasLayout,
+} from './canvas.types';
+
 // Graph types
 export type {
   Graph,

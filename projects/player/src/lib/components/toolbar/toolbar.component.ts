@@ -40,7 +40,7 @@ export class ToolbarComponent {
   /**
    * Current view mode
    */
-  @Input() viewMode: 'page' | 'panel' = 'panel';
+  @Input() viewMode: 'page' | 'panel' | 'canvas' = 'panel';
 
   /**
    * Page view available

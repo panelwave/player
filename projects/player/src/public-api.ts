@@ -56,6 +56,15 @@ export {
 // Components
 export { PwIconComponent } from './lib/components/icon/pw-icon.component';
 export { PlayerShellComponent } from './lib/components/player-shell/player-shell.component';
+export {
+  CanvasStageComponent,
+  CANVAS_PANEL_BUDGET,
+  type StagePlacement,
+} from './lib/components/canvas-stage/canvas-stage.component';
+export {
+  CanvasCameraService,
+  type CameraState,
+} from './lib/services/canvas-camera.service';
 export { SpeechBubblesComponent } from './lib/components/overlays/speech-bubbles/speech-bubbles.component';
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
