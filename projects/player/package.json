@@ -1,12 +1,24 @@
 {
-  "name": "player",
-  "version": "0.0.1",
+  "name": "@panelwave/player",
+  "version": "1.0.0",
+  "description": "Open-source Angular library for PanelWave interactive graphic novels",
+  "keywords": [
+    "angular",
+    "graphic-novel",
+    "webcomic",
+    "interactive",
+    "player"
+  ],
+  "license": "MIT",
   "homepage": "https://docs.panelwave.org/player/overview",
   "peerDependencies": {
-    "@angular/common": "^17.3.0",
-    "@angular/core": "^17.3.0"
+    "@angular/common": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@ngx-translate/core": "^17.0.0",
+    "rxjs": "^7.8.0"
   },
   "dependencies": {
+    "json-logic-js": "^2.0.5",
     "tslib": "^2.3.0"
   },
   "sideEffects": false
