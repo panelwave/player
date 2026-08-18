@@ -200,12 +200,8 @@ panelwave-player/
 │       └── src/
 │           └── assets/            # Sample manifests
 │
-├── docs/                          # Comprehensive documentation (24 files)
-│   ├── SETUP_COMPLETE.md
-│   ├── TYPE_DEFINITIONS_COMPLETE.md
-│   ├── *_COMPLETE.md             # Component/service docs
-│   ├── BALLOON_RENDERER_SYNC.md  # Keeping ComicBalloon in sync with the CMS
-│   └── TESTS_COMPLETE.md
+├── docs/
+│   └── BALLOON_RENDERER_SYNC.md  # Keeping ComicBalloon in sync with the CMS
 │
 ├── .editorconfig
 ├── .prettierrc
@@ -288,49 +284,14 @@ balloons are measured with the real fonts even when they load late.
 
 ## 📚 Documentation
 
-### Getting Started
-- [Setup Guide](docs/SETUP_COMPLETE.md) - Project setup and configuration
-- [Development Checklist](../_spec_player/DEVELOPMENT_CHECKLIST.md) - Phase-by-phase tasks
-- [Implementation Plan](../_spec_player/IMPLEMENTATION_PLAN.md) - 8-phase roadmap
-- [Technical Specification](../_spec_player/TECHNICAL_SPECIFICATION.md) - Architecture details
-
-### Core Implementation
-- [Type Definitions](docs/TYPE_DEFINITIONS_COMPLETE.md) - TypeScript interfaces
-- [Utilities](docs/UTILITIES_COMPLETE.md) - Helper functions
-- [Player State Service](docs/PLAYER_STATE_SERVICE_COMPLETE.md) - State management
-- [Manifest Service](docs/MANIFEST_SERVICE_COMPLETE.md) - Manifest loading
-- [Variables & Conditions](docs/VARIANTS_CONDITIONS_COMPLETE.md) - Dynamic content
-
-### Navigation & Flow
-- [Flow Engine](docs/VARIANTS_CONDITIONS_COMPLETE.md) - Graph navigation logic
-
-### Rendering Engine
-- [Viewport Component](docs/VIEWPORT_COMPONENT_COMPLETE.md) - Main renderer
-- [Layer Components](docs/LAYER_COMPONENTS_COMPLETE.md) - Image, video, text layers
-- [Interaction Overlays](docs/INTERACTION_OVERLAYS_COMPLETE.md) - Hotspots, speech bubbles
-- [Overlay Components](docs/OVERLAY_COMPONENTS_COMPLETE.md) - UI overlays
+- [Library README](projects/player/README.md) - Public API, components, and usage
+- [Library Structure](projects/player/STRUCTURE.md) - Directory organization
 - [Balloon Renderer Sync](docs/BALLOON_RENDERER_SYNC.md) - Keeping ComicBalloon in sync with the CMS
 
-### UI Components
-- [Player Shell](docs/PLAYER_SHELL_COMPONENT_COMPLETE.md) - Main container
-- [Toolbar](docs/TOOLBAR_COMPONENT_COMPLETE.md) - Bottom controls
-- [Modal Components](docs/MODAL_COMPONENTS_COMPLETE.md) - Settings, ToC, help
-- [Helper Components](docs/HELPER_COMPONENTS_COMPLETE.md) - Shared UI
-
-### Media Management
-- [Image Cache Service](docs/IMAGE_CACHE_SERVICE_COMPLETE.md) - LRU caching
-- [Audio Engine Service](docs/AUDIO_ENGINE_SERVICE_COMPLETE.md) - WebAudio mixer
-- [Video Controller Service](docs/VIDEO_CONTROLLER_SERVICE_COMPLETE.md) - Video playback
-- [Preload Service](docs/PRELOAD_SERVICE_COMPLETE.md) - Asset preloading
-
-### Advanced Features
-- [Entitlement & Paywall](docs/ENTITLEMENT_PAYWALL_COMPLETE.md) - Monetization
-- [Plugin API](docs/PLUGIN_API_COMPLETE.md) - Extension system
-- [Tracking Service](docs/TRACKING_SERVICE_COMPLETE.md) - Analytics
-- [Export Interfaces](docs/EXPORT_INTERFACES_COMPLETE.md) - Public API
-
-### Testing
-- [Tests Complete](docs/TESTS_COMPLETE.md) - Test coverage report
+Planning documents and the per-component implementation reports live in the
+internal PanelWave docs repo (not part of this repository): specs and the
+development checklist under `docs/technical/player/`, historical phase and
+component completion reports under `docs/archive/player/repo-history/`.
 
 ---
 
@@ -756,8 +717,8 @@ Built with:
 
 ## 📞 Links
 
-- **Documentation:** [docs/](docs/)
-- **Specifications:** [../_spec_player/](../_spec_player/)
+- **Documentation:** [projects/player/README.md](projects/player/README.md)
+- **Specifications:** internal docs repo (`docs/technical/player/`)
 - **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player) (coming soon)
 - **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.4.0)
 - **Issues:** GitHub Issues (coming soon)
