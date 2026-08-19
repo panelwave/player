@@ -13,7 +13,6 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   OnChanges,
-  SimpleChanges,
 } from '@angular/core';
 
 import type {
@@ -86,7 +85,7 @@ export class HotspotsOverlayComponent implements OnChanges {
    */
   visibleHotspots: Hotspot[] = [];
 
-  ngOnChanges(_changes: SimpleChanges): void {
+  ngOnChanges(): void {
     const ctx = this.context;
     this.visibleHotspots = (this.hotspots ?? []).filter(
       (h) => !h.visibleIf || !ctx || evaluateJsonLogic(h.visibleIf, ctx)
