@@ -44,3 +44,8 @@ Thumbs.db
 # Commercial fonts (Blambot Ames Pro) — not redistributable in this MIT package.
 # Host apps license these separately; see projects/player/src/assets/fonts/balloon/LICENSES.md
 projects/player/src/assets/fonts/balloon/amespro-*
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/

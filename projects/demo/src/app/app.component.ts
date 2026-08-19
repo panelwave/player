@@ -43,6 +43,17 @@ export class AppComponent implements OnInit, OnDestroy {
   autoplay = false;
   viewModeOverride: 'auto' | 'panel' | 'canvas' = 'auto';
 
+  /**
+   * Dev/testing hook: `?deny=<panelId>[,<panelId>…]` installs an
+   * entitlement adapter that denies access to the listed panels, so the
+   * shell's gating path (navigation blocked, error state) can be
+   * exercised without a real entitlement backend — used by the E2E suite.
+   */
+  entitlementAdapter?: {
+    hasAccess(panelId: string): Promise<boolean>;
+    getContext(): Promise<Record<string, unknown>>;
+  };
+
   private readonly onEmbedMessage = (event: MessageEvent): void => {
     const message = event.data as EmbedConfigMessage | undefined;
     if (!message || message.type !== 'config' || !message.data) {
@@ -89,6 +100,15 @@ export class AppComponent implements OnInit, OnDestroy {
     window.addEventListener('message', this.onEmbedMessage);
 
     const params = new URLSearchParams(window.location.search);
+
+    const deny = params.get('deny');
+    if (deny) {
+      const denied = new Set(deny.split(','));
+      this.entitlementAdapter = {
+        hasAccess: (panelId: string) => Promise.resolve(!denied.has(panelId)),
+        getContext: () => Promise.resolve({}),
+      };
+    }
 
     // Embed mode without an explicit manifest: wait for the host's config
     // message instead of flashing the bundled sample.

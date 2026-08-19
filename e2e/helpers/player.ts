@@ -1,0 +1,79 @@
+import { Page, Route, expect } from '@playwright/test';
+
+/**
+ * Shared helpers for the player E2E suite.
+ *
+ * The demo manifests reference external placeholder images
+ * (picsum.photos, i.pravatar.cc). E2E must not depend on third-party
+ * uptime, so every external image request is fulfilled with a tiny
+ * locally generated PNG instead.
+ */
+
+/** 1x1 dark-blue PNG, base64. Served for every stubbed image request. */
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkKPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+const fulfillPng = (route: Route) =>
+  route.fulfill({ status: 200, contentType: 'image/png', body: TINY_PNG });
+
+/** Stub all external image hosts used by the demo manifests. */
+export async function stubExternalImages(page: Page): Promise<void> {
+  await page.route('**://picsum.photos/**', fulfillPng);
+  await page.route('**://fastly.picsum.photos/**', fulfillPng);
+  await page.route('**://i.pravatar.cc/**', fulfillPng);
+  // Catch-all for any other cross-origin image so no test ever waits on
+  // the network. Same-origin (localhost) requests are never intercepted.
+  await page.route(
+    (url) => url.hostname !== 'localhost' && url.hostname !== '127.0.0.1',
+    (route) =>
+      route.request().resourceType() === 'image' ? fulfillPng(route) : route.fulfill({ status: 204, body: '' })
+  );
+}
+
+/**
+ * Serve `manifest` for the demo app's default sample-manifest request.
+ * Must be called before `page.goto()`.
+ */
+export async function stubManifest(page: Page, manifest: unknown): Promise<void> {
+  await page.route('**/assets/sample-manifest.json', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(manifest),
+    })
+  );
+}
+
+/**
+ * Open the demo app and wait until the player shell has rendered the
+ * first panel (`.player-content` only exists once the shell is ready).
+ */
+export async function openPlayer(page: Page, query = ''): Promise<void> {
+  await stubExternalImages(page);
+  await page.goto('/' + query);
+  // Generous timeout: first loads against the ng dev server can be slow
+  // when several browser workers start simultaneously.
+  await expect(page.locator('pw-player-shell .player-content')).toBeVisible({ timeout: 30_000 });
+}
+
+/**
+ * Locator for a panel's background layer inside the CURRENT (entering)
+ * frame in panel view. The sample manifest names layers `ly-<panelId>-bg`,
+ * so this doubles as the panel-identity assertion — panel view has no
+ * `data-panel-id` attribute of its own.
+ */
+export function currentPanelLayer(page: Page, panelId: string) {
+  return page.locator(`.t-frame [data-layer-id="ly-${panelId}-bg"]`);
+}
+
+/** Assert the player currently shows `panelId` (panel view). */
+export async function expectPanel(page: Page, panelId: string, timeout?: number): Promise<void> {
+  await expect(currentPanelLayer(page, panelId)).toBeVisible({ timeout });
+}
+
+/** The toolbar element is always in the DOM; visibility is a CSS class. */
+export function toolbarContainer(page: Page) {
+  return page.locator('.toolbar-container');
+}
