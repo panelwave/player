@@ -16,6 +16,8 @@ interface EmbedConfigMessage {
     autoplay?: boolean;
     /** 'auto' | 'panel' | 'canvas' — passed to the shell's viewModeOverride. */
     viewMode?: string;
+    /** Initial variable values keyed by variable id (seeded at init; may set read-only vars). */
+    variables?: Record<string, unknown>;
     [key: string]: unknown;
   };
 }
@@ -54,6 +56,14 @@ export class AppComponent implements OnInit, OnDestroy {
     getContext(): Promise<Record<string, unknown>>;
   };
 
+  /**
+   * Initial variable values passed to the shell (seeded privileged at
+   * init, so manifest-declared read-only variables can be populated).
+   * Sources: the embed host's config message, or the dev/testing hook
+   * `?vars=<url-encoded JSON>` — e.g. ?vars={"user.age":12}.
+   */
+  initialVariables?: Record<string, unknown>;
+
   private readonly onEmbedMessage = (event: MessageEvent): void => {
     const message = event.data as EmbedConfigMessage | undefined;
     if (!message || message.type !== 'config' || !message.data) {
@@ -67,6 +77,10 @@ export class AppComponent implements OnInit, OnDestroy {
       message.data.viewMode === 'panel' || message.data.viewMode === 'canvas'
         ? message.data.viewMode
         : 'auto';
+    this.initialVariables =
+      message.data.variables && typeof message.data.variables === 'object'
+        ? message.data.variables
+        : undefined;
     if (message.data.manifest) {
       // Recreate the shell so the new manifest initializes cleanly.
       this.manifest = null;
@@ -100,6 +114,18 @@ export class AppComponent implements OnInit, OnDestroy {
     window.addEventListener('message', this.onEmbedMessage);
 
     const params = new URLSearchParams(window.location.search);
+
+    const vars = params.get('vars');
+    if (vars) {
+      try {
+        const parsed = JSON.parse(vars);
+        if (parsed && typeof parsed === 'object') {
+          this.initialVariables = parsed;
+        }
+      } catch {
+        console.warn('Ignoring invalid ?vars= JSON');
+      }
+    }
 
     const deny = params.get('deny');
     if (deny) {

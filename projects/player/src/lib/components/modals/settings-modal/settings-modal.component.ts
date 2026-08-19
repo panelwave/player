@@ -186,10 +186,11 @@ export class SettingsModalComponent implements OnInit {
   }
 
   /**
-   * Get public variables only
+   * Get the reader-editable variables: public visibility (the default
+   * when the manifest omits it) and not read-only.
    */
   getPublicVariables(): VariableDefinition[] {
-    return this.variables.filter((v) => v.visibility === 'public');
+    return this.variables.filter((v) => v.visibility !== 'private' && !v.readOnly);
   }
 
   /**

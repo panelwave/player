@@ -138,6 +138,27 @@ export class VariableStoreService {
   }
 
   /**
+   * Privileged initialization write for host-supplied values (the shell's
+   * `initialVariables` input, the entitlement adapter's context). Unlike
+   * `set()`, this MAY seed `readOnly` variables — that is exactly how an
+   * externally-sourced value (e.g. a verified `user.age`) gets in while
+   * staying immune to in-story mutations and settings edits. Types are
+   * still validated against the definition; invalid values are dropped
+   * with a warning. Each value lands in its definition's declared scope
+   * (undeclared ids default to `global`).
+   */
+  seed(values: Record<string, unknown>): void {
+    Object.entries(values).forEach(([id, value]) => {
+      const def = this.definitions.get(id);
+      if (def && !this.validateType(value, def)) {
+        console.warn(`[VariableStore] Seed value for "${id}" failed type validation - dropped`);
+        return;
+      }
+      this.setInternal(id, value, def?.scope ?? 'global');
+    });
+  }
+
+  /**
    * Internal set method (bypasses read-only and validation checks)
    */
   private setInternal(id: string, value: unknown, scope: VariableScope, scopeId?: string): void {

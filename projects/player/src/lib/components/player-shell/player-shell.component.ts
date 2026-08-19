@@ -37,6 +37,7 @@ import type {
   BalloonConfig,
   Hotspot,
   VariableContext,
+  VariableDefinition,
   LocalizedString,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
@@ -141,6 +142,19 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Entitlement adapter for paywall integration
    */
   @Input() entitlementAdapter?: EntitlementAdapter;
+
+  /**
+   * Host-supplied initial variable values, keyed by variable id and
+   * applied once at initialization through a privileged path: unlike
+   * runtime mutations, these MAY seed variables the manifest declares
+   * `readOnly` — the intended channel for externally-sourced facts
+   * (e.g. a verified `user.age` from the host's account system) that
+   * in-story content and the settings UI must not be able to change.
+   * Values land in each definition's declared scope (global for
+   * undeclared ids); the entitlement adapter's context is applied after
+   * and wins on collisions.
+   */
+  @Input() initialVariables?: Record<string, unknown>;
 
   /**
    * Initial locale
@@ -324,6 +338,18 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * absence means automatic condition-based selection. Session-scoped.
    */
   private readonly variantOverrides = new Map<string, string | null>();
+
+  /**
+   * The manifest's variable definitions (registered with the store at
+   * init; passed to the settings modal's Variables tab).
+   */
+  variableDefinitions: VariableDefinition[] = [];
+
+  /**
+   * Snapshot of current variable values, rebuilt each time the settings
+   * modal opens (the modal edits a local copy and emits on save).
+   */
+  settingsVariableValues: Record<string, unknown> = {};
 
   /**
    * View mode
@@ -535,12 +561,23 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         throw new Error('No manifest or manifestUrl provided');
       }
 
-      // Initialize entitlement context
+      // Register the manifest's variable definitions: initializes defaults
+      // and arms type validation + the read-only guard for every later
+      // set()/mutation.
+      this.variableDefinitions = this.extractVariableDefinitions();
+      this.variableStore.setDefinitions(this.variableDefinitions);
+
+      // Host-supplied initial values (privileged: may seed read-only vars).
+      if (this.initialVariables) {
+        this.variableStore.seed(this.initialVariables);
+      }
+
+      // Initialize entitlement context. Seeded (not set()) so entitlement
+      // facts can populate read-only variables; applied after
+      // initialVariables so the adapter's values win on collisions.
       if (this.entitlementAdapter) {
         const context = await this.entitlementAdapter.getContext();
-        Object.entries(context).forEach(([key, value]) => {
-          this.variableStore.set(key, value, 'global');
-        });
+        this.variableStore.seed(context);
       }
 
       // Set initial locale and configure translations
@@ -1375,7 +1412,60 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onOpenSettings(): void {
+    // Fresh snapshot of the current values for the modal's local copy.
+    const values: Record<string, unknown> = {};
+    for (const def of this.variableDefinitions) {
+      values[def.id] = this.variableStore.get(def.id, def.scope, this.scopeIdFor(def));
+    }
+    this.settingsVariableValues = values;
     this.settingsVisible = true;
+  }
+
+  /**
+   * A settings-modal variable edit (emitted per changed key on save).
+   * Routed through set(), so read-only definitions stay untouchable and
+   * types are validated; conditional content re-resolves immediately.
+   */
+  onSettingsVariableChange(change: { key: string; value: unknown }): void {
+    const def = this.variableDefinitions.find((d) => d.id === change.key);
+    this.variableStore.set(
+      change.key,
+      change.value,
+      def?.scope ?? 'session',
+      def ? this.scopeIdFor(def) : undefined
+    );
+    this.refreshVariableContext();
+    this.variableChange.emit({ key: change.key, value: change.value });
+  }
+
+  /** Scope id for chapter-/page-scoped variable definitions. */
+  private scopeIdFor(def: VariableDefinition): string | undefined {
+    if (def.scope === 'chapter') return this.currentChapter?.id;
+    if (def.scope === 'page') return this.currentPage?.id;
+    return undefined;
+  }
+
+  /**
+   * Normalize the manifest's `variables` block into a definitions array.
+   * The schema shape is { definitions: VariableDefinition[] }; a legacy
+   * map keyed by variable id is tolerated as well.
+   */
+  private extractVariableDefinitions(): VariableDefinition[] {
+    const variables = this.manifestService.getManifest()?.variables as
+      | { definitions?: VariableDefinition[] }
+      | Record<string, VariableDefinition>
+      | undefined;
+    if (!variables || typeof variables !== 'object') {
+      return [];
+    }
+    const definitions = (variables as { definitions?: VariableDefinition[] }).definitions;
+    if (Array.isArray(definitions)) {
+      return definitions.filter((d) => !!d && typeof d.id === 'string');
+    }
+    // Legacy map form: { "<id>": definition }
+    return Object.values(variables).filter(
+      (d): d is VariableDefinition => !!d && typeof d === 'object' && typeof d.id === 'string'
+    );
   }
 
   onOpenCharacters(): void {

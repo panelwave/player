@@ -161,6 +161,11 @@
       @if (settingsVisible) {
         <pw-settings-modal
           [visible]="settingsVisible"
+          [variables]="variableDefinitions"
+          [variableValues]="settingsVariableValues"
+          [availableLocales]="availableLocales"
+          [locale]="locale"
+          (variableChange)="onSettingsVariableChange($event)"
           (close)="settingsVisible = false">
         </pw-settings-modal>
       }

@@ -500,6 +500,49 @@ describe('VariableStoreService', () => {
     });
   });
 
+  describe('seed (privileged initialization)', () => {
+    beforeEach(() => {
+      service.setDefinitions([
+        {
+          id: 'user.age',
+          type: 'number',
+          scope: 'global',
+          readOnly: true,
+          visibility: 'private',
+        },
+        { id: 'style.mode', type: 'enum', enum: ['us', 'eu'], default: 'us', scope: 'session' },
+      ]);
+    });
+
+    it('seeds read-only variables that set() must refuse', () => {
+      // Runtime writes are rejected...
+      service.set('user.age', 30, 'global');
+      expect(service.get('user.age', 'global')).toBeUndefined();
+
+      // ...but privileged seeding works.
+      service.seed({ 'user.age': 12 });
+      expect(service.get('user.age', 'global')).toBe(12);
+
+      // And the value stays immune to later runtime writes/mutations.
+      service.set('user.age', 99, 'global');
+      service.applyMutation({ op: 'set', var: 'user.age', value: 99 }, 'global');
+      expect(service.get('user.age', 'global')).toBe(12);
+    });
+
+    it('routes seeded values into the definition scope, undeclared ids into global', () => {
+      service.seed({ 'style.mode': 'eu', loose: true });
+      expect(service.get('style.mode', 'session')).toBe('eu');
+      expect(service.get('loose', 'global')).toBe(true);
+    });
+
+    it('drops seed values that fail type validation', () => {
+      service.seed({ 'user.age': 'not-a-number' });
+      expect(service.get('user.age', 'global')).toBeUndefined();
+      service.seed({ 'style.mode': 'invalid-option' });
+      expect(service.get('style.mode', 'session')).toBe('us'); // default kept
+    });
+  });
+
   describe('Observable Store', () => {
     it('should emit store updates', (done) => {
       let emissionCount = 0;
