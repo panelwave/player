@@ -496,4 +496,38 @@ describe('VariableStoreService', () => {
       service.set('test', 'value', 'global');
     });
   });
+
+  describe('applyMutations', () => {
+    it('applies a batch using each definition scope', () => {
+      service.setDefinitions([
+        { id: 'score', type: 'integer', scope: 'global', default: 0 },
+        { id: 'seen', type: 'boolean', scope: 'chapter', default: false },
+      ] as VariableDefinition[]);
+
+      service.applyMutations(
+        [
+          { op: 'increment', var: 'score', value: 5 },
+          { op: 'set', var: 'seen', value: true },
+        ],
+        { chapterId: 'ch1' }
+      );
+
+      expect(service.get('score', 'global')).toBe(5);
+      expect(service.get('seen', 'chapter', 'ch1')).toBe(true);
+    });
+
+    it('defaults undeclared variables to session scope and never throws', () => {
+      service.applyMutations([{ op: 'set', var: 'path.choice', value: 'left' }]);
+      expect(service.get('path.choice', 'session')).toBe('left');
+    });
+
+    it('skips chapter-scoped mutations when no chapterId is provided', () => {
+      service.setDefinitions([
+        { id: 'seen', type: 'boolean', scope: 'chapter', default: false },
+      ] as VariableDefinition[]);
+
+      service.applyMutations([{ op: 'set', var: 'seen', value: true }]);
+      expect(service.get('seen', 'chapter', 'ch1')).toBeUndefined();
+    });
+  });
 });
