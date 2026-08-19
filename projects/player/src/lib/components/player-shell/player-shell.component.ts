@@ -877,6 +877,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * visibleIf-dependent hotspots/variants update.
    */
   onHotspotActivate(evt: { hotspot: Hotspot; x: number; y: number; panelId: string | null }): void {
+    this.trackHotspotClick(evt.panelId, evt.x, evt.y, evt.hotspot.id);
     const effect = this.hotspotAction.execute(evt.hotspot.action, {
       chapterId: this.currentChapter?.id,
     });
@@ -909,7 +910,23 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Click on panel content that hit no hotspot
    */
   onDeadClick(evt: { x: number; y: number; panelId: string | null }): void {
-    // Tracking lands with the hotspot click tracking.
+    this.trackHotspotClick(evt.panelId, evt.x, evt.y);
+  }
+
+  /**
+   * Track a hotspot_click event. Dead clicks (no hotspotId) reuse the same
+   * event type with hit=false — the payload contract the CMS heatmap
+   * endpoint queries: { panelId, chapterId, hotspotId?, x, y, hit }.
+   */
+  private trackHotspotClick(panelId: string | null, x: number, y: number, hotspotId?: string): void {
+    this.trackingService.track('hotspot_click', {
+      panelId: panelId ?? this.getCurrentPanelId() ?? undefined,
+      chapterId: this.currentChapter?.id,
+      hotspotId,
+      x: Math.round(x * 10000) / 10000,
+      y: Math.round(y * 10000) / 10000,
+      hit: !!hotspotId,
+    });
   }
 
   /**
