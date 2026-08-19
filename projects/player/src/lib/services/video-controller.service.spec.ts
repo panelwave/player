@@ -2,7 +2,7 @@
  * Video Controller Service Tests
  */
 
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { VideoControllerService, VideoEvent } from './video-controller.service';
 
 describe('VideoControllerService', () => {
@@ -66,12 +66,26 @@ describe('VideoControllerService', () => {
       expect(playEvent?.videoId).toBe('test-video');
     });
 
-    it('should handle play errors', async () => {
+    it('should handle play errors (error state after the automatic retry fails)', fakeAsync(() => {
       (mockVideo.play as jasmine.Spy).and.returnValue(Promise.reject(new Error('Play failed')));
 
-      await expectAsync(service.play(mockVideo, 'test-video')).toBeRejected();
+      let rejected = false;
+      service.play(mockVideo, 'test-video').catch(() => (rejected = true));
+      flushMicrotasks();
+      expect(rejected).toBeTrue();
+
+      // The initial failure schedules an automatic retry -> still loading.
+      expect(service.getState()).toBe('loading');
+
+      // The retry (RETRY_DELAY * 1 = 1000ms) fails too -> error state + event.
+      const events: VideoEvent[] = [];
+      service.events$.subscribe((event) => events.push(event));
+      tick(1000);
+      flushMicrotasks();
+
       expect(service.getState()).toBe('error');
-    });
+      expect(events.some((e) => e.type === 'error' && e.videoId === 'test-video')).toBeTrue();
+    }));
   });
 
   describe('one-unmuted-video rule', () => {

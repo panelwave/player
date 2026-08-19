@@ -342,9 +342,11 @@ export function calculateOptimalDimensions(
     width = height * aspectRatio;
   }
 
+  // Floor rather than round: the fitted box must never grow beyond the
+  // ratio-true size (337.5 -> 337, not 338).
   return {
-    width: Math.round(width),
-    height: Math.round(height),
+    width: Math.floor(width),
+    height: Math.floor(height),
   };
 }
 

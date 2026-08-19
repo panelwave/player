@@ -102,6 +102,9 @@ export class PreloadService {
    */
   private idleCallbackId?: number;
 
+  /** Low-priority items handed to requestIdleCallback but not started yet. */
+  private idlePending = 0;
+
   constructor(private imageCache: ImageCacheService) {
     this.detectNetwork();
     this.adjustConcurrencyByNetwork();
@@ -223,6 +226,13 @@ export class PreloadService {
    */
   clearQueue(): void {
     this.queue = [];
+    if (this.idleCallbackId && 'cancelIdleCallback' in window) {
+      (window as unknown as { cancelIdleCallback(id: number): void }).cancelIdleCallback(
+        this.idleCallbackId
+      );
+      this.idleCallbackId = undefined;
+    }
+    this.idlePending = 0;
   }
 
   /**
@@ -274,7 +284,11 @@ export class PreloadService {
    * Schedule load during idle time
    */
   private scheduleIdleLoad(item: PreloadItem): void {
+    // An idle-scheduled item is out of the queue array but not yet
+    // loading — track it so getQueueStatus() still accounts for it.
+    this.idlePending++;
     const callback = () => {
+      this.idlePending = Math.max(0, this.idlePending - 1);
       this.loadItem(item);
     };
 
@@ -437,7 +451,9 @@ export class PreloadService {
    */
   getQueueStatus() {
     return {
-      queued: this.queue.length,
+      // Idle-scheduled low-priority items count as queued: they left the
+      // queue array but have not started loading yet.
+      queued: this.queue.length + this.idlePending,
       loading: this.currentConcurrent,
       loaded: this.loaded.size,
       maxConcurrent: this.maxConcurrent,
