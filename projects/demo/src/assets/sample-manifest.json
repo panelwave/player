@@ -672,6 +672,33 @@
               "z": 0
             }
           ],
+          "variants": [
+            {
+              "id": "var-alley-shortcut",
+              "when": {
+                "==": [
+                  {
+                    "var": "path.choice"
+                  },
+                  "alley"
+                ]
+              },
+              "overrides": {
+                "title": {
+                  "en-US": "Alleyway (Shortcut)",
+                  "de-DE": "Gasse (Abkürzung)"
+                },
+                "layers": [
+                  {
+                    "kind": "image",
+                    "id": "ly-p1-3-bg-alt",
+                    "assetId": "img-p1-4",
+                    "z": 0
+                  }
+                ]
+              }
+            }
+          ],
           "hotspots": [
             {
               "id": "hs-poster",

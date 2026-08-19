@@ -22,7 +22,9 @@ test.describe('hotspot actions (sample manifest)', () => {
     await expectPanel(page, 'p1-2');
 
     await page.getByRole('button', { name: 'Slip into the alley' }).click();
-    await expectPanel(page, 'p1-3');
+    // The goTo mutation sets path.choice = "alley", so p1-3 renders its
+    // variant layer stack (covered in depth in variants.spec.ts).
+    await expect(page.locator('.t-frame [data-layer-id="ly-p1-3-bg-alt"]')).toBeVisible();
   });
 
   test('openModal hotspot shows the action modal, Escape closes it', async ({ page }) => {
@@ -70,7 +72,7 @@ test.describe('hotspot actions (sample manifest)', () => {
     await hotspot.focus();
     await expect(hotspot).toBeFocused();
     await page.keyboard.press('Enter');
-    await expectPanel(page, 'p1-3');
+    await expect(page.locator('.t-frame [data-layer-id="ly-p1-3-bg-alt"]')).toBeVisible();
   });
 });
 

@@ -1,13 +1,14 @@
 /**
  * Minimal manifest for the conditional-content E2E tests: a hotspot
- * mutation (setVariables) flips JSON-Logic `visibleIf` conditions, which
- * is the variant mechanism the player implements today (panel-level
- * `variants` arrays are typed in the format but not yet consumed at
- * runtime — see docs/technical/OPEN_TASKS.md).
+ * mutation (setVariables) flips both JSON-Logic `visibleIf` conditions
+ * AND a panel-level variant.
  *
  * Panel `pA` starts with only "Take the lantern" visible. Activating it
- * sets `hasLantern = true` (session scope), which hides that hotspot and
- * reveals "Use the lantern", whose goTo leads to `pB`.
+ * sets `hasLantern = true` (session scope), which (a) hides that hotspot
+ * and reveals "Use the lantern" (visibleIf), and (b) applies the
+ * `var-lit` variant, replacing the panel's layers (the variant does not
+ * override `hotspots`, so the base hotspots stay). "Use the lantern"
+ * goes to `pB`.
  */
 export const conditionalManifest = {
   panelwave: {
@@ -64,6 +65,16 @@ export const conditionalManifest = {
         pA: {
           title: { 'en-US': 'Dark Room' },
           layers: [{ kind: 'image', id: 'ly-pA-bg', assetId: 'img-a', z: 0 }],
+          variants: [
+            {
+              id: 'var-lit',
+              when: { '==': [{ var: 'hasLantern' }, true] },
+              overrides: {
+                title: { 'en-US': 'Lit Room' },
+                layers: [{ kind: 'image', id: 'ly-pA-lit', assetId: 'img-b', z: 0 }],
+              },
+            },
+          ],
           hotspots: [
             {
               id: 'hs-take',
