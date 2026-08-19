@@ -473,9 +473,30 @@ describe('VariableStoreService', () => {
       // Set same variable in multiple scopes
       service.set('override', 'global', 'global');
       service.set('override', 'chapter', 'chapter', 'ch-1');
-      
+
       const context = service.createContext('ch-1');
       expect(context['override']).toBe('chapter'); // Chapter overrides global
+    });
+
+    it('should expand dot-namespaced keys into nested objects (json-logic var paths)', () => {
+      service.set('path.choice', 'alley', 'session');
+      service.set('path.visited', 3, 'session');
+      service.set('user.age', 21, 'global');
+
+      const context = service.createContext();
+      expect(context['path']).toEqual({ choice: 'alley', visited: 3 });
+      expect(context['user']).toEqual({ age: 21 });
+      // Flat keys remain available as well.
+      expect(context['path.choice']).toBe('alley');
+    });
+
+    it('should not clobber a non-object value when expanding dotted keys', () => {
+      service.set('flag', 'plain', 'session');
+      service.set('flag.sub', true, 'session');
+
+      const context = service.createContext();
+      expect(context['flag']).toBe('plain');
+      expect(context['flag.sub']).toBe(true);
     });
   });
 

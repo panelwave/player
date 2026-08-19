@@ -353,7 +353,48 @@ export class VariableStoreService {
       Object.assign(context, store.page[pageId]);
     }
 
+    // json-logic-js resolves {"var": "path.choice"} by splitting on '.'
+    // and traversing nested objects, but variables are stored under
+    // their flat dotted key. Expand dotted keys into nested structures
+    // so manifest conditions (edges, visibleIf, variants) can reference
+    // dot-namespaced variable ids. The flat key is kept as well.
+    this.expandDottedKeys(context);
+
     return context;
+  }
+
+  /**
+   * Expand flat dotted keys ('path.choice') into nested objects
+   * ({ path: { choice } }), merging into any existing plain object and
+   * never clobbering non-object values on the way down.
+   */
+  private expandDottedKeys(context: VariableContext): void {
+    for (const key of Object.keys(context)) {
+      if (!key.includes('.')) {
+        continue;
+      }
+      const parts = key.split('.');
+      let node: Record<string, unknown> = context;
+      let ok = true;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        const existing = node[part];
+        if (existing === undefined || existing === null) {
+          const child: Record<string, unknown> = {};
+          node[part] = child;
+          node = child;
+        } else if (typeof existing === 'object' && !Array.isArray(existing)) {
+          node = existing as Record<string, unknown>;
+        } else {
+          // A non-object value occupies this segment - leave it alone.
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        node[parts[parts.length - 1]] = context[key];
+      }
+    }
   }
 
   /**
