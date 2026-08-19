@@ -430,18 +430,21 @@ export type BalloonConfigOverride = Partial<BalloonConfig> & {
 export interface Hotspot {
   /** Unique hotspot identifier */
   id: string;
-  
+
   /** Hotspot shape definition */
   shape: HotspotShape;
-  
-  /** Localized accessibility label */
+
+  /** Localized label */
   label: LocalizedString;
-  
+
+  /** Localized accessibility label (optional, overrides label for screen readers) */
+  ariaLabel?: LocalizedString;
+
   /** Action to perform when activated */
   action: HotspotAction;
-  
-  /** Condition for hotspot availability (optional) */
-  enabledIf?: JsonLogic;
+
+  /** Condition for hotspot visibility (optional) */
+  visibleIf?: JsonLogic;
 }
 
 /**
@@ -498,32 +501,78 @@ export interface HotspotPolygon {
 }
 
 /**
- * Hotspot action
+ * Hotspot action (discriminated union matching the schema's HotspotAction oneOf)
  */
-export interface HotspotAction {
-  /** Action type */
-  type: 'goTo' | 'setVariables' | 'openExtras' | 'openModal' | 'pluginEvent';
-  
-  /** Target panel ID (for goTo) (optional) */
-  to?: string;
-  
-  /** Variable mutations to apply (optional) */
+export type HotspotAction =
+  | HotspotGoToAction
+  | HotspotSetVariablesAction
+  | HotspotOpenExtrasAction
+  | HotspotOpenModalAction
+  | HotspotPluginEventAction;
+
+/**
+ * Navigate to another panel, optionally applying mutations and a transition
+ */
+export interface HotspotGoToAction {
+  type: 'goTo';
+
+  /** Target panel ID */
+  to: string;
+
+  /** Variable mutations applied before navigating (optional) */
   mutations?: Mutation[];
-  
-  /** Transition to use (for goTo) (optional) */
+
+  /** Transition to use (optional) */
   transition?: Transition;
-  
-  /** Extra item ID to open (for openExtras) (optional) */
-  extraId?: string;
-  
-  /** Modal type to open (for openModal) (optional) */
-  modalType?: string;
-  
-  /** Plugin event name (for pluginEvent) (optional) */
-  pluginEvent?: string;
-  
-  /** Additional action data (optional) */
-  data?: Record<string, unknown>;
+}
+
+/**
+ * Apply variable mutations without navigating
+ */
+export interface HotspotSetVariablesAction {
+  type: 'setVariables';
+
+  /** Variable mutations to apply */
+  mutations: Mutation[];
+}
+
+/**
+ * Open the extras viewer at a specific item
+ */
+export interface HotspotOpenExtrasAction {
+  type: 'openExtras';
+
+  /** Extras item ID to open */
+  extrasId: string;
+}
+
+/**
+ * Open a simple modal with localized title and content
+ */
+export interface HotspotOpenModalAction {
+  type: 'openModal';
+
+  /** Localized modal title */
+  title: LocalizedString;
+
+  /** Localized modal body text */
+  content: LocalizedString;
+}
+
+/**
+ * Dispatch an event to a plugin
+ */
+export interface HotspotPluginEventAction {
+  type: 'pluginEvent';
+
+  /** Target plugin ID */
+  pluginId: string;
+
+  /** Event name */
+  event: string;
+
+  /** Event payload (optional) */
+  payload?: unknown;
 }
 
 /**
