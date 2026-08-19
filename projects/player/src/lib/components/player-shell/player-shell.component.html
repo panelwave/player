@@ -26,9 +26,9 @@
       @if (viewMode !== 'canvas') {
         <pw-viewport
           [transition]="viewportTransition"
-          [panel]="currentPanel"
+          [panel]="effectivePanel || currentPanel"
           [page]="currentPage || null"
-          [panels]="currentChapter?.panels || {}"
+          [panels]="resolvedPanels"
           [graph]="currentChapter?.graph || null"
           [currentPanelId]="getCurrentPanelId() || null"
           [viewMode]="viewMode"
@@ -52,7 +52,7 @@
       @if (viewMode === 'canvas') {
         <pw-canvas-stage
           [canvas]="currentChapter?.canvas || null"
-          [panels]="currentChapter?.panels || {}"
+          [panels]="resolvedPanels"
           [graph]="currentChapter?.graph || null"
           [currentPanelId]="getCurrentPanelId() || null"
           [visitedPanelIds]="visitedPanelIds"
@@ -86,7 +86,7 @@
         [autoplayProgress]="autoplayProgress"
         [secondsPerPanel]="secondsPerPanel"
         [thumbnailsVisible]="thumbnailsVisible"
-        [hasAlternatives]="false"
+        [hasAlternatives]="!!(currentPanel && currentPanel.variants && currentPanel.variants.length)"
         [hasBranches]="false"
         [showSocial]="true"
         (toggleView)="onToggleView()"
@@ -122,6 +122,14 @@
         (navigate)="onThumbnailNavigate($event)"
         (close)="onThumbnailsClose()">
       </pw-thumbnail-strip>
+
+      <!-- Active variant indicator -->
+      @if (activeVariantId) {
+        <div class="variant-active" role="status" aria-live="polite"
+             [attr.aria-label]="'Active panel variant: ' + activeVariantId">
+          {{ activeVariantId }}
+        </div>
+      }
 
       <!-- PanelWave floating icon -->
       @if (!toolbarVisible) {

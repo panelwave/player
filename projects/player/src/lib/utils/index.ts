@@ -94,3 +94,13 @@ export {
   selectImageVariantForWidth,
   quantizeTargetWidth,
 } from './image-variant-utils';
+
+// Panel variant utilities (manifest PanelVariant runtime)
+export {
+  selectVariant,
+  applyVariantOverrides,
+  resolvePanelVariant,
+  resolvePanels,
+  type ResolvedPanel,
+  type VariantContext,
+} from './variant-utils';

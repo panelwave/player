@@ -25,7 +25,6 @@ export { PreloadService, type PreloadItem, type PreloadPriority } from './lib/se
 export { TrackingService, type TrackingEvent } from './lib/services/tracking.service';
 export { EntitlementService } from './lib/services/entitlement.service';
 export { PluginHostService } from './lib/services/plugin-host.service';
-export { VariantService } from './lib/services/variant.service';
 export { ExportService } from './lib/services/export.service';
 export { TranslationService } from './lib/services/translation.service';
 
@@ -51,6 +50,12 @@ export {
   resolveMuted,
   resolveVideoConfig,
   type EffectiveVideoConfig,
+  selectVariant,
+  applyVariantOverrides,
+  resolvePanelVariant,
+  resolvePanels,
+  type ResolvedPanel,
+  type VariantContext,
 } from './lib/utils';
 
 // Components
@@ -72,6 +77,5 @@ export { HotspotActionService, type HotspotUiEffect } from './lib/services/hotsp
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';
-export { VariantSelectorComponent } from './lib/components/variant-selector/variant-selector.component';
 export { VideoLayerComponent, type LayerViewMode } from './lib/components/layers/video-layer/video-layer.component';
 export * from './lib/player.component';

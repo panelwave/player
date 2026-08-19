@@ -52,6 +52,7 @@ import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { resolveStartMode } from '../../utils/video-config-utils';
 import { shouldReduceMotion } from '../../utils/animation-utils';
 import { evaluateJsonLogic } from '../../utils/json-logic-utils';
+import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { CanvasStageComponent } from '../canvas-stage/canvas-stage.component';
@@ -302,6 +303,27 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * evaluation. Refreshed on navigation and after mutations are applied.
    */
   variableContext: VariableContext | null = null;
+
+  /**
+   * Variant-resolved view of the current panel: what the viewport
+   * renders and what autoplay/video timing read. Equals `currentPanel`
+   * (same reference) when no variant applies. `currentPanel` itself
+   * stays the raw manifest panel — identity comparisons depend on it.
+   */
+  effectivePanel?: Panel;
+
+  /** Id of the variant applied to the current panel, if any. */
+  activeVariantId?: string;
+
+  /** Variant-resolved panels of the current chapter (page/canvas views). */
+  resolvedPanels: Record<string, Panel> = {};
+
+  /**
+   * Manual variant selection per panel id (Alt toolbar cycling):
+   * a variant id forces that variant, `null` forces the base panel,
+   * absence means automatic condition-based selection. Session-scoped.
+   */
+  private readonly variantOverrides = new Map<string, string | null>();
 
   /**
    * View mode
@@ -741,6 +763,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       .subscribe((panel) => {
         if (panel && this.currentChapter) {
           this.currentPanel = panel;
+          // Resolve variants before emitting so consumers (and the
+          // tracked event) see the effective panel state.
+          this.refreshResolvedPanels();
           this.panelChange.emit({ panel, chapter: this.currentChapter });
           this.trackPanelView(panel, this.currentChapter);
         }
@@ -871,6 +896,36 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   private refreshVariableContext(): void {
     this.variableContext = this.variableStore.createContext(this.currentChapter?.id);
+    this.refreshResolvedPanels();
+  }
+
+  /**
+   * Re-resolve panel variants against the current variable context.
+   * Called whenever variables change or the current panel/chapter moves,
+   * so variant-driven content reacts immediately (spec: "Re-evaluate
+   * variants" after every mutation).
+   */
+  private refreshResolvedPanels(): void {
+    const panels = this.currentChapter?.panels ?? {};
+    this.resolvedPanels = resolvePanels(panels, this.variableContext);
+
+    if (!this.currentPanel) {
+      this.effectivePanel = undefined;
+      this.activeVariantId = undefined;
+      return;
+    }
+
+    const panelId = this.getCurrentPanelId();
+    const forced = panelId !== undefined ? this.variantOverrides.get(panelId) : undefined;
+    const resolved = resolvePanelVariant(this.currentPanel, this.variableContext, forced);
+    this.effectivePanel = resolved.panel;
+    this.activeVariantId = resolved.variantId;
+
+    // A manual override on the current panel must also win in the
+    // page/canvas panel record.
+    if (panelId && this.resolvedPanels[panelId] !== resolved.panel) {
+      this.resolvedPanels = { ...this.resolvedPanels, [panelId]: resolved.panel };
+    }
   }
 
   /**
@@ -1120,6 +1175,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   setVariable(key: string, value: unknown, scope: 'global' | 'chapter' | 'page' | 'session' | 'persistent' = 'session'): void {
     this.variableStore.set(key, value, scope);
+    // Conditional content (visibleIf, variants) reacts immediately.
+    this.refreshVariableContext();
     this.variableChange.emit({ key, value });
   }
 
@@ -1325,8 +1382,39 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.charactersVisible = true;
   }
 
+  /**
+   * Cycle the manual variant selection of the current panel:
+   * automatic (conditions) → each variant in order → base panel →
+   * back to automatic. The selection is a session-scoped shadow
+   * override; navigation keeps it per panel.
+   */
   onCycleAlternative(): void {
-    console.log('Cycle alternative panels - not yet implemented');
+    const panelId = this.getCurrentPanelId();
+    const variants = this.currentPanel?.variants;
+    if (!panelId || !variants?.length) {
+      return;
+    }
+
+    const current = this.variantOverrides.has(panelId)
+      ? this.variantOverrides.get(panelId)
+      : undefined;
+
+    let next: string | null | undefined;
+    if (current === undefined) {
+      next = variants[0].id;
+    } else if (current === null) {
+      next = undefined; // base → back to automatic
+    } else {
+      const index = variants.findIndex((v) => v.id === current);
+      next = index >= 0 && index < variants.length - 1 ? variants[index + 1].id : null;
+    }
+
+    if (next === undefined) {
+      this.variantOverrides.delete(panelId);
+    } else {
+      this.variantOverrides.set(panelId, next);
+    }
+    this.refreshResolvedPanels();
   }
 
   onShowBranches(): void {
@@ -1523,13 +1611,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.stopAutoplay(); // Clear any existing timer / pending media waits
 
     if (this.viewMode === 'panel') {
-      const videoIds = this.onViewVideoLayerIds(this.currentPanel);
+      const videoIds = this.onViewVideoLayerIds(this.effectivePanel ?? this.currentPanel);
       if (videoIds.length > 0) {
         // Media-event driven: wait for every on-view video's pass (the
         // longest pass wins). Progress display uses durationMs as estimate.
         this.pendingVideoPasses = new Set(videoIds);
         this.autoplayDuration =
-          this.currentPanel?.durationMs ?? this.secondsPerPanel * 1000;
+          (this.effectivePanel ?? this.currentPanel)?.durationMs ?? this.secondsPerPanel * 1000;
         this.autoplayProgress = 0;
         this.autoplayStartTime = Date.now();
         this.startAutoplayProgress();
@@ -1543,7 +1631,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     }
 
     // Use panel-specific durationMs if available, otherwise use global setting (in seconds)
-    const durationMs = this.currentPanel?.durationMs ?? (this.secondsPerPanel * 1000);
+    const durationMs = (this.effectivePanel ?? this.currentPanel)?.durationMs ?? (this.secondsPerPanel * 1000);
 
     // Ensure we have a valid duration
     if (!durationMs || durationMs <= 0) {
@@ -1653,7 +1741,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * counterpart of `VideoLayerComponent.emitStallSkip()` (page view).
    */
   private trackVideoStallSkip(panelId: string | undefined, videoId: string): void {
-    const layer = this.currentPanel?.layers?.find((l) => l.id === videoId);
+    const layer = (this.effectivePanel ?? this.currentPanel)?.layers?.find((l) => l.id === videoId);
     const assetId = typeof layer?.assetId === 'string' ? layer.assetId : undefined;
     const payload: VideoTrackingPayload = {
       panelId,
@@ -1771,6 +1859,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
       const firstPanelId = this.currentPage.readingOrder[0];
       this.currentPanel = this.currentChapter.panels[firstPanelId];
+      this.refreshResolvedPanels();
     }
 
     this.onPageChanged();
@@ -1811,6 +1900,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
       const firstPanelId = this.currentPage.readingOrder[0];
       this.currentPanel = this.currentChapter.panels[firstPanelId];
+      this.refreshResolvedPanels();
     }
 
     this.onPageChanged();

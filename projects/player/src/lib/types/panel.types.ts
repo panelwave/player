@@ -576,17 +576,26 @@ export interface HotspotPluginEventAction {
 }
 
 /**
- * Panel variant based on conditions
+ * The subset of Panel a variant may override (schema `PanelPartial`).
+ * Variants do not recurse, so `variants` itself is excluded; every
+ * present property REPLACES the base panel's value wholesale.
+ */
+export type PanelPartial = Partial<Omit<Panel, 'variants'>>;
+
+/**
+ * Panel variant based on conditions. Variants are evaluated in
+ * manifest order; the first whose `when` matches the variable context
+ * applies.
  */
 export interface PanelVariant {
   /** Unique variant identifier */
   id: string;
-  
+
   /** Condition for this variant to apply */
   when: JsonLogic;
-  
+
   /** Property overrides for this variant */
-  overrides: Partial<Panel>;
+  overrides: PanelPartial;
 }
 
 /**

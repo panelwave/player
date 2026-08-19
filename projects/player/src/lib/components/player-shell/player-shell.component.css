@@ -173,6 +173,22 @@
 }
 
 /* Floating PanelWave icon */
+/* Active-variant indicator chip (bottom-left, above the toolbar) */
+.variant-active {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 50;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 120, 215, 0.85);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
 .floating-icon {
   position: absolute;
   bottom: 20px;
