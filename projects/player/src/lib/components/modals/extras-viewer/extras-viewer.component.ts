@@ -10,6 +10,8 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   HostListener,
+  OnChanges,
+  SimpleChanges,
 } from '@angular/core';
 
 import { TranslateModule } from '@ngx-translate/core';
@@ -47,11 +49,16 @@ export interface Extra {
     styleUrls: ['./extras-viewer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExtrasViewerComponent {
+export class ExtrasViewerComponent implements OnChanges {
   /**
    * List of extras
    */
   @Input() extras: Extra[] = [];
+
+  /**
+   * Extra item to open when the viewer becomes visible (hotspot openExtras)
+   */
+  @Input() initialExtraId?: string;
 
   /**
    * Current locale
@@ -210,6 +217,15 @@ export class ExtrasViewerComponent {
    */
   isAccessible(extra: Extra): boolean {
     return !extra.gated || this.hasPremiumAccess;
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['visible'] && this.visible && this.initialExtraId) {
+      const match = this.extras.find((e) => e.id === this.initialExtraId);
+      if (match) {
+        this.openExtra(match);
+      }
+    }
   }
 
   /**

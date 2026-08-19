@@ -38,10 +38,13 @@
           [showOverflowArrows]="true"
           [speechEnabled]="speechEnabled"
           [preload]="manifestPreloadSettings"
+          [variableContext]="variableContext"
           (viewportClick)="onViewportClick()"
           (swipe)="onSwipe($event)"
           (navigatePrevious)="navigatePrevious()"
-          (navigateNext)="navigateNext()">
+          (navigateNext)="navigateNext()"
+          (hotspotActivate)="onHotspotActivate($event)"
+          (deadClick)="onDeadClick($event)">
         </pw-viewport>
       }
 
@@ -54,6 +57,7 @@
           [currentPanelId]="getCurrentPanelId() || null"
           [visitedPanelIds]="visitedPanelIds"
           [locale]="locale"
+          [variableContext]="variableContext"
           [speechEnabled]="speechEnabled"
           [workBalloonConfig]="manifestBalloonConfig"
           [characters]="manifestCharacters"
@@ -176,8 +180,21 @@
       @if (extrasVisible) {
         <pw-extras-viewer
           [visible]="extrasVisible"
-          (close)="extrasVisible = false">
+          [extras]="extrasList"
+          [initialExtraId]="extrasInitialId"
+          [locale]="locale"
+          (close)="extrasVisible = false; extrasInitialId = undefined">
         </pw-extras-viewer>
+      }
+
+      @if (actionModalVisible) {
+        <pw-action-modal
+          [visible]="actionModalVisible"
+          [locale]="locale"
+          [title]="actionModalTitle"
+          [content]="actionModalContent"
+          (close)="actionModalVisible = false">
+        </pw-action-modal>
       }
 
       @if (shareVisible) {

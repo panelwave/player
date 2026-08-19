@@ -236,6 +236,39 @@ export class VariableStoreService {
   }
 
   /**
+   * Apply a manifest Mutation[] (hotspot/edge actions). Scope comes from the
+   * variable's definition; undeclared variables fall back to session scope.
+   * The schema's `increment` carries its delta in `value`, so a numeric value
+   * is mapped onto the store's `amount`.
+   * @param mutations - Mutations in manifest shape ({ op, var, value? })
+   * @param ids - Scope identifiers for chapter/page-scoped variables
+   */
+  applyMutations(
+    mutations: Array<{ op: string; var: string; value?: unknown }>,
+    ids?: { chapterId?: string; pageId?: string }
+  ): void {
+    for (const m of mutations ?? []) {
+      const def = this.definitions.get(m.var);
+      const scope: VariableScope = def?.scope ?? 'session';
+      const scopeId =
+        scope === 'chapter' ? ids?.chapterId : scope === 'page' ? ids?.pageId : undefined;
+      if ((scope === 'chapter' || scope === 'page') && !scopeId) {
+        continue;
+      }
+      this.applyMutation(
+        {
+          op: m.op,
+          var: m.var,
+          value: m.value,
+          amount: typeof m.value === 'number' ? m.value : undefined,
+        } as VariableMutation,
+        scope,
+        scopeId
+      );
+    }
+  }
+
+  /**
    * Reset a scope
    * @param scope - Scope to reset
    * @param scopeId - Scope identifier (for chapter/page scopes)

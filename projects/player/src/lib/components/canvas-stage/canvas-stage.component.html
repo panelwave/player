@@ -53,6 +53,19 @@
             </pw-layer-renderer>
           }
 
+          <!-- Hotspots render-only in canvas view: taps keep their
+               edge-navigation semantics (documented deferral) -->
+          @if (entry.panel.hotspots && entry.panel.hotspots.length > 0) {
+            <pw-hotspots-overlay
+              [hotspots]="entry.panel.hotspots"
+              [locale]="locale"
+              [containerWidth]="entry.placement.w"
+              [containerHeight]="entry.placement.h"
+              [context]="variableContext"
+              [interactive]="false">
+            </pw-hotspots-overlay>
+          }
+
           @if (speechEnabled && entry.panel.speechBubbles && entry.panel.speechBubbles.length > 0) {
             <pw-speech-bubbles
               [bubbles]="entry.panel.speechBubbles"

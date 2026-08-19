@@ -1,91 +1,77 @@
 /**
- * Hotspots Overlay Component Styles
+ * Hotspots Overlay Styles
+ * Host contract mirrors pw-speech-bubbles (absolute, inset 0, pointer-events
+ * none) but stacks BELOW bubbles: bubbles use z-index 20, hotspots 15.
  */
 
-.hotspots-overlay {
+:host {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 15;
 }
 
-.hotspot-group {
+.hotspots-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hotspot-shape rect,
+.hotspot-shape circle,
+.hotspot-shape polygon {
+  /* Near-invisible fill keeps the whole shape a pointer target */
+  fill: rgba(255, 255, 255, 0.001);
+  stroke: transparent;
+  stroke-width: 2;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.hotspots-svg.non-interactive .hotspot-shape rect,
+.hotspots-svg.non-interactive .hotspot-shape circle,
+.hotspots-svg.non-interactive .hotspot-shape polygon {
+  pointer-events: none;
+  cursor: default;
+}
+
+.hotspot-shape:hover rect,
+.hotspot-shape:focus-visible rect,
+.hotspot-shape:hover circle,
+.hotspot-shape:focus-visible circle,
+.hotspot-shape:hover polygon,
+.hotspot-shape:focus-visible polygon {
+  stroke: rgba(255, 255, 255, 0.85);
+  fill: rgba(255, 255, 255, 0.08);
+}
+
+.hotspot-shape:focus {
   outline: none;
 }
 
-.hotspot-group.disabled {
-  pointer-events: none;
-  opacity: 0.3;
-  cursor: not-allowed;
+.hotspot-shape.indicator rect,
+.hotspot-shape.indicator circle,
+.hotspot-shape.indicator polygon {
+  animation: hotspot-pulse 2.4s ease-in-out infinite;
 }
 
-/* Hotspot shapes */
-.hotspot {
-  fill: rgba(0, 120, 215, 0.2);
-  stroke: rgba(0, 120, 215, 0.5);
-  stroke-width: 2;
-  transition: all 0.2s ease;
-}
-
-/* Hover effect */
-.hotspot-group.highlight-hover:hover .hotspot,
-.hotspot-group.focused .hotspot {
-  fill: rgba(0, 120, 215, 0.3);
-  stroke: rgba(0, 120, 215, 0.8);
-  stroke-width: 3;
-}
-
-/* Focus ring */
-.hotspot-group:focus .hotspot {
-  stroke: #0078d7;
-  stroke-width: 4;
-  filter: drop-shadow(0 0 4px rgba(0, 120, 215, 0.8));
-}
-
-/* Indicator pulse animation */
-.hotspot-indicator {
-  fill: #0078d7;
-  animation: pulse 2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
+@keyframes hotspot-pulse {
+  0%,
+  100% {
+    stroke: rgba(255, 255, 255, 0);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(1.5);
+    stroke: rgba(255, 255, 255, 0.45);
   }
 }
 
-/* Shape-specific styles */
-.hotspot-rect {
-  rx: 4;
-  ry: 4;
-}
-
-.hotspot-circle {
-  /* Circle-specific styles */
-}
-
-.hotspot-polygon {
-  /* Polygon-specific styles */
-}
-
-/* Disabled state */
-.hotspot-group.disabled .hotspot {
-  fill: rgba(128, 128, 128, 0.1);
-  stroke: rgba(128, 128, 128, 0.3);
-}
-
-/* Active/pressed state */
-.hotspot-group:active .hotspot {
-  fill: rgba(0, 120, 215, 0.4);
-  stroke: rgba(0, 120, 215, 1);
+@media (prefers-reduced-motion: reduce) {
+  .hotspot-shape.indicator rect,
+  .hotspot-shape.indicator circle,
+  .hotspot-shape.indicator polygon {
+    animation: none;
+  }
 }

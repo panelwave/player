@@ -1,59 +1,40 @@
-<svg class="hotspots-overlay" xmlns="http://www.w3.org/2000/svg">
-  @for (hotspot of hotspots; track hotspot.id; let i = $index) {
-    <g 
-      class="hotspot-group"
-      [class.disabled]="hotspot.disabled"
-      [class.focused]="isFocused(i)"
-      [class.highlight-hover]="highlightOnHover"
-      [attr.role]="'button'"
-      [attr.tabindex]="hotspot.disabled ? -1 : 0"
-      [attr.aria-label]="getAriaLabel(hotspot)"
-      [attr.aria-disabled]="hotspot.disabled"
-      (click)="onHotspotClick(hotspot, $event)"
-      (keydown)="onKeyDown(hotspot, $event)"
-      (focus)="onFocus(hotspot, i)"
-      (blur)="onBlur()">
-      
-      <!-- Rectangle hotspot -->
-      @if (hotspot.shape === 'rect') {
-        <rect
-          class="hotspot hotspot-rect"
-          [attr.x]="getRectAttributes(hotspot)['x']"
-          [attr.y]="getRectAttributes(hotspot)['y']"
-          [attr.width]="getRectAttributes(hotspot)['width']"
-          [attr.height]="getRectAttributes(hotspot)['height']" />
-        
-        @if (showIndicators && !hotspot.disabled) {
-          <circle
-            class="hotspot-indicator"
-            [attr.cx]="getRectAttributes(hotspot)['x'] + getRectAttributes(hotspot)['width'] / 2"
-            [attr.cy]="getRectAttributes(hotspot)['y'] + getRectAttributes(hotspot)['height'] / 2"
-            r="8" />
+<svg
+  class="hotspots-svg"
+  [class.non-interactive]="!interactive"
+  [attr.viewBox]="'0 0 ' + containerWidth + ' ' + containerHeight"
+  preserveAspectRatio="none"
+  aria-hidden="false"
+>
+  @for (h of visibleHotspots; track h.id) {
+    <g
+      class="hotspot-shape"
+      [class.indicator]="showIndicators"
+      [attr.role]="interactive ? 'button' : null"
+      [attr.tabindex]="interactive ? 0 : null"
+      [attr.aria-label]="resolveLabel(h)"
+      (click)="onShapeClick(h, $event)"
+      (keydown)="onKeyDown(h, $event)"
+    >
+      @switch (h.shape.type) {
+        @case ('rect') {
+          <rect
+            [attr.x]="rectAttrs($any(h.shape)).x"
+            [attr.y]="rectAttrs($any(h.shape)).y"
+            [attr.width]="rectAttrs($any(h.shape)).width"
+            [attr.height]="rectAttrs($any(h.shape)).height"
+            rx="6"
+          />
         }
-      }
-
-      <!-- Circle hotspot -->
-      @if (hotspot.shape === 'circle') {
-        <circle
-          class="hotspot hotspot-circle"
-          [attr.cx]="getCircleAttributes(hotspot)['cx']"
-          [attr.cy]="getCircleAttributes(hotspot)['cy']"
-          [attr.r]="getCircleAttributes(hotspot)['r']" />
-        
-        @if (showIndicators && !hotspot.disabled) {
+        @case ('circle') {
           <circle
-            class="hotspot-indicator"
-            [attr.cx]="getCircleAttributes(hotspot)['cx']"
-            [attr.cy]="getCircleAttributes(hotspot)['cy']"
-            r="8" />
+            [attr.cx]="circleAttrs($any(h.shape)).cx"
+            [attr.cy]="circleAttrs($any(h.shape)).cy"
+            [attr.r]="circleAttrs($any(h.shape)).r"
+          />
         }
-      }
-
-      <!-- Polygon hotspot -->
-      @if (hotspot.shape === 'polygon') {
-        <polygon
-          class="hotspot hotspot-polygon"
-          [attr.points]="getPolygonPoints(hotspot)" />
+        @case ('polygon') {
+          <polygon [attr.points]="polygonPoints($any(h.shape))" />
+        }
       }
     </g>
   }

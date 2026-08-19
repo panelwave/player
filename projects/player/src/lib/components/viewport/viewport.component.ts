@@ -20,8 +20,9 @@ import {
 
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
+import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
-import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Graph, PreloadSettings, Transition } from '../../types';
+import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Graph, PreloadSettings, Transition, Hotspot, VariableContext } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
@@ -50,7 +51,7 @@ const VARIANT_SETTLE_MS = 180;
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent, SpeechBubblesComponent, PwIconComponent],
+    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -91,6 +92,11 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Current locale for localized content
    */
   @Input() locale: LocaleCode = 'en-US';
+
+  /**
+   * Variable context for hotspot visibleIf evaluation
+   */
+  @Input() variableContext: VariableContext | null = null;
 
   /**
    * Pan X offset (pixels)
@@ -206,6 +212,21 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Panel focus changed
    */
   @Output() panelFocus = new EventEmitter<string | null>();
+
+  /**
+   * Hotspot activated (click or keyboard); x/y normalized, panel-relative
+   */
+  @Output() hotspotActivate = new EventEmitter<{
+    hotspot: Hotspot;
+    x: number;
+    y: number;
+    panelId: string | null;
+  }>();
+
+  /**
+   * Click on panel content that hit no hotspot (dead click); x/y normalized
+   */
+  @Output() deadClick = new EventEmitter<{ x: number; y: number; panelId: string | null }>();
 
   // Focus state for navigation
   focusedPanelId: string | null = null;
@@ -782,6 +803,30 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     const pageCanvas = this.elementRef.nativeElement.querySelector('.page-canvas');
     if (!pageCanvas) return 0;
     return placement.h * pageCanvas.clientHeight;
+  }
+
+  /**
+   * Re-emit a hotspot activation with the owning panel id attached
+   */
+  onHotspotActivate(evt: { hotspot: Hotspot; x: number; y: number }, panelId: string | null): void {
+    this.hotspotActivate.emit({ ...evt, panelId });
+  }
+
+  /**
+   * Dead-click capture: clicks on panel content that hit no hotspot
+   * (hotspot hits stop propagation in the overlay and never reach this).
+   * Does NOT stop propagation itself — tap-to-advance keeps working.
+   */
+  onPanelContainerClick(event: MouseEvent, panelId: string | null): void {
+    if (!this.interactive) return;
+    const el = event.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    this.deadClick.emit({
+      x: Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - r.top) / r.height)),
+      panelId,
+    });
   }
 
   /**

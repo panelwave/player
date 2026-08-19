@@ -54,7 +54,7 @@
 
       <div [class]="'t-frame ' + enterAnimationClass">
         @if (panel) {
-          <div class="panel-container">
+          <div class="panel-container" (click)="onPanelContainerClick($event, currentPanelId)">
             <!-- Render layers using LayerRenderer -->
             @for (layer of panel.layers; track layer.id) {
               <pw-layer-renderer
@@ -67,6 +67,18 @@
                 [panelId]="currentPanelId || ''"
                 (layerClick)="layerClick.emit($event)">
               </pw-layer-renderer>
+            }
+
+            <!-- Interactive hotspots overlay (below speech bubbles) -->
+            @if (interactive && panel.hotspots && panel.hotspots.length > 0) {
+              <pw-hotspots-overlay
+                [hotspots]="panel.hotspots"
+                [locale]="locale"
+                [containerWidth]="getContainerWidth()"
+                [containerHeight]="getContainerHeight()"
+                [context]="variableContext"
+                (hotspotActivate)="onHotspotActivate($event, currentPanelId)">
+              </pw-hotspots-overlay>
             }
 
             <!-- Speech bubbles overlay for panel view -->
@@ -183,7 +195,8 @@
               @if (getPanel(placement.panelId); as panelData) {
                 <div class="panel-content"
                      [style.clip-path]="getPanelContentClipPath(placement)"
-                     [style.transform]="getPanelContentTransform(placement)">
+                     [style.transform]="getPanelContentTransform(placement)"
+                     (click)="onPanelContainerClick($event, placement.panelId)">
                   <!-- Render panel layers -->
                   @for (layer of panelData.layers; track layer.id) {
                     <pw-layer-renderer
@@ -202,7 +215,19 @@
                       (layerClick)="layerClick.emit($event)">
                     </pw-layer-renderer>
                   }
-                  
+
+                  <!-- Interactive hotspots overlay for page view panels -->
+                  @if (interactive && panelData.hotspots && panelData.hotspots.length > 0) {
+                    <pw-hotspots-overlay
+                      [hotspots]="panelData.hotspots"
+                      [locale]="locale"
+                      [containerWidth]="getPagePanelWidth(placement)"
+                      [containerHeight]="getPagePanelHeight(placement)"
+                      [context]="variableContext"
+                      (hotspotActivate)="onHotspotActivate($event, placement.panelId)">
+                    </pw-hotspots-overlay>
+                  }
+
                   <!-- Speech bubbles overlay for page view panels -->
                   @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
                     <pw-speech-bubbles

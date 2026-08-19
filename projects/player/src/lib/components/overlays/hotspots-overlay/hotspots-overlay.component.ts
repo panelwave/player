@@ -1,6 +1,9 @@
 /**
  * Hotspots Overlay Component
- * Renders interactive hotspot shapes on top of panels
+ * Renders a panel's interactive hotspots (manifest shape, normalized 0-1
+ * geometry) on top of the panel content, mirroring the speech-bubbles
+ * overlay contract: absolutely positioned host, container dimensions from
+ * the parent, pointer events enabled per shape only.
  */
 
 import {
@@ -9,156 +12,176 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
+  OnChanges,
 } from '@angular/core';
 
-
-/**
- * Hotspot shape definition
- */
-export interface Hotspot {
-  id: string;
-  shape: 'rect' | 'circle' | 'polygon';
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  radius?: number;
-  points?: string;
-  label?: string;
-  disabled?: boolean;
-}
+import type {
+  Hotspot,
+  HotspotShape,
+  HotspotRect,
+  HotspotCircle,
+  HotspotPolygon,
+  LocalizedString,
+} from '../../../types';
+import type { VariableContext } from '../../../types';
+import { evaluateJsonLogic, resolveLocalizedString } from '../../../utils';
 
 /**
  * Hotspots Overlay Component
  * Displays interactive clickable areas over panel content
  */
 @Component({
-    selector: 'pw-hotspots-overlay',
-    imports: [],
-    templateUrl: './hotspots-overlay.component.html',
-    styleUrls: ['./hotspots-overlay.component.css'],
-    changeDetection: ChangeDetectionStrategy.OnPush
+  selector: 'pw-hotspots-overlay',
+  imports: [],
+  templateUrl: './hotspots-overlay.component.html',
+  styleUrls: ['./hotspots-overlay.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HotspotsOverlayComponent {
+export class HotspotsOverlayComponent implements OnChanges {
   /**
-   * Array of hotspots to render
+   * Hotspots of the current panel (manifest shape)
    */
   @Input() hotspots: Hotspot[] = [];
 
   /**
-   * Show visual indicators
+   * Current locale for label resolution
+   */
+  @Input() locale = 'en-US';
+
+  /**
+   * Container width. Pixels in panel/page view, world units in canvas view —
+   * both work because the SVG viewBox scales with the element.
+   */
+  @Input() containerWidth = 0;
+
+  /**
+   * Container height (same unit as containerWidth)
+   */
+  @Input() containerHeight = 0;
+
+  /**
+   * Variable context for visibleIf evaluation (null shows all hotspots)
+   */
+  @Input() context: VariableContext | null = null;
+
+  /**
+   * When false the overlay is render-only: no pointer events, no tab stops
+   */
+  @Input() interactive = true;
+
+  /**
+   * Show the pulsing indicator animation
    */
   @Input() showIndicators = true;
 
   /**
-   * Highlight on hover
+   * Hotspot activated (click or keyboard). x/y are normalized 0-1
+   * panel-relative coordinates of the activation point.
    */
-  @Input() highlightOnHover = true;
+  @Output() hotspotActivate = new EventEmitter<{ hotspot: Hotspot; x: number; y: number }>();
 
   /**
-   * Hotspot clicked
+   * Hotspots passing their visibleIf condition
    */
-  @Output() hotspotClick = new EventEmitter<{ hotspot: Hotspot; event: MouseEvent }>();
+  visibleHotspots: Hotspot[] = [];
 
-  /**
-   * Hotspot activated via keyboard
-   */
-  @Output() hotspotActivate = new EventEmitter<Hotspot>();
-
-  /**
-   * Hotspot focused
-   */
-  @Output() hotspotFocus = new EventEmitter<Hotspot>();
-
-  /**
-   * Currently focused hotspot index
-   */
-  focusedIndex = -1;
-
-  /**
-   * Handle hotspot click
-   */
-  onHotspotClick(hotspot: Hotspot, event: MouseEvent): void {
-    if (hotspot.disabled) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    
-    this.hotspotClick.emit({ hotspot, event });
+  ngOnChanges(): void {
+    const ctx = this.context;
+    this.visibleHotspots = (this.hotspots ?? []).filter(
+      (h) => !h.visibleIf || !ctx || evaluateJsonLogic(h.visibleIf, ctx)
+    );
   }
 
   /**
-   * Handle keyboard activation
+   * Accessible label: ariaLabel wins over label, falls back to the id
    */
-  onKeyDown(hotspot: Hotspot, event: KeyboardEvent): void {
-    if (hotspot.disabled) return;
-    
+  resolveLabel(h: Hotspot): string {
+    return (
+      this.resolveLocalized(h.ariaLabel) || this.resolveLocalized(h.label) || h.id
+    );
+  }
+
+  private resolveLocalized(ls?: LocalizedString): string {
+    return resolveLocalizedString(ls, this.locale, 'en-US');
+  }
+
+  /**
+   * Denormalizers used by the template
+   */
+  rectAttrs(s: HotspotRect): { x: number; y: number; width: number; height: number } {
+    return {
+      x: s.x * this.containerWidth,
+      y: s.y * this.containerHeight,
+      width: s.w * this.containerWidth,
+      height: s.h * this.containerHeight,
+    };
+  }
+
+  circleAttrs(s: HotspotCircle): { cx: number; cy: number; r: number } {
+    // r is normalized to the container WIDTH by convention
+    return {
+      cx: s.cx * this.containerWidth,
+      cy: s.cy * this.containerHeight,
+      r: s.r * this.containerWidth,
+    };
+  }
+
+  polygonPoints(s: HotspotPolygon): string {
+    return s.points
+      .map(([px, py]) => `${px * this.containerWidth},${py * this.containerHeight}`)
+      .join(' ');
+  }
+
+  /**
+   * Pointer activation: emit the normalized click point
+   */
+  onShapeClick(h: Hotspot, event: MouseEvent): void {
+    if (!this.interactive) return;
+    event.preventDefault();
+    // The upstream dead-click handler must NOT also fire for hotspot hits.
+    event.stopPropagation();
+    const target = event.currentTarget as SVGElement;
+    const svg = target.ownerSVGElement ?? (target as unknown as SVGSVGElement);
+    const r = svg.getBoundingClientRect();
+    const x = r.width > 0 ? (event.clientX - r.left) / r.width : 0;
+    const y = r.height > 0 ? (event.clientY - r.top) / r.height : 0;
+    this.hotspotActivate.emit({ hotspot: h, x: this.clamp01(x), y: this.clamp01(y) });
+  }
+
+  /**
+   * Keyboard activation: emit the shape centroid
+   */
+  activateByKeyboard(h: Hotspot): void {
+    if (!this.interactive) return;
+    const c = this.centroidOf(h.shape);
+    this.hotspotActivate.emit({ hotspot: h, x: c.x, y: c.y });
+  }
+
+  onKeyDown(h: Hotspot, event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       event.stopPropagation();
-      this.hotspotActivate.emit(hotspot);
+      this.activateByKeyboard(h);
     }
   }
 
-  /**
-   * Handle focus
-   */
-  onFocus(hotspot: Hotspot, index: number): void {
-    this.focusedIndex = index;
-    this.hotspotFocus.emit(hotspot);
-  }
-
-  /**
-   * Handle blur
-   */
-  onBlur(): void {
-    this.focusedIndex = -1;
-  }
-
-  /**
-   * Get SVG rect attributes
-   */
-  getRectAttributes(hotspot: Hotspot): Record<string, string | number> {
-    return {
-      x: hotspot.x || 0,
-      y: hotspot.y || 0,
-      width: hotspot.width || 100,
-      height: hotspot.height || 100,
-    };
-  }
-
-  /**
-   * Get SVG circle attributes
-   */
-  getCircleAttributes(hotspot: Hotspot): Record<string, string | number> {
-    return {
-      cx: (hotspot.x || 0) + (hotspot.radius || 50),
-      cy: (hotspot.y || 0) + (hotspot.radius || 50),
-      r: hotspot.radius || 50,
-    };
-  }
-
-  /**
-   * Get SVG polygon points
-   */
-  getPolygonPoints(hotspot: Hotspot): string {
-    return hotspot.points || '0,0 100,0 100,100 0,100';
-  }
-
-  /**
-   * Check if hotspot is focused
-   */
-  isFocused(index: number): boolean {
-    return this.focusedIndex === index;
-  }
-
-  /**
-   * Get ARIA label for hotspot
-   */
-  getAriaLabel(hotspot: Hotspot): string {
-    if (hotspot.label) {
-      return hotspot.label;
+  private centroidOf(s: HotspotShape): { x: number; y: number } {
+    switch (s.type) {
+      case 'rect':
+        return { x: s.x + s.w / 2, y: s.y + s.h / 2 };
+      case 'circle':
+        return { x: s.cx, y: s.cy };
+      case 'polygon': {
+        const n = s.points.length || 1;
+        return {
+          x: s.points.reduce((a, p) => a + p[0], 0) / n,
+          y: s.points.reduce((a, p) => a + p[1], 0) / n,
+        };
+      }
     }
-    return `Interactive hotspot ${hotspot.id}`;
+  }
+
+  private clamp01(v: number): number {
+    return Math.min(1, Math.max(0, v));
   }
 }

@@ -66,6 +66,9 @@ export {
   type CameraState,
 } from './lib/services/canvas-camera.service';
 export { SpeechBubblesComponent } from './lib/components/overlays/speech-bubbles/speech-bubbles.component';
+export { HotspotsOverlayComponent } from './lib/components/overlays/hotspots-overlay/hotspots-overlay.component';
+export { ActionModalComponent } from './lib/components/modals/action-modal/action-modal.component';
+export { HotspotActionService, type HotspotUiEffect } from './lib/services/hotspot-action.service';
 export { PaywallOverlayComponent, type PaywallAction } from './lib/components/overlays/paywall-overlay/paywall-overlay.component';
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';

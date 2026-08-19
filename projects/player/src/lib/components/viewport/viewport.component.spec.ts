@@ -131,6 +131,87 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('Hotspots overlay', () => {
+    const panelWithHotspots: Panel = {
+      title: { 'en-US': 'Clicky' },
+      layers: [],
+      hotspots: [
+        {
+          id: 'h1',
+          shape: { type: 'rect', x: 0, y: 0, w: 0.5, h: 0.5 },
+          label: { 'en-US': 'Go' },
+          action: { type: 'goTo', to: 'p2' },
+        },
+      ],
+    };
+
+    it('renders the hotspots overlay in panel view when hotspots exist', async () => {
+      fixture.componentRef.setInput('panel', panelWithHotspots);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('pw-hotspots-overlay')).toBeTruthy();
+    });
+
+    it('renders no overlay when the panel has no hotspots', async () => {
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('pw-hotspots-overlay')).toBeNull();
+    });
+
+    it('renders no overlay when not interactive', async () => {
+      fixture.componentRef.setInput('panel', panelWithHotspots);
+      fixture.componentRef.setInput('interactive', false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.nativeElement.querySelector('pw-hotspots-overlay')).toBeNull();
+    });
+
+    it('emits deadClick with normalized coordinates for a click on the panel container', async () => {
+      fixture.componentRef.setInput('panel', panelWithHotspots);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const spy = jasmine.createSpy();
+      component.deadClick.subscribe(spy);
+
+      const container: HTMLElement = fixture.nativeElement.querySelector('.panel-container');
+      const r = container.getBoundingClientRect();
+      container.dispatchEvent(
+        new MouseEvent('click', {
+          clientX: r.left + r.width * 0.75,
+          clientY: r.top + r.height * 0.25,
+          bubbles: true,
+        })
+      );
+
+      expect(spy).toHaveBeenCalled();
+      const evt = spy.calls.mostRecent().args[0];
+      expect(evt.x).toBeCloseTo(0.75, 1);
+      expect(evt.y).toBeCloseTo(0.25, 1);
+    });
+
+    it('re-emits hotspot activation with the current panel id', () => {
+      const spy = jasmine.createSpy();
+      component.hotspotActivate.subscribe(spy);
+
+      component.onHotspotActivate(
+        { hotspot: panelWithHotspots.hotspots![0], x: 0.2, y: 0.3 },
+        'panel-9'
+      );
+
+      expect(spy).toHaveBeenCalledWith({
+        hotspot: panelWithHotspots.hotspots![0],
+        x: 0.2,
+        y: 0.3,
+        panelId: 'panel-9',
+      });
+    });
+  });
+
   describe('Transform', () => {
     it('should generate correct transform style', () => {
       component.panX = 10;

@@ -91,7 +91,7 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Video Panels** - Sequenced multi-video playback (`VideoSequencerService`) with per-work/per-panel playback defaults (play mode, start mode, muted; format 1.1)
 - **Speech Bubbles** - Comic-book balloon rendering (normal, thought, shout, whisper, connector, cut-top variants) with configurable tails, hide-border effects, and per-character/per-bubble style overrides
 - **Style Presets** - Work-level `settings.typography.textStyles` / `balloonPresets` referenced via `styleRef` on text layers and speech bubbles (format 1.3)
-- **Hotspots** - Interactive areas (rect, circle, polygon) with actions
+- **Hotspots** - Interactive areas (rect, circle, polygon; normalized panel-relative geometry) with all five manifest actions: `goTo` (mutations + transition), `setVariables`, `openExtras` (opens the viewer at the item), `openModal` (localized title/content dialog), `pluginEvent`. Conditional visibility via `visibleIf` (JSON Logic), localized labels/ariaLabels, keyboard activation (Tab + Enter/Space at the shape centroid). Every click is tracked as `hotspot_click {panelId, chapterId, hotspotId?, x, y, hit}` — clicks that miss all hotspots are recorded with `hit: false` (dead clicks) for the CMS click heatmap. Rendered in panel and page views; render-only in canvas view (taps keep edge navigation)
 - **Variants** - Conditional content based on variables/entitlements
 - **Preloading** - Intelligent lookahead with configurable distance
 - **Image Cache** - LRU cache with memory budget management

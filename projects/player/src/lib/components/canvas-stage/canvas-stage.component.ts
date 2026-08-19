@@ -38,6 +38,7 @@ import type {
 } from '../../types';
 import type { BalloonConfig } from '../../types';
 import type { Character } from '../../types';
+import type { VariableContext } from '../../types';
 
 import { CanvasCameraService, CameraState } from '../../services/canvas-camera.service';
 import { ManifestService } from '../../services/manifest.service';
@@ -45,6 +46,7 @@ import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
+import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 
 /** A placement prepared for rendering. */
 export interface StagePlacement {
@@ -71,7 +73,7 @@ const CAMERA_EMIT_INTERVAL_MS = 100;
 
 @Component({
   selector: 'pw-canvas-stage',
-  imports: [LayerRendererComponent, SpeechBubblesComponent],
+  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent],
   templateUrl: './canvas-stage.component.html',
   styleUrls: ['./canvas-stage.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -93,6 +95,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
   @Input() visitedPanelIds: string[] = [];
 
   @Input() locale: LocaleCode = 'en-US';
+  @Input() variableContext: VariableContext | null = null;
   @Input() speechEnabled = true;
   @Input() workBalloonConfig: BalloonConfig | null = null;
   @Input() characters: Character[] = [];
