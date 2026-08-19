@@ -180,8 +180,21 @@
       @if (extrasVisible) {
         <pw-extras-viewer
           [visible]="extrasVisible"
-          (close)="extrasVisible = false">
+          [extras]="extrasList"
+          [initialExtraId]="extrasInitialId"
+          [locale]="locale"
+          (close)="extrasVisible = false; extrasInitialId = undefined">
         </pw-extras-viewer>
+      }
+
+      @if (actionModalVisible) {
+        <pw-action-modal
+          [visible]="actionModalVisible"
+          [locale]="locale"
+          [title]="actionModalTitle"
+          [content]="actionModalContent"
+          (close)="actionModalVisible = false">
+        </pw-action-modal>
       }
 
       @if (shareVisible) {

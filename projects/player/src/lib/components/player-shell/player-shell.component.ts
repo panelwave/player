@@ -61,7 +61,9 @@ import { ThumbnailStripComponent } from '../overlays/thumbnail-strip/thumbnail-s
 import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
 import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
-import { ExtrasViewerComponent } from '../modals/extras-viewer/extras-viewer.component';
+import { ExtrasViewerComponent, type Extra, type ExtraType } from '../modals/extras-viewer/extras-viewer.component';
+import { ActionModalComponent } from '../modals/action-modal/action-modal.component';
+import { HotspotActionService, type HotspotUiEffect } from '../../services/hotspot-action.service';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
@@ -113,6 +115,7 @@ export interface EntitlementAdapter {
     LanguageModalComponent,
     CharacterRosterComponent,
     ExtrasViewerComponent,
+    ActionModalComponent,
     ShareModalComponent,
     CommentsDrawerComponent,
     PwIconComponent
@@ -280,6 +283,20 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   thumbnailsVisible = false;
 
   /**
+   * Action modal state (hotspot openModal action)
+   */
+  actionModalVisible = false;
+  actionModalTitle: LocalizedString | null = null;
+  actionModalContent: LocalizedString | null = null;
+
+  /**
+   * Extras flattened from the manifest's keyed blocks, plus the item a
+   * hotspot openExtras action wants preselected
+   */
+  extrasList: Extra[] = [];
+  extrasInitialId?: string;
+
+  /**
    * Variable context passed to the viewport/canvas for hotspot visibleIf
    * evaluation. Refreshed on navigation and after mutations are applied.
    */
@@ -369,6 +386,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private readonly trackingService = inject(TrackingService);
   private readonly videoController = inject(VideoControllerService);
   private readonly videoSequencer = inject(VideoSequencerService);
+  private readonly hotspotAction = inject(HotspotActionService);
 
   /**
    * Reading order per panel id (1-based, across chapters), computed once per
@@ -520,6 +538,10 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       // Configure tracking (consent requirements + event whitelist) from the
       // manifest so video events flow through the consent/whitelist pipeline.
       this.configureTracking(loadedManifest);
+
+      // Flatten the manifest's keyed extras blocks for the extras viewer
+      // (also the target of hotspot openExtras actions).
+      this.buildExtrasList(loadedManifest ?? null);
 
       // Navigate to initial position
       if (this.initialChapterId && this.initialPanelId) {
@@ -850,10 +872,37 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Hotspot activated in the viewport (click or keyboard)
+   * Hotspot activated in the viewport (click or keyboard): execute its
+   * action, apply the returned UI effect, refresh the variable context so
+   * visibleIf-dependent hotspots/variants update.
    */
   onHotspotActivate(evt: { hotspot: Hotspot; x: number; y: number; panelId: string | null }): void {
-    // Tracking + action execution land with the hotspot action executor.
+    const effect = this.hotspotAction.execute(evt.hotspot.action, {
+      chapterId: this.currentChapter?.id,
+    });
+    this.applyHotspotEffect(effect);
+    this.refreshVariableContext();
+  }
+
+  private applyHotspotEffect(effect: HotspotUiEffect): void {
+    switch (effect.kind) {
+      case 'navigate':
+        if (this.currentChapter) {
+          void this.navigateToPanel(this.currentChapter.id, effect.to, effect.transition);
+        }
+        break;
+      case 'openExtras':
+        this.extrasInitialId = effect.extrasId;
+        this.extrasVisible = true;
+        break;
+      case 'openModal':
+        this.actionModalTitle = effect.title;
+        this.actionModalContent = effect.content;
+        this.actionModalVisible = true;
+        break;
+      case 'none':
+        break;
+    }
   }
 
   /**
@@ -861,6 +910,35 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   onDeadClick(evt: { x: number; y: number; panelId: string | null }): void {
     // Tracking lands with the hotspot click tracking.
+  }
+
+  /**
+   * Flatten the manifest's keyed Extras structure (cover/bonus_art/...) into
+   * the viewer's flat list. Asset/thumbnail resolution is a pre-existing
+   * viewer gap and stays out of scope here.
+   */
+  private buildExtrasList(manifest: PanelWaveManifest | null): void {
+    const ex = manifest?.extras as Record<string, unknown> | undefined;
+    if (!ex) {
+      this.extrasList = [];
+      return;
+    }
+    const out: Extra[] = [];
+    const push = (block: unknown, type: ExtraType): void => {
+      const b = block as { id?: string; title?: LocalizedString; text?: LocalizedString } | null;
+      if (b && b.id) {
+        out.push({ id: b.id, type, title: b.title ?? {}, description: b.text, mediaType: 'image' });
+      }
+    };
+    push(ex['cover'], 'cover');
+    push(ex['alt_cover'], 'cover');
+    push(ex['author_info'], 'other');
+    ((ex['author_interviews'] as unknown[]) ?? []).forEach((b) => push(b, 'interview'));
+    ((ex['bonus_art'] as unknown[]) ?? []).forEach((b) => push(b, 'art'));
+    ((ex['fan_art'] as unknown[]) ?? []).forEach((b) => push(b, 'art'));
+    ((ex['behind_the_scenes'] as unknown[]) ?? []).forEach((b) => push(b, 'bts'));
+    ((ex['character_sheets'] as unknown[]) ?? []).forEach((b) => push(b, 'other'));
+    this.extrasList = out;
   }
 
   /**
