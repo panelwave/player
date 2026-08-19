@@ -11,6 +11,7 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   HostListener,
   inject,
 } from '@angular/core';
@@ -387,6 +388,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private readonly videoController = inject(VideoControllerService);
   private readonly videoSequencer = inject(VideoSequencerService);
   private readonly hotspotAction = inject(HotspotActionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /**
    * Reading order per panel id (1-based, across chapters), computed once per
@@ -1096,10 +1098,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   showToolbarTemporarily(): void {
     this.toolbarVisible = true;
     
-    // Auto-hide after 5 seconds
+    // Auto-hide after 5 seconds. The timeout runs outside any template
+    // event, so OnPush needs an explicit markForCheck to repaint.
     setTimeout(() => {
       if (this.toolbarVisible) {
         this.toolbarVisible = false;
+        this.cdr.markForCheck();
       }
     }, 5000);
   }
