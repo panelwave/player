@@ -76,9 +76,13 @@
 }
 
 .toolbar-center {
-  flex: 1;
+  /* Grow to center the controls when space allows, but never shrink
+     below the content width: the buttons inside don't shrink, so a
+     shrinking section would paint them over the left/right sections
+     (visible with longer locales, e.g. German). The .toolbar container
+     scrolls horizontally instead. */
+  flex: 1 0 auto;
   justify-content: center;
-  min-width: 0;
 }
 
 .toolbar-right {

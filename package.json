@@ -7,7 +7,10 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "e2e": "playwright test --project=chromium --project=mobile",
+    "e2e:all": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "private": true,
   "dependencies": {
@@ -30,6 +33,8 @@
     "@angular/build": "^20.3.12",
     "@angular/cli": "^20.3.12",
     "@angular/compiler-cli": "^20.3.14",
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "@types/jasmine": "~5.1.0",
     "@types/json-logic-js": "^2.0.8",
     "angular-eslint": "20.4.0",

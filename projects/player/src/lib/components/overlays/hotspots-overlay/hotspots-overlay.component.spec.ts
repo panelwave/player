@@ -36,7 +36,7 @@ describe('HotspotsOverlayComponent', () => {
     component.containerWidth = 1000;
     component.containerHeight = 500;
     component.context = { hasKey: false };
-    component.ngOnChanges({});
+    component.ngOnChanges();
     fixture.detectChanges();
   });
 
@@ -66,7 +66,7 @@ describe('HotspotsOverlayComponent', () => {
 
   it('resolves the label for the active locale with base-language fallback', () => {
     component.locale = 'de-AT';
-    component.ngOnChanges({});
+    component.ngOnChanges();
     expect(component.resolveLabel(HS[0])).toBe('Tür');
   });
 

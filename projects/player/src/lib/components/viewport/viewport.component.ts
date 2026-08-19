@@ -1258,8 +1258,20 @@ export class ViewportComponent implements OnChanges, OnDestroy {
 
     // Emit viewport click with panel context
     this.viewportClick.emit({ x, y });
-    
+
     console.log(`Panel clicked: ${panelId} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+  }
+
+  /**
+   * Keyboard activation (Enter/Space) of a focusable page-view panel —
+   * mirrors onPanelClick with the panel center as the activation point.
+   */
+  onPanelKeyboardActivate(event: Event, panelId: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.viewportClick.emit({ x: rect.width / 2, y: rect.height / 2 });
+    console.log(`Panel activated via keyboard: ${panelId}`);
   }
 
   /**
@@ -1351,6 +1363,16 @@ export class ViewportComponent implements OnChanges, OnDestroy {
       return undefined;
     }
     return this.panels[panelId];
+  }
+
+  /**
+   * Whether a page-view panel renders interactive hotspots. Such panels
+   * must not be buttons themselves — nesting the hotspot buttons inside
+   * an interactive container breaks screen readers (axe: nested-interactive).
+   */
+  panelHasHotspots(panelId: string): boolean {
+    const panel = this.panels?.[panelId];
+    return this.interactive && !!panel?.hotspots?.length;
   }
 
   /**

@@ -395,6 +395,20 @@ ng test player --code-coverage
 ng test player --watch=false --browsers=ChromeHeadless
 ```
 
+#### E2E tests (Playwright)
+
+The E2E suite drives the demo app (started automatically on port 4222) and is
+hermetic — external image hosts are stubbed. Specs live in `e2e/`.
+
+```bash
+npm run e2e       # chromium + mobile (Pixel 7) projects
+npm run e2e:all   # additionally firefox + webkit
+npm run e2e:ui    # interactive UI mode
+```
+
+The demo app supports a `?deny=<panelId>[,<panelId>]` query parameter that installs
+a denying entitlement adapter, used by the gating tests.
+
 ---
 
 ## 📦 Building & Publishing

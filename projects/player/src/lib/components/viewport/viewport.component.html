@@ -186,11 +186,13 @@
               [style.transform]="getPanelTransform(placement)"
               [style.transform-origin]="getTransformOrigin(placement)"
               [attr.data-panel-id]="placement.panelId"
-              [attr.tabindex]="0"
-              [attr.role]="'button'"
-              [attr.aria-label]="'Panel ' + placement.panelId"
+              [attr.tabindex]="panelHasHotspots(placement.panelId) ? null : 0"
+              [attr.role]="panelHasHotspots(placement.panelId) ? null : 'button'"
+              [attr.aria-label]="panelHasHotspots(placement.panelId) ? null : 'Panel ' + placement.panelId"
               [attr.loading]="getImageLoadingStrategy()"
-              (click)="onPanelClick($event, placement.panelId)">
+              (click)="onPanelClick($event, placement.panelId)"
+              (keydown.enter)="onPanelKeyboardActivate($event, placement.panelId)"
+              (keydown.space)="onPanelKeyboardActivate($event, placement.panelId)">
               
               @if (getPanel(placement.panelId); as panelData) {
                 <div class="panel-content"
