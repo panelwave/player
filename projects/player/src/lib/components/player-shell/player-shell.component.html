@@ -38,10 +38,13 @@
           [showOverflowArrows]="true"
           [speechEnabled]="speechEnabled"
           [preload]="manifestPreloadSettings"
+          [variableContext]="variableContext"
           (viewportClick)="onViewportClick()"
           (swipe)="onSwipe($event)"
           (navigatePrevious)="navigatePrevious()"
-          (navigateNext)="navigateNext()">
+          (navigateNext)="navigateNext()"
+          (hotspotActivate)="onHotspotActivate($event)"
+          (deadClick)="onDeadClick($event)">
         </pw-viewport>
       }
 
@@ -54,6 +57,7 @@
           [currentPanelId]="getCurrentPanelId() || null"
           [visitedPanelIds]="visitedPanelIds"
           [locale]="locale"
+          [variableContext]="variableContext"
           [speechEnabled]="speechEnabled"
           [workBalloonConfig]="manifestBalloonConfig"
           [characters]="manifestCharacters"

@@ -34,6 +34,9 @@ import type {
   CameraMove,
   ViewMode,
   BalloonConfig,
+  Hotspot,
+  VariableContext,
+  LocalizedString,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -275,6 +278,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   shareVisible = false;
   commentsVisible = false;
   thumbnailsVisible = false;
+
+  /**
+   * Variable context passed to the viewport/canvas for hotspot visibleIf
+   * evaluation. Refreshed on navigation and after mutations are applied.
+   */
+  variableContext: VariableContext | null = null;
 
   /**
    * View mode
@@ -762,6 +771,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         if (panelData) {
           this.playerState.setCurrentPanel(panelData.panel);
           this.currentPanel = panelData.panel;
+          this.refreshVariableContext();
         }
       }
     } catch (err) {
@@ -806,6 +816,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       this.currentChapter = chapter;
       this.currentPanel = panelData.panel;
       this.playerState.setCurrentPanel(panelData.panel);
+      this.refreshVariableContext();
 
       if (chapterChanged) {
         this.visitedPanelIds = [];
@@ -827,6 +838,29 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     } catch (err) {
       this.handleError(err as Error);
     }
+  }
+
+  /**
+   * Rebuild the flat variable context handed to the viewport/canvas for
+   * hotspot visibleIf evaluation. New object identity per call so OnPush
+   * children re-evaluate.
+   */
+  private refreshVariableContext(): void {
+    this.variableContext = this.variableStore.createContext(this.currentChapter?.id);
+  }
+
+  /**
+   * Hotspot activated in the viewport (click or keyboard)
+   */
+  onHotspotActivate(evt: { hotspot: Hotspot; x: number; y: number; panelId: string | null }): void {
+    // Tracking + action execution land with the hotspot action executor.
+  }
+
+  /**
+   * Click on panel content that hit no hotspot
+   */
+  onDeadClick(evt: { x: number; y: number; panelId: string | null }): void {
+    // Tracking lands with the hotspot click tracking.
   }
 
   /**
