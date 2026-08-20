@@ -145,6 +145,16 @@
       }
 
       <!-- Modals -->
+      @if (paywallVisible && paywallGate) {
+        <pw-paywall-overlay
+          [visible]="paywallVisible"
+          [gate]="paywallGate"
+          [locale]="locale"
+          (action)="onPaywallAction($event)"
+          (close)="closePaywall()">
+        </pw-paywall-overlay>
+      }
+
       @if (tocVisible) {
         <pw-toc-overlay
           [visible]="tocVisible"

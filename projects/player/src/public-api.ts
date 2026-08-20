@@ -24,6 +24,32 @@ export {
 export { PreloadService, type PreloadItem, type PreloadPriority } from './lib/services/preload.service';
 export { TrackingService, type TrackingEvent } from './lib/services/tracking.service';
 export { EntitlementService } from './lib/services/entitlement.service';
+export { PaywallService } from './lib/services/paywall.service';
+
+// Paywall evaluation (manifest `paywall.rules` -> access decisions).
+export {
+  ANONYMOUS_READER,
+  evaluatePanelAccess,
+  evaluateWorkAccess,
+  findWorkGateRule,
+  fromManifestRule,
+  readingOrderFromManifest,
+  rulesFromManifest,
+  satisfiesRule,
+  toEntitlementStatus,
+  type AccessDecision,
+  type EntitlementSnapshot,
+  type EvaluatorEntitlementType,
+  type EvaluatorRule,
+  type EvaluatorScope,
+  type LockReason,
+  type PanelRef,
+} from './lib/entitlement/paywall-evaluator';
+export {
+  HttpEntitlementAdapter,
+  type EntitlementSnapshotResponse,
+  type HttpEntitlementAdapterConfig,
+} from './lib/entitlement/http-entitlement.adapter';
 export { PluginHostService } from './lib/services/plugin-host.service';
 export { ExportService } from './lib/services/export.service';
 export { TranslationService } from './lib/services/translation.service';

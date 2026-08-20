@@ -558,17 +558,53 @@ export interface Paywall {
  * Paywall rule
  */
 export interface PaywallRule {
+  /** Rule identifier (CMS-exported rules always carry one) */
+  id?: string;
+
   /** Scope of the rule */
-  scope: 'work' | 'chapter' | 'panel';
-  
+  scope: 'work' | 'chapter' | 'panel' | 'extras';
+
   /** Reference ID (chapter ID or panel ID) (optional) */
   refId?: string;
-  
-  /** Required entitlement type */
-  requireEntitlement?: 'premium' | 'token' | 'purchaseId';
-  
-  /** Number of preview panels allowed (optional) */
+
+  /** Required entitlement type (original format; free-form in the schema) */
+  requireEntitlement?: string;
+
+  /** Number of preview panels allowed (original format) (optional) */
   previewPanels?: number;
+
+  /** Minimum age for an age gate (original format) (optional) */
+  ageGate?: number;
+
+  /** Human-friendly rule name (CMS) (optional) */
+  name?: string;
+
+  /** Rule description (CMS) (optional) */
+  description?: string;
+
+  /** CMS entitlement kind: free | subscription | purchase | age_gate (optional) */
+  entitlementType?: string;
+
+  /** Tiers that satisfy a subscription rule; empty/absent = any tier (optional) */
+  subscriptionTiers?: string[];
+
+  /** Products that satisfy a purchase rule; empty/absent = any purchase (optional) */
+  requiredProductIds?: string[];
+
+  /** Embedded price for display in the paywall overlay (CMS) (optional) */
+  price?: {
+    amount: number;
+    currency: string;
+  };
+
+  /** Minimum age for an age_gate rule (CMS) (optional) */
+  minimumAge?: number;
+
+  /** Free-preview length in panels, in reading order (CMS) (optional) */
+  previewPanelCount?: number;
+
+  /** Panels gated by a panel-scoped rule (CMS) (optional) */
+  targetPanelIds?: string[];
 }
 
 /**

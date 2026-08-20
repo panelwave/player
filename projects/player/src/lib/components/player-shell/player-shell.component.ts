@@ -62,6 +62,14 @@ import { ToolbarComponent } from '../toolbar/toolbar.component';
 import { LanguageModalComponent } from '../modals/language-modal/language-modal.component';
 import { ThumbnailStripComponent } from '../overlays/thumbnail-strip/thumbnail-strip.component';
 import { TocOverlayComponent } from '../modals/toc-overlay/toc-overlay.component';
+import {
+  PaywallOverlayComponent,
+  type PaywallAction,
+} from '../overlays/paywall-overlay/paywall-overlay.component';
+import { PaywallService } from '../../services/paywall.service';
+import { HttpEntitlementAdapter } from '../../entitlement/http-entitlement.adapter';
+import type { EntitlementSnapshot } from '../../entitlement/paywall-evaluator';
+import type { PaywallGate } from '../../types/entitlement.types';
 import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
 import { ExtrasViewerComponent, type Extra, type ExtraType } from '../modals/extras-viewer/extras-viewer.component';
@@ -114,6 +122,7 @@ export interface EntitlementAdapter {
     ToolbarComponent,
     ThumbnailStripComponent,
     TocOverlayComponent,
+    PaywallOverlayComponent,
     SettingsModalComponent,
     LanguageModalComponent,
     CharacterRosterComponent,
@@ -142,6 +151,33 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Entitlement adapter for paywall integration
    */
   @Input() entitlementAdapter?: EntitlementAdapter;
+
+  /**
+   * What the reader owns. Supplying this switches the manifest's
+   * `paywall.rules` on: gated panels stop navigation and raise the paywall
+   * overlay instead of erroring out.
+   *
+   * Omit it and an anonymous snapshot is used, which is the correct default —
+   * a reader who has bought nothing sees the free preview and the gate. A
+   * work with no paywall rules is unaffected either way.
+   */
+  @Input() entitlementSnapshot?: EntitlementSnapshot;
+
+  /**
+   * Endpoint that returns the reader's entitlement snapshot, with `{workId}`
+   * substituted. When set, the shell fetches the snapshot itself instead of
+   * the host passing `entitlementSnapshot`.
+   */
+  @Input() entitlementEndpoint?: string;
+
+  /** Bearer token identifying the reader to `entitlementEndpoint`. */
+  @Input() readerToken?: string;
+
+  /**
+   * Emitted when a reader acts on the paywall overlay. The host owns
+   * checkout — the player never talks to a payment provider itself.
+   */
+  @Output() paywallAction = new EventEmitter<{ action: PaywallAction; gate: PaywallGate }>();
 
   /**
    * Host-supplied initial variable values, keyed by variable id and
@@ -290,6 +326,22 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Modal visibility states
    */
   tocVisible = false;
+
+  /**
+   * Gate blocking the panel the reader tried to open, or null.
+   *
+   * Held locally rather than in PlayerStateService: the library contains TWO
+   * classes of that name — `services/player-state.service.ts` (the one this
+   * shell injects and public-api exports) and `state/player-state.service.ts`
+   * (which has paywallGate state and showPaywallGate/hidePaywallGate, but is
+   * exported nowhere and used by nothing). Reconciling them is a separate
+   * change; wiring the paywall through the dead one would be worse than
+   * keeping this local.
+   */
+  paywallGate: PaywallGate | null = null;
+  paywallVisible = false;
+  /** Adapter built from `entitlementEndpoint`, when the host supplied one. */
+  private httpEntitlement?: HttpEntitlementAdapter;
   settingsVisible = false;
   languageModalVisible = false;
   charactersVisible = false;
@@ -462,7 +514,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     private variableStore: VariableStoreService,
     private flowEngine: FlowEngineService,
     private translationService: TranslationService,
-    private canvasCamera: CanvasCameraService
+    private canvasCamera: CanvasCameraService,
+    private paywallService: PaywallService
   ) {}
 
   /**
@@ -571,6 +624,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       if (this.initialVariables) {
         this.variableStore.seed(this.initialVariables);
       }
+
+      // Arm the paywall: rules come from the manifest, the snapshot from the
+      // host (or from entitlementEndpoint). A work with no paywall.rules is
+      // unaffected — PaywallService reports every panel accessible.
+      await this.configurePaywall();
 
       // Initialize entitlement context. Seeded (not set()) so entitlement
       // facts can populate read-only variables; applied after
@@ -879,11 +937,27 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   ): Promise<void> {
     try {
       this.viewportTransition = transition ?? null;
-      // Check entitlement
+      // Check entitlement. A host-supplied adapter still wins — it is the
+      // documented override — but a refusal now raises the paywall instead of
+      // throwing a navigation error at the reader.
       if (this.entitlementAdapter) {
         const hasAccess = await this.entitlementAdapter.hasAccess(panelId);
         if (!hasAccess) {
-          throw new Error(`Access denied to panel: ${panelId}`);
+          this.openPaywall(this.paywallService.gateFor(panelId) ?? {
+            scope: 'panel',
+            refId: panelId,
+            reason: 'This content requires an entitlement to access.',
+          });
+          return;
+        }
+      } else if (!this.paywallService.canAccess(panelId)) {
+        // Manifest paywall rules (schema `paywall.rules`) evaluated against
+        // what the reader owns. Navigation stops here: the reader stays on
+        // the last panel they were entitled to see.
+        const gate = this.paywallService.gateFor(panelId);
+        if (gate) {
+          this.openPaywall(gate);
+          return;
         }
       }
 
@@ -2035,5 +2109,86 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       voiceSample: undefined, // Could be added later if needed
       role: undefined, // Could be extracted from description or added to schema
     }));
+  }
+
+  // ── Paywall ───────────────────────────────────────────────────────────────
+
+  /**
+   * Load the manifest's paywall rules and the reader's entitlement snapshot.
+   *
+   * Precedence: an explicit `entitlementSnapshot` wins over
+   * `entitlementEndpoint`, so a host that already knows what the reader owns
+   * never pays for a round-trip.
+   */
+  private async configurePaywall(): Promise<void> {
+    const manifest = this.manifestService.getManifest();
+    this.paywallService.setManifest(manifest);
+
+    if (this.entitlementSnapshot) {
+      this.paywallService.setSnapshot(this.entitlementSnapshot);
+      return;
+    }
+
+    if (this.entitlementEndpoint && manifest) {
+      this.httpEntitlement = new HttpEntitlementAdapter({
+        endpoint: this.entitlementEndpoint,
+        readerToken: this.readerToken,
+      });
+      this.httpEntitlement.setManifest(manifest);
+      try {
+        // resolveEntitlement() populates the cached snapshot as a side effect;
+        // the work-level call is the cheapest way to prime it.
+        await this.httpEntitlement.resolveEntitlement({ workId: manifest.meta?.id ?? '' });
+        this.paywallService.setSnapshot(this.httpEntitlement.getSnapshot());
+      } catch {
+        // Leave the anonymous snapshot in place: on a backend failure the
+        // reader sees the free preview and the gate, never the paid content.
+      }
+    }
+  }
+
+  /** Raise the paywall overlay for a gate. */
+  private openPaywall(gate: PaywallGate): void {
+    this.paywallGate = gate;
+    this.paywallVisible = true;
+  }
+
+  /** Dismiss the overlay without changing entitlement. */
+  closePaywall(): void {
+    this.paywallVisible = false;
+    this.paywallGate = null;
+  }
+
+  /**
+   * A reader acted on the overlay. Checkout belongs to the host — the player
+   * never talks to a payment provider — so the action is emitted and the
+   * overlay closes for anything other than a dismiss.
+   */
+  onPaywallAction(action: PaywallAction): void {
+    const gate = this.paywallGate;
+    if (gate) {
+      this.paywallAction.emit({ action, gate });
+    }
+    this.closePaywall();
+  }
+
+  /**
+   * Re-check entitlements after the host reports a completed purchase, then
+   * drop the overlay if the reader is now through the gate.
+   */
+  async refreshEntitlements(snapshot?: EntitlementSnapshot): Promise<void> {
+    if (snapshot) {
+      this.paywallService.setSnapshot(snapshot);
+    } else if (this.httpEntitlement) {
+      this.httpEntitlement.invalidate();
+      const manifest = this.manifestService.getManifest();
+      await this.httpEntitlement.resolveEntitlement({ workId: manifest?.meta?.id ?? '' });
+      this.paywallService.setSnapshot(this.httpEntitlement.getSnapshot());
+    }
+
+    const gatedPanelId = this.paywallGate?.refId ?? this.getCurrentPanelId();
+    if (gatedPanelId && this.paywallService.canAccess(gatedPanelId)) {
+      this.closePaywall();
+    }
   }
 }
