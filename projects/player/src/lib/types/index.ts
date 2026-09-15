@@ -47,6 +47,8 @@ export type {
   VideoStartMode,
   TextLayer,
   AudioLayer,
+  PanelAudioTrack,
+  PanelAudioRole,
   PluginLayer,
   LayerKind,
   TextStyle,

@@ -21,8 +21,10 @@ import { TranslationService } from '../../services/translation.service';
 import { TrackingService } from '../../services/tracking.service';
 import { VideoControllerService } from '../../services/video-controller.service';
 import { VideoSequencerService } from '../../services/video-sequencer.service';
+import { AudioEngineService } from '../../services/audio-engine.service';
+import { PanelAudioService } from '../../services/panel-audio.service';
 import { PlayerEvent } from '../../types';
-import type { Chapter, Panel, PanelWaveManifest } from '../../types';
+import type { Chapter, Panel, PanelWaveManifest, PlayerPreferences } from '../../types';
 
 describe('PlayerShellComponent auto-advance', () => {
   let shell: PlayerShellComponent;
@@ -517,6 +519,256 @@ describe('PlayerShellComponent auto-advance', () => {
         .filter((args) => args[0] === 'session_end');
       expect(endCalls.length).toBe(1);
       expect(trackingMock.flushSync).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe('PlayerShellComponent audio / SFX / speech toggles', () => {
+  let shell: PlayerShellComponent;
+  let engine: jasmine.SpyObj<AudioEngineService>;
+  let panelAudio: jasmine.SpyObj<PanelAudioService>;
+  let tracking: { track: jasmine.Spy };
+  let manifest: Partial<PanelWaveManifest> | null;
+  let prefs: PlayerPreferences;
+  let explicit: Set<string>;
+  let stateMock: {
+    getPreferences: () => PlayerPreferences;
+    hasPersistedPreference: (key: string) => boolean;
+    updatePreference: jasmine.Spy;
+    updatePreferences: jasmine.Spy;
+    setCurrentPanel: jasmine.Spy;
+    currentPanel$: unknown;
+    locale$: unknown;
+  };
+
+  const priv = () =>
+    shell as unknown as {
+      initializeAudioPreferences(m: Partial<PanelWaveManifest> | null): void;
+      refreshResolvedPanels(): void;
+      stopAutoplay(): void;
+    };
+
+  beforeEach(() => {
+    manifest = null;
+    explicit = new Set<string>();
+    prefs = {
+      speech: true,
+      audio: true,
+      sfx: true,
+      autoplay: false,
+      secondsPerPanel: 5,
+      mangaMode: false,
+      reducedMotion: false,
+      highContrast: false,
+      masterVolume: 0.7,
+      sfxVolume: 0.4,
+    };
+    stateMock = {
+      getPreferences: () => prefs,
+      hasPersistedPreference: (key: string) => explicit.has(key),
+      updatePreference: jasmine.createSpy('state.updatePreference').and.callFake(
+        (key: keyof PlayerPreferences, value: unknown) => {
+          prefs = { ...prefs, [key]: value };
+          explicit.add(key);
+        }
+      ),
+      updatePreferences: jasmine.createSpy('state.updatePreferences').and.callFake(
+        (patch: Partial<PlayerPreferences>) => {
+          prefs = { ...prefs, ...patch };
+          Object.keys(patch).forEach((k) => explicit.add(k));
+        }
+      ),
+      setCurrentPanel: jasmine.createSpy('state.setCurrentPanel'),
+      currentPanel$: new Subject(),
+      locale$: new Subject(),
+    };
+    engine = jasmine.createSpyObj<AudioEngineService>('AudioEngineService', [
+      'setMasterVolume',
+      'setRoleVolume',
+      'setMasterMuted',
+      'setRoleMuted',
+    ]);
+    panelAudio = jasmine.createSpyObj<PanelAudioService>('PanelAudioService', [
+      'syncPanel',
+      'stopAll',
+    ]);
+    tracking = { track: jasmine.createSpy('tracking.track') };
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PlayerStateService, useValue: stateMock },
+        { provide: ManifestService, useValue: { getManifest: () => manifest } },
+        { provide: VariableStoreService, useValue: {} },
+        { provide: FlowEngineService, useValue: {} },
+        { provide: TranslationService, useValue: {} },
+        { provide: TrackingService, useValue: tracking },
+        { provide: VideoControllerService, useValue: { passComplete$: new Subject() } },
+        {
+          provide: VideoSequencerService,
+          useValue: {
+            queueComplete: new Subject(),
+            start: jasmine.createSpy('start'),
+            reset: jasmine.createSpy('reset'),
+            getStallTimeout: () => 10_000,
+          },
+        },
+        { provide: AudioEngineService, useValue: engine },
+        { provide: PanelAudioService, useValue: panelAudio },
+      ],
+    });
+    TestBed.overrideComponent(PlayerShellComponent, {
+      set: { template: '', imports: [] },
+    });
+    shell = TestBed.createComponent(PlayerShellComponent).componentInstance;
+  });
+
+  afterEach(() => {
+    shell.autoplayEnabled = false;
+    priv().stopAutoplay();
+  });
+
+  describe('initial state', () => {
+    it('seeds the toggles from settings.ui defaults when the reader has not chosen', () => {
+      manifest = {
+        settings: { ui: { audioDefault: false, sfxDefault: false, speechDefault: true } },
+      } as Partial<PanelWaveManifest>;
+
+      priv().initializeAudioPreferences(manifest);
+
+      expect(shell.audioEnabled).toBe(false);
+      expect(shell.sfxEnabled).toBe(false);
+      expect(shell.speechEnabled).toBe(true);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(true);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('sfx', true);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', false);
+      // Stored volumes reach the mixer independently of the mute flags.
+      expect(engine.setMasterVolume).toHaveBeenCalledWith(0.7);
+      expect(engine.setRoleVolume).toHaveBeenCalledWith('sfx', 0.4);
+    });
+
+    it('defaults every toggle to on without ui settings', () => {
+      priv().initializeAudioPreferences(null);
+
+      expect(shell.audioEnabled).toBe(true);
+      expect(shell.sfxEnabled).toBe(true);
+      expect(shell.speechEnabled).toBe(true);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(false);
+    });
+
+    it('a preference the reader set wins over the work default', () => {
+      manifest = { settings: { ui: { audioDefault: false } } } as Partial<PanelWaveManifest>;
+      explicit.add('audio');
+      prefs = { ...prefs, audio: true };
+
+      priv().initializeAudioPreferences(manifest);
+
+      expect(shell.audioEnabled).toBe(true);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('toolbar toggles', () => {
+    it('Audio toggles the engine master mute, persists and tracks', () => {
+      shell.onToggleAudio();
+
+      expect(shell.audioEnabled).toBe(false);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(true);
+      expect(stateMock.updatePreference).toHaveBeenCalledWith('audio', false);
+      expect(tracking.track).toHaveBeenCalledWith('audio_toggle', { enabled: false });
+
+      shell.onToggleAudio();
+
+      expect(shell.audioEnabled).toBe(true);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(false);
+      expect(stateMock.updatePreference).toHaveBeenCalledWith('audio', true);
+    });
+
+    it('SFX toggles only the sfx bus', () => {
+      shell.onToggleSfx();
+
+      expect(shell.sfxEnabled).toBe(false);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('sfx', true);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(false);
+      expect(stateMock.updatePreference).toHaveBeenCalledWith('sfx', false);
+      expect(tracking.track).toHaveBeenCalledWith('sfx_toggle', { enabled: false });
+    });
+
+    it('Speech also gates the voiceover bus', () => {
+      shell.onToggleSpeech();
+
+      expect(shell.speechEnabled).toBe(false);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(stateMock.updatePreference).toHaveBeenCalledWith('speech', false);
+      expect(tracking.track).toHaveBeenCalledWith('speech_toggle', { enabled: false });
+    });
+
+    it('setting the same value again is a no-op', () => {
+      shell.setAudioEnabled(true);
+
+      expect(engine.setMasterMuted).not.toHaveBeenCalled();
+      expect(stateMock.updatePreference).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('settings modal', () => {
+    it('opening snapshots the current toggle states for the Preferences tab', () => {
+      shell.variableDefinitions = [];
+      shell.onToggleAudio();
+      shell.secondsPerPanel = 7;
+
+      shell.onOpenSettings();
+
+      expect(shell.settingsPreferences).toEqual(
+        jasmine.objectContaining({ audio: false, sfx: true, speech: true, secondsPerPanel: 7 })
+      );
+    });
+
+    it('save applies audio/sfx/speech, timing and persists the rest', () => {
+      shell.onPreferencesChange({
+        speech: false,
+        audio: false,
+        sfx: true,
+        autoplay: false,
+        secondsPerPanel: 9,
+        mangaMode: true,
+        reducedMotion: false,
+        highContrast: true,
+      });
+
+      expect(shell.audioEnabled).toBe(false);
+      expect(shell.speechEnabled).toBe(false);
+      expect(shell.sfxEnabled).toBe(true);
+      expect(shell.secondsPerPanel).toBe(9);
+      expect(engine.setMasterMuted).toHaveBeenCalledWith(true);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(stateMock.updatePreferences).toHaveBeenCalledWith(
+        jasmine.objectContaining({ mangaMode: true, highContrast: true, secondsPerPanel: 9 })
+      );
+    });
+  });
+
+  describe('panel audio', () => {
+    it('hands the effective panel and variable context to PanelAudioService', () => {
+      const panel = { layers: [] } as unknown as Panel;
+      shell.currentChapter = {
+        id: 'c1',
+        panels: { p1: panel },
+        graph: { entry: 'p1', edges: [] },
+      } as unknown as Chapter;
+      shell.currentPanel = panel;
+
+      priv().refreshResolvedPanels();
+
+      expect(panelAudio.syncPanel).toHaveBeenCalled();
+      const args = panelAudio.syncPanel.calls.mostRecent().args;
+      expect(args[0]).toBe('p1');
+      expect(args[1]).toBe(panel);
+    });
+
+    it('stops panel audio on destroy', () => {
+      shell.ngOnDestroy();
+
+      expect(panelAudio.stopAll).toHaveBeenCalled();
     });
   });
 });

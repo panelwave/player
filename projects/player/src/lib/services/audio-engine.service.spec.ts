@@ -48,6 +48,8 @@ describe('AudioEngineService', () => {
       paused: false,
       loop: false,
       src: '',
+      addEventListener: jasmine.createSpy('addEventListener'),
+      removeEventListener: jasmine.createSpy('removeEventListener'),
     };
 
     // Mock window.Audio
@@ -298,6 +300,99 @@ describe('AudioEngineService', () => {
 
       expect(mockAudioContext.close).toHaveBeenCalled();
       expect(service.getActiveTracks().length).toBe(0);
+    });
+  });
+
+  describe('mute flags (toolbar Audio / SFX toggles)', () => {
+    it('master mute drives the master gain to 0 and back without losing the volume', async () => {
+      await service.initialize();
+      service.setMasterVolume(0.6);
+
+      service.setMasterMuted(true);
+      expect(service.isMasterMuted()).toBe(true);
+      expect(service.getMasterVolume()).toBe(0.6);
+      expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0, mockAudioContext.currentTime);
+
+      service.setMasterMuted(false);
+      expect(service.isMasterMuted()).toBe(false);
+      expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.6, mockAudioContext.currentTime);
+    });
+
+    it('emits masterMuted$ changes (distinct)', async () => {
+      const seen: boolean[] = [];
+      service.masterMuted$.subscribe((muted) => seen.push(muted));
+
+      service.setMasterMuted(true);
+      service.setMasterMuted(true);
+      service.setMasterMuted(false);
+
+      expect(seen).toEqual([false, true, false]);
+    });
+
+    it('role mute silences one bus and keeps its volume', async () => {
+      await service.initialize();
+      service.setRoleVolume('sfx', 0.4);
+
+      service.setRoleMuted('sfx', true);
+      expect(service.isRoleMuted('sfx')).toBe(true);
+      expect(service.getRoleVolume('sfx')).toBe(0.4);
+      expect(service.isRoleMuted('music')).toBe(false);
+      expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0, mockAudioContext.currentTime);
+
+      service.setRoleMuted('sfx', false);
+      expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.4, mockAudioContext.currentTime);
+    });
+
+    it('mute flags set before initialization apply to the created gain nodes', async () => {
+      service.setMasterMuted(true);
+      service.setRoleMuted('sfx', true);
+
+      await service.initialize();
+
+      // The shared mock node ends up with the last written value (0).
+      expect(mockGainNode.gain.value).toBe(0);
+    });
+  });
+
+  describe('per-track gain', () => {
+    it('creates a gain node per track and applies the track volume (0-2)', async () => {
+      await service.initialize();
+      const calls = mockAudioContext.createGain.calls.count();
+
+      await service.play({ id: 't', url: 't.mp3', role: 'music', volume: 1.5 });
+
+      expect(mockAudioContext.createGain.calls.count()).toBe(calls + 1);
+      expect(mockGainNode.gain.value).toBe(1.5);
+      expect(service.getPlaybackState('t')?.volume).toBe(1.5);
+      expect(service.getPlaybackState('t')?.role).toBe('music');
+    });
+
+    it('setTrackVolume changes a playing track', async () => {
+      await service.play({ id: 't', url: 't.mp3', role: 'ambient', volume: 0.5 });
+
+      service.setTrackVolume('t', 0.9);
+
+      expect(service.getPlaybackState('t')?.volume).toBe(0.9);
+      expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalledWith(0.9, mockAudioContext.currentTime);
+    });
+
+    it('releases a one-shot track when it ends', async () => {
+      await service.play({ id: 'shot', url: 'shot.mp3', role: 'sfx' });
+      expect(service.isActive('shot')).toBe(true);
+      const ended = mockAudio.addEventListener.calls
+        .allArgs()
+        .find((args: unknown[]) => args[0] === 'ended')?.[1] as () => void;
+      expect(ended).toBeDefined();
+
+      ended();
+
+      expect(service.isActive('shot')).toBe(false);
+    });
+
+    it('does not attach an ended handler to looping tracks', async () => {
+      await service.play({ id: 'loop', url: 'loop.mp3', role: 'ambient', loop: true });
+
+      expect(mockAudio.addEventListener).not.toHaveBeenCalled();
     });
   });
 });

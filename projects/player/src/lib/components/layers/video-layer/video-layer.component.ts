@@ -33,8 +33,10 @@ import type {
   VideoTrackingPayload,
 } from '../../../types';
 import { PlayerEvent } from '../../../types';
+import type { Subscription } from 'rxjs';
 import { VideoControllerService } from '../../../services/video-controller.service';
 import { UserGestureService } from '../../../services/user-gesture.service';
+import { AudioEngineService } from '../../../services/audio-engine.service';
 import { TrackingService } from '../../../services/tracking.service';
 import {
   VideoSequencerService,
@@ -62,7 +64,11 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   private readonly gesture = inject(UserGestureService);
   private readonly tracking = inject(TrackingService);
   private readonly sequencer = inject(VideoSequencerService);
+  private readonly audioEngine = inject(AudioEngineService);
   private readonly cdr = inject(ChangeDetectorRef);
+
+  /** Follows the player-wide Audio toggle (engine master mute). */
+  private masterMuteSub?: Subscription;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** Video source URL (forward variant). */
@@ -287,6 +293,19 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnInit(): void {
     this.syncSequencerRegistration();
+    // The toolbar's Audio toggle silences video sound too: while the engine
+    // is master-muted the element stays muted whatever was authored; on
+    // unmute the authored/gesture-derived state is restored.
+    this.masterMuteSub = this.audioEngine.masterMuted$.subscribe((masterMuted) => {
+      const effective = this.computeEffectiveMuted();
+      this.setElementMuted(effective);
+      if (masterMuted) {
+        this.showUnmuteButton = false;
+      } else if (this.video && !this.video.paused) {
+        this.showUnmuteButton = this.wantsSound() && effective;
+      }
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -356,6 +375,7 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.masterMuteSub?.unsubscribe();
     this.stopFrameStepping();
     this.cancelPendingSwap();
     this.detachReverseVariantListener();
@@ -475,7 +495,10 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
     // Apply autoplay policy: non-gesture playback must start muted.
     const effectiveMuted = this.computeEffectiveMuted();
     this.setElementMuted(effectiveMuted);
-    this.showUnmuteButton = this.wantsSound() && effectiveMuted;
+    // No affordance while the reader muted the whole player: unmuting one
+    // video would contradict the toolbar's Audio toggle.
+    this.showUnmuteButton =
+      this.wantsSound() && effectiveMuted && !this.audioEngine.isMasterMuted();
 
     // Ensure we start from the configured offset when at the beginning.
     if (video.currentTime < this.startTimeSec || video.ended) {
@@ -633,6 +656,10 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private computeEffectiveMuted(): boolean {
+    // Player-wide Audio toggle off: silent, whatever is authored.
+    if (this.audioEngine.isMasterMuted()) {
+      return true;
+    }
     // Pingpong: muted during the reverse phase regardless of setting, and
     // muted before any user gesture (autoplay policy) even though pingpong
     // is otherwise excluded from the unmute affordance (see wantsSound()).

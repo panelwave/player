@@ -8,6 +8,7 @@ import { VideoLayerComponent } from './video-layer.component';
 import { VideoControllerService } from '../../../services/video-controller.service';
 import { UserGestureService } from '../../../services/user-gesture.service';
 import { TrackingService } from '../../../services/tracking.service';
+import { AudioEngineService } from '../../../services/audio-engine.service';
 import {
   VideoSequencerService,
   type SequencedVideo,
@@ -466,6 +467,37 @@ describe('VideoLayerComponent', () => {
 
       expect(gesture.hasInteracted()).toBe(true);
       expect(videoEl.muted).toBe(false);
+      expect(component.showUnmuteButton).toBe(false);
+    });
+
+    it('follows the engine master mute (toolbar Audio toggle) and restores the authored state', async () => {
+      const engine = TestBed.inject(AudioEngineService);
+      gesture.set(true);
+      component.muted = false;
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+      await component.play();
+      expect(videoEl.muted).toBe(false);
+
+      engine.setMasterMuted(true);
+      expect(videoEl.muted).toBe(true);
+      expect(component.showUnmuteButton).toBe(false);
+
+      engine.setMasterMuted(false);
+      expect(videoEl.muted).toBe(false);
+    });
+
+    it('starts muted while the engine is master-muted, without an unmute affordance', async () => {
+      const engine = TestBed.inject(AudioEngineService);
+      engine.setMasterMuted(true);
+      gesture.set(true);
+      component.muted = false;
+      component.onLoadedMetadata();
+      setupVideoElement(10);
+
+      await component.play();
+
+      expect(videoEl.muted).toBe(true);
       expect(component.showUnmuteButton).toBe(false);
     });
 

@@ -70,7 +70,9 @@ import { PaywallService } from '../../services/paywall.service';
 import { HttpEntitlementAdapter } from '../../entitlement/http-entitlement.adapter';
 import type { EntitlementSnapshot } from '../../entitlement/paywall-evaluator';
 import type { PaywallGate } from '../../types/entitlement.types';
-import { SettingsModalComponent } from '../modals/settings-modal/settings-modal.component';
+import { SettingsModalComponent, type Preferences } from '../modals/settings-modal/settings-modal.component';
+import { AudioEngineService } from '../../services/audio-engine.service';
+import { PanelAudioService } from '../../services/panel-audio.service';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
 import { ExtrasViewerComponent, type Extra, type ExtraType } from '../modals/extras-viewer/extras-viewer.component';
 import { ActionModalComponent } from '../modals/action-modal/action-modal.component';
@@ -443,6 +445,32 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   speechEnabled = true;
 
   /**
+   * Audio toggle state (master mute: every engine bus and video sound).
+   * Reader preference when set, else the manifest's settings.ui.audioDefault.
+   */
+  audioEnabled = true;
+
+  /**
+   * SFX toggle state (sfx bus, which also carries `ui` sounds). Reader
+   * preference when set, else the manifest's settings.ui.sfxDefault.
+   */
+  sfxEnabled = true;
+
+  /**
+   * Snapshot handed to the settings modal's Preferences tab (rebuilt on open).
+   */
+  settingsPreferences: Preferences = {
+    speech: true,
+    audio: true,
+    sfx: true,
+    autoplay: false,
+    secondsPerPanel: 5,
+    mangaMode: false,
+    reducedMotion: false,
+    highContrast: false,
+  };
+
+  /**
    * Autoplay progress (0-100)
    */
   autoplayProgress = 0;
@@ -489,6 +517,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private readonly videoSequencer = inject(VideoSequencerService);
   private readonly hotspotAction = inject(HotspotActionService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly audioEngine = inject(AudioEngineService);
+  private readonly panelAudio = inject(PanelAudioService);
 
   /**
    * Reading order per panel id (1-based, across chapters), computed once per
@@ -543,6 +573,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.stopAutoplay();
     this.stopAutoplayProgress();
     this.videoSequencer.reset();
+    this.panelAudio.stopAll();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -651,8 +682,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         );
       }
 
-      // Initial speech-toggle state from the work's settings (default: on)
-      this.speechEnabled = loadedManifest?.settings?.ui?.speechDefault !== false;
+      // Initial speech / audio / SFX toggle state: the reader's stored
+      // preference wins, else the work's settings.ui.*Default (default: on).
+      this.initializeAudioPreferences(loadedManifest ?? null);
 
       // Configure tracking (consent requirements + event whitelist) from the
       // manifest so video events flow through the consent/whitelist pipeline.
@@ -1023,6 +1055,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (!this.currentPanel) {
       this.effectivePanel = undefined;
       this.activeVariantId = undefined;
+      this.syncPanelAudio();
       return;
     }
 
@@ -1037,6 +1070,21 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (panelId && this.resolvedPanels[panelId] !== resolved.panel) {
       this.resolvedPanels = { ...this.resolvedPanels, [panelId]: resolved.panel };
     }
+
+    this.syncPanelAudio();
+  }
+
+  /**
+   * Keep the audio engine's playing set in step with the effective panel
+   * (variant-resolved, so a variant's `audio` override wins) and the
+   * variable context its tracks' `visibleIf` conditions read.
+   */
+  private syncPanelAudio(): void {
+    this.panelAudio.syncPanel(
+      this.getCurrentPanelId(),
+      this.effectivePanel ?? this.currentPanel,
+      this.variableContext
+    );
   }
 
   /**
@@ -1446,15 +1494,113 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onToggleSpeech(): void {
-    this.speechEnabled = !this.speechEnabled;
+    this.setSpeechEnabled(!this.speechEnabled);
   }
 
   onToggleAudio(): void {
-    console.log('Toggle audio - not yet implemented');
+    this.setAudioEnabled(!this.audioEnabled);
   }
 
   onToggleSfx(): void {
-    console.log('Toggle SFX - not yet implemented');
+    this.setSfxEnabled(!this.sfxEnabled);
+  }
+
+  /**
+   * Speech bubbles on/off. Also gates the voiceover bus: spoken lines belong
+   * to the bubbles they voice (schema audio roles).
+   */
+  setSpeechEnabled(enabled: boolean): void {
+    if (this.speechEnabled === enabled) {
+      return;
+    }
+    this.speechEnabled = enabled;
+    this.playerState.updatePreference('speech', enabled);
+    this.applyAudioPreferences();
+    this.trackingService.track('speech_toggle', { enabled });
+  }
+
+  /**
+   * Master audio on/off: every engine bus and video sound.
+   */
+  setAudioEnabled(enabled: boolean): void {
+    if (this.audioEnabled === enabled) {
+      return;
+    }
+    this.audioEnabled = enabled;
+    this.playerState.updatePreference('audio', enabled);
+    this.applyAudioPreferences();
+    this.trackingService.track('audio_toggle', { enabled });
+  }
+
+  /**
+   * Sound effects on/off (sfx bus incl. `ui` sounds).
+   */
+  setSfxEnabled(enabled: boolean): void {
+    if (this.sfxEnabled === enabled) {
+      return;
+    }
+    this.sfxEnabled = enabled;
+    this.playerState.updatePreference('sfx', enabled);
+    this.applyAudioPreferences();
+    this.trackingService.track('sfx_toggle', { enabled });
+  }
+
+  /**
+   * Seed the toggle states once the manifest is loaded: a preference the
+   * reader set explicitly (this or an earlier session) wins over the work's
+   * `settings.ui.speechDefault` / `audioDefault` / `sfxDefault`.
+   */
+  private initializeAudioPreferences(manifest: PanelWaveManifest | null): void {
+    const ui = manifest?.settings?.ui;
+    const prefs = this.playerState.getPreferences();
+    const pick = (key: 'speech' | 'audio' | 'sfx', workDefault: boolean | undefined): boolean =>
+      this.playerState.hasPersistedPreference(key) ? prefs[key] : workDefault !== false;
+
+    this.speechEnabled = pick('speech', ui?.speechDefault);
+    this.audioEnabled = pick('audio', ui?.audioDefault);
+    this.sfxEnabled = pick('sfx', ui?.sfxDefault);
+    this.applyAudioPreferences();
+  }
+
+  /**
+   * Push the toggle states and stored volumes into the mixer. Mutes and
+   * volumes are independent in the engine, so toggling never loses a level.
+   */
+  private applyAudioPreferences(): void {
+    const prefs = this.playerState.getPreferences();
+    this.audioEngine.setMasterVolume(prefs.masterVolume ?? 1);
+    this.audioEngine.setRoleVolume('sfx', prefs.sfxVolume ?? 1);
+    this.audioEngine.setMasterMuted(!this.audioEnabled);
+    this.audioEngine.setRoleMuted('sfx', !this.sfxEnabled);
+    this.audioEngine.setRoleMuted('voiceover', !this.speechEnabled);
+  }
+
+  /**
+   * Settings modal "Save" (Preferences tab). Toggle-backed preferences go
+   * through the same setters as the toolbar; the rest are persisted for the
+   * host/state to read (manga mode, reduced motion and high contrast have
+   * no shell behaviour yet).
+   */
+  onPreferencesChange(prefs: Preferences): void {
+    this.setSpeechEnabled(prefs.speech);
+    this.setAudioEnabled(prefs.audio);
+    this.setSfxEnabled(prefs.sfx);
+
+    const seconds = Number(prefs.secondsPerPanel);
+    if (Number.isFinite(seconds) && seconds > 0 && seconds !== this.secondsPerPanel) {
+      this.onSecondsPerPanelChange(seconds);
+    }
+    if (prefs.autoplay !== this.autoplayEnabled) {
+      this.onToggleAutoplay();
+    }
+
+    this.playerState.updatePreferences({
+      autoplay: prefs.autoplay,
+      secondsPerPanel: this.secondsPerPanel,
+      mangaMode: prefs.mangaMode,
+      reducedMotion: prefs.reducedMotion,
+      highContrast: prefs.highContrast,
+    });
   }
 
   onToggleAutoplay(): void {
@@ -1492,6 +1638,20 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       values[def.id] = this.variableStore.get(def.id, def.scope, this.scopeIdFor(def));
     }
     this.settingsVariableValues = values;
+
+    // Preferences tab: toggle-backed values from the shell, the rest from
+    // the persisted state.
+    const prefs = this.playerState.getPreferences();
+    this.settingsPreferences = {
+      speech: this.speechEnabled,
+      audio: this.audioEnabled,
+      sfx: this.sfxEnabled,
+      autoplay: this.autoplayEnabled,
+      secondsPerPanel: this.secondsPerPanel,
+      mangaMode: prefs.mangaMode,
+      reducedMotion: prefs.reducedMotion,
+      highContrast: prefs.highContrast,
+    };
     this.settingsVisible = true;
   }
 

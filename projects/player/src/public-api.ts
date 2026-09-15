@@ -11,7 +11,13 @@ export { ManifestService } from './lib/services/manifest.service';
 export { VariableStoreService } from './lib/services/variable-store.service';
 export { FlowEngineService } from './lib/services/flow-engine.service';
 export { ImageCacheService } from './lib/services/image-cache.service';
-export { AudioEngineService, type AudioTrack, type PlaybackState } from './lib/services/audio-engine.service';
+export { AudioEngineService, type AudioTrack, type AudioRole, type PlaybackState } from './lib/services/audio-engine.service';
+export {
+  PanelAudioService,
+  busForRole,
+  PANEL_AUDIO_LEAVE_FADE_MS,
+  type ResolvedPanelAudio,
+} from './lib/services/panel-audio.service';
 export { VideoControllerService, type VideoState, type VideoEvent, type VideoStatus } from './lib/services/video-controller.service';
 export { UserGestureService } from './lib/services/user-gesture.service';
 export { VisibilityService, VISIBILITY_THRESHOLD, type VisibilityChange } from './lib/services/visibility.service';

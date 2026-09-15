@@ -80,8 +80,8 @@
         [viewMode]="viewMode"
         [pageViewAvailable]="pageViewAvailable"
         [speechEnabled]="speechEnabled"
-        [audioEnabled]="true"
-        [sfxEnabled]="true"
+        [audioEnabled]="audioEnabled"
+        [sfxEnabled]="sfxEnabled"
         [autoplayEnabled]="autoplayEnabled"
         [autoplayProgress]="autoplayProgress"
         [secondsPerPanel]="secondsPerPanel"
@@ -175,6 +175,8 @@
           [variableValues]="settingsVariableValues"
           [availableLocales]="availableLocales"
           [locale]="locale"
+          [preferences]="settingsPreferences"
+          (preferencesChange)="onPreferencesChange($event)"
           (variableChange)="onSettingsVariableChange($event)"
           (close)="settingsVisible = false">
         </pw-settings-modal>

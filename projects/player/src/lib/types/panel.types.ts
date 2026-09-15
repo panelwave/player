@@ -29,7 +29,14 @@ export interface Panel {
   
   /** Array of interactive hotspots (optional) */
   hotspots?: Hotspot[];
-  
+
+  /**
+   * Audio tracks that play while this panel is current (schema `AudioTrack`).
+   * Started by the shell on panel enter, stopped on leave; a looping track
+   * referenced by consecutive panels keeps playing across them.
+   */
+  audio?: PanelAudioTrack[];
+
   /** Array of panel variants based on conditions (optional) */
   variants?: PanelVariant[];
   
@@ -50,6 +57,35 @@ export interface Panel {
   
   /** Plugin instances for this panel (optional) */
   plugins?: PluginInstance[];
+}
+
+/**
+ * Manifest audio role (schema `AudioTrack.role`). `ui` plays on the SFX bus,
+ * `none` (the schema default) on the music bus.
+ */
+export type PanelAudioRole = 'ambient' | 'music' | 'voiceover' | 'sfx' | 'ui' | 'none';
+
+/**
+ * Panel-scoped audio track (schema `AudioTrack`, `panels.<id>.audio[]`).
+ */
+export interface PanelAudioTrack {
+  /** Audio asset in the catalog */
+  assetId: AssetRef;
+
+  /** Bus the track plays on (optional, default: 'none') */
+  role?: PanelAudioRole;
+
+  /** Loop while the panel is current (optional, default: false) */
+  loop?: boolean;
+
+  /** Gain 0-2 (optional, default: 1) */
+  gain?: number;
+
+  /** Delay after panel enter before the track starts, in ms (optional) */
+  startAtMs?: number;
+
+  /** JSON Logic condition; the track only plays when it evaluates true (optional) */
+  visibleIf?: JsonLogic;
 }
 
 /**

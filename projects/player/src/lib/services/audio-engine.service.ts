@@ -4,6 +4,8 @@
  */
 
 import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs/operators';
 import type { SequenceAudioTrack } from '../types';
 
 /**
@@ -19,7 +21,8 @@ export interface AudioTrack {
   url: string;
   role: AudioRole;
   loop?: boolean;
-  volume?: number; // 0-1
+  /** Per-track gain (0-2; 1 = as authored). */
+  volume?: number;
   fadeIn?: number; // milliseconds
   fadeOut?: number; // milliseconds
 }
@@ -37,8 +40,29 @@ export interface PlaybackState {
 }
 
 /**
+ * Per-track bookkeeping: the element, its source node, its own gain node
+ * (between source and bus, so fades and per-track gain never touch the bus)
+ * and the bus it plays on.
+ */
+interface ActiveTrack {
+  audio: HTMLAudioElement;
+  source: MediaElementAudioSourceNode;
+  gain: GainNode;
+  role: AudioRole;
+  volume: number;
+  onEnded?: () => void;
+}
+
+const ROLES: AudioRole[] = ['ambient', 'music', 'voiceover', 'sfx'];
+
+/**
  * Audio Engine Service
- * Provides Web Audio API-based audio playback with multiple buses
+ * Provides Web Audio API-based audio playback with multiple buses.
+ *
+ * Signal chain: element -> track gain -> role gain -> master gain -> output.
+ * Volumes and mutes are independent: a bus keeps its volume while muted and
+ * comes back at that volume when unmuted (the toolbar's Audio/SFX toggles
+ * drive the mute flags; the settings' volumes drive the gains).
  */
 @Injectable({
   providedIn: 'root',
@@ -60,19 +84,9 @@ export class AudioEngineService {
   private roleGains = new Map<AudioRole, GainNode>();
 
   /**
-   * Active audio elements
+   * Active tracks by id
    */
-  private activeAudio = new Map<string, HTMLAudioElement>();
-
-  /**
-   * Audio source nodes
-   */
-  private audioSources = new Map<string, MediaElementAudioSourceNode>();
-
-  /**
-   * Fade intervals
-   */
-  private fadeIntervals = new Map<string, number>();
+  private tracks = new Map<string, ActiveTrack>();
 
   /**
    * Master volume (0-1)
@@ -88,6 +102,20 @@ export class AudioEngineService {
     ['voiceover', 1.0],
     ['sfx', 1.0],
   ]);
+
+  /** Master mute flag (independent of the master volume). */
+  private readonly masterMutedSubject = new BehaviorSubject<boolean>(false);
+
+  /** Muted buses (independent of their volumes). */
+  private mutedRoles = new Set<AudioRole>();
+
+  /**
+   * Master mute state. Video layers follow this too, so the toolbar's Audio
+   * toggle silences the whole player, not only the WebAudio buses.
+   */
+  readonly masterMuted$: Observable<boolean> = this.masterMutedSubject
+    .asObservable()
+    .pipe(distinctUntilChanged());
 
   /**
    * Autoplay allowed flag
@@ -109,14 +137,13 @@ export class AudioEngineService {
       // Create master gain
       this.masterGain = this.audioContext.createGain();
       this.masterGain.connect(this.audioContext.destination);
-      this.masterGain.gain.value = this._masterVolume;
+      this.masterGain.gain.value = this.effectiveMasterGain();
 
       // Create gain nodes for each role
-      const roles: AudioRole[] = ['ambient', 'music', 'voiceover', 'sfx'];
-      roles.forEach((role) => {
+      ROLES.forEach((role) => {
         const gain = this.audioContext!.createGain();
         gain.connect(this.masterGain!);
-        gain.gain.value = this.roleVolumes.get(role) || 1.0;
+        gain.gain.value = this.effectiveRoleGain(role);
         this.roleGains.set(role, gain);
       });
 
@@ -169,73 +196,28 @@ export class AudioEngineService {
    * Play audio track
    */
   async play(track: AudioTrack): Promise<void> {
-    // Ensure initialized
-    if (!this.audioContext) {
-      await this.initialize();
-    }
-
-    // Resume if needed
-    if (this.audioContext!.state === 'suspended') {
-      await this.resumeContext();
-    }
-
-    // Stop existing track with same ID
-    if (this.activeAudio.has(track.id)) {
-      await this.stop(track.id);
-    }
-
-    try {
-      // Create audio element
-      const audio = new Audio(track.url);
-      audio.loop = track.loop || false;
-
-      // Create source node
-      const source = this.audioContext!.createMediaElementSource(audio);
-      const gainNode = this.roleGains.get(track.role);
-      
-      if (!gainNode) {
-        throw new Error(`Invalid role: ${track.role}`);
-      }
-
-      source.connect(gainNode);
-
-      // Store references
-      this.activeAudio.set(track.id, audio);
-      this.audioSources.set(track.id, source);
-
-      // Set initial volume
-      const initialVolume = track.volume !== undefined ? track.volume : 1.0;
-
-      // Apply fade in
-      if (track.fadeIn && track.fadeIn > 0) {
-        await this.fadeIn(track.id, track.fadeIn, initialVolume);
-      }
-
-      // Play audio
-      await audio.play();
-    } catch (error) {
-      console.error(`Failed to play audio ${track.id}:`, error);
-      // Cleanup on error
-      this.cleanup(track.id);
-      throw error;
-    }
+    await this.startTrack(track, 0);
   }
 
   /**
    * Stop audio track
    */
   async stop(id: string, fadeOutMs?: number): Promise<void> {
-    const audio = this.activeAudio.get(id);
-    if (!audio) return;
+    const active = this.tracks.get(id);
+    if (!active) return;
 
     // Apply fade out if specified
     if (fadeOutMs && fadeOutMs > 0) {
       await this.fadeOut(id, fadeOutMs);
+      // A newer track may have replaced this id while fading.
+      if (this.tracks.get(id) !== active) {
+        return;
+      }
     }
 
     // Stop playback
-    audio.pause();
-    audio.currentTime = 0;
+    active.audio.pause();
+    active.audio.currentTime = 0;
 
     // Cleanup
     this.cleanup(id);
@@ -245,7 +227,7 @@ export class AudioEngineService {
    * Pause audio track
    */
   pause(id: string): void {
-    const audio = this.activeAudio.get(id);
+    const audio = this.tracks.get(id)?.audio;
     if (audio && !audio.paused) {
       audio.pause();
     }
@@ -255,7 +237,7 @@ export class AudioEngineService {
    * Resume audio track
    */
   async resume(id: string): Promise<void> {
-    const audio = this.activeAudio.get(id);
+    const audio = this.tracks.get(id)?.audio;
     if (audio && audio.paused) {
       await audio.play();
     }
@@ -301,21 +283,10 @@ export class AudioEngineService {
   }
 
   /**
-   * Get gain node for specific track
+   * Get the per-track gain node (sits between the element and its bus).
    */
   private getTrackGainNode(id: string): GainNode | undefined {
-    const source = this.audioSources.get(id);
-    if (!source) return undefined;
-
-    // Get role from active audio metadata
-    for (const [role, gainNode] of this.roleGains.entries()) {
-      // Check if source is connected to this gain node
-      // Note: We can't directly check connections, so we track role separately
-      // For now, we'll need to store role with the track
-      return gainNode;
-    }
-
-    return undefined;
+    return this.tracks.get(id)?.gain;
   }
 
   /**
@@ -323,10 +294,7 @@ export class AudioEngineService {
    */
   setMasterVolume(volume: number): void {
     this._masterVolume = Math.max(0, Math.min(1, volume));
-    if (this.masterGain && this.audioContext) {
-      const currentTime = this.audioContext.currentTime;
-      this.masterGain.gain.setValueAtTime(this._masterVolume, currentTime);
-    }
+    this.applyMasterGain();
   }
 
   /**
@@ -337,17 +305,30 @@ export class AudioEngineService {
   }
 
   /**
+   * Mute/unmute everything without touching the master volume.
+   */
+  setMasterMuted(muted: boolean): void {
+    if (this.masterMutedSubject.value === muted) {
+      return;
+    }
+    this.masterMutedSubject.next(muted);
+    this.applyMasterGain();
+  }
+
+  /**
+   * Whether the master output is muted.
+   */
+  isMasterMuted(): boolean {
+    return this.masterMutedSubject.value;
+  }
+
+  /**
    * Set role volume
    */
   setRoleVolume(role: AudioRole, volume: number): void {
     const normalizedVolume = Math.max(0, Math.min(1, volume));
     this.roleVolumes.set(role, normalizedVolume);
-
-    const gainNode = this.roleGains.get(role);
-    if (gainNode && this.audioContext) {
-      const currentTime = this.audioContext.currentTime;
-      gainNode.gain.setValueAtTime(normalizedVolume, currentTime);
-    }
+    this.applyRoleGain(role);
   }
 
   /**
@@ -358,23 +339,52 @@ export class AudioEngineService {
   }
 
   /**
+   * Mute/unmute one bus without touching its volume.
+   */
+  setRoleMuted(role: AudioRole, muted: boolean): void {
+    if (muted) {
+      this.mutedRoles.add(role);
+    } else {
+      this.mutedRoles.delete(role);
+    }
+    this.applyRoleGain(role);
+  }
+
+  /**
+   * Whether a bus is muted.
+   */
+  isRoleMuted(role: AudioRole): boolean {
+    return this.mutedRoles.has(role);
+  }
+
+  /**
+   * Change the per-track gain (0-2) of a playing track.
+   */
+  setTrackVolume(id: string, volume: number): void {
+    const active = this.tracks.get(id);
+    if (!active) return;
+    active.volume = this.clampTrackVolume(volume);
+    if (this.audioContext) {
+      active.gain.gain.setValueAtTime(active.volume, this.audioContext.currentTime);
+    } else {
+      active.gain.gain.value = active.volume;
+    }
+  }
+
+  /**
    * Get playback state
    */
   getPlaybackState(id: string): PlaybackState | undefined {
-    const audio = this.activeAudio.get(id);
-    if (!audio) return undefined;
-
-    // Determine role (we need to track this separately)
-    let role: AudioRole = 'sfx'; // Default
-    // In real implementation, store role with track
+    const active = this.tracks.get(id);
+    if (!active) return undefined;
 
     return {
       id,
-      role,
-      playing: !audio.paused,
-      currentTime: audio.currentTime,
-      duration: audio.duration,
-      volume: audio.volume,
+      role: active.role,
+      playing: !active.audio.paused,
+      currentTime: active.audio.currentTime,
+      duration: active.audio.duration,
+      volume: active.volume,
     };
   }
 
@@ -382,7 +392,14 @@ export class AudioEngineService {
    * Get all active tracks
    */
   getActiveTracks(): string[] {
-    return Array.from(this.activeAudio.keys());
+    return Array.from(this.tracks.keys());
+  }
+
+  /**
+   * Whether a track with this id is currently registered (playing or paused).
+   */
+  isActive(id: string): boolean {
+    return this.tracks.has(id);
   }
 
   /**
@@ -397,27 +414,17 @@ export class AudioEngineService {
    * Cleanup track resources
    */
   private cleanup(id: string): void {
-    // Clear fade interval
-    const interval = this.fadeIntervals.get(id);
-    if (interval !== undefined) {
-      window.clearInterval(interval);
-      this.fadeIntervals.delete(id);
-    }
+    const active = this.tracks.get(id);
+    if (!active) return;
+    this.tracks.delete(id);
 
-    // Disconnect source
-    const source = this.audioSources.get(id);
-    if (source) {
-      source.disconnect();
-      this.audioSources.delete(id);
+    if (active.onEnded && typeof active.audio.removeEventListener === 'function') {
+      active.audio.removeEventListener('ended', active.onEnded);
     }
-
-    // Remove audio element
-    const audio = this.activeAudio.get(id);
-    if (audio) {
-      audio.src = '';
-      audio.load();
-      this.activeAudio.delete(id);
-    }
+    active.source.disconnect();
+    active.gain.disconnect();
+    active.audio.src = '';
+    active.audio.load();
   }
 
   /**
@@ -436,7 +443,7 @@ export class AudioEngineService {
   async playSequenceTracks(
     tracks: SequenceAudioTrack[],
     currentTimeMs: number,
-    assetBaseUrl: string = ''
+    assetBaseUrl = ''
   ): Promise<void> {
     // Ensure initialized
     if (!this.audioContext) {
@@ -471,7 +478,7 @@ export class AudioEngineService {
           url: audioUrl,
           role: track.role,
           loop: track.loop,
-          volume: track.volume !== undefined && isFinite(track.volume) 
+          volume: track.volume !== undefined && isFinite(track.volume)
             ? Math.max(0, Math.min(2, track.volume))
             : 1.0,
           fadeIn: track.fadeIn,
@@ -480,7 +487,7 @@ export class AudioEngineService {
 
         try {
           // Play track from offset
-          await this.playFromOffset(audioTrack, offsetSeconds);
+          await this.startTrack(audioTrack, offsetSeconds);
         } catch (error) {
           console.error(`Failed to play sequence track ${track.id}:`, error);
         }
@@ -489,53 +496,68 @@ export class AudioEngineService {
   }
 
   /**
-   * Play audio track from a specific offset
-   * @param track Audio track definition
-   * @param offsetSeconds Start playback from this offset in seconds
+   * Create the element + node chain for a track and start it (optionally
+   * from an offset). Replaces any active track with the same id.
    */
-  private async playFromOffset(track: AudioTrack, offsetSeconds: number): Promise<void> {
+  private async startTrack(track: AudioTrack, offsetSeconds: number): Promise<void> {
     // Ensure initialized
     if (!this.audioContext) {
       await this.initialize();
     }
 
+    // Resume if needed
+    if (this.audioContext!.state === 'suspended') {
+      await this.resumeContext();
+    }
+
     // Stop existing track with same ID
-    if (this.activeAudio.has(track.id)) {
+    if (this.tracks.has(track.id)) {
       await this.stop(track.id);
     }
 
-    try {
-      // Create audio element
-      const audio = new Audio(track.url);
-      audio.loop = track.loop || false;
+    const bus = this.roleGains.get(track.role);
+    if (!bus) {
+      throw new Error(`Invalid role: ${track.role}`);
+    }
+
+    // Create audio element
+    const audio = new Audio(track.url);
+    audio.loop = track.loop || false;
+    if (offsetSeconds > 0) {
       audio.currentTime = offsetSeconds;
+    }
 
-      // Create source node
-      const source = this.audioContext!.createMediaElementSource(audio);
-      const gainNode = this.roleGains.get(track.role);
-      
-      if (!gainNode) {
-        throw new Error(`Invalid role: ${track.role}`);
-      }
+    // Element -> track gain -> bus
+    const source = this.audioContext!.createMediaElementSource(audio);
+    const gain = this.audioContext!.createGain();
+    const volume = this.clampTrackVolume(track.volume);
+    gain.gain.value = volume;
+    source.connect(gain);
+    gain.connect(bus);
 
-      source.connect(gainNode);
+    const active: ActiveTrack = { audio, source, gain, role: track.role, volume };
+    this.tracks.set(track.id, active);
 
-      // Store references
-      this.activeAudio.set(track.id, audio);
-      this.audioSources.set(track.id, source);
+    // One-shot tracks release their resources when they finish.
+    if (!audio.loop && typeof audio.addEventListener === 'function') {
+      active.onEnded = () => {
+        if (this.tracks.get(track.id) === active) {
+          this.cleanup(track.id);
+        }
+      };
+      audio.addEventListener('ended', active.onEnded);
+    }
 
-      // Set initial volume
-      const initialVolume = track.volume !== undefined ? track.volume : 1.0;
-
-      // Apply fade in if we're at the start
-      if (track.fadeIn && track.fadeIn > 0 && offsetSeconds < track.fadeIn / 1000) {
-        await this.fadeIn(track.id, track.fadeIn - offsetSeconds * 1000, initialVolume);
+    try {
+      // Apply fade in (shortened when starting mid-fade)
+      if (track.fadeIn && track.fadeIn > 0 && offsetSeconds * 1000 < track.fadeIn) {
+        await this.fadeIn(track.id, track.fadeIn - offsetSeconds * 1000, volume);
       }
 
       // Play audio
       await audio.play();
     } catch (error) {
-      console.error(`Failed to play audio ${track.id} from offset:`, error);
+      console.error(`Failed to play audio ${track.id}:`, error);
       // Cleanup on error
       this.cleanup(track.id);
       throw error;
@@ -568,8 +590,37 @@ export class AudioEngineService {
 
     // Clear references
     this.roleGains.clear();
-    this.activeAudio.clear();
-    this.audioSources.clear();
-    this.fadeIntervals.clear();
+    this.tracks.clear();
+    this.audioContext = undefined;
+    this.masterGain = undefined;
+    this.autoplayAllowed = false;
+  }
+
+  private clampTrackVolume(volume: number | undefined): number {
+    if (volume === undefined || !isFinite(volume)) {
+      return 1.0;
+    }
+    return Math.max(0, Math.min(2, volume));
+  }
+
+  private effectiveMasterGain(): number {
+    return this.masterMutedSubject.value ? 0 : this._masterVolume;
+  }
+
+  private effectiveRoleGain(role: AudioRole): number {
+    return this.mutedRoles.has(role) ? 0 : this.getRoleVolume(role);
+  }
+
+  private applyMasterGain(): void {
+    if (this.masterGain && this.audioContext) {
+      this.masterGain.gain.setValueAtTime(this.effectiveMasterGain(), this.audioContext.currentTime);
+    }
+  }
+
+  private applyRoleGain(role: AudioRole): void {
+    const gainNode = this.roleGains.get(role);
+    if (gainNode && this.audioContext) {
+      gainNode.gain.setValueAtTime(this.effectiveRoleGain(role), this.audioContext.currentTime);
+    }
   }
 }
