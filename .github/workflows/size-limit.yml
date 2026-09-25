@@ -1,7 +1,6 @@
 # Bundle-size check on pull requests: builds the library and fails when the
-# gzipped FESM bundle grows past the budget. Measured 180 KB on 2026-09-25;
-# the Phase 7 target is 150 KB, so the budget is a ratchet: lower it as the
-# bundle shrinks, never raise it.
+# gzipped FESM bundle grows past the budget. 180 KB is the accepted target
+# (measured 2026-09-25, decision recorded in the docs checklist); never raise it.
 name: size-limit
 
 on:
@@ -26,7 +25,7 @@ jobs:
 
       - name: Check gzipped size of the FESM bundle
         run: |
-          BUDGET_KB=190
+          BUDGET_KB=180
           FILE=$(ls dist/player/fesm2022/*.mjs | head -1)
           SIZE=$(gzip -c "$FILE" | wc -c)
           KB=$((SIZE / 1024))
