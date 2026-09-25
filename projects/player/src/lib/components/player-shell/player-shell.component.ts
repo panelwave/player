@@ -76,6 +76,8 @@ import { PanelAudioService } from '../../services/panel-audio.service';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
 import { ExtrasViewerComponent, type Extra, type ExtraType } from '../modals/extras-viewer/extras-viewer.component';
 import { ActionModalComponent } from '../modals/action-modal/action-modal.component';
+import { AgeGateComponent, type AgeVerificationResult } from '../overlays/age-gate/age-gate.component';
+import { BranchChooserComponent, type BranchChoice } from '../modals/branch-chooser/branch-chooser.component';
 import { HotspotActionService, type HotspotUiEffect } from '../../services/hotspot-action.service';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
@@ -130,6 +132,8 @@ export interface EntitlementAdapter {
     CharacterRosterComponent,
     ExtrasViewerComponent,
     ActionModalComponent,
+    AgeGateComponent,
+    BranchChooserComponent,
     ShareModalComponent,
     CommentsDrawerComponent,
     PwIconComponent
@@ -180,6 +184,31 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * checkout — the player never talks to a payment provider itself.
    */
   @Output() paywallAction = new EventEmitter<{ action: PaywallAction; gate: PaywallGate }>();
+
+  /**
+   * Emitted after the reader answers an `age_gate` rule's overlay (verified or
+   * not). The result is also persisted on the device so returning readers are
+   * not asked again.
+   */
+  @Output() ageVerified = new EventEmitter<AgeVerificationResult>();
+
+  /**
+   * Emitted when the reader likes / unlikes the work. The like is persisted
+   * locally (per work); a host with accounts may mirror it server-side.
+   */
+  @Output() likeChange = new EventEmitter<{ workId: string; liked: boolean }>();
+
+  /**
+   * Emitted when the reader sets / clears the bookmark. The bookmark is
+   * persisted locally (per work) and resumed on the next load when the host
+   * gives no explicit initial position.
+   */
+  @Output() bookmarkChange = new EventEmitter<{
+    workId: string;
+    chapterId: string;
+    panelId: string;
+    bookmarked: boolean;
+  }>();
 
   /**
    * Host-supplied initial variable values, keyed by variable id and
@@ -344,6 +373,27 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   paywallVisible = false;
   /** Adapter built from `entitlementEndpoint`, when the host supplied one. */
   private httpEntitlement?: HttpEntitlementAdapter;
+
+  /**
+   * Age gate raised by an `age_gate` paywall rule. The navigation it
+   * interrupted is remembered and resumed once the reader passes.
+   */
+  ageGateVisible = false;
+  ageGateMinimumAge = 18;
+  private pendingAgeGatedNavigation: {
+    chapterId: string;
+    panelId: string;
+    transition?: Transition;
+    cameraMove?: CameraMove;
+  } | null = null;
+
+  /** Reader's like / bookmark for this work (persisted per work on the device). */
+  liked = false;
+  bookmarked = false;
+
+  /** Branch chooser ("Choices" toolbar button). */
+  branchChooserVisible = false;
+  branchChoices: BranchChoice[] = [];
   settingsVisible = false;
   languageModalVisible = false;
   charactersVisible = false;
@@ -538,15 +588,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   /** Bound pagehide handler so add/removeEventListener match. */
   private readonly onPageHide = (): void => this.endAnalyticsSession();
 
-  constructor(
-    private playerState: PlayerStateService,
-    private manifestService: ManifestService,
-    private variableStore: VariableStoreService,
-    private flowEngine: FlowEngineService,
-    private translationService: TranslationService,
-    private canvasCamera: CanvasCameraService,
-    private paywallService: PaywallService
-  ) {}
+  private readonly playerState = inject(PlayerStateService);
+  private readonly manifestService = inject(ManifestService);
+  private readonly variableStore = inject(VariableStoreService);
+  private readonly flowEngine = inject(FlowEngineService);
+  private readonly translationService = inject(TranslationService);
+  private readonly canvasCamera = inject(CanvasCameraService);
+  private readonly paywallService = inject(PaywallService);
 
   /**
    * Initialize component
@@ -694,11 +742,18 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       // (also the target of hotspot openExtras actions).
       this.buildExtrasList(loadedManifest ?? null);
 
-      // Navigate to initial position
+      // Like / bookmark state for this work, from the device.
+      this.restoreSocialState();
+
+      // Navigate to initial position. Without an explicit host position, a
+      // bookmark the reader left in this work is resumed.
+      const bookmark = !this.initialChapterId && !this.initialPanelId ? this.readBookmark() : null;
       if (this.initialChapterId && this.initialPanelId) {
         await this.navigateToPanel(this.initialChapterId, this.initialPanelId);
       } else if (this.initialChapterId) {
         await this.navigateToChapter(this.initialChapterId);
+      } else if (bookmark && this.manifestService.getChapter(bookmark.chapterId)?.panels?.[bookmark.panelId]) {
+        await this.navigateToPanel(bookmark.chapterId, bookmark.panelId);
       } else {
         await this.navigateToStart();
       }
@@ -875,9 +930,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Load manifest from URL
    */
   private async loadManifestFromUrl(url: string): Promise<void> {
-    // In a real implementation, this would fetch the manifest
-    // For now, we'll throw an error to indicate it's not implemented
-    throw new Error('Manifest URL loading not yet implemented');
+    await this.manifestService.loadManifestFromUrl(url).toPromise();
   }
 
   /**
@@ -986,6 +1039,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         // Manifest paywall rules (schema `paywall.rules`) evaluated against
         // what the reader owns. Navigation stops here: the reader stays on
         // the last panel they were entitled to see.
+        if (this.paywallService.evaluate(panelId).reason === 'age_verification_required') {
+          // An age gate is answered in-player (birth date), not by checkout.
+          this.openAgeGate(chapterId, panelId, transition, cameraMove);
+          return;
+        }
         const gate = this.paywallService.gateFor(panelId);
         if (gate) {
           this.openPaywall(gate);
@@ -1246,6 +1304,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       );
 
       if (result.nextPanelId) {
+        // Edge `action` mutations (schema: "applied when traversing this
+        // edge") were returned by the flow engine but never applied here.
+        if (result.action?.length) {
+          this.variableStore.applyMutations(result.action, { chapterId: this.currentChapter.id });
+        }
         await this.navigateToPanel(
           this.currentChapter.id,
           result.nextPanelId,
@@ -1741,20 +1804,62 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.refreshResolvedPanels();
   }
 
+  /** Open the branch chooser with the paths currently open from this panel. */
   onShowBranches(): void {
-    console.log('Show branch choices - not yet implemented');
+    this.branchChoices = this.computeBranchChoices();
+    if (this.branchChoices.length === 0) {
+      return;
+    }
+    this.branchChooserVisible = true;
+    this.cdr.markForCheck();
   }
 
   onOpenExtras(): void {
     this.extrasVisible = true;
   }
 
+  /** Toggle the reader's like for this work (persisted on the device). */
   onLike(): void {
-    console.log('Like action - not yet implemented');
+    this.liked = !this.liked;
+    const store = this.readSocialStore();
+    const entry = store[this.workKey()] ?? {};
+    entry.liked = this.liked;
+    store[this.workKey()] = entry;
+    this.writeSocialStore(store);
+
+    this.trackingService.track('like', { workId: this.workKey(), liked: this.liked });
+    this.likeChange.emit({ workId: this.workKey(), liked: this.liked });
+    this.cdr.markForCheck();
   }
 
+  /**
+   * Toggle the bookmark on the current panel: set it here, or clear it when
+   * this panel already is the bookmark. Resumed on the next load when the
+   * host passes no initial position.
+   */
   onBookmark(): void {
-    console.log('Bookmark action - not yet implemented');
+    const chapterId = this.currentChapter?.id;
+    const panelId = this.getCurrentPanelId();
+    if (!chapterId || !panelId) {
+      return;
+    }
+
+    const store = this.readSocialStore();
+    const entry = store[this.workKey()] ?? {};
+    const isSamePanel = entry.bookmark?.chapterId === chapterId && entry.bookmark?.panelId === panelId;
+    if (isSamePanel) {
+      delete entry.bookmark;
+      this.bookmarked = false;
+    } else {
+      entry.bookmark = { chapterId, panelId, savedAt: Date.now() };
+      this.bookmarked = true;
+    }
+    store[this.workKey()] = entry;
+    this.writeSocialStore(store);
+
+    this.trackingService.track('bookmark', { workId: this.workKey(), chapterId, panelId, bookmarked: this.bookmarked });
+    this.bookmarkChange.emit({ workId: this.workKey(), chapterId, panelId, bookmarked: this.bookmarked });
+    this.cdr.markForCheck();
   }
 
   onShare(): void {
@@ -2281,6 +2386,16 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * never pays for a round-trip.
    */
   private async configurePaywall(): Promise<void> {
+    try {
+      await this.loadEntitlementSnapshot();
+    } finally {
+      // A verification the reader already passed on this device tops up
+      // whatever snapshot the host provided.
+      this.restoreAgeVerification();
+    }
+  }
+
+  private async loadEntitlementSnapshot(): Promise<void> {
     const manifest = this.manifestService.getManifest();
     this.paywallService.setManifest(manifest);
 
@@ -2351,4 +2466,214 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       this.closePaywall();
     }
   }
+
+  // ── Age gate ──────────────────────────────────────────────────────────────
+
+  private static readonly AGE_VERIFIED_STORAGE_KEY = 'pw-age-verified';
+
+  /** Raise the age gate for a panel and remember where the reader was going. */
+  private openAgeGate(chapterId: string, panelId: string, transition?: Transition, cameraMove?: CameraMove): void {
+    this.ageGateMinimumAge = this.paywallService.ruleFor(panelId)?.minimumAge ?? 18;
+    this.pendingAgeGatedNavigation = { chapterId, panelId, transition, cameraMove };
+    this.ageGateVisible = true;
+    this.cdr.markForCheck();
+  }
+
+  /** Dismissed without verifying: the reader stays where they were. */
+  closeAgeGate(): void {
+    this.ageGateVisible = false;
+    this.pendingAgeGatedNavigation = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * The reader answered the gate. A pass is persisted on the device and
+   * folded into the entitlement snapshot, then the interrupted navigation
+   * resumes; a fail keeps the overlay (it shows its own message).
+   */
+  async onAgeGateVerify(result: AgeVerificationResult): Promise<void> {
+    this.ageVerified.emit(result);
+    if (!result.verified || result.age === undefined) {
+      return;
+    }
+
+    this.persistAgeVerification(result.age);
+    this.paywallService.setSnapshot({
+      ...this.paywallService.getSnapshot(),
+      ageVerified: true,
+      age: result.age,
+    });
+
+    const pending = this.pendingAgeGatedNavigation;
+    this.ageGateVisible = false;
+    this.pendingAgeGatedNavigation = null;
+    this.cdr.markForCheck();
+
+    if (pending && this.paywallService.canAccess(pending.panelId)) {
+      await this.navigateToPanel(pending.chapterId, pending.panelId, pending.transition, pending.cameraMove);
+    }
+  }
+
+  private persistAgeVerification(age: number): void {
+    try {
+      localStorage.setItem(
+        PlayerShellComponent.AGE_VERIFIED_STORAGE_KEY,
+        JSON.stringify({ age, verifiedAt: Date.now() })
+      );
+    } catch {
+      // Storage unavailable (private mode, quota): the gate simply asks again next time.
+    }
+  }
+
+  private restoreAgeVerification(): void {
+    if (this.paywallService.getSnapshot().ageVerified) {
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(PlayerShellComponent.AGE_VERIFIED_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const stored = JSON.parse(raw) as { age?: number };
+      if (typeof stored.age !== 'number') {
+        return;
+      }
+      this.paywallService.setSnapshot({
+        ...this.paywallService.getSnapshot(),
+        ageVerified: true,
+        age: stored.age,
+      });
+    } catch {
+      // Unreadable storage: treat as not verified.
+    }
+  }
+
+  // ── Like / bookmark (device-local social state) ──────────────────────────
+
+  private static readonly SOCIAL_STORAGE_KEY = 'pw-social';
+
+  /** Key that identifies this work in device storage. */
+  private workKey(): string {
+    return this.manifestService.getManifest()?.meta?.id ?? this.manifestUrl ?? 'work';
+  }
+
+  private readSocialStore(): Record<string, SocialEntry> {
+    try {
+      const raw = localStorage.getItem(PlayerShellComponent.SOCIAL_STORAGE_KEY);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, SocialEntry>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private writeSocialStore(store: Record<string, SocialEntry>): void {
+    try {
+      localStorage.setItem(PlayerShellComponent.SOCIAL_STORAGE_KEY, JSON.stringify(store));
+    } catch {
+      // Storage unavailable: the toggle still works for this session.
+    }
+  }
+
+  private readBookmark(): SocialEntry['bookmark'] | null {
+    return this.readSocialStore()[this.workKey()]?.bookmark ?? null;
+  }
+
+  /** Load the like flag; the bookmark flag follows the current panel. */
+  private restoreSocialState(): void {
+    const entry = this.readSocialStore()[this.workKey()];
+    this.liked = entry?.liked === true;
+    this.syncBookmarkFlag();
+  }
+
+  /** `bookmarked` is true only while the reader is ON the bookmarked panel. */
+  private syncBookmarkFlag(): void {
+    const bookmark = this.readBookmark();
+    this.bookmarked =
+      !!bookmark &&
+      bookmark.chapterId === this.currentChapter?.id &&
+      bookmark.panelId === this.getCurrentPanelId();
+  }
+
+  // ── Branch choices ────────────────────────────────────────────────────────
+
+  /** More than one edge leaves the current panel — the toolbar shows "Choices". */
+  get hasBranchesAhead(): boolean {
+    const panelId = this.getCurrentPanelId();
+    const edges = this.currentChapter?.graph?.edges;
+    if (!panelId || !edges) {
+      return false;
+    }
+    let count = 0;
+    for (const edge of edges) {
+      if (edge.from === panelId && ++count > 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Outgoing edges whose conditions pass right now, with reader-facing labels. */
+  private computeBranchChoices(): BranchChoice[] {
+    const chapter = this.currentChapter;
+    const panelId = this.getCurrentPanelId();
+    if (!chapter?.graph || !panelId) {
+      return [];
+    }
+    const context = this.variableStore.createContext(chapter.id);
+    return chapter.graph.edges
+      .filter((edge) => edge.from === panelId)
+      .filter((edge) => !edge.condition || evaluateJsonLogic(edge.condition, context))
+      .map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter, index) }));
+  }
+
+  private branchLabel(edge: { label?: Record<string, string>; to: string }, chapter: Chapter, index: number): string {
+    const fromEdge = this.localizedText(edge.label);
+    if (fromEdge) {
+      return fromEdge;
+    }
+    const fromTarget = this.localizedText(chapter.panels?.[edge.to]?.title);
+    return fromTarget || `Option ${index + 1}`;
+  }
+
+  private localizedText(value: LocalizedString | Record<string, string> | undefined): string {
+    if (!value) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    return value[this.locale] ?? value['en-US'] ?? Object.values(value)[0] ?? '';
+  }
+
+  /** Traverse the chosen edge (its transition / camera move / mutations apply). */
+  async onBranchChosen(choice: BranchChoice): Promise<void> {
+    this.branchChooserVisible = false;
+    const chapter = this.currentChapter;
+    if (!chapter) {
+      return;
+    }
+    const settings = this.manifestService.getManifest()?.settings;
+    this.trackingService.track('branch_choice', {
+      chapterId: chapter.id,
+      from: choice.edge.from,
+      to: choice.edge.to,
+      index: choice.index,
+    });
+    if (choice.edge.action?.length) {
+      this.variableStore.applyMutations(choice.edge.action, { chapterId: chapter.id });
+    }
+    await this.navigateToPanel(
+      chapter.id,
+      choice.edge.to,
+      choice.edge.transition ?? this.flowEngine.getDefaultTransition(settings),
+      choice.edge.cameraMove ?? this.flowEngine.getDefaultCameraMove(settings)
+    );
+  }
+}
+
+/** Per-work like / bookmark record kept in device storage. */
+interface SocialEntry {
+  liked?: boolean;
+  bookmark?: { chapterId: string; panelId: string; savedAt: number };
 }

@@ -87,8 +87,10 @@
         [secondsPerPanel]="secondsPerPanel"
         [thumbnailsVisible]="thumbnailsVisible"
         [hasAlternatives]="!!(currentPanel && currentPanel.variants && currentPanel.variants.length)"
-        [hasBranches]="false"
+        [hasBranches]="hasBranchesAhead"
         [showSocial]="true"
+        [liked]="liked"
+        [bookmarked]="bookmarked"
         (toggleView)="onToggleView()"
         (localeChange)="onLocaleChange($event)"
         (toggleSpeech)="onToggleSpeech()"
@@ -153,6 +155,27 @@
           (action)="onPaywallAction($event)"
           (close)="closePaywall()">
         </pw-paywall-overlay>
+      }
+
+      @if (ageGateVisible) {
+        <pw-age-gate
+          [visible]="ageGateVisible"
+          [minimumAge]="ageGateMinimumAge"
+          [locale]="locale"
+          [allowDismiss]="true"
+          (verify)="onAgeGateVerify($event)"
+          (close)="closeAgeGate()">
+        </pw-age-gate>
+      }
+
+      @if (branchChooserVisible) {
+        <pw-branch-chooser
+          [visible]="branchChooserVisible"
+          [locale]="locale"
+          [choices]="branchChoices"
+          (choose)="onBranchChosen($event)"
+          (close)="branchChooserVisible = false">
+        </pw-branch-chooser>
       }
 
       @if (tocVisible) {

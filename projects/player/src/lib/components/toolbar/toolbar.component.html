@@ -202,8 +202,10 @@
         <button
           class="toolbar-btn icon-only"
           type="button"
+          [class.active]="liked"
+          [attr.aria-pressed]="liked"
           aria-label="Like"
-          title="Like this content"
+          [title]="liked ? 'Remove like' : 'Like this work'"
           (click)="onLike()">
           <span class="btn-icon"><pw-icon name="lucideHeart" /></span>
         </button>
@@ -211,8 +213,10 @@
         <button
           class="toolbar-btn icon-only"
           type="button"
+          [class.active]="bookmarked"
+          [attr.aria-pressed]="bookmarked"
           aria-label="Bookmark"
-          title="Bookmark this panel"
+          [title]="bookmarked ? 'Remove bookmark' : 'Bookmark this panel'"
           (click)="onBookmark()">
           <span class="btn-icon"><pw-icon name="lucideBookmark" /></span>
         </button>

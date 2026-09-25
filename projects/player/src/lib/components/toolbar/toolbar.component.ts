@@ -93,6 +93,16 @@ export class ToolbarComponent {
   @Input() hasBranches = false;
 
   /**
+   * Reader has liked this work (renders the Like button pressed)
+   */
+  @Input() liked = false;
+
+  /**
+   * Current panel is the reader's bookmark (renders the Bookmark button pressed)
+   */
+  @Input() bookmarked = false;
+
+  /**
    * Show social controls
    */
   @Input() showSocial = true;
