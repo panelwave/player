@@ -1,0 +1,66 @@
+# CI for @panelwave/player: lint, unit suite, library build, E2E.
+# Runs on every push and pull request. Uses the Playwright image so Karma
+# (system Chromium) and Playwright (its own browsers) both work out of the box.
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.0-jammy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npx ng lint player
+
+      - name: Headless Chrome for Karma
+        run: |
+          CHROMIUM=$(ls -d /ms-playwright/chromium-*/chrome-linux/chrome | head -1)
+          printf '#!/bin/sh\nexec %s --no-sandbox --disable-gpu --disable-dev-shm-usage "$@"\n' "$CHROMIUM" > /usr/local/bin/chrome-nosandbox
+          chmod +x /usr/local/bin/chrome-nosandbox
+          echo "CHROME_BIN=/usr/local/bin/chrome-nosandbox" >> "$GITHUB_ENV"
+
+      - name: Unit tests
+        run: npx ng test player --watch=false --browsers=ChromeHeadless --code-coverage
+
+      - name: Build library
+        run: npx ng build player --configuration production
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  e2e:
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.0-jammy
+    needs: lint-test-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install
+        run: npm ci
+
+      - name: Build library (the demo resolves @panelwave/player from dist/)
+        run: npx ng build player
+
+      - name: E2E (chromium + mobile)
+        run: npm run e2e
+
+      - name: Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore

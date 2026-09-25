@@ -1,0 +1,37 @@
+# Bundle-size check on pull requests: builds the library and fails when the
+# gzipped FESM bundle grows past the budget (150 KB, the Phase 7 target).
+name: size-limit
+
+on:
+  pull_request:
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build library
+        run: npx ng build player --configuration production
+
+      - name: Check gzipped size of the FESM bundle
+        run: |
+          BUDGET_KB=150
+          FILE=$(ls dist/player/fesm2022/*.mjs | head -1)
+          SIZE=$(gzip -c "$FILE" | wc -c)
+          KB=$((SIZE / 1024))
+          echo "gzipped $(basename "$FILE"): ${KB} KB (budget ${BUDGET_KB} KB)"
+          echo "### Bundle size" >> "$GITHUB_STEP_SUMMARY"
+          echo "gzipped \`$(basename "$FILE")\`: **${KB} KB** (budget ${BUDGET_KB} KB)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$KB" -gt "$BUDGET_KB" ]; then
+            echo "::error::bundle exceeds the ${BUDGET_KB} KB gzipped budget"
+            exit 1
+          fi

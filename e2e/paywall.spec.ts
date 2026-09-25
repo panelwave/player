@@ -4,26 +4,32 @@ import { openPlayer, expectPanel } from './helpers/player';
 /**
  * Checklist: "Paywall blocks content".
  *
- * What the player implements today: an optional entitlement adapter on
- * the shell; navigating to a panel the adapter denies aborts the
- * navigation and puts the shell into its error state. The dedicated
- * pw-paywall-overlay (purchase CTA) is not mounted by the shell yet and
- * manifest.paywall rules are not evaluated — both tracked as open gaps
- * in docs/technical/OPEN_TASKS.md. These tests cover the implemented
+ * A host-supplied entitlement adapter still wins over the manifest's
+ * paywall rules; when it denies a panel the navigation stops, the reader
+ * stays on the last permitted panel and the shell raises pw-paywall-overlay
+ * (no error state — a paywall is not a failure). These tests cover that
  * blocking path via the demo app's `?deny=<panelId>` hook.
  */
 
 test.describe('entitlement gating', () => {
-  test('navigation to a denied panel is blocked with an error state', async ({ page }) => {
+  test('navigation to a denied panel raises the paywall and stays put', async ({ page }) => {
     await openPlayer(page, '?deny=p1-2');
     await expectPanel(page, 'p1-1');
 
     await page.keyboard.press('ArrowRight');
 
-    const error = page.locator('pw-player-shell .error-container');
-    await expect(error).toBeVisible();
-    await expect(error.locator('.error-message')).toContainText('Access denied to panel: p1-2');
-    await expect(error.getByRole('button', { name: 'Retry' })).toBeVisible();
+    const overlay = page.locator('pw-paywall-overlay .paywall-modal');
+    await expect(overlay).toBeVisible();
+    await expect(overlay.locator('.paywall-message')).toContainText('requires an entitlement');
+    await expect(page.locator('pw-player-shell .error-container')).toHaveCount(0);
+
+    // The reader is still on the last panel they were allowed to see.
+    await expectPanel(page, 'p1-1');
+
+    // Escape dismisses the overlay without granting access.
+    await page.keyboard.press('Escape');
+    await expect(overlay).toHaveCount(0);
+    await expectPanel(page, 'p1-1');
   });
 
   test('panels the adapter allows stay reachable', async ({ page }) => {

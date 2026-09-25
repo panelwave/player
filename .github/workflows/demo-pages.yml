@@ -1,0 +1,55 @@
+# Deploy the demo app to GitHub Pages on every push to the default branch.
+# Enable Pages with "GitHub Actions" as the source in the repo settings.
+name: demo-pages
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build library
+        run: npx ng build player --configuration production
+
+      - name: Build demo
+        # Served from https://<org>.github.io/<repo>/ — the base href must match.
+        run: npx ng build demo --configuration production --base-href "/${{ github.event.repository.name }}/"
+
+      - name: SPA fallback for deep links
+        run: cp dist/demo/browser/index.html dist/demo/browser/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/demo/browser
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

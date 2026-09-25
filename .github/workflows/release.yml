@@ -1,0 +1,72 @@
+# Release @panelwave/player: bump the library version, build, publish to npm,
+# tag and create the GitHub release. Manual trigger only.
+#
+# Required secret: NPM_TOKEN (automation token with publish rights on the
+# @panelwave scope).
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: semver bump for projects/player/package.json
+        type: choice
+        options: [patch, minor, major, prerelease]
+        default: patch
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint + build
+        run: |
+          npx ng lint player
+          npx ng build player --configuration production
+
+      - name: Bump version
+        id: bump
+        run: |
+          cd projects/player
+          NEW=$(npm version ${{ inputs.bump }} --no-git-tag-version)
+          echo "version=${NEW#v}" >> "$GITHUB_OUTPUT"
+          cd ../..
+          # dist/ carries the version that gets published — rebuild after the bump
+          npx ng build player --configuration production
+
+      - name: Publish to npm
+        run: npm publish --access public
+        working-directory: dist/player
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit + tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/player/package.json
+          git commit -m "chore(release): @panelwave/player ${{ steps.bump.outputs.version }}"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push --follow-tags
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}
+          name: "@panelwave/player ${{ steps.bump.outputs.version }}"
+          body: "See CHANGELOG.md for the changes in this release."

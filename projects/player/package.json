@@ -11,6 +11,13 @@
   ],
   "license": "MIT",
   "homepage": "https://docs.panelwave.org/player/overview",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/panelwave/player"
+  },
+  "bugs": {
+    "url": "https://github.com/panelwave/player/issues"
+  },
   "peerDependencies": {
     "@angular/common": "^20.0.0",
     "@angular/core": "^20.0.0",
