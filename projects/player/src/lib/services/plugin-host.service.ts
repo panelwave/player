@@ -12,11 +12,8 @@ import type {
   PluginMessage,
   PluginConfig,
   PluginCapability,
-  PluginError,
   PluginPermissionRequest,
-  PluginPermissionResult,
   PluginAPICall,
-  PluginAPIResponse,
 } from '../types/plugin.types';
 
 /**

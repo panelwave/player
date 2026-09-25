@@ -8,7 +8,6 @@ import type {
   AssetCatalogItem,
   AssetCategory,
   ImageVariant,
-  AssetVariant,
 } from '../types';
 
 /**
@@ -131,7 +130,7 @@ export function isAbsoluteUrl(url: string): boolean {
 export function selectBestImageVariant(
   variants: ImageVariant[],
   targetWidth: number,
-  pixelDensity: number = 1
+  pixelDensity = 1
 ): ImageVariant | undefined {
   if (!variants || variants.length === 0) {
     return undefined;

@@ -8,7 +8,6 @@ import { EntitlementService } from './entitlement.service';
 import type {
   EntitlementAdapter,
   EntitlementContext,
-  EntitlementStatus,
   PaywallGate,
   UserInfo,
 } from '../types/entitlement.types';
@@ -211,7 +210,7 @@ describe('EntitlementService', () => {
       
       service.setAdapter(adapter);
       
-      const url = await service.getSignedUrl('asset-123', 'download');
+      await service.getSignedUrl('asset-123', 'download');
       expect(adapter.getSignedUrl).toHaveBeenCalledWith('asset-123', 'download');
     });
   });

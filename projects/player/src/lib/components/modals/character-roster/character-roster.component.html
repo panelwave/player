@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="roster-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
+  <div class="roster-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
     <div class="roster-container" role="dialog" aria-modal="true" [attr.aria-label]="currentView === 'list' ? 'Character Roster' : 'Character Details'">
       
       <!-- LIST VIEW -->

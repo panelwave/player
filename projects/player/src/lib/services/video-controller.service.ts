@@ -443,7 +443,7 @@ export class VideoControllerService {
   /**
    * Handle playing
    */
-  private onPlaying(videoId: string): void {
+  private onPlaying(_videoId: string): void {
     if (this.currentState !== 'playing') {
       this.setState('playing');
     }

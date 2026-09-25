@@ -4,7 +4,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { VariableStoreService } from './variable-store.service';
-import type { VariableDefinition, VariableScope } from '../types';
+import type { VariableDefinition } from '../types';
 
 describe('VariableStoreService', () => {
   let service: VariableStoreService;

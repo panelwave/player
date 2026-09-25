@@ -14,10 +14,23 @@ import type {
   EDLDocument,
   EDLEvent,
   JSONExport,
-  TimingCSVRow,
-  LayerCSVRow,
 } from '../types/export.types';
-import type { Panel, Layer, Chapter } from '../types';
+import type { Panel, Layer, Chapter, PanelAudioTrack } from '../types';
+
+/** Per-kind layer fields the exporter reads without narrowing on `kind`. */
+interface LooseLayerFields {
+  type?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+  blendMode?: string;
+  filters?: string[];
+  assetRef?: string;
+}
 
 /**
  * Export Service
@@ -111,8 +124,7 @@ export class ExportService {
     for (const chapter of chapters) {
       const panels = Object.values(chapter.panels || {});
       
-      for (let i = 0; i < panels.length; i++) {
-        const panel = panels[i];
+      for (const panel of panels) {
         const duration = this.getPanelDuration(panel);
         
         const timing: PanelTiming = {
@@ -187,13 +199,16 @@ export class ExportService {
         const timing = timings[timingIndex];
         
         // Extract audio from panel (assuming audio property exists)
-        const panelAudio = (panel as any).audio;
+        const panelAudio = panel.audio;
         if (Array.isArray(panelAudio)) {
           for (const audioRef of panelAudio) {
+            // Schema tracks carry the asset in `assetId`; older manifests
+            // listed bare asset refs.
+            const track = audioRef as PanelAudioTrack | string;
             const cue: AudioCue = {
               id: `audio-${cues.length}`,
               trackName: `Panel ${timing.index} Audio`,
-              assetRef: audioRef,
+              assetRef: typeof track === 'string' ? track : track.assetId,
               startTime: timing.startTime,
               duration: timing.duration,
               endTime: timing.endTime,
@@ -412,7 +427,7 @@ export class ExportService {
   private getPanelDuration(panel: Panel): number {
     // Default duration: 3 seconds
     // Can be overridden by panel.duration if it exists
-    return (panel as any).duration || 3.0;
+    return (panel as Panel & { duration?: number }).duration || 3.0;
   }
 
   /**
@@ -421,9 +436,9 @@ export class ExportService {
   private layerToComposition(
     layer: Layer,
     index: number,
-    timing: PanelTiming
+    _timing: PanelTiming
   ): LayerComposition {
-    const layerAny = layer as any;
+    const layerAny = layer as Layer & LooseLayerFields;
     return {
       layerId: layer.id,
       layerType: layerAny['type'] || 'unknown',
@@ -530,7 +545,7 @@ export class ExportService {
   /**
    * Pad number with zeros
    */
-  private pad(num: number, size: number = 2): string {
+  private pad(num: number, size = 2): string {
     return String(num).padStart(size, '0');
   }
 }

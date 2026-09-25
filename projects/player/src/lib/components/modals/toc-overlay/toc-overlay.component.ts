@@ -184,7 +184,7 @@ export class TocOverlayComponent implements OnInit {
   /**
    * Get panels for chapter with IDs
    */
-  getPanels(chapter: Chapter): Array<{ id: string; panel: Panel }> {
+  getPanels(chapter: Chapter): { id: string; panel: Panel }[] {
     if (!chapter.panels) return [];
     return Object.entries(chapter.panels).map(([id, panel]) => ({ id, panel }));
   }
@@ -206,7 +206,7 @@ export class TocOverlayComponent implements OnInit {
   /**
    * Get panels for a specific page
    */
-  getPanelsForPage(chapter: Chapter, page: Page): Array<{ id: string; panel: Panel }> {
+  getPanelsForPage(chapter: Chapter, page: Page): { id: string; panel: Panel }[] {
     if (!chapter.panels || !page.readingOrder) return [];
     
     return page.readingOrder
@@ -235,7 +235,7 @@ export class TocOverlayComponent implements OnInit {
    * Get thumbnail URL for panel
    */
   getThumbnailUrl(panel: Panel): string {
-    const thumbnail = (panel as any).thumbnail;
+    const thumbnail = (panel as Panel & { thumbnail?: string }).thumbnail;
     if (!thumbnail) {
       return '';
     }

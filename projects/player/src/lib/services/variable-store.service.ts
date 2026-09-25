@@ -5,12 +5,10 @@
 
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import type {
   VariableStore,
   VariableScope,
   VariableMutation,
-  MutationOperation,
   VariableContext,
   VariableDefinition,
 } from '../types';
@@ -248,11 +246,12 @@ export class VariableStoreService {
         }
         break;
 
-      case 'clear':
+      case 'clear': {
         const def = this.definitions.get(mutation.var);
         const defaultValue = def?.default ?? null;
         this.set(mutation.var, defaultValue, scope, scopeId);
         break;
+      }
     }
   }
 
@@ -265,7 +264,7 @@ export class VariableStoreService {
    * @param ids - Scope identifiers for chapter/page-scoped variables
    */
   applyMutations(
-    mutations: Array<{ op: string; var: string; value?: unknown }>,
+    mutations: { op: string; var: string; value?: unknown }[],
     ids?: { chapterId?: string; pageId?: string }
   ): void {
     for (const m of mutations ?? []) {
@@ -523,7 +522,7 @@ export class VariableStoreService {
   /**
    * Persist a single variable to localStorage
    */
-  private persistVariable(id: string, value: unknown): void {
+  private persistVariable(_id: string, _value: unknown): void {
     if (typeof localStorage === 'undefined') {
       return;
     }

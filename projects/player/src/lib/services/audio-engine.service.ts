@@ -132,7 +132,9 @@ export class AudioEngineService {
 
     try {
       // Create audio context
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextCtor =
+        window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      this.audioContext = new AudioContextCtor!();
 
       // Create master gain
       this.masterGain = this.audioContext.createGain();

@@ -5,7 +5,9 @@
   [class.interactive]="isInteractive()"
   [attr.data-layer-id]="layer.id"
   [attr.data-layer-kind]="layer.kind"
-  (click)="isInteractive() ? onLayerClick($event) : null">
+  [tabindex]="isInteractive() ? 0 : -1"
+  (click)="isInteractive() ? onLayerClick($event) : null"
+  (keydown.enter)="isInteractive() ? onLayerClick($any($event)) : null">
 
   <!-- Image Layer -->
   @if (layer.kind === 'image') {

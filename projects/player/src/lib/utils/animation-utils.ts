@@ -22,7 +22,7 @@ export type EasingFunction = (t: number) => number;
  * ```
  */
 export function getEasingFunction(
-  easing: string = 'ease'
+  easing = 'ease'
 ): EasingFunction {
   const easingFunctions: Record<string, EasingFunction> = {
     linear: easings.linear,
@@ -103,7 +103,7 @@ export function shouldReduceMotion(): boolean {
  */
 export function getAdjustedDuration(
   baseDuration: number,
-  reducedFactor: number = 0.1
+  reducedFactor = 0.1
 ): number {
   return shouldReduceMotion() ? baseDuration * reducedFactor : baseDuration;
 }

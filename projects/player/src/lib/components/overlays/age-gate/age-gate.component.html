@@ -1,5 +1,5 @@
 <!-- Age Gate Overlay -->
-<div class="age-gate-overlay" [class.visible]="visible" (click)="onBackdropClick($event)">
+<div class="age-gate-overlay" [class.visible]="visible" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); onDismiss()">
   <div class="age-gate-modal" role="dialog" aria-modal="true" aria-label="Age Verification">
     <!-- Header -->
     <div class="age-gate-header">

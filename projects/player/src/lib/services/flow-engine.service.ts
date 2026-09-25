@@ -3,8 +3,8 @@
  * Handles graph navigation, condition evaluation, and action application
  */
 
-import { Injectable } from '@angular/core';
-import type { CameraMove, Edge, Graph, Settings, Transition } from '../types';
+import { inject, Injectable } from '@angular/core';
+import type { CameraMove, Edge, Graph, Mutation, Settings, Transition } from '../types';
 import { evaluateJsonLogic } from '../utils';
 import { EntitlementService } from './entitlement.service';
 
@@ -16,7 +16,8 @@ export interface NavigationResult {
   transition?: Transition;
   /** Camera travel for canvas view (edge cameraMove or the format default). */
   cameraMove?: CameraMove;
-  action?: unknown[];
+  /** Variable mutations the traversed edge carries (schema `Edge.action`). */
+  action?: Mutation[];
 }
 
 /**
@@ -27,7 +28,7 @@ export interface NavigationResult {
   providedIn: 'root',
 })
 export class FlowEngineService {
-  constructor(private entitlementService: EntitlementService) {}
+  private readonly entitlementService = inject(EntitlementService);
 
   /**
    * Get next panel based on graph edges and conditions
@@ -362,14 +363,14 @@ export class FlowEngineService {
     graph: Graph,
     fromPanelId: string,
     toPanelId: string,
-    maxDepth: number = 100
+    maxDepth = 100
   ): boolean {
     if (fromPanelId === toPanelId) {
       return true;
     }
 
     const visited = new Set<string>();
-    const queue: Array<{ panelId: string; depth: number }> = [
+    const queue: { panelId: string; depth: number }[] = [
       { panelId: fromPanelId, depth: 0 },
     ];
 
@@ -413,7 +414,7 @@ export class FlowEngineService {
     }
 
     const visited = new Set<string>();
-    const queue: Array<{ panelId: string; path: string[] }> = [
+    const queue: { panelId: string; path: string[] }[] = [
       { panelId: fromPanelId, path: [fromPanelId] },
     ];
 

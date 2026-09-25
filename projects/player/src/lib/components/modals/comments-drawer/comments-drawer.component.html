@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="drawer-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
+  <div class="drawer-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
     <div class="drawer-container" role="dialog" aria-modal="true" aria-label="Comments">
       <!-- Header -->
       <div class="drawer-header">

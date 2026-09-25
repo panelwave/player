@@ -3,11 +3,10 @@
  * Manages toast notifications with queue system
  */
 
-import {
+import { inject,
   Component,
-  Input,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
+  ChangeDetectorRef, OnDestroy,
 } from '@angular/core';
 
 import { PwIconComponent } from '../../icon/pw-icon.component';
@@ -47,7 +46,7 @@ interface ToastItem extends Toast {
     styleUrls: ['./toast-container.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ToastContainerComponent {
+export class ToastContainerComponent implements OnDestroy {
   /**
    * Toast queue
    */
@@ -63,7 +62,7 @@ export class ToastContainerComponent {
    */
   private readonly MAX_TOASTS = 5;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /**
    * Show a toast

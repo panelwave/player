@@ -20,7 +20,7 @@ const manifest = (): PanelWaveManifest =>
 
 /** A fetch stub that records calls and answers with a canned body. */
 function stubFetch(body: unknown, ok = true) {
-  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const calls: { url: string; init?: RequestInit }[] = [];
   const impl = ((url: string, init?: RequestInit) => {
     calls.push({ url, init });
     return Promise.resolve({

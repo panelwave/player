@@ -1,5 +1,5 @@
 <!-- Paywall Overlay -->
-<div class="paywall-overlay" [class.visible]="visible" (click)="onBackdropClick($event)">
+<div class="paywall-overlay" [class.visible]="visible" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); onDismiss()">
   <div class="paywall-modal" role="dialog" aria-modal="true" [attr.aria-label]="getTitle()">
     <!-- Header -->
     <div class="paywall-header">

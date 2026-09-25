@@ -3,7 +3,7 @@
  * Provides translation functionality for the PanelWave player
  */
 
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import type { LocaleCode } from '../types';
 
@@ -15,7 +15,9 @@ import type { LocaleCode } from '../types';
   providedIn: 'root',
 })
 export class TranslationService {
-  constructor(private translate: TranslateService) {
+  private readonly translate = inject(TranslateService);
+
+  constructor() {
     // Set default language - translations will be loaded via HTTP
     this.translate.setDefaultLang('en');
     this.translate.use('en');

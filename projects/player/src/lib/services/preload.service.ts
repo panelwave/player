@@ -3,7 +3,7 @@
  * Intelligently preloads content based on prediction and priority
  */
 
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Subject, Observable } from 'rxjs';
 import { ImageCacheService } from './image-cache.service';
 
@@ -105,7 +105,9 @@ export class PreloadService {
   /** Low-priority items handed to requestIdleCallback but not started yet. */
   private idlePending = 0;
 
-  constructor(private imageCache: ImageCacheService) {
+  private readonly imageCache = inject(ImageCacheService);
+
+  constructor() {
     this.detectNetwork();
     this.adjustConcurrencyByNetwork();
   }
@@ -293,7 +295,7 @@ export class PreloadService {
     };
 
     if ('requestIdleCallback' in window) {
-      this.idleCallbackId = (window as any).requestIdleCallback(callback, { timeout: 2000 });
+      this.idleCallbackId = window.requestIdleCallback(callback, { timeout: 2000 });
     } else {
       // Fallback to setTimeout
       setTimeout(callback, 100);
@@ -378,9 +380,17 @@ export class PreloadService {
    * Detect network connection
    */
   private detectNetwork(): void {
-    const nav = navigator as any;
-    if ('connection' in nav) {
-      const conn = nav.connection;
+    const nav = navigator as Navigator & {
+      connection?: {
+        effectiveType?: '4g' | '3g' | '2g' | 'slow-2g';
+        downlink?: number;
+        rtt?: number;
+        saveData?: boolean;
+        addEventListener(type: 'change', listener: () => void): void;
+      };
+    };
+    const conn = nav.connection;
+    if (conn) {
       this.networkInfo = {
         effectiveType: conn.effectiveType || '4g',
         downlink: conn.downlink || 10,
@@ -480,7 +490,7 @@ export class PreloadService {
     this.loaded.clear();
     
     if (this.idleCallbackId && 'cancelIdleCallback' in window) {
-      (window as any).cancelIdleCallback(this.idleCallbackId);
+      window.cancelIdleCallback(this.idleCallbackId);
     }
     
     this.statusSubject.complete();

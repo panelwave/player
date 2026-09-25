@@ -196,7 +196,7 @@ export class AgeGateComponent {
   /**
    * Get month options
    */
-  getMonthOptions(): Array<{ value: string; label: string }> {
+  getMonthOptions(): { value: string; label: string }[] {
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'

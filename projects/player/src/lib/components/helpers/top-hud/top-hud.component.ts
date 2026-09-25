@@ -9,7 +9,7 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
-  HostListener,
+  HostListener, OnDestroy,
 } from '@angular/core';
 
 import { PwIconComponent } from '../../icon/pw-icon.component';
@@ -26,7 +26,7 @@ import { PwIconComponent } from '../../icon/pw-icon.component';
     styleUrls: ['./top-hud.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TopHudComponent {
+export class TopHudComponent implements OnDestroy {
   /**
    * Work title
    */

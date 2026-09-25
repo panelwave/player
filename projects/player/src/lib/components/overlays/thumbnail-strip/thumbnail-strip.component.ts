@@ -183,7 +183,7 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
     // Simplified - should use localization
     if (chapter.title && typeof chapter.title === 'object') {
       const keys = Object.keys(chapter.title);
-      return keys.length > 0 ? (chapter.title as any)[keys[0]] : chapter.id;
+      return keys.length > 0 ? (chapter.title as Record<string, string>)[keys[0]] : chapter.id;
     }
     return chapter.id;
   }

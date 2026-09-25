@@ -166,10 +166,7 @@ export interface VariableValidationResult {
 /**
  * Variable context for JSON Logic evaluation
  */
-export interface VariableContext {
-  /** Flattened variable values by full ID */
-  [key: string]: unknown;
-}
+export type VariableContext = Record<string, unknown>;
 
 /**
  * Reserved variable namespaces

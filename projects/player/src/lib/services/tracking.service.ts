@@ -5,7 +5,6 @@
 
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
-import { debounceTime, buffer } from 'rxjs/operators';
 
 /**
  * Tracking event
@@ -13,7 +12,7 @@ import { debounceTime, buffer } from 'rxjs/operators';
 export interface TrackingEvent {
   type: string;
   timestamp: number;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   sessionId?: string;
 }
 
@@ -121,7 +120,7 @@ export class TrackingService {
   /**
    * Track an event
    */
-  track(type: string, data?: Record<string, any>): void {
+  track(type: string, data?: Record<string, unknown>): void {
     // Check consent
     if (this.config.consentRequired && !this.hasConsent) {
       return;

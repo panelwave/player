@@ -3,7 +3,7 @@
  * Provides a secure container for plugin iframes
  */
 
-import {
+import { inject,
   Component,
   Input,
   Output,
@@ -93,7 +93,7 @@ export class PluginSandboxComponent implements OnInit, OnDestroy {
   loading = true;
   error: string | null = null;
 
-  constructor(private pluginHost: PluginHostService) {}
+  private readonly pluginHost = inject(PluginHostService);
 
   async ngOnInit() {
     try {

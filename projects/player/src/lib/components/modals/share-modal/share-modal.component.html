@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="share-overlay" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
+  <div class="share-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown)="onBackdropKeydown($event)">
     <div class="share-container" role="dialog" aria-modal="true" aria-label="Share">
       <!-- Header -->
       <div class="share-header">

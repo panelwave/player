@@ -3,7 +3,7 @@
  * Handles loading, validation, and indexing of PanelWave manifests
  */
 
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
@@ -34,7 +34,7 @@ export class ManifestService {
   private manifest: PanelWaveManifest | null = null;
   private indexes: ManifestIndexes | null = null;
 
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   /**
    * Load manifest from a URL
@@ -245,7 +245,7 @@ export class ManifestService {
    * @param chapterId - Chapter identifier
    * @returns Array of panel IDs and panels, or empty array if chapter not found
    */
-  getPanelsInChapter(chapterId: string): Array<{ id: string; panel: Panel }> {
+  getPanelsInChapter(chapterId: string): { id: string; panel: Panel }[] {
     const chapter = this.getChapter(chapterId);
     if (!chapter) {
       return [];

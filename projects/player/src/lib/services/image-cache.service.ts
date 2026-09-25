@@ -281,7 +281,7 @@ export class ImageCacheService {
    */
   setMemoryBudget(bytes: number): void {
     const oldBudget = this.MEMORY_BUDGET;
-    (this as any).MEMORY_BUDGET = bytes;
+    (this as unknown as { MEMORY_BUDGET: number }).MEMORY_BUDGET = bytes;
 
     // If new budget is smaller, evict entries
     if (bytes < oldBudget) {

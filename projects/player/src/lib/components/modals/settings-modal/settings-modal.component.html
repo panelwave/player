@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="settings-overlay" (click)="onBackdropClick($event)">
+  <div class="settings-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); onClose()">
     <div class="settings-container" role="dialog" aria-modal="true" aria-label="Settings">
       <!-- Header -->
       <div class="settings-header">
@@ -185,7 +185,7 @@
                 
                 @for (variable of getPublicVariables(); track variable.id) {
                   <div class="setting-item variable-item">
-                    <label class="setting-label">{{ variable.id }}</label>
+                    <span class="setting-label">{{ variable.id }}</span>
                     
                     <!-- Boolean Variable -->
                     @if (isBoolean(variable)) {

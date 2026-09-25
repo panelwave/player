@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="toc-overlay" (click)="onBackdropClick($event)">
+  <div class="toc-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); onClose()">
     <div class="toc-container" role="dialog" aria-modal="true" aria-label="Table of Contents">
       <!-- Header -->
       <div class="toc-header">
@@ -35,10 +35,12 @@
               [class.selected]="i === selectedChapterIndex"
               [class.current]="isCurrentChapter(chapter)"
               role="listitem"
-              (click)="selectChapter(i)">
+              tabindex="0"
+              (click)="selectChapter(i)"
+              (keydown.enter)="selectChapter(i)">
               
               <!-- Chapter header -->
-              <div class="chapter-header" (click)="navigateToChapter(chapter)">
+              <div class="chapter-header" tabindex="0" (click)="navigateToChapter(chapter)" (keydown.enter)="navigateToChapter(chapter)">
                 <span class="chapter-number">{{ i + 1 }}</span>
                 <h3 class="chapter-title">{{ getChapterTitle(chapter) }}</h3>
                 @if (isCurrentChapter(chapter)) {

@@ -681,9 +681,7 @@ export type JsonLogic = boolean | number | string | null | JsonLogicExpression |
 /**
  * JSON Logic expression object
  */
-export interface JsonLogicExpression {
-  [operator: string]: unknown;
-}
+export type JsonLogicExpression = Record<string, unknown>;
 
 /**
  * Variable mutation

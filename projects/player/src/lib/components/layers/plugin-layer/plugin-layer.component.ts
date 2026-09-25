@@ -3,7 +3,7 @@
  * Renders plugin content in an iframe sandbox
  */
 
-import {
+import { inject,
   Component,
   Input,
   Output,
@@ -87,7 +87,7 @@ export class PluginLayerComponent implements OnInit, OnDestroy {
    */
   private messageListener?: (event: MessageEvent) => void;
 
-  constructor(private sanitizer: DomSanitizer) {}
+  private readonly sanitizer = inject(DomSanitizer);
 
   ngOnInit(): void {
     // Setup message listener

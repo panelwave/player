@@ -3,7 +3,7 @@
  * Defines interfaces for exporting PanelWave content to various formats
  */
 
-import type { Panel, Layer } from './index';
+import type { Panel } from './index';
 
 /**
  * Export format types

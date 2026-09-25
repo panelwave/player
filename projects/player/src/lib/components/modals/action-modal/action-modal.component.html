@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="action-modal-overlay" (click)="onBackdropClick($event)">
+  <div class="action-modal-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); close.emit()">
     <div class="action-modal-container" role="dialog" aria-modal="true" [attr.aria-label]="resolved(title)">
       <div class="action-modal-header">
         <h2 class="action-modal-title">{{ resolved(title) }}</h2>

@@ -311,7 +311,7 @@ export class SettingsModalComponent implements OnInit {
    * Check if variable is enum
    */
   isEnum(variable: VariableDefinition): boolean {
-    return !!(variable as any).enum;
+    return !!(variable as VariableDefinition & { enum?: unknown[] }).enum;
   }
 
   /**
@@ -325,20 +325,20 @@ export class SettingsModalComponent implements OnInit {
    * Get enum options
    */
   getEnumOptions(variable: VariableDefinition): unknown[] {
-    return (variable as any).enum || [];
+    return (variable as VariableDefinition & { enum?: unknown[] }).enum || [];
   }
 
   /**
    * Get variable min value
    */
   getMin(variable: VariableDefinition): number | undefined {
-    return (variable as any).min;
+    return (variable as VariableDefinition & { min?: number }).min;
   }
 
   /**
    * Get variable max value
    */
   getMax(variable: VariableDefinition): number | undefined {
-    return (variable as any).max;
+    return (variable as VariableDefinition & { max?: number }).max;
   }
 }

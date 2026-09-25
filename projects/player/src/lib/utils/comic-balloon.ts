@@ -367,7 +367,7 @@ export class ComicBalloon {
   createSquirclePath(
     cx: number, cy: number,
     width: number, height: number,
-    cornerRadius: number = 0.4,
+    cornerRadius = 0.4,
     tailTip: { x: number; y: number } | null = null,
     cutOptions: CutOptions = {}
   ): string | { fill: string; stroke: string } {
