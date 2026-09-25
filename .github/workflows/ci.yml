@@ -23,7 +23,10 @@ jobs:
 
       - name: Headless Chrome for Karma
         run: |
-          CHROMIUM=$(ls -d /ms-playwright/chromium-*/chrome-linux/chrome | head -1)
+          # Browsers live under /ms-playwright/chromium-<rev>/chrome-linux64/chrome; look the
+          # revision up rather than guess it.
+          CHROMIUM=$(find /ms-playwright -maxdepth 3 -type f -name chrome | head -1)
+          test -n "$CHROMIUM" || { echo "::error::no Chromium binary found under /ms-playwright"; exit 1; }
           printf '#!/bin/sh\nexec %s --no-sandbox --disable-gpu --disable-dev-shm-usage "$@"\n' "$CHROMIUM" > /usr/local/bin/chrome-nosandbox
           chmod +x /usr/local/bin/chrome-nosandbox
           echo "CHROME_BIN=/usr/local/bin/chrome-nosandbox" >> "$GITHUB_ENV"
