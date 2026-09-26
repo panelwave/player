@@ -11,7 +11,7 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { PlayerShellComponent } from './player-shell.component';
 import { PlayerStateService } from '../../services/player-state.service';
 import { ManifestService } from '../../services/manifest.service';
@@ -770,5 +770,74 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
 
       expect(panelAudio.stopAll).toHaveBeenCalled();
     });
+  });
+});
+
+describe('PlayerShellComponent reduced motion', () => {
+  let shell: PlayerShellComponent;
+  let prefs$: BehaviorSubject<Partial<PlayerPreferences>>;
+  let mediaListener: ((e: MediaQueryListEvent) => void) | null;
+  let mediaMatches: boolean;
+
+  const watch = () => (shell as unknown as { watchReducedMotion(): void }).watchReducedMotion();
+
+  beforeEach(() => {
+    prefs$ = new BehaviorSubject<Partial<PlayerPreferences>>({ reducedMotion: false });
+    mediaListener = null;
+    mediaMatches = false;
+    spyOn(window, 'matchMedia').and.callFake(
+      (query: string) =>
+        ({
+          matches: mediaMatches,
+          media: query,
+          addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => (mediaListener = cb),
+          removeEventListener: () => (mediaListener = null),
+        }) as unknown as MediaQueryList
+    );
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PlayerStateService, useValue: { preferences$: prefs$, getPreferences: () => prefs$.value } },
+        { provide: ManifestService, useValue: { getManifest: () => null } },
+        { provide: VariableStoreService, useValue: {} },
+        { provide: FlowEngineService, useValue: {} },
+        { provide: TranslationService, useValue: {} },
+        { provide: TrackingService, useValue: { track: () => undefined } },
+        { provide: VideoControllerService, useValue: { passComplete$: new Subject() } },
+        { provide: VideoSequencerService, useValue: { queueComplete: new Subject(), reset: () => undefined } },
+        { provide: AudioEngineService, useValue: {} },
+        { provide: PanelAudioService, useValue: { stopAll: () => undefined } },
+      ],
+    });
+    TestBed.overrideComponent(PlayerShellComponent, { set: { template: '', imports: [] } });
+    shell = TestBed.createComponent(PlayerShellComponent).componentInstance;
+  });
+
+  it('is off by default', () => {
+    watch();
+    expect(shell.motionReduced).toBeFalse();
+  });
+
+  it('follows the host input', () => {
+    shell.reducedMotion = true;
+    expect(shell.motionReduced).toBeTrue();
+  });
+
+  it("follows the reader's Settings preference", () => {
+    watch();
+    prefs$.next({ reducedMotion: true });
+    expect(shell.motionReduced).toBeTrue();
+    prefs$.next({ reducedMotion: false });
+    expect(shell.motionReduced).toBeFalse();
+  });
+
+  it('follows the OS prefers-reduced-motion setting, live', () => {
+    mediaMatches = true;
+    watch();
+    expect(shell.motionReduced).toBeTrue();
+    mediaListener?.({ matches: false } as MediaQueryListEvent);
+    expect(shell.motionReduced).toBeFalse();
+    mediaListener?.({ matches: true } as MediaQueryListEvent);
+    expect(shell.motionReduced).toBeTrue();
   });
 });

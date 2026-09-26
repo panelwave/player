@@ -250,9 +250,29 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   @Input() secondsPerPanel = 5;
 
   /**
-   * Enable reduced motion
+   * Force reduced motion (host override). Reduced motion is also on when the
+   * reader enabled it in Settings or the OS asks for it — see `motionReduced`.
    */
   @Input() reducedMotion = false;
+
+  /** The reader's in-player "Reduced motion" preference (Settings). */
+  private prefReducedMotion = false;
+  /** Live `prefers-reduced-motion: reduce` media query. */
+  private osReducedMotion = shouldReduceMotion();
+  private reducedMotionQuery?: MediaQueryList;
+  private readonly onReducedMotionQueryChange = (e: MediaQueryListEvent): void => {
+    this.osReducedMotion = e.matches;
+    this.cdr.markForCheck();
+  };
+
+  /**
+   * Effective reduced-motion state for every transition the shell drives
+   * (panel/page transitions in the viewport, canvas camera glides): the host
+   * input, the reader's setting, or the OS preference.
+   */
+  get motionReduced(): boolean {
+    return this.reducedMotion || this.prefReducedMotion || this.osReducedMotion;
+  }
 
   /**
    * Show toolbar by default
@@ -602,6 +622,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    */
   ngOnInit(): void {
     this.toolbarVisible = this.showToolbar;
+    this.watchReducedMotion();
     this.subscribeToVideoSignals();
     this.initializePlayer();
     // pagehide fires for both tab close and navigation (incl. bfcache) —
@@ -618,6 +639,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') {
       window.removeEventListener('pagehide', this.onPageHide);
     }
+    this.reducedMotionQuery?.removeEventListener('change', this.onReducedMotionQueryChange);
     this.endAnalyticsSession();
     this.stopAutoplay();
     this.stopAutoplayProgress();
@@ -625,6 +647,25 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.panelAudio.stopAll();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /**
+   * Follow both reduced-motion sources that can change at runtime: the OS
+   * media query and the reader's Settings preference.
+   */
+  private watchReducedMotion(): void {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      this.reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      this.osReducedMotion = this.reducedMotionQuery.matches;
+      this.reducedMotionQuery.addEventListener('change', this.onReducedMotionQueryChange);
+    }
+    this.playerState.preferences$?.pipe(takeUntil(this.destroy$)).subscribe((prefs) => {
+      const next = !!prefs.reducedMotion;
+      if (next !== this.prefReducedMotion) {
+        this.prefReducedMotion = next;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   /**
@@ -1254,7 +1295,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       return;
     }
     const target = this.canvasCamera.frameForPlacement(placement);
-    if (this.reducedMotion || shouldReduceMotion()) {
+    if (this.motionReduced) {
       // Reduced motion: no gliding, ever. (CameraMove.reducedMotionFallback
       // degrades to an instant reframe; a cross-fade is a future refinement.)
       this.canvasCamera.jumpTo(target);
@@ -1946,7 +1987,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         // Canvas overview: see the whole shape of the story.
         if (this.viewMode === 'canvas') {
           event.preventDefault();
-          void this.canvasCamera.toggleOverview(!(this.reducedMotion || shouldReduceMotion()));
+          void this.canvasCamera.toggleOverview(!(this.motionReduced));
         }
         break;
 
@@ -2181,7 +2222,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       return [];
     }
     const ui = this.manifestService.getManifest()?.settings?.ui;
-    const reduced = this.reducedMotion || shouldReduceMotion();
+    const reduced = this.motionReduced;
     const ids: string[] = [];
     for (const layer of panel.layers) {
       if (layer.kind !== 'video') {

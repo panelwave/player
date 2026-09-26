@@ -107,26 +107,26 @@ test.describe('accessibility (axe-core) — modals, overlays, views', () => {
 });
 
 test.describe('motion and focus', () => {
-  test('prefers-reduced-motion shortens panel transitions', async ({ page }) => {
-    const transitionMs = async () => {
-      await expectPanel(page, 'p1-1');
-      const started = Date.now();
-      await page.keyboard.press('ArrowRight');
-      await expectPanel(page, 'p1-2');
-      // Wait until only the entering frame is left (the transition finished).
-      await expect(page.locator('.t-frame')).toHaveCount(1, { timeout: 5_000 });
-      return Date.now() - started;
-    };
-
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await openPlayer(page);
-    const normal = await transitionMs();
-
+  test('prefers-reduced-motion switches panel transitions off', async ({ page }) => {
+    // Asserts the mechanism, not wall-clock time (timing is noisy under
+    // parallel load): with the OS setting on, the viewport runs in
+    // reduced-motion mode and a panel change renders no outgoing
+    // (animated) frame at all.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openPlayer(page);
-    const reduced = await transitionMs();
+    await expectPanel(page, 'p1-1');
+    await expect(page.locator('pw-viewport .reduced-motion').first()).toBeAttached();
 
-    expect(reduced).toBeLessThan(normal);
+    await page.keyboard.press('ArrowRight');
+    await expectPanel(page, 'p1-2');
+    await expect(page.locator('.t-frame-leave')).toHaveCount(0);
+  });
+
+  test('without the setting, panel changes animate', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await openPlayer(page);
+    await expectPanel(page, 'p1-1');
+    await expect(page.locator('pw-viewport .reduced-motion')).toHaveCount(0);
   });
 
   test('keyboard focus on toolbar buttons is visible', async ({ page }) => {
