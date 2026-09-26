@@ -175,6 +175,79 @@ describe('SettingsModalComponent', () => {
     });
   });
 
+  describe('working copy', () => {
+    it('never mutates the parent preferences object while editing, and Cancel leaves it untouched', async () => {
+      const parentPrefs = basePrefs();
+      fixture.componentRef.setInput('preferences', parentPrefs);
+      await render();
+
+      qa<HTMLInputElement>('.setting-checkbox').forEach((box) => box.click());
+      const seconds = q<HTMLInputElement>('#seconds-input') as HTMLInputElement;
+      seconds.value = '9';
+      seconds.dispatchEvent(new Event('input'));
+      await render();
+
+      expect(parentPrefs).toEqual(basePrefs());
+      expect(component.preferences.mangaMode).toBeTrue();
+      expect(component.preferences.secondsPerPanel).toBe(9);
+
+      footerButton('secondary').click();
+      expect(parentPrefs).toEqual(basePrefs());
+      expect(component.preferences).toEqual(basePrefs());
+      expect(prefsOut).toEqual([]);
+    });
+
+    it('never mutates the parent variableValues object', async () => {
+      const parentValues = { gold: 42 };
+      fixture.componentRef.setInput('variableValues', parentValues);
+      await render();
+      component.updateVariable('gold', 1);
+      component.cancel();
+      expect(parentValues).toEqual({ gold: 42 });
+    });
+
+    it('Save emits the edited copy while the parent object stays unchanged', async () => {
+      const parentPrefs = basePrefs();
+      fixture.componentRef.setInput('preferences', parentPrefs);
+      await render();
+      qa<HTMLInputElement>('.setting-checkbox')[0].click();
+      await render();
+      component.save();
+      expect(prefsOut[0].mangaMode).toBeTrue();
+      expect(prefsOut[0]).not.toBe(parentPrefs);
+      expect(parentPrefs.mangaMode).toBeFalse();
+    });
+
+    it('re-captures the cancel baseline when inputs change after init', async () => {
+      fixture.componentRef.setInput('preferences', { ...basePrefs(), autoplay: true });
+      fixture.componentRef.setInput('locale', 'de-DE');
+      fixture.componentRef.setInput('variableValues', { gold: 7 });
+      await render();
+
+      component.updatePreference('autoplay', false);
+      component.updateLocale('en-US');
+      component.updateVariable('gold', 8);
+      component.cancel();
+
+      expect(component.preferences.autoplay).toBeTrue();
+      expect(component.locale).toBe('de-DE');
+      expect(component.variableValues).toEqual({ gold: 7 });
+    });
+
+    it('discards unsaved edits when the modal is hidden without Save and opened again', async () => {
+      component.updatePreference('speech', false);
+      component.updateVariable('gold', 3);
+      fixture.componentRef.setInput('visible', false);
+      await render();
+      fixture.componentRef.setInput('visible', true);
+      await render();
+
+      expect(component.preferences.speech).toBeTrue();
+      expect(component.variableValues).toEqual({ gold: 42 });
+      expect(qa<HTMLInputElement>('.setting-checkbox')[3].checked).toBeTrue();
+    });
+  });
+
   describe('variables tab', () => {
     beforeEach(async () => {
       qa<HTMLButtonElement>('.tab-btn')[1].click();
@@ -331,13 +404,20 @@ describe('SettingsModalComponent', () => {
       expect(closed).toBe(1);
     });
 
-    it('Escape inside the overlay closes and does not bubble to the window handler', () => {
+    it('Escape inside the overlay reverts like Cancel and does not bubble to the window handler', () => {
       const cancelSpy = spyOn(component, 'cancel').and.callThrough();
+      component.updatePreference('audio', false);
+      component.updateLocale('de-DE');
+      component.updateVariable('gold', 1);
       q<HTMLElement>('.settings-overlay')?.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       );
       expect(closed).toBe(1);
-      expect(cancelSpy).not.toHaveBeenCalled();
+      expect(cancelSpy).toHaveBeenCalledTimes(1);
+      expect(component.preferences.audio).toBeTrue();
+      expect(component.locale).toBe('en-US');
+      expect(component.variableValues).toEqual({ gold: 42 });
+      expect(prefsOut).toEqual([]);
     });
   });
 });

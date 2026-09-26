@@ -11,6 +11,7 @@ interface FakeAudio {
   pause: jasmine.Spy<() => void>;
   handlers: Record<string, () => void>;
   addEventListener: (name: string, cb: () => void) => void;
+  removeEventListener: jasmine.Spy<(name: string, cb: () => void) => void>;
 }
 
 describe('CharacterRosterComponent', () => {
@@ -47,6 +48,7 @@ describe('CharacterRosterComponent', () => {
       pause: jasmine.createSpy('pause'),
       handlers: {},
       addEventListener: (name, cb) => (audio.handlers[name] = cb),
+      removeEventListener: jasmine.createSpy('removeEventListener'),
     };
     return audio;
   }
@@ -271,6 +273,60 @@ describe('CharacterRosterComponent', () => {
       await fixture.whenStable();
       component.backToList();
       expect(audio.pause).toHaveBeenCalled();
+      expect(component.isPlaying).toBeFalse();
+    });
+
+    it('re-renders the OnPush view when playback starts and ends', async () => {
+      const audio = makeAudio();
+      spyOn(window, 'Audio').and.returnValue(audio as unknown as HTMLAudioElement);
+      component.selectCharacter(characters[0]);
+      render();
+      (el().querySelector('.voice-btn') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(el().querySelector('.voice-btn')?.classList).toContain('playing');
+
+      audio.handlers['ended']();
+      fixture.detectChanges();
+      expect(el().querySelector('.voice-btn')?.classList).not.toContain('playing');
+    });
+
+    it('re-renders the OnPush view on an audio error event', async () => {
+      const audio = makeAudio();
+      spyOn(window, 'Audio').and.returnValue(audio as unknown as HTMLAudioElement);
+      spyOn(console, 'error');
+      component.selectCharacter(characters[0]);
+      render();
+      (el().querySelector('.voice-btn') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      audio.handlers['error']();
+      fixture.detectChanges();
+      expect(el().querySelector('.voice-btn')?.classList).not.toContain('playing');
+    });
+
+    it('ignores a late play() resolution after the sample was stopped', async () => {
+      let resolvePlay!: () => void;
+      const audio = makeAudio(new Promise<void>((res) => (resolvePlay = res)));
+      spyOn(window, 'Audio').and.returnValue(audio as unknown as HTMLAudioElement);
+      component.selectCharacter(characters[0]);
+      component.playVoiceSample(characters[0]);
+      component.backToList();
+      resolvePlay();
+      await fixture.whenStable();
+      expect(component.isPlaying).toBeFalse();
+    });
+
+    it('stops audio and removes its listeners on destroy', async () => {
+      const audio = makeAudio();
+      spyOn(window, 'Audio').and.returnValue(audio as unknown as HTMLAudioElement);
+      component.playVoiceSample(characters[0]);
+      await fixture.whenStable();
+      fixture.destroy();
+      expect(audio.pause).toHaveBeenCalled();
+      expect(audio.currentTime).toBe(0);
+      expect(audio.removeEventListener).toHaveBeenCalledWith('ended', audio.handlers['ended']);
+      expect(audio.removeEventListener).toHaveBeenCalledWith('error', audio.handlers['error']);
       expect(component.isPlaying).toBeFalse();
     });
 

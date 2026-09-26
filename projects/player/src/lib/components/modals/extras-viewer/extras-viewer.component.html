@@ -58,6 +58,15 @@
             {{ getTypeName('interview') }} ({{ getExtrasByType('interview') }})
           </button>
         }
+        @if (getExtrasByType('other') > 0) {
+          <button
+            class="filter-btn"
+            [class.active]="filterType === 'other'"
+            type="button"
+            (click)="setFilter('other')">
+            {{ getTypeName('other') }} ({{ getExtrasByType('other') }})
+          </button>
+        }
       </div>
 
       <!-- Gallery Grid -->

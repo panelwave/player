@@ -1,5 +1,5 @@
 @if (visible) {
-  <div class="settings-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); onClose()">
+  <div class="settings-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); cancel()">
     <div class="settings-container" role="dialog" aria-modal="true" aria-label="Settings">
       <!-- Header -->
       <div class="settings-header">
@@ -47,7 +47,7 @@
                 <select
                   id="locale-select"
                   class="setting-select"
-                  [(ngModel)]="locale"
+                  [ngModel]="locale"
                   (ngModelChange)="updateLocale($event)">
                   @for (loc of availableLocales; track loc) {
                     <option [value]="loc">{{ loc }}</option>
@@ -64,7 +64,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.mangaMode"
+                    [ngModel]="preferences.mangaMode"
                     (ngModelChange)="updatePreference('mangaMode', $event)" />
                   <span>{{ 'settings.manga_mode' | translate }}</span>
                 </label>
@@ -75,7 +75,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.reducedMotion"
+                    [ngModel]="preferences.reducedMotion"
                     (ngModelChange)="updatePreference('reducedMotion', $event)" />
                   <span>{{ 'settings.reduced_motion' | translate }}</span>
                 </label>
@@ -86,7 +86,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.highContrast"
+                    [ngModel]="preferences.highContrast"
                     (ngModelChange)="updatePreference('highContrast', $event)" />
                   <span>{{ 'settings.high_contrast' | translate }}</span>
                 </label>
@@ -101,7 +101,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.speech"
+                    [ngModel]="preferences.speech"
                     (ngModelChange)="updatePreference('speech', $event)" />
                   <span>{{ 'settings.show_speech_bubbles' | translate }}</span>
                 </label>
@@ -116,7 +116,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.audio"
+                    [ngModel]="preferences.audio"
                     (ngModelChange)="updatePreference('audio', $event)" />
                   <span>{{ 'settings.enable_audio' | translate }}</span>
                 </label>
@@ -127,7 +127,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.sfx"
+                    [ngModel]="preferences.sfx"
                     (ngModelChange)="updatePreference('sfx', $event)" />
                   <span>{{ 'settings.enable_sfx' | translate }}</span>
                 </label>
@@ -142,7 +142,7 @@
                   <input
                     type="checkbox"
                     class="setting-checkbox"
-                    [(ngModel)]="preferences.autoplay"
+                    [ngModel]="preferences.autoplay"
                     (ngModelChange)="updatePreference('autoplay', $event)" />
                   <span>{{ 'settings.enable_autoplay' | translate }}</span>
                 </label>
@@ -158,7 +158,7 @@
                     min="0.5"
                     max="120"
                     step="0.5"
-                    [(ngModel)]="preferences.secondsPerPanel"
+                    [ngModel]="preferences.secondsPerPanel"
                     (ngModelChange)="updatePreference('secondsPerPanel', $event)" />
                   <span class="input-unit">{{ 'settings.seconds_unit' | translate }}</span>
                 </div>

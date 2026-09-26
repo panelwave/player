@@ -74,6 +74,42 @@ describe('TocOverlayComponent', () => {
     expect(el().querySelectorAll('.chapter-item').length).toBe(3);
   });
 
+  describe('input changes after init', () => {
+    it('picks up a manifest that arrives later', () => {
+      create({ visible: true });
+      expect(el().querySelectorAll('.chapter-item').length).toBe(0);
+      fixture.componentRef.setInput('manifest', { chapters } as unknown as PanelWaveManifest);
+      fixture.detectChanges();
+      expect(component.chapters).toEqual(chapters);
+      expect(el().querySelectorAll('.chapter-item').length).toBe(3);
+    });
+
+    it('picks up a replaced manifest', () => {
+      create({ manifest: { chapters } as unknown as PanelWaveManifest, visible: true });
+      fixture.componentRef.setInput('manifest', { chapters: [chapters[1]] } as unknown as PanelWaveManifest);
+      fixture.detectChanges();
+      expect(component.filteredChapters.map((c) => c.id)).toEqual(['ch2']);
+      expect(el().querySelectorAll('.chapter-item').length).toBe(1);
+    });
+
+    it('picks up a changed chapters input and clamps the selection', () => {
+      create({ chapters, visible: true });
+      component.selectChapter(2);
+      fixture.componentRef.setInput('chapters', [chapters[0]]);
+      fixture.detectChanges();
+      expect(el().querySelectorAll('.chapter-item').length).toBe(1);
+      expect(component.selectedChapterIndex).toBe(0);
+    });
+
+    it('selects the new current chapter when currentChapterId changes', () => {
+      create({ chapters, visible: true, currentChapterId: 'ch1' });
+      expect(component.selectedChapterIndex).toBe(0);
+      fixture.componentRef.setInput('currentChapterId', 'ch3');
+      fixture.detectChanges();
+      expect(component.selectedChapterIndex).toBe(2);
+    });
+  });
+
   it('renders numbered, localized chapter titles with an id fallback', () => {
     create({ chapters, visible: true });
     expect(el().querySelector('.toc-title')?.textContent?.trim()).toBe('Contents');
@@ -172,10 +208,29 @@ describe('TocOverlayComponent', () => {
       expect(el().querySelectorAll('.chapter-item')[0].querySelector('.panel-list')).toBeNull();
     });
 
-    it('Enter on a chapter header navigates', () => {
+    it('Enter on a chapter header navigates exactly once (window handler does not fire too)', () => {
+      expect(document.body.contains(el())).toBeTrue();
       const header = el().querySelectorAll('.chapter-header')[0] as HTMLElement;
-      header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      expect(targets[0]).toEqual({ chapterId: 'ch1' });
+      header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      expect(targets).toEqual([{ chapterId: 'ch1' }]);
+    });
+
+    it('Enter on a non-selected chapter header navigates to that chapter only', () => {
+      const header = el().querySelectorAll('.chapter-header')[2] as HTMLElement;
+      header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      expect(targets).toEqual([{ chapterId: 'ch3' }]);
+    });
+
+    it('Enter bubbling from a panel card button is left to the button', () => {
+      const card = el().querySelectorAll('.panel-card')[0] as HTMLButtonElement;
+      card.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      expect(targets).toEqual([]);
+    });
+
+    it('Enter in the search input still navigates to the selected chapter', () => {
+      const input = el().querySelector('.search-input') as HTMLInputElement;
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      expect(targets).toEqual([{ chapterId: 'ch1' }]);
     });
 
     it('Enter on a chapter item selects without navigating', () => {

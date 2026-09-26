@@ -285,6 +285,48 @@ describe('ThumbnailStripComponent', () => {
     });
   });
 
+  describe('auto-scroll to the current panel', () => {
+    it('scrolls when the strip is first rendered visible', () => {
+      const spy = spyOn(Element.prototype, 'scrollTo');
+      setup({ chapters, currentPanelId: 'p4', visible: true });
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.calls.mostRecent().object).toBe(container());
+    });
+
+    it('scrolls once the strip is shown after being created hidden', () => {
+      const spy = spyOn(Element.prototype, 'scrollTo');
+      setup({ chapters, currentPanelId: 'p4', visible: false });
+      expect(spy).not.toHaveBeenCalled();
+
+      fixture.componentRef.setInput('visible', true);
+      fixture.detectChanges();
+      expect(container()).not.toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy.calls.mostRecent().object).toBe(container());
+      expect(spy.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ behavior: 'smooth' }));
+    });
+
+    it('scrolls to the new panel when currentPanelId changes', () => {
+      setup({ chapters, currentPanelId: 'p1', visible: true });
+      const c = container();
+      stubNumber(c, 'offsetWidth', 200);
+      const spy = scrollSpy(c);
+
+      fixture.componentRef.setInput('currentPanelId', 'p4');
+      fixture.detectChanges();
+      // index 3 * 128 = 384; 384 - 100 + 60 = 344
+      expect(spy).toHaveBeenCalledOnceWith({ left: 344, behavior: 'smooth' });
+    });
+
+    it('does not scroll on changes while hidden', () => {
+      setup({ chapters, currentPanelId: 'p1', visible: false });
+      const spy = spyOn(Element.prototype, 'scrollTo');
+      fixture.componentRef.setInput('currentPanelId', 'p4');
+      fixture.detectChanges();
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('without a scroll container (hidden)', () => {
     it('all container-dependent methods are safe no-ops', () => {
       setup({ chapters, visible: false });

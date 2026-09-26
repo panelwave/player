@@ -128,6 +128,55 @@ describe('AgeGateComponent', () => {
       expect(component.errorMessage).toBe('Please enter a valid day (1-31).');
     });
 
+    it('rejects calendar-impossible dates instead of rolling them over', () => {
+      const cases: [string, string, string, number][] = [
+        ['2', '31', '1990', 28],
+        ['2', '30', '2000', 29],
+        ['2', '29', '1990', 28],
+        ['2', '29', '1900', 28],
+        ['4', '31', '1990', 30],
+        ['6', '31', '1990', 30],
+        ['9', '31', '1990', 30],
+        ['11', '31', '1990', 30],
+      ];
+      for (const [m, d, y, max] of cases) {
+        component.birthMonth = m;
+        component.birthDay = d;
+        component.birthYear = y;
+        component.onSubmit();
+        expect(component.errorMessage).withContext(`${y}-${m}-${d}`).toBe(`Please enter a valid day (1-${max}).`);
+      }
+      expect(results).toEqual([]);
+    });
+
+    it('shows the invalid-day error in the DOM for 31 February', async () => {
+      await enterDate(2, 31, 1990);
+      submit();
+      expect(errorText()).toBe('Please enter a valid day (1-28).');
+      expect(results).toEqual([]);
+    });
+
+    it('accepts real month-end and leap dates', () => {
+      const cases: [string, string, string][] = [
+        ['2', '29', '2000'],
+        ['2', '29', '1996'],
+        ['2', '28', '1990'],
+        ['4', '30', '1990'],
+        ['12', '31', '1990'],
+      ];
+      for (const [m, d, y] of cases) {
+        component.birthMonth = m;
+        component.birthDay = d;
+        component.birthYear = y;
+        component.onSubmit();
+        expect(component.errorMessage).withContext(`${y}-${m}-${d}`).toBe('');
+      }
+      expect(results.length).toBe(cases.length);
+      expect(results.every((r) => r.verified)).toBeTrue();
+      expect(results[0].birthDate?.getMonth()).toBe(1);
+      expect(results[0].birthDate?.getDate()).toBe(29);
+    });
+
     it('rejects years before 1900 and in the future', () => {
       const next = new Date().getFullYear() + 1;
       component.birthMonth = '1';

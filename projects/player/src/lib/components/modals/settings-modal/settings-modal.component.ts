@@ -9,6 +9,8 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnChanges,
+  SimpleChanges,
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
@@ -51,7 +53,7 @@ export interface VariableChange {
     styleUrls: ['./settings-modal.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SettingsModalComponent implements OnInit {
+export class SettingsModalComponent implements OnInit, OnChanges {
   /**
    * Current preferences
    */
@@ -135,7 +137,50 @@ export class SettingsModalComponent implements OnInit {
    * Initialize component
    */
   ngOnInit(): void {
+    this.detachWorkingCopies();
     this.saveOriginalValues();
+  }
+
+  /**
+   * Keep the cancel baseline in sync with the inputs. New preferences /
+   * locale / variable values from the parent become the new baseline; when
+   * the modal (re)opens, any edits left over from a previous session that
+   * was closed without Save are discarded.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['preferences']) {
+      this.preferences = { ...this.preferences };
+      this.originalPreferences = { ...this.preferences };
+    }
+    if (changes['locale']) {
+      this.originalLocale = this.locale;
+    }
+    if (changes['variableValues']) {
+      this.variableValues = { ...this.variableValues };
+      this.originalVariableValues = { ...this.variableValues };
+    }
+    const visible = changes['visible'];
+    if (visible && visible.currentValue && !visible.previousValue && !visible.firstChange) {
+      this.restoreOriginalValues();
+    }
+  }
+
+  /**
+   * Replace the input objects with component-local copies so edits never
+   * mutate the parent's objects before Save emits.
+   */
+  private detachWorkingCopies(): void {
+    this.preferences = { ...this.preferences };
+    this.variableValues = { ...this.variableValues };
+  }
+
+  /**
+   * Restore the working values from the cancel baseline
+   */
+  private restoreOriginalValues(): void {
+    this.preferences = { ...this.originalPreferences };
+    this.locale = this.originalLocale;
+    this.variableValues = { ...this.originalVariableValues };
   }
 
   /**
@@ -216,10 +261,7 @@ export class SettingsModalComponent implements OnInit {
    * Cancel changes
    */
   cancel(): void {
-    // Restore original values
-    this.preferences = { ...this.originalPreferences };
-    this.locale = this.originalLocale;
-    this.variableValues = { ...this.originalVariableValues };
+    this.restoreOriginalValues();
     this.onClose();
   }
 

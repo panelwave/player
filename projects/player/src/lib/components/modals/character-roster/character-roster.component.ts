@@ -10,8 +10,11 @@ import {
   EventEmitter,
   OnInit,
   OnChanges,
+  OnDestroy,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   HostListener,
+  inject,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -42,7 +45,14 @@ export interface Character {
     styleUrls: ['./character-roster.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CharacterRosterComponent implements OnInit, OnChanges {
+export class CharacterRosterComponent implements OnInit, OnChanges, OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  /**
+   * Listeners attached to the current audio element (removed on stop)
+   */
+  private audioListeners: { ended: () => void; error: () => void } | null = null;
+
   /**
    * List of characters
    */
@@ -271,21 +281,40 @@ export class CharacterRosterComponent implements OnInit, OnChanges {
       ? url
       : this.baseUrl + url;
 
-    this.audioElement = new Audio(audioUrl);
-    this.audioElement.addEventListener('ended', () => {
-      this.isPlaying = false;
-    });
-    this.audioElement.addEventListener('error', () => {
-      this.isPlaying = false;
-      console.error('Failed to load voice sample');
-    });
+    const audio = new Audio(audioUrl);
+    this.audioElement = audio;
+    // All state changes below happen outside Angular's template events, so the
+    // OnPush view must be marked for check explicitly.
+    const listeners = {
+      ended: () => this.setPlaying(false),
+      error: () => {
+        this.setPlaying(false);
+        console.error('Failed to load voice sample');
+      },
+    };
+    this.audioListeners = listeners;
+    audio.addEventListener('ended', listeners.ended);
+    audio.addEventListener('error', listeners.error);
 
-    this.audioElement.play().then(() => {
-      this.isPlaying = true;
+    audio.play().then(() => {
+      // Ignore a late resolution for an element that was already stopped/replaced
+      if (this.audioElement === audio) {
+        this.setPlaying(true);
+      }
     }).catch((error) => {
       console.error('Failed to play voice sample:', error);
-      this.isPlaying = false;
+      if (this.audioElement === audio) {
+        this.setPlaying(false);
+      }
     });
+  }
+
+  /**
+   * Update the playing flag and schedule an OnPush re-render
+   */
+  private setPlaying(playing: boolean): void {
+    this.isPlaying = playing;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -293,11 +322,23 @@ export class CharacterRosterComponent implements OnInit, OnChanges {
    */
   private stopVoiceSample(): void {
     if (this.audioElement) {
+      if (this.audioListeners) {
+        this.audioElement.removeEventListener('ended', this.audioListeners.ended);
+        this.audioElement.removeEventListener('error', this.audioListeners.error);
+      }
       this.audioElement.pause();
       this.audioElement.currentTime = 0;
       this.audioElement = null;
     }
+    this.audioListeners = null;
     this.isPlaying = false;
+  }
+
+  /**
+   * Stop any playing voice sample when the component is destroyed
+   */
+  ngOnDestroy(): void {
+    this.stopVoiceSample();
   }
 
   /**

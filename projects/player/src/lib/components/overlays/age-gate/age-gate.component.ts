@@ -137,6 +137,14 @@ export class AgeGateComponent {
       return;
     }
 
+    // Reject calendar-impossible dates (31 Apr, 30 Feb, 29 Feb in non-leap
+    // years): new Date() would silently roll them over into the next month.
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day > daysInMonth) {
+      this.errorMessage = `Please enter a valid day (1-${daysInMonth}).`;
+      return;
+    }
+
     // Calculate age
     const birthDate = new Date(year, month - 1, day);
     const age = this.calculateAge(birthDate);

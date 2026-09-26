@@ -139,11 +139,64 @@ describe('CommentsDrawerComponent', () => {
       expect(component.formatTimestamp(old)).toBe(old.toLocaleDateString());
     });
 
+    it('formats relative timestamps through translation keys (same English output)', () => {
+      const translate = TestBed.inject(TranslateService);
+      translate.setTranslation(
+        'en',
+        {
+          comments: {
+            just_now: 'Just now',
+            minutes_ago: '{{count}}m ago',
+            hours_ago: '{{count}}h ago',
+            days_ago: '{{count}}d ago',
+          },
+        },
+        true
+      );
+      expect(component.formatTimestamp(minutesAgo(0.5))).toBe('Just now');
+      expect(component.formatTimestamp(minutesAgo(5))).toBe('5m ago');
+      expect(component.formatTimestamp(minutesAgo(60 * 3))).toBe('3h ago');
+      expect(component.formatTimestamp(minutesAgo(60 * 24 * 2))).toBe('2d ago');
+    });
+
+    it('localizes relative timestamps for the active language', async () => {
+      const translate = TestBed.inject(TranslateService);
+      translate.setTranslation('de', {
+        comments: {
+          just_now: 'Gerade eben',
+          minutes_ago: 'vor {{count}} Min.',
+          hours_ago: 'vor {{count}} Std.',
+          days_ago: 'vor {{count}} Tg.',
+        },
+      });
+      translate.use('de');
+      expect(component.formatTimestamp(minutesAgo(0.5))).toBe('Gerade eben');
+      expect(component.formatTimestamp(minutesAgo(5))).toBe('vor 5 Min.');
+      expect(component.formatTimestamp(minutesAgo(60 * 3))).toBe('vor 3 Std.');
+      expect(component.formatTimestamp(minutesAgo(60 * 24 * 2))).toBe('vor 2 Tg.');
+
+      await set({ comments, visible: true });
+      expect(text(q('.comment-timestamp'))).toBe('vor 5 Min.');
+    });
+
     it('computes author initials', () => {
       expect(component.getAuthorInitials('Ada Lovelace')).toBe('AL');
       expect(component.getAuthorInitials('grace brewster hopper')).toBe('GB');
       expect(component.getAuthorInitials('zed')).toBe('ZE');
       expect(component.getAuthorInitials('Z')).toBe('Z');
+    });
+
+    it('splits on any whitespace and ignores empty segments', () => {
+      expect(component.getAuthorInitials('Jane  Doe')).toBe('JD');
+      expect(component.getAuthorInitials(' Bob')).toBe('BO');
+      expect(component.getAuthorInitials('  Ann\tLee  ')).toBe('AL');
+      expect(component.getAuthorInitials('bo ')).toBe('BO');
+    });
+
+    it('returns "?" for empty or whitespace-only names', () => {
+      expect(component.getAuthorInitials('')).toBe('?');
+      expect(component.getAuthorInitials('   ')).toBe('?');
+      expect(component.getAuthorInitials(undefined as unknown as string)).toBe('?');
     });
   });
 

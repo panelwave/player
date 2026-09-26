@@ -15,6 +15,9 @@ import {
   ElementRef,
   AfterViewInit,
   HostListener,
+  Injector,
+  afterNextRender,
+  inject,
 } from '@angular/core';
 
 import type { Chapter, Panel } from '../../../types';
@@ -55,6 +58,13 @@ interface ThumbnailItem {
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
+  private readonly injector = inject(Injector);
+
+  /**
+   * Whether a post-render scroll to the current panel is already queued
+   */
+  private scrollQueued = false;
+
   /**
    * Chapters with panels
    */
@@ -127,6 +137,30 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
     if (changes['chapters'] || changes['currentChapterId'] || changes['currentPanelId'] || changes['lockedPanels']) {
       this.buildThumbnailItems();
     }
+
+    // The scroll container only exists inside @if (visible): when the strip
+    // is shown later, or the current panel/chapters change, scroll once the
+    // view has rendered. The initial render is covered by ngAfterViewInit.
+    const scrollTriggers = ['visible', 'currentPanelId', 'chapters'];
+    const needsScroll = scrollTriggers.some((key) => changes[key] && !changes[key].firstChange);
+    if (needsScroll && this.visible) {
+      this.queueScrollToCurrentPanel();
+    }
+  }
+
+  /**
+   * Scroll to the current panel after the next render
+   */
+  private queueScrollToCurrentPanel(): void {
+    if (this.scrollQueued) return;
+    this.scrollQueued = true;
+    afterNextRender(
+      () => {
+        this.scrollQueued = false;
+        this.scrollToCurrentPanel();
+      },
+      { injector: this.injector },
+    );
   }
 
   /**

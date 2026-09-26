@@ -10,9 +10,10 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 
@@ -50,6 +51,8 @@ export interface CommentPost {
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CommentsDrawerComponent {
+  private readonly translate = inject(TranslateService);
+
   /**
    * List of comments
    */
@@ -204,27 +207,43 @@ export class CommentsDrawerComponent {
     const days = Math.floor(hours / 24);
 
     if (seconds < 60) {
-      return 'Just now';
+      return this.t('comments.just_now', 'Just now');
     } else if (minutes < 60) {
-      return `${minutes}m ago`;
+      return this.t('comments.minutes_ago', '{{count}}m ago', minutes);
     } else if (hours < 24) {
-      return `${hours}h ago`;
+      return this.t('comments.hours_ago', '{{count}}h ago', hours);
     } else if (days < 7) {
-      return `${days}d ago`;
+      return this.t('comments.days_ago', '{{count}}d ago', days);
     } else {
       return date.toLocaleDateString();
     }
   }
 
   /**
+   * Translate a relative-time key; falls back to the English template when the
+   * key is not (yet) loaded so the output never degrades to the raw key.
+   */
+  private t(key: string, fallback: string, count?: number): string {
+    const params = count === undefined ? undefined : { count };
+    const value = this.translate.instant(key, params) as unknown;
+    if (typeof value === 'string' && value !== key) {
+      return value;
+    }
+    return fallback.replace('{{count}}', String(count));
+  }
+
+  /**
    * Get author initials
    */
   getAuthorInitials(author: string): string {
-    const words = author.split(' ');
+    const words = (author ?? '').split(/\s+/).filter((word) => word.length > 0);
+    if (words.length === 0) {
+      return '?';
+    }
     if (words.length >= 2) {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
-    return author.substring(0, 2).toUpperCase();
+    return words[0].substring(0, 2).toUpperCase();
   }
 
   /**

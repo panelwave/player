@@ -9,6 +9,8 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnChanges,
+  SimpleChanges,
   ChangeDetectionStrategy,
   HostListener,
 } from '@angular/core';
@@ -37,7 +39,7 @@ export interface TocNavigationTarget {
     styleUrls: ['./toc-overlay.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TocOverlayComponent implements OnInit {
+export class TocOverlayComponent implements OnInit, OnChanges {
   /**
    * Manifest (optional, will extract chapters)
    */
@@ -102,13 +104,35 @@ export class TocOverlayComponent implements OnInit {
    * Initialize component
    */
   ngOnInit(): void {
-    // Extract chapters from manifest if provided
+    this.syncChapters();
+    this.filterChapters();
+    this.selectCurrentChapter();
+  }
+
+  /**
+   * React to manifest / chapter / current-chapter changes after init
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    const chaptersChanged = !!(changes['manifest'] || changes['chapters']);
+    if (chaptersChanged) {
+      this.syncChapters();
+      this.filterChapters();
+      if (this.selectedChapterIndex >= this.filteredChapters.length) {
+        this.selectedChapterIndex = Math.max(this.filteredChapters.length - 1, 0);
+      }
+    }
+    if (chaptersChanged || changes['currentChapterId']) {
+      this.selectCurrentChapter();
+    }
+  }
+
+  /**
+   * Extract chapters from the manifest when one is provided
+   */
+  private syncChapters(): void {
     if (this.manifest?.chapters) {
       this.chapters = Object.values(this.manifest.chapters);
     }
-    
-    this.filterChapters();
-    this.selectCurrentChapter();
   }
 
   /**
@@ -334,12 +358,24 @@ export class TocOverlayComponent implements OnInit {
         break;
 
       case 'Enter':
+        // Focused interactive elements (chapter headers/items, panel cards,
+        // buttons) handle Enter themselves; acting here too would emit twice.
+        if (this.isOwnEnterTarget(event.target)) return;
         event.preventDefault();
         if (this.filteredChapters[this.selectedChapterIndex]) {
           this.navigateToChapter(this.filteredChapters[this.selectedChapterIndex]);
         }
         break;
     }
+  }
+
+  /**
+   * Whether a keyboard event target is an interactive element with its own
+   * Enter handling (the search input is deliberately not one of them).
+   */
+  private isOwnEnterTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return false;
+    return !!target.closest('button, a[href], select, textarea, [tabindex]:not([tabindex="-1"])');
   }
 
   /**

@@ -103,6 +103,33 @@ describe('ShareModalComponent', () => {
       expect(component.copySuccess).toBeFalse();
     }));
 
+    it('re-renders the OnPush view on copy success and on reset without an external markForCheck', fakeAsync(() => {
+      const writeText = jasmine.createSpy('writeText').and.returnValue(Promise.resolve());
+      overrideNavigator({ clipboard: { writeText } });
+      create();
+
+      void component.copyLink();
+      flushMicrotasks();
+      fixture.detectChanges();
+      expect(el().querySelector('.copy-btn')?.classList).toContain('success');
+
+      tick(2000);
+      fixture.detectChanges();
+      expect(el().querySelector('.copy-btn')?.classList).not.toContain('success');
+      expect(el().querySelector('.copy-btn')?.textContent?.trim()).toBe('Copy');
+    }));
+
+    it('clears the pending reset timer on destroy', fakeAsync(() => {
+      const writeText = jasmine.createSpy('writeText').and.returnValue(Promise.resolve());
+      overrideNavigator({ clipboard: { writeText } });
+      create();
+      void component.copyLink();
+      flushMicrotasks();
+      fixture.destroy();
+      // fakeAsync fails the test if a timer is still pending here
+      expect(component.copySuccess).toBeTrue();
+    }));
+
     it('logs and does not emit when the clipboard write fails', fakeAsync(() => {
       const writeText = jasmine.createSpy('writeText').and.returnValue(Promise.reject(new Error('denied')));
       overrideNavigator({ clipboard: { writeText } });
@@ -255,7 +282,7 @@ describe('ShareModalComponent', () => {
         text: 'A tale',
         url: 'https://read.example/w/1?p=a b',
       });
-      expect(shared).toEqual(['copy']);
+      expect(shared).toEqual(['native']);
     });
 
     it('swallows a cancelled native share', async () => {

@@ -10,6 +10,9 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   HostListener,
+  ChangeDetectorRef,
+  OnDestroy,
+  inject,
 } from '@angular/core';
 
 import { TranslateModule } from '@ngx-translate/core';
@@ -18,7 +21,7 @@ import { PwIconComponent } from '../../icon/pw-icon.component';
 /**
  * Share platform
  */
-export type SharePlatform = 'twitter' | 'facebook' | 'reddit' | 'email' | 'copy' | 'qr';
+export type SharePlatform = 'twitter' | 'facebook' | 'reddit' | 'email' | 'copy' | 'qr' | 'native';
 
 /**
  * Share Modal Component
@@ -31,7 +34,12 @@ export type SharePlatform = 'twitter' | 'facebook' | 'reddit' | 'email' | 'copy'
     styleUrls: ['./share-modal.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ShareModalComponent {
+export class ShareModalComponent implements OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  /** Pending timer that clears the copy-success state */
+  private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+
   /**
    * URL to share
    */
@@ -89,13 +97,7 @@ export class ShareModalComponent {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(this.shareUrl);
-        this.copySuccess = true;
-        this.share.emit('copy');
-
-        // Reset success message after 2 seconds
-        setTimeout(() => {
-          this.copySuccess = false;
-        }, 2000);
+        this.markCopySuccess();
       } else {
         // Fallback for older browsers
         this.fallbackCopyTextToClipboard(this.shareUrl);
@@ -103,6 +105,35 @@ export class ShareModalComponent {
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  }
+
+  /**
+   * Show the copy-success state, emit 'copy', and reset it after 2 seconds.
+   * The component is OnPush and both transitions happen outside an input/
+   * template event, so each one must mark the view for check.
+   */
+  private markCopySuccess(): void {
+    this.copySuccess = true;
+    this.share.emit('copy');
+    this.cdr.markForCheck();
+
+    this.clearCopyResetTimer();
+    this.copyResetTimer = setTimeout(() => {
+      this.copyResetTimer = null;
+      this.copySuccess = false;
+      this.cdr.markForCheck();
+    }, 2000);
+  }
+
+  private clearCopyResetTimer(): void {
+    if (this.copyResetTimer !== null) {
+      clearTimeout(this.copyResetTimer);
+      this.copyResetTimer = null;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.clearCopyResetTimer();
   }
 
   /**
@@ -122,11 +153,7 @@ export class ShareModalComponent {
     try {
       const successful = document.execCommand('copy');
       if (successful) {
-        this.copySuccess = true;
-        this.share.emit('copy');
-        setTimeout(() => {
-          this.copySuccess = false;
-        }, 2000);
+        this.markCopySuccess();
       }
     } catch (err) {
       console.error('Fallback copy failed:', err);
@@ -217,7 +244,7 @@ export class ShareModalComponent {
           text: this.shareDescription,
           url: this.shareUrl,
         });
-        this.share.emit('copy');
+        this.share.emit('native');
       } catch (err) {
         // User cancelled or share failed
         console.log('Share cancelled:', err);

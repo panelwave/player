@@ -106,8 +106,24 @@ describe('ExtrasViewerComponent', () => {
         'Artwork (1)',
         'Behind the Scenes (1)',
         'Interviews (1)',
+        'Other (1)',
       ]);
       expect(filterButtons()[0].classList).toContain('active');
+    });
+
+    it('filters the grid to "other" extras via their own filter button', () => {
+      const other = filterButtons().find((b) => text(b) === 'Other (1)') as HTMLButtonElement;
+      expect(other).toBeDefined();
+      other.click();
+      fixture.detectChanges();
+      expect(component.filterType).toBe('other');
+      expect(cards().length).toBe(1);
+      expect(filterButtons().find((b) => text(b) === 'Other (1)')?.classList).toContain('active');
+    });
+
+    it('hides the "other" filter when there are no such extras', () => {
+      set({ extras: component.extras.filter((e) => e.type !== 'other') });
+      expect(filterButtons().some((b) => text(b).startsWith('Other'))).toBeFalse();
     });
 
     it('filters the grid by type', () => {
