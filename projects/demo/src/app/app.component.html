@@ -1,207 +1,24 @@
 <!-- PanelWave Player Demo -->
-
-<style>
-  :host {
-    --bright-blue: oklch(51.01% 0.274 263.83);
-    --electric-violet: oklch(53.18% 0.28 296.97);
-    --french-violet: oklch(47.66% 0.246 305.88);
-    --vivid-pink: oklch(69.02% 0.277 332.77);
-    --hot-red: oklch(61.42% 0.238 15.34);
-    --orange-red: oklch(63.32% 0.24 31.68);
-
-    --gray-900: oklch(19.37% 0.006 300.98);
-    --gray-700: oklch(36.98% 0.014 302.71);
-    --gray-400: oklch(70.9% 0.015 304.04);
-
-    --red-to-pink-to-purple-vertical-gradient: linear-gradient(
-      180deg,
-      var(--orange-red) 0%,
-      var(--vivid-pink) 50%,
-      var(--electric-violet) 100%
-    );
-
-    --red-to-pink-to-purple-horizontal-gradient: linear-gradient(
-      90deg,
-      var(--orange-red) 0%,
-      var(--vivid-pink) 50%,
-      var(--electric-violet) 100%
-    );
-
-    --pill-accent: var(--bright-blue);
-
-    /* UI fonts: Barlow (body) + Barlow Semi Condensed (display/headings).
-       The web fonts are loaded in index.html; these stacks fall back to the
-       system sans if the fonts are unavailable (e.g. offline). */
-    --font-sans: "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-      "Segoe UI Symbol";
-    --font-display: "Barlow Semi Condensed", -apple-system, BlinkMacSystemFont,
-      "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji",
-      "Segoe UI Emoji", "Segoe UI Symbol";
-
-    font-family: var(--font-sans);
-    box-sizing: border-box;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  h1 {
-    font-size: 3.125rem;
-    color: var(--gray-900);
-    font-weight: 500;
-    line-height: 100%;
-    letter-spacing: -0.125rem;
-    margin: 0;
-    font-family: var(--font-display);
-  }
-
-  p {
-    margin: 0;
-    color: var(--gray-700);
-  }
-
-  main {
-    width: 100%;
-    min-height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 1rem;
-    box-sizing: inherit;
-    position: relative;
-  }
-
-  .angular-logo {
-    max-width: 9.2rem;
-  }
-
-  .content {
-    display: flex;
-    justify-content: space-around;
-    width: 100%;
-    max-width: 700px;
-    margin-bottom: 3rem;
-  }
-
-  .content h1 {
-    margin-top: 1.75rem;
-  }
-
-  .content p {
-    margin-top: 1.5rem;
-  }
-
-  .divider {
-    width: 1px;
-    background: var(--red-to-pink-to-purple-vertical-gradient);
-    margin-inline: 0.5rem;
-  }
-
-  .pill-group {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-  }
-
-  .pill {
-    display: flex;
-    align-items: center;
-    --pill-accent: var(--bright-blue);
-    background: color-mix(in srgb, var(--pill-accent) 5%, transparent);
-    color: var(--pill-accent);
-    padding-inline: 0.75rem;
-    padding-block: 0.375rem;
-    border-radius: 2.75rem;
-    border: 0;
-    transition: background 0.3s ease;
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 1.4rem;
-    letter-spacing: -0.00875rem;
-    text-decoration: none;
-  }
-
-  .pill:hover {
-    background: color-mix(in srgb, var(--pill-accent) 15%, transparent);
-  }
-
-  .demo-switcher {
-    display: flex;
-    gap: 0.5rem;
-    margin-block: 0.75rem;
-  }
-
-  .demo-switcher .pill {
-    cursor: pointer;
-  }
-
-  .demo-switcher .pill.active {
-    background: color-mix(in srgb, var(--pill-accent) 20%, transparent);
-    font-weight: 600;
-  }
-
-  .demo-hint {
-    max-width: 48rem;
-    margin-block: 0.25rem 0.75rem;
-    color: var(--gray-700);
-    font-size: 0.9rem;
-  }
-
-  .pill-group .pill:nth-child(6n + 1) {
-    --pill-accent: var(--bright-blue);
-  }
-  .pill-group .pill:nth-child(6n + 2) {
-    --pill-accent: var(--french-violet);
-  }
-  .pill-group .pill:nth-child(6n + 3),
-  .pill-group .pill:nth-child(6n + 4),
-  .pill-group .pill:nth-child(6n + 5) {
-    --pill-accent: var(--hot-red);
-  }
-
-  .pill-group svg {
-    margin-inline-start: 0.25rem;
-  }
-
-  .social-links {
-    display: flex;
-    align-items: center;
-    gap: 0.73rem;
-    margin-top: 1.5rem;
-  }
-
-  .social-links path {
-    transition: fill 0.3s ease;
-    fill: var(--gray-400);
-  }
-
-  .social-links a:hover svg path {
-    fill: var(--gray-900);
-  }
-
-  @media screen and (max-width: 650px) {
-    .content {
-      flex-direction: column;
-      width: max-content;
-    }
-
-    .divider {
-      height: 1px;
-      width: 100%;
-      background: var(--red-to-pink-to-purple-horizontal-gradient);
-      margin-block: 1.5rem;
-    }
-  }
-</style>
-
 <div class="demo-container" [class.embed-mode]="embedMode">
   @if (!embedMode) {
   <header class="demo-header">
-    <h1>{{ title }}</h1>
+    <div class="header-row">
+      <h1>{{ title }}</h1>
+      <div class="header-tools">
+        <label class="device-select">
+          <span>Preview</span>
+          <select (change)="setDevice($any($event.target).value)" aria-label="Preview size">
+            @for (d of devices; track d.id) {
+              <option [value]="d.id" [selected]="d.id === device">{{ d.label }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" class="pill" [class.active]="devToolsOpen" [attr.aria-pressed]="devToolsOpen" (click)="toggleDevTools()">
+          Dev tools
+        </button>
+      </div>
+    </div>
+
     <nav class="demo-switcher" aria-label="Demo selection">
       @for (demo of demos; track demo.id) {
         <button
@@ -213,7 +30,16 @@
           {{ demo.label }}
         </button>
       }
+      <form class="manifest-url" (submit)="loadFromUrl($event, urlInput.value)">
+        <input #urlInput type="text" inputmode="url" placeholder="Manifest URL or path…" aria-label="Manifest URL" />
+        <button type="submit" class="pill">Load</button>
+      </form>
+      <label class="pill file-pill">
+        Open file…
+        <input type="file" accept="application/json,.json" (change)="loadFromFile($event)" aria-label="Open manifest file" />
+      </label>
     </nav>
+
     @if (activeDemo === 'video-sequencing') {
       <p class="demo-hint">
         Switch to <strong>page view</strong> (toolbar) to see the three
@@ -223,40 +49,52 @@
       </p>
     }
     @if (error) {
-      <div class="error-banner">{{ error }}</div>
+      <div class="error-banner" role="alert">{{ error }}</div>
     }
   </header>
   }
 
-  @if (loading) {
-    <div class="loading-message">
-      <p>Loading manifest...</p>
+  <div class="demo-body">
+    <div class="stage" [class.framed]="!embedMode && device !== 'fill'" [class.pw-debug]="debugOverlay">
+      @if (loading) {
+        <div class="loading-message">
+          <p>Loading manifest...</p>
+        </div>
+      }
+
+      @if (manifest && !loading) {
+        <div class="device-frame" [style.width]="frameWidth" [style.height]="frameHeight">
+          <pw-player-shell
+            [manifest]="manifest"
+            [locale]="locale"
+            [autoplay]="autoplay"
+            [entitlementAdapter]="entitlementAdapter"
+            [initialVariables]="initialVariables"
+            [viewModeOverride]="viewModeOverride"
+            [showToolbar]="!embedMode"
+            (ready)="onPlayerReady()"
+            (panelChange)="onPanelChange($event)"
+            (chapterChange)="log('chapterChange', $event)"
+            (variableChange)="log('variableChange', $event)"
+            (localeChange)="log('localeChange', $event)"
+            (navigationAttempt)="log('navigationAttempt', $event)"
+            (error)="onError($event)">
+          </pw-player-shell>
+        </div>
+      }
     </div>
-  }
 
-    @if (manifest && !loading) {
-      <pw-player-shell
-        [manifest]="manifest"
-        [locale]="locale"
-        [autoplay]="autoplay"
-        [entitlementAdapter]="entitlementAdapter"
-        [initialVariables]="initialVariables"
-        [viewModeOverride]="viewModeOverride"
-        [showToolbar]="!embedMode"
-        (ready)="onPlayerReady()"
-        (panelChange)="onPanelChange($event)"
-        (error)="onError($event)">
-      </pw-player-shell>
+    @if (devToolsOpen && !embedMode) {
+      <app-dev-tools
+        class="dev-tools-drawer"
+        [events]="events"
+        [loadMs]="loadMs"
+        [panelChanges]="panelChanges"
+        [debugOverlay]="debugOverlay"
+        (debugOverlayChange)="debugOverlay = $event"
+        (clearEvents)="events = []" />
     }
+  </div>
 </div>
-
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content above * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * End of Placeholder  * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-
 
 <router-outlet />

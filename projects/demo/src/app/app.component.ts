@@ -2,7 +2,8 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PlayerShellComponent } from 'player';
-import type { PanelWaveManifest } from 'player';
+import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
+import type { Chapter, Panel, PanelWaveManifest } from 'player';
 
 /**
  * Config message posted by an embedding host (the CMS preview iframe):
@@ -24,7 +25,7 @@ interface EmbedConfigMessage {
 
 @Component({
     selector: 'app-root',
-    imports: [RouterOutlet, PlayerShellComponent],
+    imports: [RouterOutlet, PlayerShellComponent, DevToolsComponent],
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss'
 })
@@ -108,12 +109,45 @@ export class AppComponent implements OnInit, OnDestroy {
 
   activeDemo = 'sample';
 
+  /** Responsive preview frames (CSS px). 'fill' = the whole window. */
+  readonly devices = [
+    { id: 'fill', label: 'Fill window', width: 0, height: 0 },
+    { id: 'phone', label: 'Phone (390 × 844)', width: 390, height: 844 },
+    { id: 'phone-landscape', label: 'Phone landscape (844 × 390)', width: 844, height: 390 },
+    { id: 'tablet', label: 'Tablet (820 × 1180)', width: 820, height: 1180 },
+    { id: 'desktop', label: 'Desktop (1440 × 900)', width: 1440, height: 900 },
+  ];
+  device = 'fill';
+
+  /** Dev tools drawer state (`?devtools=1` opens it on load). */
+  devToolsOpen = false;
+  debugOverlay = false;
+  events: DevToolsEvent[] = [];
+  panelChanges = 0;
+  loadMs: number | null = null;
+  private static readonly MAX_EVENTS = 200;
+
+  get frameWidth(): string | null {
+    const d = this.devices.find((x) => x.id === this.device);
+    return d && d.width ? d.width + 'px' : null;
+  }
+
+  get frameHeight(): string | null {
+    const d = this.devices.find((x) => x.id === this.device);
+    return d && d.height ? d.height + 'px' : null;
+  }
+
   private readonly http = inject(HttpClient);
 
   ngOnInit() {
     window.addEventListener('message', this.onEmbedMessage);
 
     const params = new URLSearchParams(window.location.search);
+    this.devToolsOpen = params.get('devtools') === '1';
+    const device = params.get('device');
+    if (device && this.devices.some((d) => d.id === device)) {
+      this.device = device;
+    }
 
     const vars = params.get('vars');
     if (vars) {
@@ -138,7 +172,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Embed mode without an explicit manifest: wait for the host's config
     // message instead of flashing the bundled sample.
-    if (params.get('embed') === '1' || window.self !== window.top) {
+    if (params.get('embed') === '1' || this.isFramed()) {
       this.embedMode = true;
       this.loading = false;
       return;
@@ -157,6 +191,87 @@ export class AppComponent implements OnInit, OnDestroy {
     window.removeEventListener('message', this.onEmbedMessage);
   }
 
+  /** Running inside an iframe (the CMS preview embed). Separate for tests. */
+  protected isFramed(): boolean {
+    return window.self !== window.top;
+  }
+
+  setDevice(id: string): void {
+    if (this.devices.some((d) => d.id === id)) {
+      this.device = id;
+    }
+  }
+
+  toggleDevTools(): void {
+    this.devToolsOpen = !this.devToolsOpen;
+  }
+
+  /** Load any manifest by URL (the manifest selector's free-form input). */
+  loadFromUrl(event: Event, url: string): void {
+    event.preventDefault();
+    const trimmed = url.trim();
+    if (!trimmed) {
+      return;
+    }
+    this.activeDemo = '';
+    this.manifest = null;
+    this.loadManifest(trimmed);
+  }
+
+  /** Load a manifest from a local JSON file (no server round trip). */
+  loadFromFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+    const started = performance.now();
+    this.loading = true;
+    this.error = null;
+    file.text().then(
+      (text) => {
+        try {
+          const parsed = JSON.parse(text) as PanelWaveManifest;
+          this.activeDemo = '';
+          this.manifest = null;
+          this.resetMetrics();
+          this.loadMs = Math.round(performance.now() - started);
+          setTimeout(() => {
+            this.manifest = parsed;
+            this.loading = false;
+          });
+          this.log('manifestLoaded', { source: file.name });
+        } catch (e) {
+          this.loading = false;
+          this.error = `${file.name} is not valid JSON: ${e instanceof Error ? e.message : e}`;
+        }
+      },
+      (e: unknown) => {
+        this.loading = false;
+        this.error = `Could not read ${file.name}: ${e instanceof Error ? e.message : e}`;
+      }
+    );
+  }
+
+  /** Append a shell event to the dev-tools log (newest first, capped). */
+  log(type: string, payload: unknown): void {
+    let detail: string;
+    try {
+      detail = typeof payload === 'string' ? payload : JSON.stringify(payload, (_k, v) => (typeof v === 'object' && v && 'layers' in v ? '[…]' : v));
+    } catch {
+      detail = String(payload);
+    }
+    if (detail && detail.length > 240) detail = detail.slice(0, 240) + '…';
+    this.events = [{ at: Date.now(), type, detail }, ...this.events].slice(0, AppComponent.MAX_EVENTS);
+  }
+
+  private resetMetrics(): void {
+    this.events = [];
+    this.panelChanges = 0;
+    this.loadMs = null;
+  }
+
   /** Switch to another demo manifest (destroys and re-creates the player). */
   selectDemo(demoId: string) {
     const demo = this.demos.find((d) => d.id === demoId);
@@ -171,12 +286,15 @@ export class AppComponent implements OnInit, OnDestroy {
   private loadManifest(url: string) {
     this.loading = true;
     this.error = null;
+    this.resetMetrics();
+    const started = performance.now();
     this.http.get<PanelWaveManifest>(url)
       .subscribe({
         next: (manifest) => {
           this.manifest = manifest;
           this.loading = false;
-          console.log('Loaded manifest:', manifest);
+          this.loadMs = Math.round(performance.now() - started);
+          this.log('manifestLoaded', { source: url });
         },
         error: (err) => {
           this.error = `Failed to load manifest: ${err.message}`;
@@ -187,15 +305,20 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   onPlayerReady() {
-    console.log('Player is ready!');
+    this.log('ready', '');
   }
 
-  onPanelChange(event: unknown) {
-    console.log('Panel changed:', event);
+  onPanelChange(event: { panel: Panel; chapter: Chapter }) {
+    this.panelChanges++;
+    // Panels carry no id of their own — it is their key in chapter.panels.
+    const panels = (event.chapter?.panels ?? {}) as Record<string, Panel>;
+    const panelId = Object.keys(panels).find((id) => panels[id] === event.panel) ?? '?';
+    this.log('panelChange', { panel: panelId, chapter: event.chapter?.id });
   }
 
   onError(error: Error) {
     console.error('Player error:', error);
     this.error = error.message;
+    this.log('error', error.message);
   }
 }
