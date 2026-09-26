@@ -1125,8 +1125,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       if (this.viewMode === 'canvas') {
         this.flyCameraToPanel(chapter, panelId, cameraMove);
       }
-
-      this.panelChange.emit({ panel: panelData.panel, chapter });
+      // No panelChange.emit here: setCurrentPanel() above already emitted it
+      // through the currentPanel$ subscription (with variants resolved) —
+      // emitting again handed every host each panel change twice.
     } catch (err) {
       this.handleError(err as Error);
     }
