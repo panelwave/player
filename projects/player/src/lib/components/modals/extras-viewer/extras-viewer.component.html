@@ -131,7 +131,7 @@
 
             <!-- Detail Content -->
             <div class="detail-content">
-              @if (selectedExtra.mediaType === 'image' || !selectedExtra.mediaType) {
+              @if ((selectedExtra.mediaType === 'image' || !selectedExtra.mediaType) && getAssetUrl(selectedExtra)) {
                 <img
                   [src]="getAssetUrl(selectedExtra)"
                   [alt]="getExtraTitle(selectedExtra)"
@@ -154,6 +154,16 @@
                   class="detail-audio">
                   {{ 'extras.audio_not_supported' | translate }}
                 </audio>
+              }
+
+              @if (selectedExtra.mediaType === 'document' && getAssetUrl(selectedExtra)) {
+                <a
+                  class="action-btn detail-document-link"
+                  [href]="getAssetUrl(selectedExtra)"
+                  target="_blank"
+                  rel="noopener noreferrer">
+                  {{ 'extras.open_document' | translate }}
+                </a>
               }
 
               @if (getExtraDescription(selectedExtra)) {

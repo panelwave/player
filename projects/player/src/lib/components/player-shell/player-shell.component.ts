@@ -54,6 +54,7 @@ import { resolveStartMode } from '../../utils/video-config-utils';
 import { shouldReduceMotion } from '../../utils/animation-utils';
 import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
+import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { CanvasStageComponent } from '../canvas-stage/canvas-stage.component';
@@ -74,7 +75,7 @@ import { SettingsModalComponent, type Preferences } from '../modals/settings-mod
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
-import { ExtrasViewerComponent, type Extra, type ExtraType } from '../modals/extras-viewer/extras-viewer.component';
+import { ExtrasViewerComponent, type Extra } from '../modals/extras-viewer/extras-viewer.component';
 import { ActionModalComponent } from '../modals/action-modal/action-modal.component';
 import { AgeGateComponent, type AgeVerificationResult } from '../overlays/age-gate/age-gate.component';
 import { BranchChooserComponent, type BranchChoice } from '../modals/branch-chooser/branch-chooser.component';
@@ -1209,27 +1210,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * viewer gap and stays out of scope here.
    */
   private buildExtrasList(manifest: PanelWaveManifest | null): void {
-    const ex = manifest?.extras as Record<string, unknown> | undefined;
-    if (!ex) {
-      this.extrasList = [];
-      return;
-    }
-    const out: Extra[] = [];
-    const push = (block: unknown, type: ExtraType): void => {
-      const b = block as { id?: string; title?: LocalizedString; text?: LocalizedString } | null;
-      if (b && b.id) {
-        out.push({ id: b.id, type, title: b.title ?? {}, description: b.text, mediaType: 'image' });
-      }
-    };
-    push(ex['cover'], 'cover');
-    push(ex['alt_cover'], 'cover');
-    push(ex['author_info'], 'other');
-    ((ex['author_interviews'] as unknown[]) ?? []).forEach((b) => push(b, 'interview'));
-    ((ex['bonus_art'] as unknown[]) ?? []).forEach((b) => push(b, 'art'));
-    ((ex['fan_art'] as unknown[]) ?? []).forEach((b) => push(b, 'art'));
-    ((ex['behind_the_scenes'] as unknown[]) ?? []).forEach((b) => push(b, 'bts'));
-    ((ex['character_sheets'] as unknown[]) ?? []).forEach((b) => push(b, 'other'));
-    this.extrasList = out;
+    // Media (images / video / audio / thumbnails) resolve through the asset
+    // catalog; see utils/extras-utils.ts for the ExtraBlock mapping.
+    this.extrasList = extrasFromManifest(
+      manifest?.extras as Record<string, unknown> | undefined,
+      (assetId) => this.manifestService.getAsset(assetId) as CatalogLike | null
+    );
   }
 
   /**
