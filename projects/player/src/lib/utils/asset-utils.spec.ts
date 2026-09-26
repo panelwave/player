@@ -417,3 +417,52 @@ describe('AssetUtils', () => {
     });
   });
 });
+
+describe('AssetUtils (category base selection)', () => {
+  const full: AssetBase = {
+    mediaBase: 'https://m.example/',
+    imageBase: 'https://i.example/',
+    audioBase: 'https://a.example/',
+    videoBase: 'https://v.example/',
+    pluginsBase: 'https://p.example/',
+  };
+  const mediaOnly: AssetBase = { mediaBase: 'https://m.example/' };
+  const empty: AssetBase = {};
+
+  const cases: [string, string, string][] = [
+    // category, expected with full base, expected with media-only base
+    ['image', 'https://i.example/x', 'https://m.example/x'],
+    ['audio', 'https://a.example/x', 'https://m.example/x'],
+    ['video', 'https://v.example/x', 'https://m.example/x'],
+    ['subtitle', 'https://m.example/x', 'https://m.example/x'],
+    ['vector', 'https://i.example/x', 'https://m.example/x'],
+    ['json', 'https://m.example/x', 'https://m.example/x'],
+    ['pluginPayload', 'https://p.example/x', 'https://m.example/x'],
+  ];
+
+  for (const [category, withFull, withMedia] of cases) {
+    it(`resolves "${category}" against its dedicated base, then mediaBase, then nothing`, () => {
+      const cat = category as Parameters<typeof resolveAssetUrl>[2];
+      expect(resolveAssetUrl('x', full, cat)).toBe(withFull);
+      expect(resolveAssetUrl('x', mediaOnly, cat)).toBe(withMedia);
+      expect(resolveAssetUrl('/x', empty, cat)).toBe('x');
+    });
+  }
+
+  it('uses mediaBase when no category is given and ignores unknown categories', () => {
+    expect(resolveAssetUrl('x', full)).toBe('https://m.example/x');
+    expect(resolveAssetUrl('x', full, 'hologram' as Parameters<typeof resolveAssetUrl>[2])).toBe('https://m.example/x');
+    expect(resolveAssetUrl('x', empty)).toBe('x');
+  });
+
+  it('selectVariantByFormat derives a missing mime from the file extension', () => {
+    const variants = [
+      { src: 'a.jpg' },
+      { src: 'a.webp' },
+      { src: 'a.avif', mime: 'image/avif' },
+    ];
+    expect(selectVariantByFormat(variants, ['image/webp'])).toBe(variants[1]);
+    expect(selectVariantByFormat(variants, ['image/avif'])).toBe(variants[2]);
+    expect(selectVariantByFormat(variants, ['image/gif'])).toBe(variants[0]);
+  });
+});

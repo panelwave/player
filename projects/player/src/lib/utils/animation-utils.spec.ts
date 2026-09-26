@@ -10,6 +10,9 @@ import {
   lerp,
   mapRange,
   easings,
+  requestFrame,
+  cancelFrame,
+  animate,
 } from './animation-utils';
 
 describe('AnimationUtils', () => {
@@ -368,6 +371,194 @@ describe('AnimationUtils', () => {
           }
         });
       });
+    });
+  });
+});
+
+describe('AnimationUtils (frames & animate)', () => {
+  type RafWindow = Omit<Window, 'requestAnimationFrame' | 'cancelAnimationFrame'> & {
+    requestAnimationFrame?: typeof window.requestAnimationFrame;
+    cancelAnimationFrame?: typeof window.cancelAnimationFrame;
+  };
+
+  describe('getAdjustedDuration with reduced motion', () => {
+    it('multiplies by the default factor 0.1 when reduced motion is preferred', () => {
+      spyOn(window, 'matchMedia').and.returnValue({ matches: true } as MediaQueryList);
+      expect(getAdjustedDuration(500)).toBeCloseTo(50, 10);
+      expect(getAdjustedDuration(500, 0.5)).toBe(250);
+    });
+  });
+
+  describe('requestFrame / cancelFrame', () => {
+    it('delegates to window.requestAnimationFrame when available', () => {
+      const rafSpy = spyOn(window, 'requestAnimationFrame').and.returnValue(42);
+      const cb = jasmine.createSpy('cb');
+      expect(requestFrame(cb)).toBe(42);
+      expect(rafSpy).toHaveBeenCalledWith(cb);
+    });
+
+    it('delegates to window.cancelAnimationFrame when available', () => {
+      const cafSpy = spyOn(window, 'cancelAnimationFrame');
+      cancelFrame(7);
+      expect(cafSpy).toHaveBeenCalledWith(7);
+    });
+
+    describe('without requestAnimationFrame support', () => {
+      const w = window as unknown as RafWindow;
+      let origRaf: typeof window.requestAnimationFrame | undefined;
+      let origCaf: typeof window.cancelAnimationFrame | undefined;
+
+      beforeEach(() => {
+        origRaf = w.requestAnimationFrame;
+        origCaf = w.cancelAnimationFrame;
+        w.requestAnimationFrame = undefined;
+        w.cancelAnimationFrame = undefined;
+        jasmine.clock().install();
+        jasmine.clock().mockDate(new Date(1_000_000));
+      });
+
+      afterEach(() => {
+        jasmine.clock().uninstall();
+        w.requestAnimationFrame = origRaf;
+        w.cancelAnimationFrame = origCaf;
+      });
+
+      it('falls back to a 16ms setTimeout that passes Date.now()', () => {
+        const cb = jasmine.createSpy('cb');
+        requestFrame(cb);
+        jasmine.clock().tick(15);
+        expect(cb).not.toHaveBeenCalled();
+        jasmine.clock().tick(1);
+        expect(cb).toHaveBeenCalledOnceWith(1_000_016);
+      });
+
+      it('cancelFrame falls back to clearTimeout', () => {
+        const cb = jasmine.createSpy('cb');
+        const id = requestFrame(cb);
+        cancelFrame(id);
+        jasmine.clock().tick(50);
+        expect(cb).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('animate', () => {
+    let frames: FrameRequestCallback[];
+
+    beforeEach(() => {
+      frames = [];
+      spyOn(performance, 'now').and.returnValue(1000);
+      spyOn(window, 'requestAnimationFrame').and.callFake((cb: FrameRequestCallback) => {
+        frames.push(cb);
+        return frames.length;
+      });
+    });
+
+    const runFrame = (time: number): void => {
+      const cb = frames.shift();
+      expect(cb).toBeDefined();
+      cb!(time);
+    };
+
+    it('interpolates with the chosen easing, calls onComplete and resolves', async () => {
+      const updates: [number, number][] = [];
+      const onComplete = jasmine.createSpy('onComplete');
+      const done = animate({
+        from: 10,
+        to: 110,
+        duration: 200,
+        easing: 'linear',
+        onUpdate: (v, p) => updates.push([v, p]),
+        onComplete,
+      });
+
+      runFrame(1000); // t=0
+      runFrame(1050); // 25%
+      runFrame(1100); // 50%
+      expect(onComplete).not.toHaveBeenCalled();
+      runFrame(1300); // past end -> clamped to 1
+      await done;
+
+      expect(updates).toEqual([
+        [10, 0],
+        [35, 0.25],
+        [60, 0.5],
+        [110, 1],
+      ]);
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(frames.length).toBe(0);
+    });
+
+    it('defaults to the "ease" curve and works without onComplete', async () => {
+      const values: number[] = [];
+      const done = animate({ from: 0, to: 1, duration: 100, onUpdate: (v) => values.push(v) });
+      runFrame(1025); // t = 0.25 -> 4 * t^3 = 0.0625
+      runFrame(1100);
+      await done;
+      expect(values[0]).toBeCloseTo(0.0625, 10);
+      expect(values[1]).toBe(1);
+    });
+
+    it('clamps progress below zero when a frame time precedes the start', async () => {
+      const progresses: number[] = [];
+      const done = animate({
+        from: 0,
+        to: 10,
+        duration: 100,
+        easing: 'linear',
+        onUpdate: (_v, p) => progresses.push(p),
+      });
+      runFrame(900);
+      runFrame(2000);
+      await done;
+      expect(progresses).toEqual([0, 1]);
+    });
+  });
+
+  describe('easing coverage of every named curve', () => {
+    const names = [
+      'ease-in-out', 'ease-in-quad', 'ease-out-quad', 'ease-in-out-quad', 'ease-in-cubic',
+      'ease-out-cubic', 'ease-in-out-cubic', 'ease-in-quart', 'ease-out-quart', 'ease-in-out-quart',
+      'ease-in-quint', 'ease-out-quint', 'ease-in-out-quint', 'ease-in-sine', 'ease-out-sine',
+      'ease-in-out-sine', 'ease-in-expo', 'ease-out-expo', 'ease-in-out-expo', 'ease-in-circ',
+      'ease-out-circ', 'ease-in-out-circ', 'ease-in-back', 'ease-out-back', 'ease-in-out-back',
+      'ease-in-elastic', 'ease-out-elastic', 'ease-in-out-elastic', 'ease-in-bounce',
+      'ease-out-bounce', 'ease-in-out-bounce',
+    ];
+
+    for (const name of names) {
+      it(`${name} maps 0 -> 0, 1 -> 1 and is finite in between`, () => {
+        const fn = getEasingFunction(name);
+        expect(fn(0)).toBeCloseTo(0, 2);
+        expect(fn(1)).toBeCloseTo(1, 2);
+        for (const t of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+          expect(Number.isFinite(fn(t))).toBeTrue();
+        }
+      });
+    }
+
+    it('symmetric in-out curves pass through 0.5 at t = 0.5', () => {
+      for (const name of ['ease-in-out-quad', 'ease-in-out-cubic', 'ease-in-out-quart', 'ease-in-out-quint',
+        'ease-in-out-sine', 'ease-in-out-expo', 'ease-in-out-circ', 'ease-in-out-back',
+        'ease-in-out-elastic', 'ease-in-out-bounce']) {
+        expect(getEasingFunction(name)(0.5)).withContext(name).toBeCloseTo(0.5, 5);
+      }
+    });
+
+    it('easeOutBounce hits each of its four segments', () => {
+      expect(easings.easeOutBounce(0.2)).toBeCloseTo(7.5625 * 0.04, 10);
+      expect(easings.easeOutBounce(0.5)).toBeCloseTo(7.5625 * (0.5 - 1.5 / 2.75) ** 2 + 0.75, 10);
+      expect(easings.easeOutBounce(0.85)).toBeCloseTo(7.5625 * (0.85 - 2.25 / 2.75) ** 2 + 0.9375, 10);
+      expect(easings.easeOutBounce(0.95)).toBeCloseTo(7.5625 * (0.95 - 2.625 / 2.75) ** 2 + 0.984375, 10);
+    });
+
+    it('back curves overshoot outside [0, 1]', () => {
+      expect(easings.easeInBack(0.2)).toBeLessThan(0);
+      expect(easings.easeOutBack(0.8)).toBeGreaterThan(1);
+    });
+
+    it('unknown easing names fall back to ease', () => {
+      expect(getEasingFunction('does-not-exist')).toBe(easings.ease);
     });
   });
 });

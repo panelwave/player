@@ -11,6 +11,8 @@ import {
   evaluateAll,
   evaluateAny,
   testJsonLogic,
+  addCustomOperator,
+  removeCustomOperator,
 } from './json-logic-utils';
 
 describe('JsonLogicUtils', () => {
@@ -412,5 +414,42 @@ describe('JsonLogicUtils', () => {
       const results = testJsonLogic(logic, testCases);
       expect(results[0].description).toBe('Has items');
     });
+  });
+});
+
+describe('JsonLogicUtils (validation failures & custom operators)', () => {
+  afterEach(() => {
+    removeCustomOperator('pw_test_double');
+    removeCustomOperator('pw_test_throw_string');
+  });
+
+  it('reports unknown operators as invalid with the engine error message', () => {
+    const result = validateJsonLogic({ pw_unknown_op: [1, 2] } as unknown as Parameters<typeof validateJsonLogic>[0]);
+    expect(result.valid).toBeFalse();
+    expect(result.errors?.length).toBe(1);
+    expect(result.errors![0]).toContain('pw_unknown_op');
+  });
+
+  it('reports non-Error throws as "Unknown validation error"', () => {
+    addCustomOperator('pw_test_throw_string', () => {
+      throw 'boom';
+    });
+    const result = validateJsonLogic({ pw_test_throw_string: [] } as unknown as Parameters<typeof validateJsonLogic>[0]);
+    expect(result).toEqual({ valid: false, errors: ['Unknown validation error'] });
+  });
+
+  it('addCustomOperator makes an operator usable and removeCustomOperator removes it', () => {
+    const logic = { pw_test_double: [{ var: 'n' }] } as unknown as Parameters<typeof validateJsonLogic>[0];
+    addCustomOperator('pw_test_double', (n: number) => n * 2);
+    // evaluateJsonLogic coerces to boolean: 21*2 -> true, 0*2 -> false
+    expect(evaluateJsonLogic(logic, { n: 21 })).toBeTrue();
+    expect(evaluateJsonLogic(logic, { n: 0 })).toBeFalse();
+    expect(validateJsonLogic(logic).valid).toBeTrue();
+
+    removeCustomOperator('pw_test_double');
+    expect(validateJsonLogic(logic).valid).toBeFalse();
+    spyOn(console, 'warn');
+    expect(evaluateJsonLogic(logic, { n: 21 })).toBeFalse();
+    expect(console.warn).toHaveBeenCalled();
   });
 });
