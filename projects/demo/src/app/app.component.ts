@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PlayerShellComponent } from 'player';
@@ -108,7 +108,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   activeDemo = 'sample';
 
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   ngOnInit() {
     window.addEventListener('message', this.onEmbedMessage);
@@ -190,7 +190,7 @@ export class AppComponent implements OnInit, OnDestroy {
     console.log('Player is ready!');
   }
 
-  onPanelChange(event: any) {
+  onPanelChange(event: unknown) {
     console.log('Panel changed:', event);
   }
 

@@ -1,7 +1,7 @@
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, HttpClient } from '@angular/common/http';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { TranslateModule, TranslateLoader, TranslationObject } from '@ngx-translate/core';
 import { Observable } from 'rxjs';
 
 import { routes } from './app.routes';
@@ -12,8 +12,8 @@ import { routes } from './app.routes';
 export class DemoTranslateLoader implements TranslateLoader {
   constructor(private http: HttpClient) {}
   
-  getTranslation(lang: string): Observable<Record<string, any>> {
-    return this.http.get<Record<string, any>>(`./assets/i18n/${lang}.json`);
+  getTranslation(lang: string): Observable<TranslationObject> {
+    return this.http.get<TranslationObject>(`./assets/i18n/${lang}.json`);
   }
 }
 
