@@ -74,7 +74,12 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "projects/demo/src/favicon.ico",
-              "projects/demo/src/assets"
+              "projects/demo/src/assets",
+              {
+                "glob": "*.json",
+                "input": "projects/player/src/assets/i18n",
+                "output": "assets/i18n"
+              }
             ],
             "styles": [
               "projects/demo/src/styles.scss"
@@ -134,7 +139,12 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "projects/demo/src/favicon.ico",
-              "projects/demo/src/assets"
+              "projects/demo/src/assets",
+              {
+                "glob": "*.json",
+                "input": "projects/player/src/assets/i18n",
+                "output": "assets/i18n"
+              }
             ],
             "styles": [
               "projects/demo/src/styles.scss"
