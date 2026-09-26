@@ -10,11 +10,38 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
+
+import { TranslateService } from '@ngx-translate/core';
 
 import type { PaywallGate, PurchaseInfo } from '../../../types/entitlement.types';
 import type { LocaleCode, LocalizedString } from '../../../types';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+
+/**
+ * Built-in English UI strings, used when no TranslateService is provided or a
+ * key is not loaded. Must match the "paywall" section of assets/i18n/en.json.
+ */
+const PAYWALL_TEXT_EN: Record<string, string> = {
+  'paywall.title_work': 'Unlock This Comic',
+  'paywall.title_chapter': 'Unlock This Chapter',
+  'paywall.title_panel': 'Unlock Premium Content',
+  'paywall.title_default': 'Premium Content',
+  'paywall.message_default': 'This content requires a subscription or purchase to access.',
+  'paywall.close': 'Close',
+  'paywall.preview_panels': 'Preview {{count}} panels free',
+  'paywall.preview_mode': 'Preview mode: {{mode}}',
+  'paywall.choose_option': 'Choose an option:',
+  'paywall.type_one_time': 'Buy Once',
+  'paywall.type_subscription': 'Subscribe',
+  'paywall.type_token': 'Use Token',
+  'paywall.type_default': 'Purchase',
+  'paywall.sign_in': 'Sign In to Continue',
+  'paywall.go_back': 'Go Back',
+  'paywall.maybe_later': 'Maybe Later',
+  'paywall.secure_payment': 'Secure payment processing',
+};
 
 /**
  * Paywall action
@@ -33,6 +60,12 @@ export type PaywallAction = 'purchase' | 'subscribe' | 'login' | 'dismiss';
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaywallOverlayComponent {
+  /**
+   * Optional: the overlay is a public library component and must keep working
+   * (in English) when a host embeds it without ngx-translate.
+   */
+  private readonly translate = inject(TranslateService, { optional: true });
+
   /**
    * Visibility state
    */
@@ -108,13 +141,13 @@ export class PaywallOverlayComponent {
 
     switch (this.gate?.scope) {
       case 'work':
-        return 'Unlock This Comic';
+        return this.t('paywall.title_work');
       case 'chapter':
-        return 'Unlock This Chapter';
+        return this.t('paywall.title_chapter');
       case 'panel':
-        return 'Unlock Premium Content';
+        return this.t('paywall.title_panel');
       default:
-        return 'Premium Content';
+        return this.t('paywall.title_default');
     }
   }
 
@@ -130,7 +163,7 @@ export class PaywallOverlayComponent {
       return this.gate.reason;
     }
 
-    return 'This content requires a subscription or purchase to access.';
+    return this.t('paywall.message_default');
   }
 
   /**
@@ -191,13 +224,27 @@ export class PaywallOverlayComponent {
   getPurchaseTypeLabel(type: string): string {
     switch (type) {
       case 'one-time':
-        return 'Buy Once';
+        return this.t('paywall.type_one_time');
       case 'subscription':
-        return 'Subscribe';
+        return this.t('paywall.type_subscription');
       case 'token':
-        return 'Use Token';
+        return this.t('paywall.type_token');
       default:
-        return 'Purchase';
+        return this.t('paywall.type_default');
     }
+  }
+
+  /**
+   * Translate a built-in UI string. Falls back to the built-in English text
+   * (with {{param}} interpolation) when no TranslateService is available or the
+   * key is not loaded, so the output never degrades to the raw key.
+   * Manifest-provided texts (title/message/gate.reason) bypass this.
+   */
+  t(key: string, params?: Record<string, string | number | undefined>): string {
+    const value = this.translate?.instant(key, params) as unknown;
+    if (typeof value === 'string' && value !== key) {
+      return value;
+    }
+    return (PAYWALL_TEXT_EN[key] ?? key).replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, name: string) => String(params?.[name] ?? ''));
   }
 }

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { PaywallOverlayComponent, type PaywallAction } from './paywall-overlay.component';
 import type { PaywallGate, PurchaseInfo } from '../../../types/entitlement.types';
@@ -202,5 +203,94 @@ describe('PaywallOverlayComponent', () => {
       expect(closed).toBe(1);
       expect(actions).toEqual(['dismiss']);
     });
+  });
+
+  describe('built-in text without ngx-translate', () => {
+    it('falls back to English for every built-in string (no raw keys)', () => {
+      set({ purchaseOptions: [], showLogin: true, gate: { scope: 'work', preview: { previewPanels: 2, mode: 'blur' } }, allowPreview: true });
+      expect(q('.close-btn')?.getAttribute('aria-label')).toBe('Close');
+      expect(text('.paywall-title')).toBe('Unlock This Comic');
+      expect(text('.preview-text')).toBe('Preview 2 panels free');
+      expect(text('.login-btn')).toBe('Sign In to Continue');
+      expect(text('.footer-text')).toBe('Secure payment processing');
+      expect(fixture.nativeElement.textContent).not.toContain('paywall.');
+    });
+  });
+});
+
+describe('PaywallOverlayComponent (localized)', () => {
+  let fixture: ComponentFixture<PaywallOverlayComponent>;
+  const text = (sel: string): string | undefined =>
+    (fixture.nativeElement.querySelector(sel) as HTMLElement | null)?.textContent?.replace(/\s+/g, ' ').trim();
+
+  function set(inputs: Record<string, unknown>): void {
+    for (const [k, v] of Object.entries(inputs)) {
+      fixture.componentRef.setInput(k, v);
+    }
+    fixture.detectChanges();
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [PaywallOverlayComponent, TranslateModule.forRoot()],
+    }).compileComponents();
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('de', {
+      paywall: {
+        title_work: 'Diesen Comic freischalten',
+        title_default: 'Premium-Inhalt',
+        message_default: 'Für diesen Inhalt ist ein Abo oder ein Kauf erforderlich.',
+        close: 'Schließen',
+        preview_panels: '{{count}} Panels kostenlos ansehen',
+        preview_mode: 'Vorschaumodus: {{mode}}',
+        choose_option: 'Option auswählen:',
+        type_one_time: 'Einmalig kaufen',
+        type_subscription: 'Abonnieren',
+        type_token: 'Token einlösen',
+        type_default: 'Kaufen',
+        sign_in: 'Anmelden, um fortzufahren',
+        go_back: 'Zurück',
+        maybe_later: 'Vielleicht später',
+        secure_payment: 'Sichere Zahlungsabwicklung',
+      },
+    });
+    translate.use('de');
+    fixture = TestBed.createComponent(PaywallOverlayComponent);
+    set({ visible: true, locale: 'de-DE' });
+  });
+
+  it('translates the built-in UI text', () => {
+    expect(text('.paywall-title')).toBe('Premium-Inhalt');
+    expect(text('.paywall-message')).toBe('Für diesen Inhalt ist ein Abo oder ein Kauf erforderlich.');
+    expect(text('.login-btn')).toBe('Anmelden, um fortzufahren');
+    expect(text('.action-btn.secondary')).toBe('Vielleicht später');
+    expect(text('.footer-text')).toBe('Sichere Zahlungsabwicklung');
+    expect((fixture.nativeElement.querySelector('.close-btn') as HTMLElement).getAttribute('aria-label')).toBe('Schließen');
+
+    set({ gate: { scope: 'work', preview: { previewPanels: 3, mode: 'blur' } }, allowPreview: true });
+    expect(text('.paywall-title')).toBe('Diesen Comic freischalten');
+    expect(text('.preview-text')).toBe('3 Panels kostenlos ansehen');
+    expect(text('.preview-mode')).toBe('Vorschaumodus: blur');
+
+    set({ showLogin: false });
+    expect(text('.action-btn.primary')).toBe('Zurück');
+
+    set({
+      purchaseOptions: [
+        { productId: 'a', name: 'A', price: { amount: 1, currency: 'EUR' }, type: 'one-time' },
+        { productId: 'b', name: 'B', price: { amount: 1, currency: 'EUR' }, type: 'subscription' },
+        { productId: 'c', name: 'C', price: { amount: 1, currency: 'EUR' }, type: 'token' },
+      ],
+    });
+    expect(text('.options-title')).toBe('Option auswählen:');
+    const types = Array.from(fixture.nativeElement.querySelectorAll('.option-type') as NodeListOf<HTMLElement>).map((e) => e.textContent);
+    expect(types).toEqual(['Einmalig kaufen', 'Abonnieren', 'Token einlösen']);
+    expect(fixture.componentInstance.getPurchaseTypeLabel('other')).toBe('Kaufen');
+  });
+
+  it('keeps manifest-provided localized title/message untouched', () => {
+    set({ title: { 'en-US': 'Members only', 'de-DE': 'Nur für Mitglieder' }, message: 'Custom' });
+    expect(text('.paywall-title')).toBe('Nur für Mitglieder');
+    expect(text('.paywall-message')).toBe('Custom');
   });
 });

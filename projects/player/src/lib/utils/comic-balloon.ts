@@ -85,7 +85,9 @@ export class ComicBalloon {
       : container;
 
     this.options = {
-      maxWidth: options.maxWidth || 140,
+      // 0 (or any non-positive value) means "natural width", consistent with
+      // maxHeight (default 0). Only a missing/non-finite value falls back to 140.
+      maxWidth: typeof options.maxWidth === 'number' && Number.isFinite(options.maxWidth) ? options.maxWidth : 140,
       maxHeight: options.maxHeight || 0,
       padding: options.padding || { top: 14, right: 18, bottom: 14, left: 18 },
       strokeWidth: options.strokeWidth || 2,
@@ -426,6 +428,7 @@ export class ComicBalloon {
         if (cutOptions.top && y < cy - ry + 1) y = cy - ry;
         if (cutOptions.right && x > cx + rx - 1) x = cx + rx;
         if (cutOptions.left && x < cx - rx + 1) x = cx - rx;
+        if (cutOptions.bottom && y > cy + ry - 1) y = cy + ry;
 
         points.push({ x, y, origX: p!.x, origY: p!.y });
       }
@@ -455,6 +458,7 @@ export class ComicBalloon {
         if (cutOptions.top && y < cy - ry + 1) y = cy - ry;
         if (cutOptions.right && x > cx + rx - 1) x = cx + rx;
         if (cutOptions.left && x < cx - rx + 1) x = cx - rx;
+        if (cutOptions.bottom && y > cy + ry - 1) y = cy + ry;
 
         points.push({ x, y, origX, origY });
       }
@@ -576,7 +580,8 @@ export class ComicBalloon {
 
     // Build tail path segment helper
     const curve = this.tailCurve || 'straight';
-    const curveAmount = this.tailCurveAmount || 0.4;
+    // `??` (not `||`): an explicit curveAmount of 0 is a valid, deliberate value.
+    const curveAmount = this.tailCurveAmount ?? 0.4;
 
     const buildTailSegment = (fromPt: PathPoint, toPt: PathPoint): string => {
       const midX = (fromPt.x + toPt.x) / 2;

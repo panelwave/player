@@ -150,16 +150,36 @@ describe('ComicBalloon', () => {
 
     it('derives natural width/height from text + padding when no max size is set', () => {
       const padding = { top: 5, right: 6, bottom: 7, left: 8 };
-      // maxWidth 0 falls back to the 140 default in the constructor (|| operator)
-      expect(new ComicBalloon(container, { maxWidth: 0 }).render('Hi').width).toBe(140);
+      // any non-positive width switches to natural sizing (-1 and 0 alike)
+      for (const maxWidth of [-1, 0]) {
+        const res = new ComicBalloon(container, { maxWidth, padding }).render('Hi');
+        const fo = res.svg.querySelector('foreignObject')!;
+        expect(+fo.getAttribute('width')!).toBeLessThanOrEqual(112);
+        expect(res.width).toBe(+fo.getAttribute('width')! + padding.left + padding.right);
+        expect(res.height).toBe(+fo.getAttribute('height')! + padding.top + padding.bottom);
+        expect(+fo.getAttribute('x')!).toBe((padding.left + padding.right) / 2);
+      }
+    });
 
-      // a non-positive width that survives the constructor switches to natural sizing
-      const res = new ComicBalloon(container, { maxWidth: -1, padding }).render('Hi');
-      const fo = res.svg.querySelector('foreignObject')!;
-      expect(+fo.getAttribute('width')!).toBeLessThanOrEqual(112);
-      expect(res.width).toBe(+fo.getAttribute('width')! + padding.left + padding.right);
-      expect(res.height).toBe(+fo.getAttribute('height')! + padding.top + padding.bottom);
-      expect(+fo.getAttribute('x')!).toBe((padding.left + padding.right) / 2);
+    it('treats maxWidth 0 as natural width (like maxHeight 0), not as the 140 default', () => {
+      const b = new ComicBalloon(container, { maxWidth: 0 });
+      expect(b.options.maxWidth).toBe(0);
+      const zero = b.render('Hi');
+      // identical to the (already natural) negative-width path, i.e. text + padding,
+      // instead of the fixed 140px box the old `|| 140` produced
+      const natural = new ComicBalloon(container, { maxWidth: -1 }).render('Hi');
+      expect(zero.width).toBe(natural.width);
+      expect(zero.height).toBe(natural.height);
+      const fo = zero.svg.querySelector('foreignObject')!;
+      expect(zero.width).toBe(+fo.getAttribute('width')! + 18 + 18);
+      expect(zero.width).not.toBe(140);
+    });
+
+    it('falls back to the 140 default only for a missing / non-finite maxWidth', () => {
+      expect(new ComicBalloon(container, {}).options.maxWidth).toBe(140);
+      expect(new ComicBalloon(container, { maxWidth: undefined }).options.maxWidth).toBe(140);
+      expect(new ComicBalloon(container, { maxWidth: NaN }).options.maxWidth).toBe(140);
+      expect(new ComicBalloon(container, { maxWidth: 120 }).options.maxWidth).toBe(120);
     });
 
     it('re-rendering clears the previous SVG', () => {
@@ -204,12 +224,30 @@ describe('ComicBalloon', () => {
       expect(paths()[0].getAttribute('d')).toContain('-10.00 40.00'); // left middle - 10
     });
 
-    it('treats curveAmount 0 like the 0.4 default (falsy fallback)', () => {
-      make().render('Hi', { x: 70, y: 150, curve: 'left', curveAmount: 0 });
-      const zero = paths()[0].getAttribute('d');
+    it('keeps an explicit curveAmount of 0 (no bend) instead of the 0.4 default', () => {
+      const b = make();
+      b.render('Hi', { x: 70, y: 150, curve: 'left', curveAmount: 0 });
+      expect(b.tailCurveAmount).toBe(0);
+      const zero = paths()[0].getAttribute('d')!;
       make().render('Hi', { x: 70, y: 150, curve: 'left', curveAmount: 0.4 });
-      expect(zero).toBe(paths()[0].getAttribute('d'));
-      expect(quadCommands(zero!).length).toBe(2);
+      expect(zero).not.toBe(paths()[0].getAttribute('d')!);
+      // quadratic segments still used, but with zero offset: each control point is the
+      // plain midpoint between its segment ends, i.e. the curve is geometrically straight
+      const qs = quadCommands(zero);
+      expect(qs.length).toBe(2);
+      const tip = { x: 70, y: 150 };
+      expect(qs[0].e.x).toBeCloseTo(tip.x, 1);
+      expect(qs[0].e.y).toBeCloseTo(tip.y, 1);
+      const q2 = qs[1];
+      expect(q2.c.x).toBeCloseTo((tip.x + q2.e.x) / 2, 1);
+      expect(q2.c.y).toBeCloseTo((tip.y + q2.e.y) / 2, 1);
+    });
+
+    it('still defaults a missing curveAmount to 0.4', () => {
+      make().render('Hi', { x: 70, y: 150, curve: 'left' });
+      const dflt = paths()[0].getAttribute('d');
+      make().render('Hi', { x: 70, y: 150, curve: 'left', curveAmount: 0.4 });
+      expect(dflt).toBe(paths()[0].getAttribute('d'));
     });
 
     it('createSquirclePath falls back to a straight tail when tailCurve is empty', () => {
@@ -470,11 +508,21 @@ describe('ComicBalloon', () => {
       expect(pts.filter((p) => p.x === 0).length).toBeGreaterThan(10);
     });
 
-    it('bottom cut only stretches (it is never clamped)', () => {
+    it('bottom cut stretches and then clamps onto y = H like the other cuts', () => {
       const b = make();
       const d = b.createSquirclePath(70, 40, W, H, 0.45, null, { bottom: true }) as string;
-      const maxY = Math.max(...linePoints(d).map((p) => p.y));
-      expect(maxY).toBeCloseTo(40 + 40 * 1.3, 1);
+      const pts = linePoints(d);
+      expect(Math.max(...pts.map((p) => p.y))).toBe(H);
+      expect(pts.filter((p) => p.y === H).length).toBeGreaterThan(10);
+      // the top half is untouched
+      expect(Math.min(...pts.map((p) => p.y))).toBeCloseTo(0, 1);
+    });
+
+    it('bottom cut also snaps rectangle points onto the bottom edge', () => {
+      const d = make({ cornerRadius: 0 }).createSquirclePath(70, 40, W, H, 0, null, { bottom: true }) as string;
+      for (const p of linePoints(d)) {
+        expect(p.y === H || p.y <= H - 1).toBeTrue();
+      }
     });
 
     it('uses the 0.4 corner radius and no cuts by default', () => {

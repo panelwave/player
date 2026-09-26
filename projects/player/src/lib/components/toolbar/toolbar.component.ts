@@ -213,24 +213,12 @@ export class ToolbarComponent {
   @Output() openLanguage = new EventEmitter<void>();
 
   /**
-   * Show autoplay controls
-   */
-  showAutoplayControls = false;
-
-  /**
    * Handle view toggle
    */
   onToggleView(): void {
     if (this.pageViewAvailable) {
       this.toggleView.emit();
     }
-  }
-
-  /**
-   * Toggle autoplay controls
-   */
-  toggleAutoplayControls(): void {
-    this.showAutoplayControls = !this.showAutoplayControls;
   }
 
   /**

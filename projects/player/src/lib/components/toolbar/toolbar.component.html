@@ -163,11 +163,11 @@
         <button
           class="toolbar-btn"
           type="button"
-          aria-label="Alternative panels"
-          title="Cycle through alternative panels"
+          [attr.aria-label]="'toolbar.alt_label' | translate"
+          [attr.title]="'toolbar.alt_cycle' | translate"
           (click)="onCycleAlternative()">
           <span class="btn-icon"><pw-icon name="lucideRefreshCw" /></span>
-          <span class="btn-label">Alt</span>
+          <span class="btn-label">{{ 'toolbar.alt' | translate }}</span>
         </button>
       }
 
@@ -176,11 +176,11 @@
         <button
           class="toolbar-btn branch-indicator"
           type="button"
-          aria-label="Choices ahead"
-          title="View upcoming choices"
+          [attr.aria-label]="'toolbar.choices_label' | translate"
+          [attr.title]="'toolbar.choices_view' | translate"
           (click)="onShowBranches()">
           <span class="btn-icon"><pw-icon name="lucideSplit" /></span>
-          <span class="btn-label">Choices</span>
+          <span class="btn-label">{{ 'toolbar.choices' | translate }}</span>
         </button>
       }
 
@@ -188,11 +188,11 @@
       <button
         class="toolbar-btn"
         type="button"
-        aria-label="Extras"
-        title="View bonus content"
+        [attr.aria-label]="'toolbar.extras' | translate"
+        [attr.title]="'toolbar.extras_open' | translate"
         (click)="onOpenExtras()">
         <span class="btn-icon"><pw-icon name="lucideSparkles" /></span>
-        <span class="btn-label">Extras</span>
+        <span class="btn-label">{{ 'toolbar.extras' | translate }}</span>
       </button>
     </div>
 
@@ -204,8 +204,8 @@
           type="button"
           [class.active]="liked"
           [attr.aria-pressed]="liked"
-          aria-label="Like"
-          [title]="liked ? 'Remove like' : 'Like this work'"
+          [attr.aria-label]="'toolbar.like' | translate"
+          [attr.title]="(liked ? 'toolbar.like_remove' : 'toolbar.like_work') | translate"
           (click)="onLike()">
           <span class="btn-icon"><pw-icon name="lucideHeart" /></span>
         </button>
@@ -215,8 +215,8 @@
           type="button"
           [class.active]="bookmarked"
           [attr.aria-pressed]="bookmarked"
-          aria-label="Bookmark"
-          [title]="bookmarked ? 'Remove bookmark' : 'Bookmark this panel'"
+          [attr.aria-label]="'toolbar.bookmark' | translate"
+          [attr.title]="(bookmarked ? 'toolbar.bookmark_remove' : 'toolbar.bookmark_panel') | translate"
           (click)="onBookmark()">
           <span class="btn-icon"><pw-icon name="lucideBookmark" /></span>
         </button>
@@ -224,8 +224,8 @@
         <button
           class="toolbar-btn icon-only"
           type="button"
-          aria-label="Share"
-          title="Share this panel"
+          [attr.aria-label]="'toolbar.share' | translate"
+          [attr.title]="'toolbar.share_panel' | translate"
           (click)="onShare()">
           <span class="btn-icon"><pw-icon name="lucideShare2" /></span>
         </button>
@@ -233,8 +233,8 @@
         <button
           class="toolbar-btn icon-only"
           type="button"
-          aria-label="Comments"
-          title="View comments"
+          [attr.aria-label]="'toolbar.comments' | translate"
+          [attr.title]="'toolbar.comments_view' | translate"
           (click)="onOpenComments()">
           <span class="btn-icon"><pw-icon name="lucideMessageCircle" /></span>
         </button>
@@ -245,8 +245,8 @@
     <button
       class="toolbar-btn close-btn"
       type="button"
-      aria-label="Close toolbar"
-      title="Close toolbar"
+      [attr.aria-label]="'toolbar.close' | translate"
+      [attr.title]="'toolbar.close' | translate"
       (click)="onClose()">
       <span class="btn-icon"><pw-icon name="lucideX" /></span>
     </button>
