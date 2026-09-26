@@ -196,7 +196,7 @@
   display: inline-block;
   font-size: 12px;
   font-weight: 600;
-  color: #667eea;
+  color: #4350c4; /* AA on the tint (was #667eea, 3.3:1) */
   background: rgba(102, 126, 234, 0.1);
   padding: 4px 12px;
   border-radius: 12px;
@@ -206,7 +206,7 @@
 .login-btn {
   background: white;
   border: none;
-  color: #667eea;
+  color: #4350c4; /* AA on white (was #667eea, 3.7:1) */
   font-size: 16px;
   font-weight: 700;
   padding: 16px 32px;
