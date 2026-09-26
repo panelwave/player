@@ -39,6 +39,7 @@ import type {
 import type { BalloonConfig } from '../../types';
 import type { Character } from '../../types';
 import type { VariableContext } from '../../types';
+import type { Hotspot } from '../../types';
 
 import { CanvasCameraService, CameraState } from '../../services/canvas-camera.service';
 import { ManifestService } from '../../services/manifest.service';
@@ -114,6 +115,12 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Tap on empty plane (hosts typically toggle the toolbar). */
   @Output() viewportClick = new EventEmitter<void>();
+
+  /**
+   * A hotspot on the current panel was activated (click, tap or keyboard).
+   * Same payload as the panel view's overlay, plus the panel id.
+   */
+  @Output() hotspotActivate = new EventEmitter<{ hotspot: Hotspot; x: number; y: number; panelId: string }>();
 
   /** Throttled camera state (position/zoom) for hosts and analytics. */
   @Output() cameraChange = new EventEmitter<CameraState>();
@@ -567,6 +574,12 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     if (!this.interactive) {
       return;
     }
+    // A press that starts on an interactive hotspot belongs to the hotspot:
+    // capturing the pointer here would swallow its click (and a tap would
+    // turn into panel/edge navigation).
+    if (this.isInteractiveHotspotTarget(event.target)) {
+      return;
+    }
     this.elementRef.nativeElement.setPointerCapture?.(event.pointerId);
     this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (this.activePointers.size === 1) {
@@ -635,6 +648,16 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.handleTap(event);
+  }
+
+  /** Whether an event target sits on a clickable hotspot shape. */
+  private isInteractiveHotspotTarget(target: EventTarget | null): boolean {
+    const el = target as Element | null;
+    if (!el || typeof el.closest !== 'function') {
+      return false;
+    }
+    const shape = el.closest('.hotspot-shape');
+    return !!shape && !shape.closest('.hotspots-svg.non-interactive, [data-interactive="false"]') && shape.getAttribute('tabindex') !== '-1';
   }
 
   onWheel(event: WheelEvent): void {

@@ -53,8 +53,9 @@
             </pw-layer-renderer>
           }
 
-          <!-- Hotspots render-only in canvas view: taps keep their
-               edge-navigation semantics (documented deferral) -->
+          <!-- Hotspots are interactive on the CURRENT panel (the one the
+               camera frames); other panels show them render-only, and a
+               tap there keeps its panel-navigation meaning. -->
           @if (entry.panel.hotspots && entry.panel.hotspots.length > 0) {
             <pw-hotspots-overlay
               [hotspots]="entry.panel.hotspots"
@@ -62,7 +63,8 @@
               [containerWidth]="entry.placement.w"
               [containerHeight]="entry.placement.h"
               [context]="variableContext"
-              [interactive]="false">
+              [interactive]="interactive && isCurrent(entry.panelId)"
+              (hotspotActivate)="hotspotActivate.emit({ hotspot: $event.hotspot, x: $event.x, y: $event.y, panelId: entry.panelId })">
             </pw-hotspots-overlay>
           }
 

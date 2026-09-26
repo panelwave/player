@@ -104,6 +104,37 @@ describe('CanvasStageComponent', () => {
     });
   });
 
+  describe('hotspot presses', () => {
+    const pointer = (target: EventTarget): PointerEvent =>
+      ({ pointerId: 7, clientX: 10, clientY: 10, target } as unknown as PointerEvent);
+
+    it('leaves presses on an interactive hotspot to the hotspot (no capture, no tap)', () => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'hotspots-svg');
+      const shape = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      shape.setAttribute('class', 'hotspot-shape');
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      shape.appendChild(rect);
+      svg.appendChild(shape);
+
+      component.onPointerDown(pointer(rect));
+      expect((component as unknown as { activePointers: Map<number, unknown> }).activePointers.size).toBe(0);
+    });
+
+    it('still tracks presses on render-only hotspots and on the stage itself', () => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'hotspots-svg non-interactive');
+      const shape = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      shape.setAttribute('class', 'hotspot-shape');
+      svg.appendChild(shape);
+      // No real pointer exists behind the synthetic event.
+      spyOn(fixture.nativeElement as HTMLElement, 'setPointerCapture');
+
+      component.onPointerDown(pointer(shape));
+      expect((component as unknown as { activePointers: Map<number, unknown> }).activePointers.size).toBe(1);
+    });
+  });
+
   describe('hit testing', () => {
     it('maps a screen point to the topmost placement (z order)', () => {
       const canvas: CanvasLayout = {
