@@ -177,3 +177,32 @@ describe('LayerRendererComponent', () => {
     });
   });
 });
+
+describe('LayerRendererComponent image loading priority', () => {
+  let fixture: ComponentFixture<LayerRendererComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [LayerRendererComponent],
+      providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(LayerRendererComponent);
+    fixture.componentInstance.layer = { kind: 'image', id: 'img-1', assetId: 'asset-1' };
+  });
+
+  const img = () => fixture.nativeElement.querySelector('img.layer-image') as HTMLImageElement;
+
+  it('loads the current panel eagerly at high priority (largest contentful paint)', () => {
+    fixture.componentInstance.viewActive = true;
+    fixture.detectChanges();
+    expect(img().getAttribute('loading')).toBe('eager');
+    expect(img().getAttribute('fetchpriority')).toBe('high');
+  });
+
+  it('keeps every other panel lazy', () => {
+    fixture.componentInstance.viewActive = false;
+    fixture.detectChanges();
+    expect(img().getAttribute('loading')).toBe('lazy');
+    expect(img().hasAttribute('fetchpriority')).toBeFalse();
+  });
+});

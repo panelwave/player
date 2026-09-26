@@ -15,7 +15,8 @@
       [src]="getImageSrc()"
       [alt]="getAltText()"
       class="layer-image"
-      loading="lazy" />
+      [attr.loading]="viewActive ? 'eager' : 'lazy'"
+      [attr.fetchpriority]="viewActive ? 'high' : null" />
   }
 
   <!-- Video Layer -->

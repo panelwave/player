@@ -78,7 +78,10 @@ export class LayerRendererComponent {
 
   /**
    * Whether the owning panel is currently visible / current. Drives `on-view`
-   * playback for video layers (sequencer surface).
+   * playback for video layers (sequencer surface), and makes the panel's
+   * images load eagerly at high fetch priority — the current panel's art is
+   * the page's largest paint, and `loading="lazy"` delayed it (Lighthouse
+   * LCP 5.4 s on the demo). Every other panel stays lazy.
    */
   @Input() viewActive = false;
 
