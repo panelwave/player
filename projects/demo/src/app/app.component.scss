@@ -65,7 +65,8 @@
   align-items: center;
   --pill-accent: var(--bright-blue);
   background: color-mix(in srgb, var(--pill-accent) 5%, transparent);
-  color: var(--pill-accent);
+  /* darker than the accent so the text passes AA on the tinted fills */
+  color: color-mix(in srgb, var(--pill-accent) 75%, black);
   padding: 0.3rem 0.75rem;
   border-radius: 2.75rem;
   border: 0;
