@@ -4,7 +4,9 @@
  * No remote URLs are ever loaded: plugin iframes are mounted into detached
  * containers (a detached iframe never navigates) and their contentWindow is
  * replaced with a fake whose postMessage is a spy. Incoming plugin messages
- * are simulated by dispatching MessageEvents on window.
+ * are simulated by invoking the service's window "message" listener with an
+ * event-like object carrying `data`, `source` and `origin` (a real
+ * MessageEvent cannot carry a fake window as its source).
  */
 
 import { PluginHostService } from './plugin-host.service';
@@ -21,10 +23,31 @@ describe('PluginHostService', () => {
   let service: PluginHostService;
   let messageListeners: EventListenerOrEventListenerObject[];
 
+  const HOST_ORIGIN = window.location.origin;
+  const CROSS_ORIGIN = 'https://plugins.example.com';
+  const CROSS_URL = `${CROSS_ORIGIN}/widget/index.html`;
+
   const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-  const send = (data: unknown): void => {
-    window.dispatchEvent(new MessageEvent('message', { data }));
+  /** Deliver a raw message event to the service's listener(s). */
+  const sendRaw = (data: unknown, source: unknown = null, origin = HOST_ORIGIN): void => {
+    const event = { data, source, origin } as unknown as MessageEvent;
+    for (const listener of messageListeners) {
+      (listener as EventListener)(event);
+    }
+  };
+
+  /** A sourceless message (e.g. from the host page itself). */
+  const send = (data: unknown): void => sendRaw(data);
+
+  /**
+   * Message sent by the plugin's own iframe window. Sandboxed plugins
+   * (the default for about:blank / same-origin URLs) have the opaque origin "null".
+   */
+  const fromPlugin = (data: PluginMessage | Record<string, unknown>, origin = 'null', id?: string): void => {
+    const pluginId = id ?? (data as { pluginId: string }).pluginId;
+    const source = service.getPlugin(pluginId)?.iframe?.contentWindow ?? null;
+    sendRaw(data, source, origin);
   };
 
   const manifest = (overrides: Partial<PluginManifest> = {}): PluginManifest => ({
@@ -53,14 +76,14 @@ describe('PluginHostService', () => {
   };
 
   /** Drive the full mount handshake: ready -> mount message -> mounted. */
-  const mount = async (id = 'p1'): Promise<Mounted> => {
+  const mount = async (id = 'p1', origin = 'null'): Promise<Mounted> => {
     const container = document.createElement('div');
     const done = service.mountPlugin(id, container);
     const iframe = container.querySelector('iframe') as HTMLIFrameElement;
     const post = fakeContentWindow(iframe);
-    send({ type: 'plugin:ready', pluginId: id });
+    fromPlugin({ type: 'plugin:ready', pluginId: id }, origin);
     await flush();
-    send({ type: 'plugin:mounted', pluginId: id });
+    fromPlugin({ type: 'plugin:mounted', pluginId: id }, origin);
     await done;
     return { container, iframe, post };
   };
@@ -69,6 +92,9 @@ describe('PluginHostService', () => {
     post.calls.allArgs().map((args) => args[0] as PluginMessage);
 
   const stateOf = (id: string): PluginState | undefined => service.getPlugin(id)?.state;
+
+  const pendingWaits = (): number =>
+    (service as unknown as { lifecycleWaiters: Map<string, unknown> }).lifecycleWaiters.size;
 
   beforeEach(() => {
     messageListeners = [];
@@ -113,6 +139,16 @@ describe('PluginHostService', () => {
 
       config.maxPlugins = 99;
       expect(service.getConfig().maxPlugins).toBe(2);
+    });
+
+    it('ignores real window messages that have no plugin source', async () => {
+      await service.loadPlugin(manifest());
+      const container = document.createElement('div');
+      service.configure({ loadTimeout: 30 });
+      const done = service.mountPlugin('p1', container);
+      fakeContentWindow(container.querySelector('iframe')!);
+      window.postMessage({ type: 'plugin:ready', pluginId: 'p1' }, '*');
+      await expectAsync(done).toBeRejectedWithError('Plugin p1 did not become ready in time');
     });
   });
 
@@ -216,6 +252,43 @@ describe('PluginHostService', () => {
         'Required capability read-manifest not granted'
       );
     });
+
+    describe('retry after failure (bug: failed load blocked retries)', () => {
+      it('allows re-loading a plugin whose load failed', async () => {
+        await expectAsync(service.loadPlugin(manifest({ capabilities: ['network'] }))).toBeRejected();
+        expect(stateOf('p1')).toBe('error');
+
+        await service.loadPlugin(manifest());
+
+        const instance = service.getPlugin('p1')!;
+        expect(instance.state).toBe('loaded');
+        expect(instance.error).toBeUndefined();
+        expect(instance.grantedCapabilities).toEqual(['read-manifest']);
+      });
+
+      it('re-loading a plugin whose mount failed removes the stale iframe and allows a fresh mount', async () => {
+        service.configure({ loadTimeout: 20 });
+        await service.loadPlugin(manifest());
+        const oldContainer = document.createElement('div');
+        await expectAsync(service.mountPlugin('p1', oldContainer)).toBeRejected();
+        expect(oldContainer.querySelector('iframe')).not.toBeNull();
+
+        await service.loadPlugin(manifest());
+        expect(oldContainer.children.length).toBe(0);
+        expect(stateOf('p1')).toBe('loaded');
+
+        service.configure({ loadTimeout: 1000 });
+        await mount();
+        expect(stateOf('p1')).toBe('mounted');
+      });
+
+      it('a failed record does not count against maxPlugins on retry', async () => {
+        service.configure({ maxPlugins: 1 });
+        await expectAsync(service.loadPlugin(manifest({ capabilities: ['network'] }))).toBeRejected();
+        await service.loadPlugin(manifest());
+        expect(stateOf('p1')).toBe('loaded');
+      });
+    });
   });
 
   describe('grantPermission / denyPermission', () => {
@@ -284,7 +357,8 @@ describe('PluginHostService', () => {
       expect(iframe.getAttribute('src')).toBe('about:blank');
       expect(iframe.getAttribute('data-plugin-id')).toBe('p1');
       expect(iframe.sandbox.contains('allow-scripts')).toBeTrue();
-      expect(iframe.sandbox.contains('allow-same-origin')).toBeTrue();
+      // about:blank inherits the host origin -> allow-same-origin is stripped
+      expect(iframe.sandbox.contains('allow-same-origin')).toBeFalse();
       expect(iframe.style.width).toBe('100%');
       expect(iframe.style.height).toBe('100%');
       expect(iframe.style.borderStyle).toBe('none');
@@ -303,14 +377,29 @@ describe('PluginHostService', () => {
       expect(context['capabilities']).toEqual(['read-manifest']);
       expect(context['playerVersion']).toBe('1.0.0');
       expect(context['sessionId']).toMatch(/^[0-9a-f-]{36}$/);
+      // opaque-origin plugin: cannot be addressed by origin
       expect(post.calls.mostRecent().args[1]).toBe('*');
     });
 
     it('uses no sandbox tokens when sandboxAttributes is unset', async () => {
       service.configure({ sandboxAttributes: undefined });
       await service.loadPlugin(manifest());
-      const { iframe } = await mount();
+      const container = document.createElement('div');
+      const done = service.mountPlugin('p1', container);
+      const iframe = container.querySelector('iframe')!;
+      const post = fakeContentWindow(iframe);
+      // An empty sandbox attribute (Chrome sets one even for add() without
+      // tokens) means a fully restricted, opaque-origin document; without the
+      // attribute the about:blank plugin would run in the host origin.
+      const origin = iframe.hasAttribute('sandbox') ? 'null' : HOST_ORIGIN;
+      fromPlugin({ type: 'plugin:ready', pluginId: 'p1' }, origin);
+      await flush();
+      fromPlugin({ type: 'plugin:mounted', pluginId: 'p1' }, origin);
+      await done;
+
       expect(iframe.sandbox.length).toBe(0);
+      expect(stateOf('p1')).toBe('mounted');
+      expect(post.calls.mostRecent().args[1]).toBe(origin === 'null' ? '*' : HOST_ORIGIN);
     });
 
     it('passes through the "mounting" state while waiting for ready', async () => {
@@ -319,32 +408,33 @@ describe('PluginHostService', () => {
       const done = service.mountPlugin('p1', container);
       expect(stateOf('p1')).toBe('mounting');
       fakeContentWindow(container.querySelector('iframe')!);
-      send({ type: 'plugin:ready', pluginId: 'p1' });
+      fromPlugin({ type: 'plugin:ready', pluginId: 'p1' });
       await flush();
-      send({ type: 'plugin:mounted', pluginId: 'p1' });
+      fromPlugin({ type: 'plugin:mounted', pluginId: 'p1' });
       await done;
       expect(stateOf('p1')).toBe('mounted');
     });
 
-    it('ignores ready/mounted messages that belong to another registered plugin', async () => {
+    it('ignores ready/mounted messages that claim another registered plugin id', async () => {
       service.configure({ loadTimeout: 60 });
       await service.loadPlugin(manifest());
       await service.loadPlugin(manifest({ id: 'p2', name: 'Two' }));
       const container = document.createElement('div');
       const done = service.mountPlugin('p1', container);
       fakeContentWindow(container.querySelector('iframe')!);
+      const p1Window = service.getPlugin('p1')!.iframe!.contentWindow;
 
-      send({ type: 'plugin:ready', pluginId: 'p2' });
+      sendRaw({ type: 'plugin:ready', pluginId: 'p2' }, p1Window, 'null');
       await flush();
       expect(stateOf('p1')).toBe('mounting');
 
-      send({ type: 'plugin:ready', pluginId: 'p1' });
+      fromPlugin({ type: 'plugin:ready', pluginId: 'p1' });
       await flush();
-      send({ type: 'plugin:mounted', pluginId: 'p2' });
+      sendRaw({ type: 'plugin:mounted', pluginId: 'p2' }, p1Window, 'null');
       await flush();
       expect(stateOf('p1')).toBe('mounting');
 
-      send({ type: 'plugin:mounted', pluginId: 'p1' });
+      fromPlugin({ type: 'plugin:mounted', pluginId: 'p1' });
       await done;
       expect(stateOf('p1')).toBe('mounted');
     });
@@ -369,9 +459,185 @@ describe('PluginHostService', () => {
       const container = document.createElement('div');
       const done = service.mountPlugin('p1', container);
       fakeContentWindow(container.querySelector('iframe')!);
-      send({ type: 'plugin:ready', pluginId: 'p1' });
+      fromPlugin({ type: 'plugin:ready', pluginId: 'p1' });
       await expectAsync(done).toBeRejectedWithError('Plugin p1 did not mount in time');
       expect(stateOf('p1')).toBe('error');
+    });
+
+    describe('concurrent mounts (bug: one shared wait slot per message type)', () => {
+      it('mounting A then B before A is ready lets both complete', async () => {
+        service.configure({ loadTimeout: 200 });
+        await service.loadPlugin(manifest({ id: 'a', name: 'A' }));
+        await service.loadPlugin(manifest({ id: 'b', name: 'B' }));
+        const containerA = document.createElement('div');
+        const containerB = document.createElement('div');
+        const doneA = service.mountPlugin('a', containerA);
+        const doneB = service.mountPlugin('b', containerB);
+        fakeContentWindow(containerA.querySelector('iframe')!);
+        fakeContentWindow(containerB.querySelector('iframe')!);
+
+        fromPlugin({ type: 'plugin:ready', pluginId: 'a' });
+        fromPlugin({ type: 'plugin:ready', pluginId: 'b' });
+        await flush();
+        fromPlugin({ type: 'plugin:mounted', pluginId: 'b' });
+        fromPlugin({ type: 'plugin:mounted', pluginId: 'a' });
+
+        await expectAsync(doneA).toBeResolved();
+        await expectAsync(doneB).toBeResolved();
+        expect(stateOf('a')).toBe('mounted');
+        expect(stateOf('b')).toBe('mounted');
+        expect(pendingWaits()).toBe(0);
+      });
+
+      it('removes the pending wait when it times out', async () => {
+        service.configure({ loadTimeout: 20 });
+        await service.loadPlugin(manifest());
+        const pending = service.mountPlugin('p1', document.createElement('div'));
+        expect(pendingWaits()).toBe(1);
+        await expectAsync(pending).toBeRejected();
+        expect(pendingWaits()).toBe(0);
+      });
+
+      it('a timed-out wait of A does not affect a concurrent wait of B', async () => {
+        service.configure({ loadTimeout: 30 });
+        await service.loadPlugin(manifest({ id: 'a', name: 'A' }));
+        await service.loadPlugin(manifest({ id: 'b', name: 'B' }));
+        const doneA = service.mountPlugin('a', document.createElement('div'));
+        const containerB = document.createElement('div');
+        const doneB = service.mountPlugin('b', containerB);
+        fakeContentWindow(containerB.querySelector('iframe')!);
+
+        fromPlugin({ type: 'plugin:ready', pluginId: 'b' });
+        await flush();
+        await expectAsync(doneA).toBeRejectedWithError('Plugin a did not become ready in time');
+        fromPlugin({ type: 'plugin:mounted', pluginId: 'b' });
+        await expectAsync(doneB).toBeResolved();
+        expect(stateOf('b')).toBe('mounted');
+      });
+    });
+  });
+
+  describe('origin policy (bug: no source/origin check)', () => {
+    it('rejects messages claiming a plugin id but coming from another window', async () => {
+      service.configure({ loadTimeout: 40 });
+      await service.loadPlugin(manifest());
+      const container = document.createElement('div');
+      const done = service.mountPlugin('p1', container);
+      fakeContentWindow(container.querySelector('iframe')!);
+
+      sendRaw({ type: 'plugin:ready', pluginId: 'p1' }, window, 'null');
+      sendRaw({ type: 'plugin:ready', pluginId: 'p1' }, { postMessage: () => undefined }, 'null');
+      sendRaw({ type: 'plugin:ready', pluginId: 'p1' }, null, HOST_ORIGIN);
+
+      await expectAsync(done).toBeRejectedWithError('Plugin p1 did not become ready in time');
+    });
+
+    it('a mounted plugin cannot spoof api calls or subscriptions for another plugin', async () => {
+      await service.loadPlugin(manifest({ id: 'a', name: 'A' }));
+      await service.loadPlugin(manifest({ id: 'b', name: 'B' }));
+      const a = await mount('a');
+      const b = await mount('b');
+      a.post.calls.reset();
+      b.post.calls.reset();
+      const aWindow = service.getPlugin('a')!.iframe!.contentWindow;
+
+      sendRaw({ type: 'api:call', pluginId: 'b', requestId: 'x', payload: { method: 'getManifest' } }, aWindow, 'null');
+      sendRaw({ type: 'event:subscribe', pluginId: 'b', payload: { eventType: 'tick' } }, aWindow, 'null');
+      await flush();
+      service.emitEventToPlugins('tick', 1);
+      await flush();
+
+      expect(a.post).not.toHaveBeenCalled();
+      expect(b.post).not.toHaveBeenCalled();
+    });
+
+    it('rejects messages from the right window but with a foreign origin', async () => {
+      await service.loadPlugin(manifest());
+      const { post } = await mount();
+      post.calls.reset();
+
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'getManifest' } }, 'https://evil.example');
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'getManifest' } }, HOST_ORIGIN);
+      await flush();
+      expect(post).not.toHaveBeenCalled();
+
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'getManifest' } }, 'null');
+      await flush();
+      expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    it('cross-origin plugin keeps allow-same-origin, is addressed by its origin and only its origin is accepted', async () => {
+      await service.loadPlugin(manifest({ url: CROSS_URL }));
+      const { iframe, post } = await mount('p1', CROSS_ORIGIN);
+
+      expect(iframe.sandbox.contains('allow-same-origin')).toBeTrue();
+      expect(iframe.sandbox.contains('allow-scripts')).toBeTrue();
+      expect(stateOf('p1')).toBe('mounted');
+      expect(post.calls.mostRecent().args[1]).toBe(CROSS_ORIGIN);
+
+      post.calls.reset();
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r1', payload: { method: 'getManifest' } }, 'null');
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r2', payload: { method: 'getManifest' } }, HOST_ORIGIN);
+      await flush();
+      expect(post).not.toHaveBeenCalled();
+
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r3', payload: { method: 'getManifest' } }, CROSS_ORIGIN);
+      await flush();
+      expect(sentMessages(post).map((m) => m.requestId)).toEqual(['r3']);
+      expect(post.calls.mostRecent().args[1]).toBe(CROSS_ORIGIN);
+
+      await service.updatePlugin('p1', { a: 1 });
+      expect(post.calls.mostRecent().args[1]).toBe(CROSS_ORIGIN);
+    });
+
+    it('accepts the extra origins listed in manifest.allowedOrigins and config.allowedOrigins', async () => {
+      service.configure({ allowedOrigins: ['https://cdn.example.net'] });
+      await service.loadPlugin(manifest({ url: CROSS_URL, allowedOrigins: ['https://auth.example.org'] }));
+      const { post } = await mount('p1', CROSS_ORIGIN);
+      post.calls.reset();
+
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'm', payload: { method: 'getManifest' } }, 'https://auth.example.org');
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'c', payload: { method: 'getManifest' } }, 'https://cdn.example.net');
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'x', payload: { method: 'getManifest' } }, 'https://other.example');
+      await flush();
+
+      expect(sentMessages(post).map((m) => m.requestId)).toEqual(['m', 'c']);
+    });
+
+    it('same-origin plugin URL: allow-same-origin is stripped and it is treated as opaque ("null")', async () => {
+      await service.loadPlugin(manifest({ url: '/assets/plugins/local.html' }));
+      const { iframe, post } = await mount('p1', 'null');
+
+      expect(iframe.sandbox.contains('allow-scripts')).toBeTrue();
+      expect(iframe.sandbox.contains('allow-same-origin')).toBeFalse();
+      expect(stateOf('p1')).toBe('mounted');
+      expect(post.calls.mostRecent().args[1]).toBe('*');
+
+      post.calls.reset();
+      fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'getManifest' } }, HOST_ORIGIN);
+      await flush();
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('same-origin plugin with an absolute URL is also stripped of allow-same-origin', async () => {
+      await service.loadPlugin(manifest({ url: `${HOST_ORIGIN}/plugin.html` }));
+      const { iframe } = await mount('p1', 'null');
+      expect(iframe.sandbox.contains('allow-same-origin')).toBeFalse();
+    });
+
+    it('data: URL plugins are opaque even without a sandbox', async () => {
+      service.configure({ sandboxAttributes: undefined });
+      await service.loadPlugin(manifest({ url: 'data:text/html,<p>hi</p>' }));
+      const { post } = await mount('p1', 'null');
+      expect(stateOf('p1')).toBe('mounted');
+      expect(post.calls.mostRecent().args[1]).toBe('*');
+    });
+
+    it('an unparseable plugin URL is treated as opaque', async () => {
+      await service.loadPlugin(manifest({ url: 'http://[bad-host' }));
+      const { post } = await mount('p1', 'null');
+      expect(stateOf('p1')).toBe('mounted');
+      expect(post.calls.mostRecent().args[1]).toBe('*');
     });
   });
 
@@ -418,7 +684,7 @@ describe('PluginHostService', () => {
     it('sends unmount, removes the iframe, drops event subscriptions and returns to "loaded"', async () => {
       await service.loadPlugin(manifest());
       const { container, post } = await mount();
-      send({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
+      fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
       post.calls.reset();
 
       await service.unmountPlugin('p1');
@@ -440,8 +706,8 @@ describe('PluginHostService', () => {
       await service.loadPlugin(manifest({ id: 'p2', name: 'Two' }));
       await mount('p1');
       const second = await mount('p2');
-      send({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'tick' } });
-      send({ type: 'event:subscribe', pluginId: 'p2', payload: { eventType: 'tick' } });
+      fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'tick' } });
+      fromPlugin({ type: 'event:subscribe', pluginId: 'p2', payload: { eventType: 'tick' } });
 
       await service.unmountPlugin('p1');
       second.post.calls.reset();
@@ -508,6 +774,28 @@ describe('PluginHostService', () => {
       await service.loadPlugin(manifest());
       expect(stateOf('p1')).toBe('loaded');
     });
+
+    it('drops event subscriptions of a plugin that is not mounted (bug: leaked subscriptions)', async () => {
+      service.configure({ loadTimeout: 30 });
+      await service.loadPlugin(manifest());
+      const container = document.createElement('div');
+      const done = service.mountPlugin('p1', container);
+      fakeContentWindow(container.querySelector('iframe')!);
+      fromPlugin({ type: 'plugin:ready', pluginId: 'p1' });
+      await flush();
+      // subscribes while mounting, then never confirms the mount
+      fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'tick' } });
+      await expectAsync(done).toBeRejected();
+      expect(stateOf('p1')).toBe('error');
+
+      await service.disposePlugin('p1');
+
+      const errorSpy = spyOn(console, 'error');
+      service.emitEventToPlugins('tick', 1);
+      await flush();
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect((service as unknown as { eventSubscriptions: Map<string, unknown> }).eventSubscriptions.size).toBe(0);
+    });
   });
 
   describe('incoming message handling', () => {
@@ -515,12 +803,13 @@ describe('PluginHostService', () => {
       await service.loadPlugin(manifest());
       const { post } = await mount();
       post.calls.reset();
+      const p1Window = service.getPlugin('p1')!.iframe!.contentWindow;
 
       send(null);
       send('string payload');
-      send({ pluginId: 'p1' });
-      send({ type: 'api:call' });
-      send({ type: 'api:call', pluginId: 'stranger', payload: { method: 'getManifest' } });
+      sendRaw({ pluginId: 'p1' }, p1Window, 'null');
+      sendRaw({ type: 'api:call' }, p1Window, 'null');
+      sendRaw({ type: 'api:call', pluginId: 'stranger', payload: { method: 'getManifest' } }, p1Window, 'null');
       await flush();
 
       expect(post).not.toHaveBeenCalled();
@@ -536,9 +825,9 @@ describe('PluginHostService', () => {
       });
 
       it('answers default handlers with api:response', async () => {
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r1', payload: { method: 'getCurrentPanel' } });
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r2', payload: { method: 'getManifest' } });
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r3', payload: { method: 'getPlayerState' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r1', payload: { method: 'getCurrentPanel' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r2', payload: { method: 'getManifest' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r3', payload: { method: 'getPlayerState' } });
         await flush();
 
         expect(sentMessages(post)).toEqual([
@@ -554,7 +843,7 @@ describe('PluginHostService', () => {
         );
         service.registerAPIHandler('sum', handler);
 
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r9', payload: { method: 'sum', params: [1, 2, 3] } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r9', payload: { method: 'sum', params: [1, 2, 3] } });
         await flush();
 
         expect(handler).toHaveBeenCalledWith(1, 2, 3);
@@ -566,16 +855,24 @@ describe('PluginHostService', () => {
       it('calls the handler with no arguments when params are omitted', async () => {
         const handler = jasmine.createSpy('noop').and.resolveTo('ok');
         service.registerAPIHandler('noop', handler);
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'noop' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'noop' } });
         await flush();
         expect(handler).toHaveBeenCalledWith();
       });
 
       it('replies with api:error for unknown methods', async () => {
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r4', payload: { method: 'selfDestruct' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r4', payload: { method: 'selfDestruct' } });
         await flush();
         expect(sentMessages(post)).toEqual([
           { type: 'api:error', pluginId: 'p1', requestId: 'r4', error: 'Unknown API method: selfDestruct' },
+        ]);
+      });
+
+      it('replies with api:error when the call has no payload', async () => {
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r0' });
+        await flush();
+        expect(sentMessages(post)).toEqual([
+          { type: 'api:error', pluginId: 'p1', requestId: 'r0', error: 'Unknown API method: undefined' },
         ]);
       });
 
@@ -583,17 +880,81 @@ describe('PluginHostService', () => {
         service.registerAPIHandler('fail', async () => {
           throw new Error('kaputt');
         });
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r5', payload: { method: 'fail' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r5', payload: { method: 'fail' } });
         await flush();
         expect(sentMessages(post)).toEqual([{ type: 'api:error', pluginId: 'p1', requestId: 'r5', error: 'kaputt' }]);
       });
 
       it('unregisterAPIHandler makes the method unknown', async () => {
         service.unregisterAPIHandler('getManifest');
-        send({ type: 'api:call', pluginId: 'p1', requestId: 'r6', payload: { method: 'getManifest' } });
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r6', payload: { method: 'getManifest' } });
         await flush();
         expect(sentMessages(post)[0].type).toBe('api:error');
         expect(sentMessages(post)[0].error).toBe('Unknown API method: getManifest');
+      });
+
+      it('logs (no unhandled rejection) when the reply cannot be delivered anymore', async () => {
+        const errorSpy = spyOn(console, 'error');
+        let release!: (value: unknown) => void;
+        service.registerAPIHandler('slow', () => new Promise((resolve) => (release = resolve)));
+        const unhandled = jasmine.createSpy('unhandledrejection');
+        window.addEventListener('unhandledrejection', unhandled);
+
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r7', payload: { method: 'slow' } });
+        await flush();
+        await service.unmountPlugin('p1');
+        release('late');
+        await flush();
+        await flush();
+
+        window.removeEventListener('unhandledrejection', unhandled);
+        expect(errorSpy).toHaveBeenCalledWith('Failed to answer API call of plugin p1:', jasmine.any(Error));
+        expect(unhandled).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('api:call from non-mounted plugins (bug: unhandled rejection)', () => {
+      it('ignores api calls while the plugin is still mounting', async () => {
+        await service.loadPlugin(manifest());
+        const container = document.createElement('div');
+        const done = service.mountPlugin('p1', container);
+        const post = fakeContentWindow(container.querySelector('iframe')!);
+        const handler = jasmine.createSpy('getManifest').and.resolveTo({});
+        service.registerAPIHandler('getManifest', handler);
+
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'early', payload: { method: 'getManifest' } });
+        await flush();
+        expect(handler).not.toHaveBeenCalled();
+        expect(post).not.toHaveBeenCalled();
+
+        fromPlugin({ type: 'plugin:ready', pluginId: 'p1' });
+        await flush();
+        fromPlugin({ type: 'plugin:mounted', pluginId: 'p1' });
+        await done;
+      });
+
+      it('ignores api calls from a plugin whose mount failed (iframe still present)', async () => {
+        service.configure({ loadTimeout: 20 });
+        await service.loadPlugin(manifest());
+        const container = document.createElement('div');
+        const done = service.mountPlugin('p1', container);
+        const post = fakeContentWindow(container.querySelector('iframe')!);
+        await expectAsync(done).toBeRejected();
+        const errorSpy = spyOn(console, 'error');
+
+        fromPlugin({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'getManifest' } });
+        await flush();
+
+        expect(post).not.toHaveBeenCalled();
+        expect(errorSpy).not.toHaveBeenCalled();
+      });
+
+      it('ignores api calls from a loaded plugin without an iframe', async () => {
+        await service.loadPlugin(manifest());
+        const errorSpy = spyOn(console, 'error');
+        sendRaw({ type: 'api:call', pluginId: 'p1', requestId: 'r', payload: { method: 'getManifest' } }, null, 'null');
+        await flush();
+        expect(errorSpy).not.toHaveBeenCalled();
       });
     });
 
@@ -612,8 +973,8 @@ describe('PluginHostService', () => {
         const { post } = await mount();
         post.calls.reset();
 
-        send({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
-        send({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
+        fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
+        fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
         service.emitEventToPlugins('panel:change', { panelId: 'x' });
         service.emitEventToPlugins('other', {});
         await flush();
@@ -623,17 +984,33 @@ describe('PluginHostService', () => {
         ]);
 
         post.calls.reset();
-        send({ type: 'event:unsubscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
-        send({ type: 'event:unsubscribe', pluginId: 'p1', payload: { eventType: 'never-subscribed' } });
+        fromPlugin({ type: 'event:unsubscribe', pluginId: 'p1', payload: { eventType: 'panel:change' } });
+        fromPlugin({ type: 'event:unsubscribe', pluginId: 'p1', payload: { eventType: 'never-subscribed' } });
         service.emitEventToPlugins('panel:change', {});
         await flush();
         expect(post).not.toHaveBeenCalled();
       });
 
-      it('logs (and swallows) delivery failures for subscribers without an iframe', async () => {
+      it('ignores subscriptions from a plugin whose mount failed', async () => {
+        service.configure({ loadTimeout: 20 });
         await service.loadPlugin(manifest());
+        const container = document.createElement('div');
+        const done = service.mountPlugin('p1', container);
+        const post = fakeContentWindow(container.querySelector('iframe')!);
+        await expectAsync(done).toBeRejected();
+
+        fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'tick' } });
+        service.emitEventToPlugins('tick', 1);
+        await flush();
+        expect(post).not.toHaveBeenCalled();
+      });
+
+      it('logs (and swallows) delivery failures when a subscriber lost its iframe', async () => {
+        await service.loadPlugin(manifest());
+        await mount();
+        fromPlugin({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'tick' } });
+        service.getPlugin('p1')!.iframe = null;
         const errorSpy = spyOn(console, 'error');
-        send({ type: 'event:subscribe', pluginId: 'p1', payload: { eventType: 'tick' } });
 
         service.emitEventToPlugins('tick', 1);
         await flush();

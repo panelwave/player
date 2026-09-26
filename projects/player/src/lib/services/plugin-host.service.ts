@@ -10,11 +10,23 @@ import type {
   PluginInstance,
   PluginState,
   PluginMessage,
+  PluginMessageType,
   PluginConfig,
   PluginCapability,
   PluginPermissionRequest,
   PluginAPICall,
 } from '../types/plugin.types';
+
+/** Origin used by browsers for opaque (e.g. sandboxed) documents. */
+const OPAQUE_ORIGIN = 'null';
+
+/** Messaging channel of a plugin iframe (internal). */
+interface PluginChannel {
+  /** Origin the plugin document runs in; OPAQUE_ORIGIN when opaque. */
+  origin: string;
+  /** Origins accepted on incoming messages from this plugin. */
+  acceptedOrigins: Set<string>;
+}
 
 /**
  * Plugin Host Service
@@ -38,7 +50,11 @@ export class PluginHostService {
     loadTimeout: 10000,
     sandboxAttributes: [
       'allow-scripts',
-      'allow-same-origin', // Required for postMessage
+      // Lets a CROSS-origin plugin keep its real origin (storage, fetch with
+      // credentials). It is stripped automatically for plugins served from the
+      // host's own origin, where it would cancel the sandbox (see
+      // createPluginIframe). postMessage works without it.
+      'allow-same-origin',
     ],
     autoGrantCapabilities: ['read-manifest', 'read-state'],
   };
@@ -56,9 +72,17 @@ export class PluginHostService {
   private permissionRequests$ = new Subject<PluginPermissionRequest>();
 
   /**
-   * Message handlers
+   * Pending lifecycle waits (plugin:ready / plugin:mounted), keyed per plugin
+   * AND message type so concurrent mounts never clobber each other.
    */
-  private messageHandlers = new Map<string, (message: PluginMessage) => void>();
+  private lifecycleWaiters = new Map<string, () => void>();
+
+  /**
+   * Channel info of each plugin whose iframe exists: the origin its document
+   * runs in ('null' when opaque) and the set of origins accepted for incoming
+   * messages.
+   */
+  private pluginChannels = new Map<string, PluginChannel>();
 
   /**
    * API method handlers
@@ -100,8 +124,13 @@ export class PluginHostService {
       throw new Error('Plugin system is disabled');
     }
 
-    if (this.plugins.has(manifest.id)) {
-      throw new Error(`Plugin ${manifest.id} is already loaded`);
+    const existing = manifest.id ? this.plugins.get(manifest.id) : undefined;
+    if (existing) {
+      if (existing.state !== 'error') {
+        throw new Error(`Plugin ${manifest.id} is already loaded`);
+      }
+      // A previous load/mount failed: drop the stale record so it can be retried.
+      this.removePluginRecord(manifest.id, existing);
     }
 
     if (
@@ -245,6 +274,7 @@ export class PluginHostService {
         instance.iframe.remove();
         instance.iframe = null;
       }
+      this.pluginChannels.delete(pluginId);
 
       // Clean up event subscriptions
       this.cleanupEventSubscriptions(pluginId);
@@ -279,12 +309,21 @@ export class PluginHostService {
       // Ignore errors during disposal
     }
 
-    // Remove iframe
+    // Remove iframe, subscriptions and the registry entry
+    this.removePluginRecord(pluginId, instance);
+  }
+
+  /**
+   * Remove a plugin's iframe, messaging channel, event subscriptions and
+   * registry entry.
+   */
+  private removePluginRecord(pluginId: string, instance: PluginInstance): void {
     if (instance.iframe) {
       instance.iframe.remove();
+      instance.iframe = null;
     }
-
-    // Remove from registry
+    this.pluginChannels.delete(pluginId);
+    this.cleanupEventSubscriptions(pluginId);
     this.plugins.delete(pluginId);
     this.emitPluginsUpdate();
   }
@@ -459,13 +498,80 @@ export class PluginHostService {
    */
   private createPluginIframe(instance: PluginInstance): HTMLIFrameElement {
     const iframe = document.createElement('iframe');
-    iframe.src = instance.manifest.url;
-    iframe.sandbox.add(...(this.config.sandboxAttributes || []));
+    const manifest = instance.manifest;
+    const urlOrigin = this.resolveUrlOrigin(manifest.url);
+    const hostOrigin = window.location.origin;
+
+    let sandboxTokens = [...(this.config.sandboxAttributes || [])];
+    // SECURITY: a plugin served from the host's own origin with both
+    // `allow-scripts` and `allow-same-origin` could reach into the parent
+    // document and simply remove its own sandbox. For such plugins we strip
+    // `allow-same-origin` so they run in an opaque origin (they keep working,
+    // postMessage does not need it). Cross-origin plugins keep the configured
+    // tokens unchanged.
+    if (urlOrigin === hostOrigin) {
+      sandboxTokens = sandboxTokens.filter((token) => token !== 'allow-same-origin');
+    }
+
+    iframe.src = manifest.url;
+    iframe.sandbox.add(...sandboxTokens);
     iframe.style.border = 'none';
     iframe.style.width = '100%';
     iframe.style.height = '100%';
-    iframe.setAttribute('data-plugin-id', instance.manifest.id);
+    iframe.setAttribute('data-plugin-id', manifest.id);
+
+    // A sandboxed document without `allow-same-origin` has an opaque origin:
+    // its messages carry event.origin === 'null' and it can only be addressed
+    // with targetOrigin '*'. Its identity is then guaranteed by the
+    // event.source check alone (see isTrustedPluginMessage).
+    const sandboxed = iframe.hasAttribute('sandbox');
+    const opaque = urlOrigin === OPAQUE_ORIGIN || (sandboxed && !iframe.sandbox.contains('allow-same-origin'));
+    const origin = opaque ? OPAQUE_ORIGIN : urlOrigin;
+    this.pluginChannels.set(manifest.id, {
+      origin,
+      acceptedOrigins: new Set([
+        origin,
+        ...(manifest.allowedOrigins || []),
+        ...(this.config.allowedOrigins || []),
+      ]),
+    });
+
     return iframe;
+  }
+
+  /**
+   * Origin a plugin URL's document runs in (before sandboxing).
+   * about:/javascript: documents inherit the host origin; data: URLs and
+   * unparseable URLs are opaque.
+   */
+  private resolveUrlOrigin(url: string): string {
+    let parsed: URL;
+    try {
+      parsed = new URL(url, document.baseURI);
+    } catch {
+      return OPAQUE_ORIGIN;
+    }
+    if (parsed.protocol === 'about:' || parsed.protocol === 'javascript:') {
+      return window.location.origin;
+    }
+    return parsed.origin;
+  }
+
+  /**
+   * Accept a message only if it comes from the claimed plugin's own iframe
+   * window AND from an accepted origin of that plugin.
+   */
+  private isTrustedPluginMessage(
+    event: MessageEvent,
+    pluginId: string,
+    instance: PluginInstance
+  ): boolean {
+    const contentWindow = instance.iframe?.contentWindow;
+    if (!contentWindow || event.source !== contentWindow) {
+      return false;
+    }
+    const channel = this.pluginChannels.get(pluginId);
+    return !!channel && channel.acceptedOrigins.has(event.origin);
   }
 
   /**
@@ -499,25 +605,35 @@ export class PluginHostService {
       return;
     }
 
-    // Verify origin
     const instance = this.plugins.get(message.pluginId);
     if (!instance) {
       return;
     }
 
-    // Handle message
-    const handler = this.messageHandlers.get(message.type);
-    if (handler) {
-      handler(message);
+    // Verify sender: must be this plugin's own iframe window and origin.
+    // Without this any frame knowing a plugin id could spoof its messages.
+    if (!this.isTrustedPluginMessage(event, message.pluginId, instance)) {
+      return;
     }
 
-    // Handle API calls
+    // Resolve a pending lifecycle wait of this plugin
+    const waiter = this.lifecycleWaiters.get(this.waiterKey(message.pluginId, message.type));
+    if (waiter) {
+      waiter();
+    }
+
+    // Handle API calls (only from active plugins)
     if (message.type === 'api:call') {
-      this.handleAPICall(message);
+      if (instance.state === 'mounted' || instance.state === 'updating') {
+        void this.handleAPICall(message);
+      }
     }
 
-    // Handle event subscriptions
-    if (message.type === 'event:subscribe') {
+    // Handle event subscriptions (only while mounting or active)
+    if (
+      message.type === 'event:subscribe' &&
+      (instance.state === 'mounting' || instance.state === 'mounted' || instance.state === 'updating')
+    ) {
       this.handleEventSubscribe(message);
     }
 
@@ -530,34 +646,41 @@ export class PluginHostService {
    * Handle API call
    */
   private async handleAPICall(message: PluginMessage): Promise<void> {
-    const call = message.payload as PluginAPICall;
+    const call = (message.payload || {}) as PluginAPICall;
     const handler = this.apiHandlers.get(call.method);
 
+    let reply: PluginMessage;
     if (!handler) {
-      this.sendPluginMessage(message.pluginId, {
+      reply = {
         type: 'api:error',
         pluginId: message.pluginId,
         requestId: message.requestId,
         error: `Unknown API method: ${call.method}`,
-      });
-      return;
+      };
+    } else {
+      try {
+        const result = await handler(...(call.params || []));
+        reply = {
+          type: 'api:response',
+          pluginId: message.pluginId,
+          requestId: message.requestId,
+          payload: { result },
+        };
+      } catch (error) {
+        reply = {
+          type: 'api:error',
+          pluginId: message.pluginId,
+          requestId: message.requestId,
+          error: (error as Error).message,
+        };
+      }
     }
 
     try {
-      const result = await handler(...(call.params || []));
-      this.sendPluginMessage(message.pluginId, {
-        type: 'api:response',
-        pluginId: message.pluginId,
-        requestId: message.requestId,
-        payload: { result },
-      });
+      await this.sendPluginMessage(message.pluginId, reply);
     } catch (error) {
-      this.sendPluginMessage(message.pluginId, {
-        type: 'api:error',
-        pluginId: message.pluginId,
-        requestId: message.requestId,
-        error: (error as Error).message,
-      });
+      // The plugin may have been unmounted/disposed while the call ran.
+      console.error(`Failed to answer API call of plugin ${message.pluginId}:`, error);
     }
   }
 
@@ -610,49 +733,66 @@ export class PluginHostService {
       throw new Error(`Cannot send message to plugin ${pluginId}`);
     }
 
-    instance.iframe.contentWindow?.postMessage(message, '*');
+    // Target the plugin's own origin; only an opaque-origin (sandboxed)
+    // document cannot be addressed by origin and needs '*' — the message still
+    // only goes to that plugin's own window.
+    const origin = this.pluginChannels.get(pluginId)?.origin ?? OPAQUE_ORIGIN;
+    const targetOrigin = origin === OPAQUE_ORIGIN ? '*' : origin;
+    instance.iframe.contentWindow?.postMessage(message, targetOrigin);
   }
 
   /**
    * Wait for plugin ready
    */
   private waitForPluginReady(pluginId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error(`Plugin ${pluginId} did not become ready in time`));
-      }, this.config.loadTimeout);
-
-      const handler = (message: PluginMessage) => {
-        if (message.pluginId === pluginId && message.type === 'plugin:ready') {
-          clearTimeout(timeout);
-          this.messageHandlers.delete('plugin:ready');
-          resolve();
-        }
-      };
-
-      this.messageHandlers.set('plugin:ready', handler);
-    });
+    return this.waitForLifecycleMessage(
+      pluginId,
+      'plugin:ready',
+      `Plugin ${pluginId} did not become ready in time`
+    );
   }
 
   /**
    * Wait for plugin mounted
    */
   private waitForPluginMounted(pluginId: string): Promise<void> {
+    return this.waitForLifecycleMessage(
+      pluginId,
+      'plugin:mounted',
+      `Plugin ${pluginId} did not mount in time`
+    );
+  }
+
+  /**
+   * Wait for a lifecycle message of ONE plugin. Waits are keyed per plugin and
+   * type, and the entry is removed on success and on timeout.
+   */
+  private waitForLifecycleMessage(
+    pluginId: string,
+    type: PluginMessageType,
+    timeoutMessage: string
+  ): Promise<void> {
+    const key = this.waiterKey(pluginId, type);
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`Plugin ${pluginId} did not mount in time`));
+        if (this.lifecycleWaiters.get(key) === done) {
+          this.lifecycleWaiters.delete(key);
+        }
+        reject(new Error(timeoutMessage));
       }, this.config.loadTimeout);
 
-      const handler = (message: PluginMessage) => {
-        if (message.pluginId === pluginId && message.type === 'plugin:mounted') {
-          clearTimeout(timeout);
-          this.messageHandlers.delete('plugin:mounted');
-          resolve();
-        }
+      const done = (): void => {
+        clearTimeout(timeout);
+        this.lifecycleWaiters.delete(key);
+        resolve();
       };
 
-      this.messageHandlers.set('plugin:mounted', handler);
+      this.lifecycleWaiters.set(key, done);
     });
+  }
+
+  private waiterKey(pluginId: string, type: string): string {
+    return `${pluginId}\u0000${type}`;
   }
 
   /**
