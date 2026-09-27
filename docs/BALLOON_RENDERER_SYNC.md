@@ -1,63 +1,32 @@
-# Balloon Renderer Sync (Player ↔ CMS)
+# Balloon Renderer Sync (CMS → Player)
 
-The ComicBalloon speech-balloon renderer exists twice in the PanelWave
-ecosystem, deliberately:
+The ComicBalloon speech-balloon engine exists in two places, deliberately. Since
+2026-09-27 the **CMS editor holds the master copy**: balloons are designed and
+tested in the editor, and the player carries a byte-for-byte synced copy so the
+reader and the CMS preview render balloons exactly like the editor.
 
-| Concern | Player (this repo, **canonical**) | CMS (canvas fork) |
+| File | Master (edit here) | Synced copy in this repo |
 |---|---|---|
-| SVG renderer | `projects/player/src/lib/utils/comic-balloon.ts` | `apps/cms-frontend/src/app/core/utils/comic-balloon.ts` |
-| Config model / merge / converters | `projects/player/src/lib/utils/balloon-config.ts` (+ interfaces in `src/lib/types`) | `apps/cms-frontend/src/app/core/models/balloon-config.model.ts` |
+| SVG renderer | `panelwave-cms/apps/cms-frontend/src/app/core/utils/comic-balloon.ts` | `projects/player/src/lib/utils/comic-balloon.ts` |
+| Tail / geometry helpers | `panelwave-cms/apps/cms-frontend/src/app/core/utils/balloon-geometry.ts` | `projects/player/src/lib/utils/balloon-geometry.ts` |
 
-Per project convention ("change rendering behavior in the player, not by
-forking it into the CMS"), the player is the canonical renderer. The CMS fork
-exists because the editor draws balloons with **Canvas 2D `Path2D`** (via the
-public `createSquirclePath` / `createThoughtBalloonPath` / `createShoutBalloonPath`
-methods) instead of SVG, and additionally auto-sizes bubbles by running this
-same renderer headless (its `BalloonMeasurementService`). Any divergence in
-the *geometry* between the two copies is therefore a WYSIWYG bug.
+Both synced files start with a `SYNCED FROM … — DO NOT EDIT HERE` banner.
 
-## Policy
+**Player-owned (not synced):** `projects/player/src/lib/utils/balloon-config.ts`
+(`DEFAULT_BALLOON_CONFIG`, `mergeBalloonConfig`, the render/tail option
+converters) and the interfaces in `projects/player/src/lib/types` (aligned with
+`@panelwave/types`). Keep their semantics aligned with the CMS's
+`balloon-config.model.ts` by hand.
 
-- **Rendering/geometry changes land in the player first**, then get ported to
-  the CMS fork **in the same change set** (path formulas, the superellipse
-  exponent `n = 2 + (1 - cornerRadius) * 3`, tail math, padding, dash
-  patterns, hideBorder behavior, default values in `DEFAULT_BALLOON_CONFIG`,
-  `mergeBalloonConfig`, `balloonConfigToRenderOptions` / `balloonConfigToTailOptions`).
-- **Editor-only surface stays in the CMS** and must not be ported here:
-  `BALLOON_FONTS` / `getBalloonFontGroups` (UI font registry),
-  `diffBalloonConfig`, `normalizeBalloonOverride` (override-diff editing), and
-  the CMS's shared tail-drag math (`core/utils/balloon-geometry.ts`).
-- **Player-only surface:** interface definitions live in
-  `projects/player/src/lib/types` (aligned with `@panelwave/types`) rather than
-  in the utils file; stylistic/lint differences are fine.
+## Workflow for a rendering change
 
-## How to check for drift
+1. Edit the master files in `panelwave-cms` and test in the editor.
+2. In `panelwave-cms`, run `npm run sync:balloon` (copies the files into the
+   sibling `../panelwave-player` checkout). `npm run check:balloon` reports drift
+   without copying.
+3. Commit the synced copy in this repo, run `ng test player`, and release the
+   player when due.
+4. Refresh the CMS preview embed (`scripts/update-player-embed.ps1` in
+   `panelwave-cms`).
 
-From the player repo root (umbrella workspace layout):
-
-```powershell
-git diff --no-index `
-  ../panelwave-cms/apps/cms-frontend/src/app/core/utils/comic-balloon.ts `
-  projects/player/src/lib/utils/comic-balloon.ts
-
-git diff --no-index `
-  ../panelwave-cms/apps/cms-frontend/src/app/core/models/balloon-config.model.ts `
-  projects/player/src/lib/utils/balloon-config.ts
-```
-
-Classify every hunk as **geometry** (must be identical — port it),
-**editor-only** (leave in CMS), or **organizational/stylistic** (fine).
-
-## Last audit: 2026-07-02
-
-Result: **no geometry drift.**
-
-- `comic-balloon.ts`: differences are lint-level (explicit types vs inferred,
-  `self` alias vs arrow-function `this`) plus the player's removal of the
-  CMS's `textExtraPad` block — verified dead code in the CMS (computed, never
-  read).
-- `balloon-config`: the player imports its interfaces from `../types` instead
-  of declaring them inline, and correctly omits the CMS editor-only utilities
-  listed above. `DEFAULT_BALLOON_CONFIG`, `mergeBalloonConfig` and both
-  converter functions are semantically identical (only TS parameter/return
-  typing differs).
+Never fix balloon geometry in this repo directly: the next sync overwrites it.

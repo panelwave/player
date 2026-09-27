@@ -92,8 +92,9 @@ mechanical refactors in separate commits.
 Releases are cut from `master` with `.github/workflows/release.yml`
 (`workflow_dispatch` with the semver bump). It bumps the library version,
 builds `dist/player`, publishes `@panelwave/player` to npm and creates the
-GitHub release from the CHANGELOG section. See the workflow file for the
-required `NPM_TOKEN` secret.
+GitHub release. Publishing uses npm trusted publishing (OIDC): there is no
+`NPM_TOKEN` secret, and npm only accepts publishes from this repository's
+`release.yml`, so don't rename that workflow.
 
 ## License
 

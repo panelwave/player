@@ -53,8 +53,9 @@ it into a complete reading experience:
 
 Stories are authored in the PanelWave CMS or written by hand against the
 [open JSON Schema](https://github.com/panelwave/schema). The player supports
-format features through 1.4: video panels, edge-transition inheritance,
-typography style presets and the infinite canvas.
+manifests up to format 1.5 (video panels, edge-transition inheritance,
+typography style presets, the infinite canvas; 1.5's asset folders and
+localization blocks are authoring metadata the player doesn't need).
 
 ## Installation
 
@@ -153,7 +154,7 @@ You can also pass a manifest object instead of a URL: `[manifest]="manifest"`
 | `initialChapterId` / `initialPanelId` | `string` | | Start at a specific position (otherwise: bookmark, then chapter entry) |
 | `initialVariables` | `Record<string, unknown>` | | Seed story variables once at start. May set `readOnly` variables, e.g. a verified `user.age` from your account system |
 | `showToolbar` | `boolean` | `false` | Show the reader toolbar |
-| `autoplay` / `secondsPerPanel` | `boolean` / `number` | `false` / `5` | Auto-advance through panels |
+| `secondsPerPanel` | `number` | `5` | Autoplay interval. Readers start autoplay from the toolbar; the `autoplay` input exists but is not applied yet |
 | `reducedMotion` | `boolean` | `false` | Force reduced motion (the OS setting and the reader's preference also apply) |
 | `viewModeOverride` | `'auto' \| 'panel' \| 'canvas'` | `'auto'` | Force panel or infinite-canvas view |
 | `entitlementSnapshot` | `EntitlementSnapshot` | anonymous | What the reader owns; turns the manifest's `paywall.rules` on |
