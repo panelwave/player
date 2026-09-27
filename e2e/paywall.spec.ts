@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openPlayer, expectPanel } from './helpers/player';
+import { openPlayer, expectPanel, stubManifest } from './helpers/player';
 
 /**
  * Checklist: "Paywall blocks content".
@@ -52,5 +52,62 @@ test.describe('entitlement gating', () => {
     await page.keyboard.press('ArrowRight');
     await expectPanel(page, 'p1-3');
     await expect(page.locator('.error-container')).toHaveCount(0);
+  });
+});
+
+test.describe('paywall overlay', () => {
+  test('story keys do not move the reader while the paywall is open', async ({ page }) => {
+    await openPlayer(page, '?deny=p1-3');
+    await page.keyboard.press('ArrowRight');
+    await expectPanel(page, 'p1-2');
+
+    await page.keyboard.press('ArrowRight');
+    const overlay = page.locator('pw-paywall-overlay .paywall-modal');
+    await expect(overlay).toBeVisible();
+
+    // Behind the overlay the story must not react.
+    await page.keyboard.press('ArrowLeft');
+    await expect(overlay).toBeVisible();
+    await expectPanel(page, 'p1-2');
+
+    await page.keyboard.press('Escape');
+    await expect(overlay).toHaveCount(0);
+    await page.keyboard.press('ArrowLeft');
+    await expectPanel(page, 'p1-1');
+  });
+
+  test('a manifest purchase rule offers a Buy option next to sign-in', async ({ page }) => {
+    const response = await page.request.get('/assets/sample-manifest.json');
+    const manifest = await response.json();
+    manifest.paywall = {
+      rules: [
+        {
+          id: 'buy-p1-2',
+          scope: 'panel',
+          refId: 'p1-2',
+          requireEntitlement: 'purchase',
+          entitlementType: 'purchase',
+          requiredProductIds: ['alley-pack'],
+          name: 'Alley pack',
+          price: { amount: 1.99, currency: 'USD' },
+        },
+      ],
+    };
+    await stubManifest(page, manifest);
+    await openPlayer(page);
+
+    await page.keyboard.press('ArrowRight');
+    const overlay = page.locator('pw-paywall-overlay .paywall-modal');
+    await expect(overlay.locator('.paywall-message')).toHaveText('This part of the story is available to buy.');
+    const buy = overlay.locator('.purchase-option');
+    await expect(buy).toHaveCount(1);
+    await expect(buy.locator('.option-name')).toHaveText('Alley pack');
+    await expect(buy.locator('.option-price')).toHaveText('$1.99');
+    await expect(overlay.locator('.login-btn')).toBeVisible();
+
+    // The host owns checkout: choosing the option closes the overlay.
+    await buy.click();
+    await expect(overlay).toHaveCount(0);
+    await expectPanel(page, 'p1-1');
   });
 });
