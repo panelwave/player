@@ -40,6 +40,7 @@ import type {
   VariableDefinition,
   LocalizedString,
   Mutation,
+  Edge,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -2694,34 +2695,37 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
 
   // ── Branch choices ────────────────────────────────────────────────────────
 
-  /** More than one edge leaves the current panel — the toolbar shows "Choices". */
+  /**
+   * At least two paths out of the current panel are open right now (edge
+   * conditions evaluated exactly like the chooser does) — the toolbar shows
+   * "Choices". A closed conditional edge does not count.
+   */
   get hasBranchesAhead(): boolean {
-    const panelId = this.getCurrentPanelId();
-    const edges = this.currentChapter?.graph?.edges;
-    if (!panelId || !edges) {
-      return false;
-    }
-    let count = 0;
-    for (const edge of edges) {
-      if (edge.from === panelId && ++count > 1) {
-        return true;
-      }
-    }
-    return false;
+    return this.openEdges().length > 1;
   }
 
-  /** Outgoing edges whose conditions pass right now, with reader-facing labels. */
-  private computeBranchChoices(): BranchChoice[] {
+  /** Outgoing edges of the current panel whose conditions pass right now. */
+  private openEdges(): Edge[] {
     const chapter = this.currentChapter;
     const panelId = this.getCurrentPanelId();
-    if (!chapter?.graph || !panelId) {
+    if (!chapter || !panelId) {
       return [];
     }
+    const outgoing = chapter.graph?.edges?.filter((edge) => edge.from === panelId) ?? [];
+    if (!outgoing.some((edge) => edge.condition)) {
+      // Nothing to evaluate: skip building a variable context on every check.
+      return outgoing;
+    }
     const context = this.variableStore.createContext(chapter.id);
-    return chapter.graph.edges
-      .filter((edge) => edge.from === panelId)
-      .filter((edge) => !edge.condition || evaluateJsonLogic(edge.condition, context))
-      .map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter, index) }));
+    return outgoing.filter((edge) => !edge.condition || evaluateJsonLogic(edge.condition, context));
+  }
+
+  /** Open outgoing edges with reader-facing labels. */
+  private computeBranchChoices(): BranchChoice[] {
+    const chapter = this.currentChapter;
+    return chapter
+      ? this.openEdges().map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter, index) }))
+      : [];
   }
 
   private branchLabel(edge: { label?: Record<string, string>; to: string }, chapter: Chapter, index: number): string {

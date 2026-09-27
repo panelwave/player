@@ -152,4 +152,45 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     });
   });
 
+
+  describe('Choices button', () => {
+    const branching = (condition?: unknown) =>
+      buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            title: { 'en-US': 'One' },
+            panels: { p1: { layers: [] }, p2: { layers: [] }, p3: { layers: [] } },
+            graph: {
+              entry: 'p1',
+              edges: [
+                { from: 'p1', to: 'p2' },
+                { from: 'p1', to: 'p3', ...(condition ? { condition } : {}) },
+              ],
+            },
+          },
+        ],
+      });
+
+    it('shows with two open paths', async () => {
+      shell.manifest = branching();
+      await init();
+      expect(shell.hasBranchesAhead).toBeTrue();
+    });
+
+    it('hides when a conditional edge is closed, and shows once it opens', async () => {
+      shell.manifest = branching({ '>': [{ var: 'tries' }, 0] });
+      await init();
+      expect(shell.hasBranchesAhead).toBeFalse();
+
+      variables.set('tries', 1, 'session');
+      expect(shell.hasBranchesAhead).toBeTrue();
+    });
+
+    it('hides on a panel with a single path', async () => {
+      await init();
+      expect(shell.hasBranchesAhead).toBeFalse();
+    });
+  });
 });
