@@ -1,8 +1,9 @@
 # Release @panelwave/player: bump the library version, build, publish to npm,
 # tag and create the GitHub release. Manual trigger only.
 #
-# Required secret: NPM_TOKEN (automation token with publish rights on the
-# @panelwave scope).
+# Publishing uses npm trusted publishing (OIDC): no NPM_TOKEN. The package has
+# panelwave/player + release.yml registered as its trusted publisher on
+# npmjs.com, so the workflow filename must stay release.yml.
 name: release
 
 on:
@@ -16,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -27,6 +29,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
+          # npm >= 11.5.1 is required for trusted publishing; Node 24 ships it.
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
@@ -52,8 +55,6 @@ jobs:
       - name: Publish to npm
         run: npm publish --access public
         working-directory: dist/player
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Commit + tag
         run: |
