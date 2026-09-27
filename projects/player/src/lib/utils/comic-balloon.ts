@@ -1,10 +1,14 @@
+// SYNCED FROM panelwave-cms/apps/cms-frontend/src/app/core/utils/comic-balloon.ts — DO NOT EDIT HERE.
+// Edit the CMS copy, then run in panelwave-cms: npm run sync:balloon
+
 /**
  * Comic Book Balloon Renderer (TypeScript)
  * Creates dynamic speech balloons with auto-sizing and smooth tails.
  *
- * CANONICAL SOURCE of the balloon engine. The CMS editor uses a synced copy
- * (panelwave-cms: `node scripts/sync-balloon-engine.mjs`) so the editor and
- * the reader/preview render balloons identically — edit here, then sync.
+ * MASTER COPY of the balloon engine (the editor is where balloons are
+ * designed and tested). The player library holds a synced copy so the
+ * reader/preview render balloons exactly like the editor — edit here, then
+ * run `npm run sync:balloon` in panelwave-cms.
  */
 
 import { thoughtTrailCircles } from './balloon-geometry';

@@ -1,3 +1,6 @@
+// SYNCED FROM panelwave-cms/apps/cms-frontend/src/app/core/utils/balloon-geometry.ts — DO NOT EDIT HERE.
+// Edit the CMS copy, then run in panelwave-cms: npm run sync:balloon
+
 /**
  * Pure geometry helpers shared by the canvas renderer and the speech-bubble
  * service so the draggable tail handle and the drawn ComicBalloon tail always
