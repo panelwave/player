@@ -39,6 +39,7 @@ import type {
   VariableContext,
   VariableDefinition,
   LocalizedString,
+  Mutation,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -406,6 +407,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     panelId: string;
     transition?: Transition;
     cameraMove?: CameraMove;
+    mutations?: Mutation[];
   } | null = null;
 
   /** Reader's like / bookmark for this work (persisted per work on the device). */
@@ -1055,12 +1057,16 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * @param transition - Optional transition to render for this panel change
    *   (already resolved against the outputPresets default). Omitted for
    *   non-adjacent jumps (TOC, initial load), which swap instantly.
+   * @param mutations - Variable mutations of the traversed edge. Applied only
+   *   once the navigation is allowed (after the paywall / age gate), so a
+   *   blocked attempt never changes story state.
    */
   async navigateToPanel(
     chapterId: string,
     panelId: string,
     transition?: Transition,
-    cameraMove?: CameraMove
+    cameraMove?: CameraMove,
+    mutations?: Mutation[]
   ): Promise<void> {
     try {
       this.viewportTransition = transition ?? null;
@@ -1083,7 +1089,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         // the last panel they were entitled to see.
         if (this.paywallService.evaluate(panelId).reason === 'age_verification_required') {
           // An age gate is answered in-player (birth date), not by checkout.
-          this.openAgeGate(chapterId, panelId, transition, cameraMove);
+          this.openAgeGate(chapterId, panelId, transition, cameraMove, mutations);
           return;
         }
         const gate = this.paywallService.gateFor(panelId);
@@ -1101,6 +1107,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       const panelData = this.manifestService.getPanel(panelId);
       if (!panelData) {
         throw new Error(`Panel not found: ${panelId}`);
+      }
+
+      // Edge `action` mutations (schema: "applied when traversing this edge").
+      if (mutations?.length) {
+        this.variableStore.applyMutations(mutations, { chapterId });
       }
 
       const chapterChanged = this.currentChapter !== chapter;
@@ -1333,16 +1344,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       );
 
       if (result.nextPanelId) {
-        // Edge `action` mutations (schema: "applied when traversing this
-        // edge") were returned by the flow engine but never applied here.
-        if (result.action?.length) {
-          this.variableStore.applyMutations(result.action, { chapterId: this.currentChapter.id });
-        }
         await this.navigateToPanel(
           this.currentChapter.id,
           result.nextPanelId,
           result.transition,
-          result.cameraMove
+          result.cameraMove,
+          result.action
         );
       }
     } catch (err) {
@@ -1549,7 +1556,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         panelId,
         edge.transition,
         edge.cameraMove ??
-          this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings)
+          this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings),
+        edge.action
       );
       return;
     }
@@ -2549,9 +2557,15 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private static readonly AGE_VERIFIED_STORAGE_KEY = 'pw-age-verified';
 
   /** Raise the age gate for a panel and remember where the reader was going. */
-  private openAgeGate(chapterId: string, panelId: string, transition?: Transition, cameraMove?: CameraMove): void {
+  private openAgeGate(
+    chapterId: string,
+    panelId: string,
+    transition?: Transition,
+    cameraMove?: CameraMove,
+    mutations?: Mutation[]
+  ): void {
     this.ageGateMinimumAge = this.paywallService.ruleFor(panelId)?.minimumAge ?? 18;
-    this.pendingAgeGatedNavigation = { chapterId, panelId, transition, cameraMove };
+    this.pendingAgeGatedNavigation = { chapterId, panelId, transition, cameraMove, mutations };
     this.ageGateVisible = true;
     this.cdr.markForCheck();
   }
@@ -2587,7 +2601,13 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     if (pending && this.paywallService.canAccess(pending.panelId)) {
-      await this.navigateToPanel(pending.chapterId, pending.panelId, pending.transition, pending.cameraMove);
+      await this.navigateToPanel(
+        pending.chapterId,
+        pending.panelId,
+        pending.transition,
+        pending.cameraMove,
+        pending.mutations
+      );
     }
   }
 
@@ -2737,14 +2757,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       to: choice.edge.to,
       index: choice.index,
     });
-    if (choice.edge.action?.length) {
-      this.variableStore.applyMutations(choice.edge.action, { chapterId: chapter.id });
-    }
     await this.navigateToPanel(
       chapter.id,
       choice.edge.to,
       choice.edge.transition ?? this.flowEngine.getDefaultTransition(settings),
-      choice.edge.cameraMove ?? this.flowEngine.getDefaultCameraMove(settings)
+      choice.edge.cameraMove ?? this.flowEngine.getDefaultCameraMove(settings),
+      choice.edge.action
     );
   }
 }
