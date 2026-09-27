@@ -342,4 +342,34 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(emitted[0].productId).toBeUndefined();
     });
   });
+
+  describe('age on top of a purchase', () => {
+    it('asks for the age, then shows the paywall with Buy, then lets a buyer through', async () => {
+      shell.manifest = buildManifest({
+        paywall: {
+          rules: [
+            { id: 'adult-sale', scope: 'panel', refId: 'p2', requireEntitlement: 'token', ageGate: 18, requiredProductIds: ['p2-product'] },
+          ],
+        },
+      });
+      await init();
+
+      await shell.navigateNext();
+      expect(shell.ageGateVisible).toBeTrue();
+      expect(shell.paywallVisible).toBeFalse();
+
+      await shell.onAgeGateVerify({ verified: true, age: 30 });
+      expect(shell.ageGateVisible).toBeFalse();
+      expect(shell.paywallVisible).toBeTrue();
+      expect(shell.paywallGate?.lockReason).toBe('purchase_required');
+      expect(shell.paywallGate?.options?.map((o) => o.productId)).toEqual(['p2-product']);
+      expect(shell.getCurrentPanelId()).toBe('p1');
+      expect(tries()).toBe(0);
+
+      await shell.refreshEntitlements({ subscriptionTier: null, purchasedProductIds: ['p2-product'], ageVerified: false });
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('p2');
+      expect(tries()).toBe(1);
+    });
+  });
 });

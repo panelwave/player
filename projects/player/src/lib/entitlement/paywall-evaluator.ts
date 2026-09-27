@@ -34,6 +34,11 @@
 import type { PanelWaveManifest, PaywallRule as ManifestPaywallRule } from '../types/manifest.types';
 
 export type EvaluatorEntitlementType = 'free' | 'subscription' | 'purchase' | 'age_gate';
+/**
+ * `global` is NOT in the schema's scope enum (work | chapter | panel |
+ * extras). It is still accepted as an alias of `work` so old manifests and
+ * CMS-internal rules keep gating; nothing in the player emits it.
+ */
 export type EvaluatorScope = 'global' | 'work' | 'chapter' | 'panel' | 'extras';
 
 /** The rule shape the evaluator needs (a superset of the manifest rule). */
@@ -46,7 +51,11 @@ export interface EvaluatorRule {
   subscriptionTiers?: string[];
   /** Products that satisfy a purchase rule; empty/absent = any purchase. */
   requiredProductIds?: string[];
-  /** Minimum age for an age_gate rule (default 18). */
+  /**
+   * Minimum age. For an `age_gate` rule it is the whole requirement (default
+   * 18); on any other rule it is an extra check ON TOP OF the entitlement
+   * (schema `ageGate`): the reader needs both.
+   */
   minimumAge?: number;
   /** Free-preview length for work/global rules (panels in reading order). */
   previewPanelCount?: number;
@@ -101,8 +110,23 @@ export interface AccessDecision {
 
 const DEFAULT_MINIMUM_AGE = 18;
 
-/** Does the reader's snapshot satisfy this rule's requirement? */
+/** Does the rule carry an age requirement the reader has not met? */
+function ageMissing(rule: EvaluatorRule, entitlement: EntitlementSnapshot): boolean {
+  if (rule.entitlementType !== 'age_gate' && rule.minimumAge === undefined) return false;
+  const min = rule.minimumAge ?? DEFAULT_MINIMUM_AGE;
+  return !(entitlement.ageVerified && (entitlement.age ?? 0) >= min);
+}
+
+/**
+ * Does the reader's snapshot satisfy this rule's requirement? A rule with a
+ * `minimumAge` needs the age AND its entitlement.
+ */
 export function satisfiesRule(rule: EvaluatorRule, entitlement: EntitlementSnapshot): boolean {
+  return !ageMissing(rule, entitlement) && hasEntitlement(rule, entitlement);
+}
+
+/** The entitlement part of a rule (the age part is `ageMissing`). */
+function hasEntitlement(rule: EvaluatorRule, entitlement: EntitlementSnapshot): boolean {
   switch (rule.entitlementType) {
     case 'free':
       return true;
@@ -116,14 +140,17 @@ export function satisfiesRule(rule: EvaluatorRule, entitlement: EntitlementSnaps
       if (required.length === 0) return entitlement.purchasedProductIds.length > 0;
       return required.some((id) => entitlement.purchasedProductIds.includes(id));
     }
-    case 'age_gate': {
-      const min = rule.minimumAge ?? DEFAULT_MINIMUM_AGE;
-      return entitlement.ageVerified && (entitlement.age ?? 0) >= min;
-    }
+    case 'age_gate':
+      return true; // the age is the whole requirement (checked by ageMissing)
   }
 }
 
-function lockReasonFor(rule: EvaluatorRule): LockReason {
+/**
+ * Why a rule locks the reader out. The age comes first: a reader who fails
+ * the age check is asked for it before being offered anything to buy.
+ */
+function lockReasonFor(rule: EvaluatorRule, entitlement: EntitlementSnapshot): LockReason {
+  if (ageMissing(rule, entitlement)) return 'age_verification_required';
   switch (rule.entitlementType) {
     case 'subscription':
       return 'subscription_required';
@@ -160,7 +187,7 @@ export function evaluatePanelAccess(
     return {
       panelId: panel.id,
       locked: !ok,
-      reason: ok ? null : lockReasonFor(panelRule),
+      reason: ok ? null : lockReasonFor(panelRule, entitlement),
       appliedRuleId: panelRule.id,
       preview: false,
     };
@@ -200,7 +227,7 @@ function gateWithPreview(
   return {
     panelId,
     locked: !ok,
-    reason: ok ? null : lockReasonFor(rule),
+    reason: ok ? null : lockReasonFor(rule, entitlement),
     appliedRuleId: rule.id,
     preview: false,
   };
@@ -255,8 +282,10 @@ const KNOWN_ENTITLEMENT_TYPES: EvaluatorEntitlementType[] = [
  * `minimumAge` written by the CMS exporter. Prefer the CMS names and fall
  * back to the originals, so a manifest from either era gates identically.
  *
- * A rule with `minimumAge`/`ageGate` but no recognised entitlement type is an
- * age gate — that is the only sane reading of a rule that names an age.
+ * `ageGate` / `minimumAge` is an age check ON TOP OF the entitlement (schema
+ * semantics). Only a rule that declares no entitlement at all but names an
+ * age becomes a pure age gate; a custom marker plus an age stays a purchase
+ * (or subscription) gate that also requires the age.
  */
 export function fromManifestRule(rule: ManifestPaywallRule, index: number): EvaluatorRule {
   const raw = rule as ManifestPaywallRule & Record<string, unknown>;
@@ -267,14 +296,15 @@ export function fromManifestRule(rule: ManifestPaywallRule, index: number): Eval
   let entitlementType: EvaluatorEntitlementType;
   if (declared && KNOWN_ENTITLEMENT_TYPES.includes(declared as EvaluatorEntitlementType)) {
     entitlementType = declared as EvaluatorEntitlementType;
-  } else if (minimumAge !== undefined) {
-    entitlementType = 'age_gate';
   } else if (declared === 'premium') {
     // Original format's subscription marker.
     entitlementType = 'subscription';
   } else if (declared) {
     // 'token', 'purchaseId', or any custom marker: treat as a purchase gate.
     entitlementType = 'purchase';
+  } else if (minimumAge !== undefined) {
+    // No entitlement declared, only an age: a pure age gate.
+    entitlementType = 'age_gate';
   } else {
     entitlementType = 'free';
   }

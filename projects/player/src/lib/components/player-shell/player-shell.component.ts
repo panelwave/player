@@ -2745,7 +2745,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     this.pendingAgeGatedNavigation = null;
     this.cdr.markForCheck();
 
-    if (pending && this.paywallService.canAccess(pending.panelId)) {
+    // Retry the move: navigateToPanel re-checks the gate, so a rule that
+    // also needs a purchase / subscription now raises the paywall (with its
+    // Buy / Subscribe options) instead of letting the reader through.
+    if (pending) {
       await this.navigateToPanel(
         pending.chapterId,
         pending.panelId,

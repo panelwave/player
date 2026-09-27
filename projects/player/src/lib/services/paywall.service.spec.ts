@@ -149,6 +149,19 @@ describe('PaywallService', () => {
     expect(service.gateFor('p3')?.options).toEqual([]);
   });
 
+  it('a purchase rule with an age raises the age gate first, then the paywall with Buy', () => {
+    service.setManifest(manifestWithGate({ minimumAge: 18 }));
+    expect(service.gateFor('p3')?.lockReason).toBe('age_verification_required');
+
+    service.setSnapshot({ subscriptionTier: null, purchasedProductIds: [], ageVerified: true, age: 30 });
+    const gate = service.gateFor('p3');
+    expect(gate?.lockReason).toBe('purchase_required');
+    expect(gate?.options?.map((o) => o.productId)).toEqual(['book-1']);
+
+    service.setSnapshot({ subscriptionTier: null, purchasedProductIds: ['book-1'], ageVerified: true, age: 30 });
+    expect(service.canAccess('p3')).toBe(true);
+  });
+
   it('re-evaluates when the snapshot changes', () => {
     service.setManifest(manifestWithGate());
     expect(service.canAccess('p3')).toBe(false);

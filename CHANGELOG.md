@@ -58,6 +58,13 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- `ageGate` / `minimumAge` is an age check on top of the rule's entitlement
+  (schema semantics): a rule with a custom `requireEntitlement` marker (or
+  `premium`) plus an age no longer degrades to a pure age gate, and purchase /
+  subscription rules with an age require both. The reader is asked for the age
+  first; once it passes, the paywall offers the Buy / Subscribe options. Only a
+  rule with no entitlement and an age is a pure age gate. `scope: "global"`
+  (not in the schema) is still read as an alias of `work`.
 - ToC and thumbnail strip were empty when the work was loaded via
   `manifestUrl`.
 - The `autoplay` input was never applied.

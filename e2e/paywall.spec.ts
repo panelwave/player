@@ -110,4 +110,39 @@ test.describe('paywall overlay', () => {
     await expect(overlay).toHaveCount(0);
     await expectPanel(page, 'p1-1');
   });
+
+  test('a paid rule with an age asks for the age first, then offers Buy', async ({ page }) => {
+    const response = await page.request.get('/assets/sample-manifest.json');
+    const manifest = await response.json();
+    manifest.paywall = {
+      rules: [
+        {
+          id: 'adult-p1-2',
+          scope: 'panel',
+          refId: 'p1-2',
+          requireEntitlement: 'adult-pack',
+          ageGate: 18,
+          name: 'Adult pack',
+        },
+      ],
+    };
+    await stubManifest(page, manifest);
+    await openPlayer(page);
+
+    await page.keyboard.press('ArrowRight');
+    const gate = page.locator('pw-age-gate .age-gate-modal');
+    await expect(gate).toBeVisible();
+    await gate.locator('#birth-month').selectOption('1');
+    await gate.locator('#birth-day').selectOption('1');
+    await gate.locator('#birth-year').selectOption('1980');
+    await gate.locator('.verify-btn').click();
+
+    // Old enough, but the pack is not bought: the paywall, not the panel.
+    await expect(gate).toHaveCount(0);
+    const overlay = page.locator('pw-paywall-overlay .paywall-modal');
+    await expect(overlay.locator('.paywall-message')).toHaveText('This part of the story is available to buy.');
+    await expect(overlay.locator('.purchase-option .option-name')).toHaveText('Adult pack');
+    await expectPanel(page, 'p1-1');
+  });
 });
+

@@ -202,6 +202,9 @@ navigation stops at the gate. Works without paywall rules aren't affected.
   `chapter` rules gate only the chapter named by `refId`, with the preview
   counted within that chapter; `panel` rules gate exactly their panels;
   `extras` rules lock an extras block, never panels.
+- **Age:** `ageGate` / `minimumAge` is checked on top of the rule's
+  entitlement. The reader answers the age gate first, then gets the paywall
+  if the purchase or subscription is still missing.
 - **Buy / Subscribe:** the overlay offers a Buy option per product of a
   purchase rule and a Subscribe option per tier of a subscription rule (name,
   description and price from the rule), next to Sign in and Maybe later.

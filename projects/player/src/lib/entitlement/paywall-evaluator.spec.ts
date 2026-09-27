@@ -75,6 +75,47 @@ describe('paywall-evaluator', () => {
     });
   });
 
+  describe('age on top of an entitlement (schema ageGate)', () => {
+    const adult = { ageVerified: true, age: 30 };
+    const minor = { ageVerified: true, age: 15 };
+
+    it('a purchase rule with an age needs both', () => {
+      const r = rule({ requiredProductIds: ['book'], minimumAge: 18 });
+      expect(satisfiesRule(r, reader({ purchasedProductIds: ['book'], ...adult }))).toBe(true);
+      expect(satisfiesRule(r, reader({ purchasedProductIds: ['book'] }))).toBe(false);
+      expect(satisfiesRule(r, reader({ purchasedProductIds: ['book'], ...minor }))).toBe(false);
+      expect(satisfiesRule(r, reader(adult))).toBe(false);
+    });
+
+    it('a subscription rule with an age needs both', () => {
+      const r = rule({ entitlementType: 'subscription', minimumAge: 16 });
+      expect(satisfiesRule(r, reader({ subscriptionTier: 'gold', ...adult }))).toBe(true);
+      expect(satisfiesRule(r, reader({ subscriptionTier: 'gold' }))).toBe(false);
+      expect(satisfiesRule(r, reader(adult))).toBe(false);
+    });
+
+    it('asks for the age first, then the entitlement', () => {
+      const rules = [rule({ scope: 'panel', targetPanelIds: ['p'], requiredProductIds: ['book'], minimumAge: 18 })];
+      const at = (who: EntitlementSnapshot) => evaluatePanelAccess(rules, who, { id: 'p', index: 0 });
+      expect(at(ANONYMOUS_READER).reason).toBe('age_verification_required');
+      expect(at(reader({ purchasedProductIds: ['book'] })).reason).toBe('age_verification_required');
+      expect(at(reader(minor)).reason).toBe('age_verification_required');
+      expect(at(reader(adult)).reason).toBe('purchase_required');
+      expect(at(reader({ purchasedProductIds: ['book'], ...adult })).locked).toBe(false);
+    });
+
+    it('applies to work-gate previews the same way', () => {
+      const rules = [rule({ entitlementType: 'subscription', minimumAge: 18, previewPanelCount: 1 })];
+      expect(evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'a', index: 0 }).locked).toBe(false);
+      expect(evaluatePanelAccess(rules, reader(adult), { id: 'b', index: 1 }).reason).toBe('subscription_required');
+    });
+
+    it('treats "global" as an alias of "work"', () => {
+      const rules = [rule({ scope: 'global' })];
+      expect(evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'p', index: 0 }).locked).toBe(true);
+    });
+  });
+
   describe('evaluatePanelAccess', () => {
     it('leaves a work with no rules entirely open', () => {
       const d = evaluatePanelAccess([], ANONYMOUS_READER, { id: 'p1', index: 0 });
@@ -215,6 +256,28 @@ describe('paywall-evaluator', () => {
     it('treats an unknown entitlement marker as a purchase gate', () => {
       const r = fromManifestRule({ scope: 'work', requireEntitlement: 'token' } as PaywallRule, 0);
       expect(r.entitlementType).toBe('purchase');
+    });
+
+    it('keeps a custom marker plus an age a purchase gate (age on top)', () => {
+      const r = fromManifestRule({ scope: 'work', requireEntitlement: 'token', ageGate: 18 } as PaywallRule, 0);
+      expect(r.entitlementType).toBe('purchase');
+      expect(r.minimumAge).toBe(18);
+      expect(satisfiesRule(r, reader({ ageVerified: true, age: 30 }))).toBe(false);
+    });
+
+    it('keeps "premium" plus an age a subscription gate', () => {
+      const r = fromManifestRule({ scope: 'work', requireEntitlement: 'premium', ageGate: 16 } as PaywallRule, 0);
+      expect(r.entitlementType).toBe('subscription');
+      expect(r.minimumAge).toBe(16);
+    });
+
+    it('keeps a known CMS type plus minimumAge', () => {
+      const r = fromManifestRule(
+        { scope: 'work', requireEntitlement: 'purchase', entitlementType: 'purchase', minimumAge: 18 } as PaywallRule,
+        0,
+      );
+      expect(r.entitlementType).toBe('purchase');
+      expect(r.minimumAge).toBe(18);
     });
 
     it('treats a rule that names an age as an age gate', () => {
