@@ -452,7 +452,7 @@ cd dist/player && npm pack --dry-run
 |---|---|---|
 | `ci.yml` | push to `master`, PRs | lint, unit tests, library build, Playwright E2E (in the `mcr.microsoft.com/playwright` image, whose tag must match the locked `@playwright/test` version) |
 | `demo-pages.yml` | push to `master` | builds the demo app and deploys it to [panelwave.github.io/player](https://panelwave.github.io/player/) |
-| `size-limit.yml` | PRs | fails when the gzipped FESM bundle exceeds 180 KB |
+| `size-limit.yml` | PRs | fails when the FESM bundle, minified + gzipped (what a host ships), exceeds 180 KB |
 | `release.yml` | manual | npm release (above) |
 
 ---
@@ -666,7 +666,7 @@ chore: Build/tooling changes
 
 | Metric | Target | Current (2026-09) |
 |--------|--------|--------|
-| Bundle size (gzipped) | ≤180KB (`size-limit` in CI) | 180KB |
+| Bundle size (minified + gzipped) | ≤180KB (`size-limit` in CI) | 106KB (raw FESM gzipped: 192KB) |
 | Lighthouse Performance | >85 | desktop ✓; mobile 74 (accepted for 1.0) |
 | Accessibility | no serious/critical axe violations | ✓ every modal, overlay and view (`e2e/accessibility.spec.ts`) |
 | Test Coverage | >80% statements | 80.4% (1539 unit specs) |
