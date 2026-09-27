@@ -399,6 +399,54 @@ describe('PlayerShellComponent auto-advance', () => {
     });
   });
 
+  describe('keyboard while a dialog is open', () => {
+    const key = (k: string, target: EventTarget = document.body): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'target', { value: target });
+      return event;
+    };
+
+    it('Escape closes the open dialog and keeps the toolbar', () => {
+      shell.toolbarVisible = true;
+      shell.languageModalVisible = true;
+      shell.handleKeyboard(key('Escape'));
+      expect(shell.languageModalVisible).toBeFalse();
+      expect(shell.toolbarVisible).toBeTrue();
+    });
+
+    it('closes nested dialogs one Escape at a time (top first)', () => {
+      shell.settingsVisible = true;
+      shell.actionModalVisible = true;
+      shell.handleKeyboard(key('Escape'));
+      expect(shell.actionModalVisible).toBeFalse();
+      expect(shell.settingsVisible).toBeTrue();
+      shell.handleKeyboard(key('Escape'));
+      expect(shell.settingsVisible).toBeFalse();
+    });
+
+    it('arrow keys do not navigate the story behind a dialog', () => {
+      const next = spyOn(shell, 'navigateNext').and.resolveTo();
+      shell.tocVisible = true;
+      shell.handleKeyboard(key('ArrowRight'));
+      expect(next).not.toHaveBeenCalled();
+      shell.tocVisible = false;
+      shell.handleKeyboard(key('ArrowRight'));
+      expect(next).toHaveBeenCalledTimes(1);
+    });
+
+    it('an Escape that a dialog already handled does not hide the toolbar', () => {
+      shell.toolbarVisible = true;
+      const host = document.createElement('pw-toc-overlay');
+      const event = key('Escape', host);
+      spyOn(event, 'composedPath').and.returnValue([host, document.body, document, window]);
+      shell.handleKeyboard(event);
+      expect(shell.toolbarVisible).toBeTrue();
+
+      shell.handleKeyboard(key('Escape'));
+      expect(shell.toolbarVisible).toBeFalse();
+    });
+  });
+
   describe('tracking configuration from the manifest', () => {
     it('configures consent, whitelist and endpoint', () => {
       priv().configureTracking({

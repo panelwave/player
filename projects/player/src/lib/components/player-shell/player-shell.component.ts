@@ -1958,6 +1958,21 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // While a dialog is open the story behind it must not react: Escape
+    // closes the dialog (not the toolbar), every other shortcut is ignored.
+    if (this.closableDialogOpen()) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.closeTopDialog();
+      }
+      return;
+    }
+    // A dialog that handled Escape itself has already closed by now; the
+    // key press was meant for it, not for hiding the toolbar.
+    if (event.key === 'Escape' && this.cameFromDialog(event)) {
+      return;
+    }
+
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
@@ -2015,6 +2030,38 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
         }
         break;
     }
+  }
+
+  /** Dialogs the reader can dismiss with Escape (paywall/age gate excluded). */
+  private closableDialogOpen(): boolean {
+    return this.actionModalVisible || this.branchChooserVisible || this.shareVisible
+      || this.commentsVisible || this.extrasVisible || this.charactersVisible
+      || this.languageModalVisible || this.settingsVisible || this.tocVisible;
+  }
+
+  /** Close the most recently layered dialog (nested ones first). */
+  private closeTopDialog(): void {
+    if (this.actionModalVisible) { this.actionModalVisible = false; return; }
+    if (this.branchChooserVisible) { this.branchChooserVisible = false; return; }
+    if (this.shareVisible) { this.shareVisible = false; return; }
+    if (this.commentsVisible) { this.commentsVisible = false; return; }
+    if (this.extrasVisible) { this.extrasVisible = false; return; }
+    if (this.charactersVisible) { this.charactersVisible = false; return; }
+    if (this.languageModalVisible) { this.languageModalVisible = false; return; }
+    if (this.settingsVisible) { this.settingsVisible = false; return; }
+    if (this.tocVisible) { this.tocVisible = false; }
+  }
+
+  private static readonly DIALOG_HOSTS = new Set([
+    'PW-ACTION-MODAL', 'PW-BRANCH-CHOOSER', 'PW-CHARACTER-ROSTER', 'PW-COMMENTS-DRAWER',
+    'PW-EXTRAS-VIEWER', 'PW-LANGUAGE-MODAL', 'PW-SETTINGS-MODAL', 'PW-SHARE-MODAL',
+    'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY',
+  ]);
+
+  private cameFromDialog(event: KeyboardEvent): boolean {
+    return event.composedPath().some(
+      (node) => node instanceof Element && PlayerShellComponent.DIALOG_HOSTS.has(node.tagName)
+    );
   }
 
   /**

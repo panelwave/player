@@ -11,7 +11,7 @@ import { Page, Route, expect } from '@playwright/test';
 
 /** 1x1 dark-blue PNG, base64. Served for every stubbed image request. */
 const TINY_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkKPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGMQkbP5DwACJgFuhbKafgAAAABJRU5ErkJggg==',
   'base64'
 );
 
@@ -25,10 +25,17 @@ export async function stubExternalImages(page: Page): Promise<void> {
   await page.route('**://i.pravatar.cc/**', fulfillPng);
   // Catch-all for any other cross-origin image so no test ever waits on
   // the network. Same-origin (localhost) requests are never intercepted.
+  // Registered last, so it takes precedence over the host routes above:
+  // image hosts must still get the PNG here — the preloader fetch()es art
+  // (resourceType "fetch"), and an empty 204 made every preload fail to decode.
+  const IMAGE_HOSTS = /(^|\.)(picsum\.photos|pravatar\.cc)$/;
   await page.route(
     (url) => url.hostname !== 'localhost' && url.hostname !== '127.0.0.1',
-    (route) =>
-      route.request().resourceType() === 'image' ? fulfillPng(route) : route.fulfill({ status: 204, body: '' })
+    (route) => {
+      const request = route.request();
+      const isImage = request.resourceType() === 'image' || IMAGE_HOSTS.test(new URL(request.url()).hostname);
+      return isImage ? fulfillPng(route) : route.fulfill({ status: 204, body: '' });
+    }
   );
 }
 
