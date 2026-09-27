@@ -1532,7 +1532,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   showToolbarTemporarily(): void {
     this.toolbarVisible = true;
-    
+
     // Auto-hide after 5 seconds. The timeout runs outside any template
     // event, so OnPush needs an explicit markForCheck to repaint.
     setTimeout(() => {
@@ -1572,14 +1572,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   getCurrentPanelId(): string | undefined {
     if (!this.currentPanel || !this.currentChapter) return undefined;
-    
+
     // Find the panel ID by searching in the chapter's panels
     for (const [panelId, panel] of Object.entries(this.currentChapter.panels)) {
       if (panel === this.currentPanel) {
         return panelId;
       }
     }
-    
+
     return undefined;
   }
 
@@ -1831,7 +1831,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
 
   onToggleAutoplay(): void {
     this.autoplayEnabled = !this.autoplayEnabled;
-    
+
     if (this.autoplayEnabled) {
       this.startAutoplay();
     } else {
@@ -1841,7 +1841,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
 
   onSecondsPerPanelChange(seconds: number): void {
     this.secondsPerPanel = seconds;
-    
+
     // Restart autoplay if active to apply new timing
     if (this.autoplayEnabled) {
       this.stopAutoplay();
@@ -2452,7 +2452,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   private startAutoplayProgress(): void {
     this.stopAutoplayProgress();
-    
+
     this.autoplayProgressInterval = setInterval(() => {
       const elapsed = Date.now() - this.autoplayStartTime;
       const progress = Math.min(100, (elapsed / this.autoplayDuration) * 100);
@@ -2475,10 +2475,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   private findPageContainingPanel(): Page | undefined {
     if (!this.currentChapter) return undefined;
-    
+
     const currentPanelId = this.getCurrentPanelId();
     if (!currentPanelId) return undefined;
-    
+
     // Search through pages in the current chapter
     const pages = this.currentChapter.pages || [];
     for (const page of pages) {
@@ -2487,7 +2487,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         return page;
       }
     }
-    
+
     return undefined;
   }
 
@@ -2496,15 +2496,15 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   navigateToNextPage(): void {
     if (!this.currentChapter?.pages || !this.currentPage) return;
-    
+
     const pages = this.currentChapter.pages;
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
-    
+
     if (currentIndex === -1 || currentIndex >= pages.length - 1) {
       console.log('Already at last page');
       return;
     }
-    
+
     // Move to next page
     this.currentPage = pages[currentIndex + 1];
 
@@ -2537,15 +2537,15 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   navigateToPreviousPage(): void {
     if (!this.currentChapter?.pages || !this.currentPage) return;
-    
+
     const pages = this.currentChapter.pages;
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
-    
+
     if (currentIndex <= 0) {
       console.log('Already at first page');
       return;
     }
-    
+
     // Move to previous page
     this.currentPage = pages[currentIndex - 1];
 
@@ -2868,17 +2868,17 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private computeBranchChoices(): BranchChoice[] {
     const chapter = this.currentChapter;
     return chapter
-      ? this.openEdges().map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter, index) }))
+      ? this.openEdges().map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter) }))
       : [];
   }
 
-  private branchLabel(edge: { label?: Record<string, string>; to: string }, chapter: Chapter, index: number): string {
+  private branchLabel(edge: { label?: Record<string, string>; to: string }, chapter: Chapter): string {
     const fromEdge = this.localizedText(edge.label);
     if (fromEdge) {
       return fromEdge;
     }
-    const fromTarget = this.localizedText(chapter.panels?.[edge.to]?.title);
-    return fromTarget || `Option ${index + 1}`;
+    // Neither: the chooser renders a translated "Option N".
+    return this.localizedText(chapter.panels?.[edge.to]?.title);
   }
 
   private localizedText(value: LocalizedString | Record<string, string> | undefined): string {

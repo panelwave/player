@@ -10,11 +10,36 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
+import { TranslateService } from '@ngx-translate/core';
 import type { LocaleCode } from '../../../types';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+import { uiText } from '../../../utils/ui-text';
+
+/**
+ * Built-in English UI strings (keys under `age_gate.`), used when no
+ * TranslateService is provided or a key is not loaded. Must match the
+ * "age_gate" section of assets/i18n/en.json.
+ */
+const AGE_GATE_TEXT_EN: Record<string, string> = {
+  title: 'Age Verification Required',
+  close: 'Close',
+  warning: 'This content is restricted to users {{age}} years of age or older.',
+  prompt: 'Please enter your birth date:',
+  month: 'Month',
+  day: 'Day',
+  year: 'Year',
+  verify: 'Verify Age',
+  privacy: 'Your information is private and will not be stored.',
+  error_incomplete: 'Please enter your complete birth date.',
+  error_month: 'Please enter a valid month (1-12).',
+  error_day: 'Please enter a valid day (1-{{max}}).',
+  error_year: 'Please enter a valid year (1900-{{max}}).',
+  error_too_young: 'You must be at least {{age}} years old to access this content.',
+};
 
 /**
  * Age verification result
@@ -37,6 +62,9 @@ export interface AgeVerificationResult {
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AgeGateComponent {
+  /** Optional: the gate is a public component and works (in English) without ngx-translate. */
+  private readonly translate = inject(TranslateService, { optional: true });
+
   /**
    * Visibility state
    */
@@ -101,7 +129,12 @@ export class AgeGateComponent {
     if (this.warningMessage) {
       return this.warningMessage;
     }
-    return `This content is restricted to users ${this.minimumAge} years of age or older.`;
+    return this.t('warning', { age: this.minimumAge });
+  }
+
+  /** Translate an `age_gate.*` UI string (English fallback). */
+  t(key: string, params?: Record<string, unknown>): string {
+    return uiText(this.translate, 'age_gate.' + key, AGE_GATE_TEXT_EN[key], params);
   }
 
   /**
@@ -112,7 +145,7 @@ export class AgeGateComponent {
 
     // Validate inputs
     if (!this.birthMonth || !this.birthDay || !this.birthYear) {
-      this.errorMessage = 'Please enter your complete birth date.';
+      this.errorMessage = this.t('error_incomplete');
       return;
     }
 
@@ -122,18 +155,18 @@ export class AgeGateComponent {
 
     // Validate ranges
     if (month < 1 || month > 12) {
-      this.errorMessage = 'Please enter a valid month (1-12).';
+      this.errorMessage = this.t('error_month');
       return;
     }
 
     if (day < 1 || day > 31) {
-      this.errorMessage = 'Please enter a valid day (1-31).';
+      this.errorMessage = this.t('error_day', { max: 31 });
       return;
     }
 
     const currentYear = new Date().getFullYear();
     if (year < 1900 || year > currentYear) {
-      this.errorMessage = `Please enter a valid year (1900-${currentYear}).`;
+      this.errorMessage = this.t('error_year', { max: currentYear });
       return;
     }
 
@@ -141,7 +174,7 @@ export class AgeGateComponent {
     // years): new Date() would silently roll them over into the next month.
     const daysInMonth = new Date(year, month, 0).getDate();
     if (day > daysInMonth) {
-      this.errorMessage = `Please enter a valid day (1-${daysInMonth}).`;
+      this.errorMessage = this.t('error_day', { max: daysInMonth });
       return;
     }
 
@@ -150,7 +183,7 @@ export class AgeGateComponent {
     const age = this.calculateAge(birthDate);
 
     if (age < this.minimumAge) {
-      this.errorMessage = `You must be at least ${this.minimumAge} years old to access this content.`;
+      this.errorMessage = this.t('error_too_young', { age: this.minimumAge });
       this.verify.emit({
         verified: false,
         age,
@@ -193,27 +226,36 @@ export class AgeGateComponent {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    
+
     return age;
   }
 
+  private monthCache?: { locale: string; options: { value: string; label: string }[] };
+
   /**
-   * Get month options
+   * Month options, named in the current locale (Intl; cached per locale).
    */
   getMonthOptions(): { value: string; label: string }[] {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    
-    return months.map((month, index) => ({
-      value: String(index + 1),
-      label: month,
-    }));
+    if (this.monthCache?.locale !== this.locale) {
+      let format: Intl.DateTimeFormat;
+      try {
+        format = new Intl.DateTimeFormat(this.locale, { month: 'long', timeZone: 'UTC' });
+      } catch {
+        format = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' });
+      }
+      this.monthCache = {
+        locale: this.locale,
+        options: Array.from({ length: 12 }, (_, index) => ({
+          value: String(index + 1),
+          label: format.format(Date.UTC(2000, index, 1)),
+        })),
+      };
+    }
+    return this.monthCache.options;
   }
 
   /**

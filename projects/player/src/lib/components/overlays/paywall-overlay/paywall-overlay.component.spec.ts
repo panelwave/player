@@ -302,6 +302,16 @@ describe('PaywallOverlayComponent (localized)', () => {
     expect(fixture.componentInstance.getPurchaseTypeLabel('other')).toBe('Kaufen');
   });
 
+  it('translates the gate lock reason instead of the English sentence', () => {
+    TestBed.inject(TranslateService).setTranslation('de', { paywall: { reason_purchase_required: 'Dieser Teil ist käuflich.' } }, true);
+    set({ gate: { scope: 'panel', reason: 'This part of the story is available to buy.', lockReason: 'purchase_required' } });
+    expect(text('.paywall-message')).toBe('Dieser Teil ist käuflich.');
+
+    // An unknown reason code keeps the gate's own sentence.
+    set({ gate: { scope: 'panel', reason: 'Host text', lockReason: 'custom' } });
+    expect(text('.paywall-message')).toBe('Host text');
+  });
+
   it('keeps manifest-provided localized title/message untouched', () => {
     set({ title: { 'en-US': 'Members only', 'de-DE': 'Nur für Mitglieder' }, message: 'Custom' });
     expect(text('.paywall-title')).toBe('Nur für Mitglieder');

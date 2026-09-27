@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { BranchChooserComponent, type BranchChoice } from './branch-chooser.component';
 
@@ -62,5 +63,33 @@ describe('BranchChooserComponent', () => {
     fixture.componentRef.setInput('visible', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.branch-chooser-overlay')).toBeNull();
+  });
+});
+
+describe('BranchChooserComponent (labels)', () => {
+  it('falls back to a numbered "Option N" in English without ngx-translate', async () => {
+    await TestBed.configureTestingModule({ imports: [BranchChooserComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(BranchChooserComponent);
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('choices', [{ edge: { from: 'p1', to: 'p2' }, label: '', index: 1 }]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.branch-chooser-label')?.textContent).toBe('Option 2');
+    expect(el.querySelector('.branch-chooser-title')?.textContent).toBe('Choose your path');
+  });
+
+  it('translates title, close and the fallback label', async () => {
+    await TestBed.configureTestingModule({ imports: [BranchChooserComponent, TranslateModule.forRoot()] }).compileComponents();
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('de', { branch_chooser: {"title": "Wähle deinen Weg", "close": "Schließen", "option": "Option {{n}}"} });
+    translate.use('de');
+    const fixture = TestBed.createComponent(BranchChooserComponent);
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('choices', [{ edge: { from: 'p1', to: 'p2' }, label: '', index: 0 }]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.branch-chooser-title')?.textContent).toBe('Wähle deinen Weg');
+    expect(el.querySelector('.close-btn')?.getAttribute('aria-label')).toBe('Schließen');
+    expect(el.querySelector('.branch-chooser-label')?.textContent).toBe('Option 1');
   });
 });

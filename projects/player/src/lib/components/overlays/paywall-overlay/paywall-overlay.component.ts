@@ -18,6 +18,7 @@ import { TranslateService } from '@ngx-translate/core';
 import type { PaywallGate, PurchaseInfo } from '../../../types/entitlement.types';
 import type { LocaleCode, LocalizedString } from '../../../types';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+import { uiText } from '../../../utils/ui-text';
 
 /**
  * Built-in English UI strings, used when no TranslateService is provided or a
@@ -41,6 +42,10 @@ const PAYWALL_TEXT_EN: Record<string, string> = {
   'paywall.go_back': 'Go Back',
   'paywall.maybe_later': 'Maybe Later',
   'paywall.secure_payment': 'Secure payment processing',
+  'paywall.reason_subscription_required': 'This part of the story is included with a subscription.',
+  'paywall.reason_purchase_required': 'This part of the story is available to buy.',
+  'paywall.reason_age_verification_required': 'This content is age-restricted. Confirm your age to continue.',
+  'paywall.reason_entitlement_required': 'This content requires an entitlement to access.',
 };
 
 /**
@@ -159,6 +164,12 @@ export class PaywallOverlayComponent {
       return this.getLocalizedString(this.message);
     }
 
+    // A known lock reason is translated; otherwise the gate's own sentence.
+    const key = 'paywall.reason_' + this.gate?.lockReason;
+    const translated = this.t(key);
+    if (translated !== key) {
+      return translated;
+    }
     if (this.gate?.reason) {
       return this.gate.reason;
     }
@@ -242,10 +253,6 @@ export class PaywallOverlayComponent {
    * Manifest-provided texts (title/message/gate.reason) bypass this.
    */
   t(key: string, params?: Record<string, string | number | undefined>): string {
-    const value = this.translate?.instant(key, params) as unknown;
-    if (typeof value === 'string' && value !== key) {
-      return value;
-    }
-    return (PAYWALL_TEXT_EN[key] ?? key).replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, name: string) => String(params?.[name] ?? ''));
+    return uiText(this.translate, key, PAYWALL_TEXT_EN[key], params);
   }
 }

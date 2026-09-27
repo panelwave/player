@@ -13,16 +13,29 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
 
+import { TranslateService } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 import type { Edge } from '../../../types';
+import { uiText } from '../../../utils/ui-text';
+
+/** English fallback for the `branch_chooser.*` keys (see assets/i18n/en.json). */
+const BRANCH_TEXT_EN: Record<string, string> = {
+  title: 'Choose your path',
+  close: 'Close',
+  option: 'Option {{n}}',
+};
 
 /** One selectable path out of the current panel. */
 export interface BranchChoice {
   /** The graph edge this choice traverses. */
   edge: Edge;
-  /** Reader-facing label (edge label → target panel title → "Option N"). */
+  /**
+   * Reader-facing label (edge label → target panel title). Empty: the
+   * chooser shows a translated "Option N".
+   */
   label: string;
   /** Position in the offered list (0-based), stable for tracking. */
   index: number;
@@ -36,6 +49,13 @@ export interface BranchChoice {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BranchChooserComponent {
+  private readonly translate = inject(TranslateService, { optional: true });
+
+  /** Translate a `branch_chooser.*` UI string (English fallback). */
+  t(key: string, params?: Record<string, unknown>): string {
+    return uiText(this.translate, 'branch_chooser.' + key, BRANCH_TEXT_EN[key], params);
+  }
+
   /** Visible state */
   @Input() visible = false;
 

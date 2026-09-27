@@ -10,11 +10,11 @@
       aria-modal="true"
       aria-labelledby="pw-branch-chooser-title">
       <div class="branch-chooser-header">
-        <h2 id="pw-branch-chooser-title" class="branch-chooser-title">Choose your path</h2>
+        <h2 id="pw-branch-chooser-title" class="branch-chooser-title">{{ t('title') }}</h2>
         <button
           class="close-btn"
           type="button"
-          aria-label="Close"
+          [attr.aria-label]="t('close')"
           (click)="close.emit()">
           <pw-icon name="lucideX" />
         </button>
@@ -28,7 +28,7 @@
               type="button"
               (click)="choose.emit(choice)">
               <span class="branch-chooser-index" aria-hidden="true">{{ choice.index + 1 }}</span>
-              <span class="branch-chooser-label">{{ choice.label }}</span>
+              <span class="branch-chooser-label">{{ choice.label || t('option', { n: choice.index + 1 }) }}</span>
               <span class="branch-chooser-arrow" aria-hidden="true"><pw-icon name="lucideChevronRight" /></span>
             </button>
           </li>

@@ -180,7 +180,11 @@
     "sign_in": "Sign In to Continue",
     "go_back": "Go Back",
     "maybe_later": "Maybe Later",
-    "secure_payment": "Secure payment processing"
+    "secure_payment": "Secure payment processing",
+    "reason_subscription_required": "This part of the story is included with a subscription.",
+    "reason_purchase_required": "This part of the story is available to buy.",
+    "reason_age_verification_required": "This content is age-restricted. Confirm your age to continue.",
+    "reason_entitlement_required": "This content requires an entitlement to access."
   },
   "loading": {
     "text": "Loading PanelWave..."
@@ -191,5 +195,26 @@
   },
   "common": {
     "esc": "Esc"
+  },
+  "age_gate": {
+    "title": "Age Verification Required",
+    "close": "Close",
+    "warning": "This content is restricted to users {{age}} years of age or older.",
+    "prompt": "Please enter your birth date:",
+    "month": "Month",
+    "day": "Day",
+    "year": "Year",
+    "verify": "Verify Age",
+    "privacy": "Your information is private and will not be stored.",
+    "error_incomplete": "Please enter your complete birth date.",
+    "error_month": "Please enter a valid month (1-12).",
+    "error_day": "Please enter a valid day (1-{{max}}).",
+    "error_year": "Please enter a valid year (1900-{{max}}).",
+    "error_too_young": "You must be at least {{age}} years old to access this content."
+  },
+  "branch_chooser": {
+    "title": "Choose your path",
+    "close": "Close",
+    "option": "Option {{n}}"
   }
 }

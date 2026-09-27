@@ -180,7 +180,11 @@
     "sign_in": "Anmelden, um fortzufahren",
     "go_back": "Zurück",
     "maybe_later": "Vielleicht später",
-    "secure_payment": "Sichere Zahlungsabwicklung"
+    "secure_payment": "Sichere Zahlungsabwicklung",
+    "reason_subscription_required": "Dieser Teil der Geschichte ist im Abo enthalten.",
+    "reason_purchase_required": "Dieser Teil der Geschichte ist käuflich erhältlich.",
+    "reason_age_verification_required": "Dieser Inhalt ist altersbeschränkt. Bestätige dein Alter, um fortzufahren.",
+    "reason_entitlement_required": "Für diesen Inhalt ist eine Berechtigung erforderlich."
   },
   "loading": {
     "text": "PanelWave wird geladen..."
@@ -191,5 +195,26 @@
   },
   "common": {
     "esc": "Esc"
+  },
+  "age_gate": {
+    "title": "Altersprüfung erforderlich",
+    "close": "Schließen",
+    "warning": "Dieser Inhalt ist nur für Personen ab {{age}} Jahren freigegeben.",
+    "prompt": "Bitte gib dein Geburtsdatum ein:",
+    "month": "Monat",
+    "day": "Tag",
+    "year": "Jahr",
+    "verify": "Alter bestätigen",
+    "privacy": "Deine Angaben sind privat und werden nicht gespeichert.",
+    "error_incomplete": "Bitte gib dein vollständiges Geburtsdatum ein.",
+    "error_month": "Bitte gib einen gültigen Monat ein (1-12).",
+    "error_day": "Bitte gib einen gültigen Tag ein (1-{{max}}).",
+    "error_year": "Bitte gib ein gültiges Jahr ein (1900-{{max}}).",
+    "error_too_young": "Du musst mindestens {{age}} Jahre alt sein, um diesen Inhalt zu sehen."
+  },
+  "branch_chooser": {
+    "title": "Wähle deinen Weg",
+    "close": "Schließen",
+    "option": "Option {{n}}"
   }
 }

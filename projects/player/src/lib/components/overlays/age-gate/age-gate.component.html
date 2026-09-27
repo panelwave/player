@@ -1,6 +1,6 @@
 <!-- Age Gate Overlay -->
 <div class="age-gate-overlay" [class.visible]="visible" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); onDismiss()">
-  <div class="age-gate-modal" role="dialog" aria-modal="true" aria-label="Age Verification">
+  <div class="age-gate-modal" role="dialog" aria-modal="true" [attr.aria-label]="t('title')">
     <!-- Header -->
     <div class="age-gate-header">
       <div class="warning-icon">
@@ -8,12 +8,12 @@
           <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
         </svg>
       </div>
-      <h2 class="age-gate-title">Age Verification Required</h2>
+      <h2 class="age-gate-title">{{ t('title') }}</h2>
       @if (allowDismiss) {
         <button
           class="close-btn"
           type="button"
-          aria-label="Close"
+          [attr.aria-label]="t('close')"
           (click)="onDismiss()">
           <pw-icon name="lucideX" />
         </button>
@@ -27,12 +27,12 @@
 
       <!-- Birth Date Form -->
       <form class="birth-date-form" (ngSubmit)="onSubmit()">
-        <div class="form-label">Please enter your birth date:</div>
+        <div class="form-label">{{ t('prompt') }}</div>
 
         <div class="date-inputs">
           <!-- Month -->
           <div class="input-group">
-            <label for="birth-month" class="input-label">Month</label>
+            <label for="birth-month" class="input-label">{{ t('month') }}</label>
             <select
               id="birth-month"
               class="date-input"
@@ -48,7 +48,7 @@
 
           <!-- Day -->
           <div class="input-group">
-            <label for="birth-day" class="input-label">Day</label>
+            <label for="birth-day" class="input-label">{{ t('day') }}</label>
             <select
               id="birth-day"
               class="date-input"
@@ -64,7 +64,7 @@
 
           <!-- Year -->
           <div class="input-group">
-            <label for="birth-year" class="input-label">Year</label>
+            <label for="birth-year" class="input-label">{{ t('year') }}</label>
             <select
               id="birth-year"
               class="date-input"
@@ -90,7 +90,7 @@
         <button
           type="submit"
           class="verify-btn">
-          Verify Age
+          {{ t('verify') }}
         </button>
       </form>
 
@@ -99,7 +99,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
         </svg>
-        <span>Your information is private and will not be stored.</span>
+        <span>{{ t('privacy') }}</span>
       </div>
     </div>
   </div>

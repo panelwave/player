@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { AgeGateComponent, type AgeVerificationResult } from './age-gate.component';
 
@@ -294,5 +295,42 @@ describe('AgeGateComponent', () => {
       expect(closed).toBe(0);
       expect(results).toEqual([]);
     });
+  });
+});
+
+describe('AgeGateComponent (localized)', () => {
+  let fixture: ComponentFixture<AgeGateComponent>;
+  const text = (sel: string): string | undefined =>
+    (fixture.nativeElement.querySelector(sel) as HTMLElement | null)?.textContent?.replace(/\s+/g, ' ').trim();
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [AgeGateComponent, TranslateModule.forRoot()] }).compileComponents();
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('de', { age_gate: {"title": "Altersprüfung erforderlich", "close": "Schließen", "warning": "Dieser Inhalt ist nur für Personen ab {{age}} Jahren freigegeben.", "prompt": "Bitte gib dein Geburtsdatum ein:", "month": "Monat", "day": "Tag", "year": "Jahr", "verify": "Alter bestätigen", "privacy": "Deine Angaben sind privat und werden nicht gespeichert.", "error_incomplete": "Bitte gib dein vollständiges Geburtsdatum ein.", "error_month": "Bitte gib einen gültigen Monat ein (1-12).", "error_day": "Bitte gib einen gültigen Tag ein (1-{{max}}).", "error_year": "Bitte gib ein gültiges Jahr ein (1900-{{max}}).", "error_too_young": "Du musst mindestens {{age}} Jahre alt sein, um diesen Inhalt zu sehen."} });
+    translate.use('de');
+    fixture = TestBed.createComponent(AgeGateComponent);
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('locale', 'de-DE');
+    fixture.componentRef.setInput('minimumAge', 16);
+    fixture.detectChanges();
+  });
+
+  it('translates title, labels, warning and errors', () => {
+    expect(text('.age-gate-title')).toBe('Altersprüfung erforderlich');
+    expect(text('.warning-message')).toBe('Dieser Inhalt ist nur für Personen ab 16 Jahren freigegeben.');
+    expect(text('label[for=birth-month]')).toBe('Monat');
+    expect(text('.verify-btn')).toBe('Alter bestätigen');
+    expect(fixture.nativeElement.querySelector('.close-btn').getAttribute('aria-label')).toBe('Schließen');
+
+    fixture.componentInstance.onSubmit();
+    expect(fixture.componentInstance.errorMessage).toBe('Bitte gib dein vollständiges Geburtsdatum ein.');
+  });
+
+  it('names the months in the reader locale (Intl)', () => {
+    const labels = fixture.componentInstance.getMonthOptions().map((m) => m.label);
+    expect(labels[0]).toBe('Januar');
+    expect(labels[2]).toBe('März');
+    fixture.componentRef.setInput('locale', 'en-US');
+    expect(fixture.componentInstance.getMonthOptions()[0].label).toBe('January');
   });
 });
