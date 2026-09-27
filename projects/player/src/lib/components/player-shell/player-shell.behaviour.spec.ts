@@ -206,4 +206,21 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(shell.loadedManifest?.chapters.map((c) => c.id)).toEqual(['c1']);
     });
   });
+
+  describe('autoplay input', () => {
+    it('starts autoplay when the host sets it', async () => {
+      shell.autoplay = true;
+      await init();
+      expect(shell.autoplayEnabled).toBeTrue();
+
+      // The reader's toolbar toggle still works afterwards.
+      shell.onToggleAutoplay();
+      expect(shell.autoplayEnabled).toBeFalse();
+    });
+
+    it('stays off by default', async () => {
+      await init();
+      expect(shell.autoplayEnabled).toBeFalse();
+    });
+  });
 });

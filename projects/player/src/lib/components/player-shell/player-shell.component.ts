@@ -806,6 +806,12 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       // Subscribe to state changes
       this.subscribeToStateChanges();
 
+      // The host's `autoplay` input decides at start; the reader's toolbar
+      // toggle takes over afterwards.
+      if (this.autoplay && !this.autoplayEnabled) {
+        this.onToggleAutoplay();
+      }
+
       this.loading = false;
       this.ready.emit();
     } catch (err) {
