@@ -434,6 +434,29 @@ describe('PlayerShellComponent auto-advance', () => {
       expect(next).toHaveBeenCalledTimes(1);
     });
 
+    it('story keys do nothing while the paywall or the age gate is open', () => {
+      const next = spyOn(shell, 'navigateNext').and.resolveTo();
+      const prev = spyOn(shell, 'navigatePrevious').and.resolveTo();
+      shell.toolbarVisible = false;
+      for (const blocker of ['paywallVisible', 'ageGateVisible'] as const) {
+        shell[blocker] = true;
+        shell.handleKeyboard(key('ArrowRight'));
+        shell.handleKeyboard(key('ArrowLeft'));
+        shell.handleKeyboard(key('t'));
+        shell.onSwipe('left');
+        shell[blocker] = false;
+      }
+      expect(next).not.toHaveBeenCalled();
+      expect(prev).not.toHaveBeenCalled();
+      expect(shell.toolbarVisible).toBeFalse();
+    });
+
+    it('arrow keys inside a select (age gate birth date) never reach the story', () => {
+      const next = spyOn(shell, 'navigateNext').and.resolveTo();
+      shell.handleKeyboard(key('ArrowRight', document.createElement('select')));
+      expect(next).not.toHaveBeenCalled();
+    });
+
     it('an Escape that a dialog already handled does not hide the toolbar', () => {
       shell.toolbarVisible = true;
       const host = document.createElement('pw-toc-overlay');

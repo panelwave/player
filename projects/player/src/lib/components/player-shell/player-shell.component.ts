@@ -1964,7 +1964,18 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   handleKeyboard(event: KeyboardEvent): void {
     // Don't handle if user is typing in an input
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      event.target instanceof HTMLSelectElement
+    ) {
+      return;
+    }
+
+    // The paywall and the age gate block the story: no shortcut may move
+    // past them. Their own Escape handling applies (paywall: "Maybe later"
+    // dismisses; age gate: dismiss keeps the reader where they were).
+    if (this.paywallVisible || this.ageGateVisible) {
       return;
     }
 
@@ -2090,6 +2101,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Handle swipe gesture
    */
   onSwipe(direction: 'left' | 'right' | 'up' | 'down'): void {
+    if (this.paywallVisible || this.ageGateVisible) {
+      return;
+    }
     if (direction === 'left') {
       // Swipe left = navigate forward
       if (this.viewMode === 'page') {
