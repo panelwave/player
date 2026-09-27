@@ -5,8 +5,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-20%2B-red)](https://angular.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)](https://www.typescriptlang.org/)
+[![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
+[![ci](https://github.com/panelwave/player/actions/workflows/ci.yml/badge.svg)](https://github.com/panelwave/player/actions/workflows/ci.yml)
 
-> **Documentation:** [docs.panelwave.org/player/overview](https://docs.panelwave.org/player/overview)
+> **Documentation:** [docs.panelwave.org/player/overview](https://docs.panelwave.org/player/overview) · **Live demo:** [panelwave.github.io/player](https://panelwave.github.io/player/) · **npm:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
 
 ---
 
@@ -313,7 +315,7 @@ component completion reports under `docs/archive/player/repo-history/`.
 | Phase | Component | Status |
 |-------|-----------|--------|
 | 7 | Testing & QA | 🔄 In Progress |
-| 8 | Documentation & Deployment | 📋 Planned |
+| 8 | Documentation & Deployment | 🔄 In Progress (npm, CI and demo deploy done 2026-09-27) |
 
 ### 📐 Format Support
 
@@ -335,8 +337,8 @@ The player renders **PanelWave manifest format 1.4** (the schema lives at `schem
 
 ```bash
 # Required
-- Node.js 20.x
-- npm 10.x
+- Node.js 24.x (CI uses 24)
+- npm 11.x (the lockfile is written by npm 11; npm 10 rejects it in `npm ci`)
 - Angular CLI 20+
 ```
 
@@ -344,7 +346,7 @@ The player renders **PanelWave manifest format 1.4** (the schema lives at `schem
 
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/panelwave/player.git panelwave-player
 cd panelwave-player
 
 # Install dependencies
@@ -426,40 +428,30 @@ ng build player --configuration production
 # - README.md
 ```
 
-### Publish to npm
+### Releases (npm)
+
+`@panelwave/player` is published to [npm](https://www.npmjs.com/package/@panelwave/player) by the **`release` workflow** ([`.github/workflows/release.yml`](.github/workflows/release.yml)), not from a local machine:
+
+1. Actions → **release** → Run workflow → choose `patch` / `minor` / `major` / `prerelease`.
+2. The workflow lints and builds, bumps `projects/player/package.json`, publishes `dist/player` with **npm trusted publishing** (OIDC, no stored token, provenance attached), commits the bump, tags `vX.Y.Z` and creates the GitHub release.
+
+The npm page shows [`projects/player/README.md`](projects/player/README.md) (the package README), so changes to it appear on npm with the next release. Package metadata (peer dependencies, keywords, `files`) lives in [`projects/player/package.json`](projects/player/package.json).
+
+Check what would be published:
 
 ```bash
-# Build for production
 ng build player --configuration production
-
-# Navigate to dist
-cd dist/player
-
-# Publish to npm
-npm publish --access public
+cd dist/player && npm pack --dry-run
 ```
 
-### Package Metadata
+### CI
 
-```json
-{
-  "name": "@panelwave/player",
-  "version": "1.0.0",
-  "description": "Open-source Angular library for PanelWave interactive graphic novels",
-  "keywords": ["angular", "graphic-novel", "webcomic", "interactive", "player"],
-  "license": "MIT",
-  "peerDependencies": {
-    "@angular/common": "^20.0.0",
-    "@angular/core": "^20.0.0",
-    "@ngx-translate/core": "^17.0.0",
-    "rxjs": "^7.8.0"
-  },
-  "dependencies": {
-    "json-logic-js": "^2.0.5",
-    "tslib": "^2.3.0"
-  }
-}
-```
+| Workflow | Runs on | What it does |
+|---|---|---|
+| `ci.yml` | push to `master`, PRs | lint, unit tests, library build, Playwright E2E (in the `mcr.microsoft.com/playwright` image, whose tag must match the locked `@playwright/test` version) |
+| `demo-pages.yml` | push to `master` | builds the demo app and deploys it to [panelwave.github.io/player](https://panelwave.github.io/player/) |
+| `size-limit.yml` | PRs | fails when the gzipped FESM bundle exceeds 180 KB |
+| `release.yml` | manual | npm release (above) |
 
 ---
 
@@ -489,41 +481,21 @@ const manifest: PanelWaveManifest = {
 <pw-player-shell [manifest]="manifest"></pw-player-shell>
 ```
 
-### Custom Entitlement Adapter
+### Paywalls and Entitlements
 
-```typescript
-import {
-  EntitlementAdapter,
-  EntitlementContext,
-  EntitlementStatus,
-} from '@panelwave/player';
-import { Injectable } from '@angular/core';
+Paywall rules come from the manifest's `paywall` block. Tell the shell what the reader owns (an `EntitlementSnapshot`) and handle checkout yourself:
 
-@Injectable()
-export class MyEntitlementAdapter implements EntitlementAdapter {
-  async resolveEntitlement(context: EntitlementContext): Promise<EntitlementStatus> {
-    // Check user subscription for the work/chapter/panel in question
-    const ok = await this.api.checkAccess(context.workId, context.chapterId, context.panelId);
-    return { ok, entitlements: { premium: ok } };
-  }
-
-  // Optional: signed URLs for gated assets
-  async getSignedUrl(assetId: string, purpose: 'stream' | 'download'): Promise<string> {
-    return `https://cdn.example.com/signed/${assetId}?purpose=${purpose}`;
-  }
-
-  // Also optional: showPaywallUI(gate), verifyAge(minimumAge),
-  // isAuthenticated(), getCurrentUser()
-}
-
-// Provide adapter
+```html
 <pw-player-shell
   [manifestUrl]="url"
-  [entitlementAdapter]="myAdapter">
+  [entitlementSnapshot]="{ subscriptionTier: null, purchasedProductIds: ['chapter-2'], ageVerified: false }"
+  (paywallAction)="openCheckout($event.gate)">
 </pw-player-shell>
 ```
 
-`NullEntitlementAdapter` (everything allowed) and `MockEntitlementAdapter` (for testing) are exported too.
+Or let the shell fetch the snapshot itself with `entitlementEndpoint` (`{workId}` is substituted) plus `readerToken`. Without a snapshot an anonymous one is used: readers see the free preview and the paywall overlay at the gate.
+
+> **Note on `EntitlementAdapter`:** the `entitlementAdapter` input is typed with an interface local to `player-shell.component.ts` (`hasAccess` / `getContext` / `purchase?`), which differs from the exported `EntitlementAdapter` in `lib/types` (`resolveEntitlement`, `getSignedUrl?`, …). Until the two are unified, prefer the snapshot inputs above. `NullEntitlementAdapter` (everything allowed) and `MockEntitlementAdapter` (for testing) are exported.
 
 ### Speech Bubble Configuration
 
@@ -619,7 +591,10 @@ constructor(private playerState: PlayerStateService) {
 |-------|------|---------|-------------|
 | `manifest` | `PanelWaveManifest` | — | Load a manifest object directly |
 | `manifestUrl` | `string` | — | Load a manifest from a URL |
-| `entitlementAdapter` | `EntitlementAdapter` | — | Paywall/entitlement integration |
+| `entitlementAdapter` | shell-local `EntitlementAdapter` | — | Custom entitlement integration (see the note under Paywalls) |
+| `entitlementSnapshot` | `EntitlementSnapshot` | anonymous | What the reader owns; activates the manifest's `paywall.rules` |
+| `entitlementEndpoint` / `readerToken` | `string` | — | Fetch the snapshot from an endpoint (`{workId}` substituted) with a bearer token |
+| `initialVariables` | `Record<string, unknown>` | — | Seed variables once at start (may set `readOnly` ones, e.g. a verified `user.age`) |
 | `locale` | `LocaleCode` | `'en-US'` | Initial locale |
 | `initialChapterId` | `string` | — | Start at a specific chapter |
 | `initialPanelId` | `string` | — | Start at a specific panel |
@@ -640,6 +615,9 @@ And emits these outputs:
 | `variableChange` | `{ key, value }` | A story variable changed |
 | `navigationAttempt` | `{ direction, target? }` | Any navigation attempt |
 | `cameraChange` | `CameraState` | Canvas-view camera moved |
+| `paywallAction` | `{ action, gate }` | Reader clicks purchase / subscribe / login / dismiss on the paywall |
+| `ageVerified` | `AgeVerificationResult` | Reader answers an age gate |
+| `likeChange` / `bookmarkChange` | `{ workId, … }` | Like or bookmark toggled (also persisted locally) |
 | `error` | `Error` | Loading/runtime error |
 
 ---
@@ -735,15 +713,16 @@ Built with:
 - **Live demo:** https://panelwave.github.io/player/
 - **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.5.0)
 - **Issues:** https://github.com/panelwave/player/issues
-- **Discussions:** GitHub Discussions (coming soon)
+- **Source:** https://github.com/panelwave/player (moved from Bitbucket 2026-09-27)
 
 ---
 
-**Version:** Phase 6 complete + format 1.1–1.5 features (npm publish pending)  
+**Version:** 1.0.1 on npm (Phase 6 complete + format 1.1–1.5 features)  
 **Last Updated:** 2026-09-27  
-**Status:** 🚧 In Development (Testing & QA phase)
+**Status:** Released (1.x); Testing & QA ongoing
 
 ### Recent Updates
+- **2026-09-27:** Published on npm as `@panelwave/player` (1.0.0, then 1.0.1 via the release workflow with trusted publishing + provenance); repo moved to GitHub; CI, E2E and GitHub Pages demo live; package README rewritten
 - **2026-07-25:** Responsive image variant selection (variant ladder `w640`–`w2560`, `image-variant-utils`)
 - **2026-07-24:** Infinite-canvas view mode (format 1.4): `CanvasStageComponent`, `CanvasCameraService`, `viewModeOverride` input, `cameraChange` output
 - **2026-07 (mid):** Typography style presets (format 1.3): `settings.typography.textStyles` / `balloonPresets` with `styleRef` cascade
