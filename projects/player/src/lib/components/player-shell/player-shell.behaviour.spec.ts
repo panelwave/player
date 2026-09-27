@@ -7,6 +7,7 @@
  */
 
 import { TestBed } from '@angular/core/testing';
+import { SimpleChange } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Subject } from 'rxjs';
@@ -58,6 +59,7 @@ const buildManifest = (over: Record<string, unknown> = {}): PanelWaveManifest =>
 describe('PlayerShellComponent behaviour (real services)', () => {
   let shell: PlayerShellComponent;
   let variables: VariableStoreService;
+  let setLanguage: jasmine.Spy;
 
   const tries = () => variables.get('tries', 'session');
 
@@ -68,14 +70,23 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     await new Promise((resolve) => setTimeout(resolve));
   };
 
+  /** Set an input after init the way Angular does, then flush the async reload. */
+  const change = async (name: string, value: unknown): Promise<void> => {
+    (shell as unknown as Record<string, unknown>)[name] = value;
+    shell.ngOnChanges({ [name]: new SimpleChange(undefined, value, false) });
+    await new Promise((resolve) => setTimeout(resolve));
+    await new Promise((resolve) => setTimeout(resolve));
+  };
+
   beforeEach(() => {
+    setLanguage = jasmine.createSpy('setLanguage');
     localStorage.removeItem('pw-social');
     localStorage.removeItem('pw-age-verified');
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: TranslationService, useValue: { setLanguage: () => undefined, instant: (k: string) => k } },
+        { provide: TranslationService, useValue: { setLanguage, instant: (k: string) => k } },
         {
           provide: TrackingService,
           useValue: { configure: () => undefined, setConsent: () => undefined, track: () => undefined, flushSync: () => undefined },
@@ -221,6 +232,86 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     it('stays off by default', async () => {
       await init();
       expect(shell.autoplayEnabled).toBeFalse();
+    });
+  });
+
+  describe('input changes after init', () => {
+    it('ignores the first round of changes (ngOnInit loads once)', () => {
+      const load = spyOn(shell as unknown as { initializePlayer(): Promise<void> }, 'initializePlayer').and.resolveTo();
+      shell.ngOnChanges({ manifest: new SimpleChange(undefined, shell.manifest, true) });
+      expect(load).not.toHaveBeenCalled();
+      shell.ngOnInit();
+      expect(load).toHaveBeenCalledTimes(1);
+    });
+
+    it('reloads the work when manifest changes, resetting story state', async () => {
+      shell.entitlementSnapshot = { subscriptionTier: null, purchasedProductIds: ['p2-product'], ageVerified: false };
+      await init();
+      await shell.navigateNext();
+      expect(tries()).toBe(1);
+
+      const next = buildManifest();
+      next.chapters[0].graph.entry = 'p3';
+      await change('manifest', next);
+
+      expect(shell.getCurrentPanelId()).toBe('p3');
+      expect(tries()).toBe(0);
+      expect(shell.loadedManifest).toBe(next);
+    });
+
+    it('reloads from a new manifestUrl', async () => {
+      await init();
+      shell.manifest = undefined;
+      shell.manifestUrl = '/works/other.json';
+      shell.ngOnChanges({ manifestUrl: new SimpleChange(undefined, '/works/other.json', false) });
+      const other = buildManifest();
+      other.meta.id = 'other-work';
+      TestBed.inject(HttpTestingController).expectOne('/works/other.json').flush(other);
+      await new Promise((resolve) => setTimeout(resolve));
+      await new Promise((resolve) => setTimeout(resolve));
+      expect(shell.loadedManifest?.meta.id).toBe('other-work');
+      expect(shell.getCurrentPanelId()).toBe('p1');
+    });
+
+    it('switches locale', async () => {
+      await init();
+      setLanguage.calls.reset();
+      await change('locale', 'de-DE');
+      expect(setLanguage).toHaveBeenCalledWith('de-DE');
+    });
+
+    it('re-evaluates gates when the entitlement snapshot changes', async () => {
+      await init();
+      await shell.navigateNext();
+      expect(shell.paywallVisible).toBeTrue();
+
+      await change('entitlementSnapshot', { subscriptionTier: null, purchasedProductIds: ['p2-product'], ageVerified: false });
+      expect(shell.paywallVisible).toBeFalse();
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('p2');
+
+      // Removing the snapshot falls back to the anonymous reader.
+      await change('entitlementSnapshot', undefined);
+      await shell.navigateToPanel('c1', 'p2');
+      expect(shell.paywallVisible).toBeTrue();
+    });
+
+    it('applies showToolbar, autoplay, secondsPerPanel and viewModeOverride', async () => {
+      await init();
+      await change('showToolbar', true);
+      expect(shell.toolbarVisible).toBeTrue();
+
+      await change('autoplay', true);
+      expect(shell.autoplayEnabled).toBeTrue();
+      const rearm = spyOn(shell as unknown as { startAutoplay(): void }, 'startAutoplay').and.callThrough();
+      await change('secondsPerPanel', 2);
+      expect(rearm).toHaveBeenCalled();
+      await change('autoplay', false);
+      expect(shell.autoplayEnabled).toBeFalse();
+
+      shell.viewMode = 'page';
+      await change('viewModeOverride', 'panel');
+      expect(shell.viewMode).toBe('panel');
     });
   });
 });

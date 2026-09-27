@@ -9,7 +9,9 @@ import {
   Output,
   EventEmitter,
   OnInit,
+  OnChanges,
   OnDestroy,
+  SimpleChanges,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   HostListener,
@@ -145,7 +147,7 @@ export interface EntitlementAdapter {
     styleUrls: ['./player-shell.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PlayerShellComponent implements OnInit, OnDestroy {
+export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Manifest to load
    */
@@ -620,10 +622,16 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private readonly canvasCamera = inject(CanvasCameraService);
   private readonly paywallService = inject(PaywallService);
 
+  /** ngOnInit ran: later input changes are live updates, not initial values. */
+  private initialized = false;
+  /** The state subscriptions are set up once per instance, not per (re)load. */
+  private stateSubscribed = false;
+
   /**
    * Initialize component
    */
   ngOnInit(): void {
+    this.initialized = true;
     this.toolbarVisible = this.showToolbar;
     this.watchReducedMotion();
     this.subscribeToVideoSignals();
@@ -632,6 +640,102 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     // the last chance to flush the analytics queue.
     if (typeof window !== 'undefined') {
       window.addEventListener('pagehide', this.onPageHide);
+    }
+  }
+
+  /**
+   * Inputs changed after init. The first round (before ngOnInit) is skipped:
+   * ngOnInit reads every input itself, so nothing loads twice.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!this.initialized) {
+      return;
+    }
+    if (changes['manifest'] || changes['manifestUrl']) {
+      // A new work: reload re-reads every other input as well.
+      void this.reload();
+      return;
+    }
+    if (changes['locale']) {
+      this.applyLocale();
+    }
+    if (changes['entitlementSnapshot']) {
+      if (!this.entitlementSnapshot && !this.httpEntitlement) {
+        this.paywallService.setSnapshot(null);
+      }
+      this.refreshEntitlements(this.entitlementSnapshot).catch(() => undefined);
+    }
+    if (changes['viewModeOverride']) {
+      this.applyViewModeOverride();
+    }
+    if (changes['showToolbar']) {
+      this.toolbarVisible = this.showToolbar;
+    }
+    if (changes['autoplay'] && this.autoplay !== this.autoplayEnabled) {
+      this.onToggleAutoplay();
+    } else if ((changes['secondsPerPanel'] || changes['reducedMotion']) && this.autoplayEnabled) {
+      // Re-arm with the new timing / video start modes.
+      this.startAutoplay();
+    }
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Reload the work from the current `manifest` / `manifestUrl` inputs
+   * (also the error screen's Retry). Story state of the previous load —
+   * position, variables except persistent ones, open overlays, autoplay —
+   * is reset; the analytics session of the previous work is closed.
+   */
+  async reload(): Promise<void> {
+    this.stopAutoplay();
+    this.autoplayEnabled = false;
+    this.videoSequencer.reset();
+    this.panelAudio.stopAll();
+    this.endAnalyticsSession();
+    this.analyticsSessionStarted = this.analyticsSessionEnded = this.workCompleteTracked = false;
+    this.lastTrackedPanelId = undefined;
+    this.closePaywall();
+    this.closeAgeGate();
+    this.tocVisible = this.settingsVisible = this.languageModalVisible = this.charactersVisible = false;
+    this.extrasVisible = this.shareVisible = this.commentsVisible = this.thumbnailsVisible = false;
+    this.actionModalVisible = this.branchChooserVisible = false;
+    this.variantOverrides.clear();
+    this.variableStore.setDefinitions([]);
+    for (const scope of ['global', 'chapter', 'page', 'session'] as const) {
+      this.variableStore.resetScope(scope);
+    }
+    this.currentChapter = this.currentPanel = this.currentPage = this.effectivePanel = undefined;
+    this.viewMode = 'panel';
+    this.visitedPanelIds = [];
+    this.httpEntitlement = undefined;
+    this.hasError = false;
+    this.errorMessage = '';
+    await this.initializePlayer();
+  }
+
+  /** Content locale + GUI language follow `locale`. */
+  private applyLocale(): void {
+    this.playerState.setLocale(this.locale);
+    this.translationService.setLanguage(this.locale);
+  }
+
+  /** Apply a changed `viewModeOverride` to the running view. */
+  private applyViewModeOverride(): void {
+    const before = this.viewMode;
+    if (this.viewModeOverride === 'panel' && this.viewMode === 'page') {
+      this.viewMode = 'panel';
+      this.videoSequencer.reset();
+    } else {
+      this.updateCanvasAvailability();
+    }
+    if (this.viewMode === before) {
+      return;
+    }
+    if (this.viewMode === 'canvas') {
+      this.jumpCameraToCurrentPanel();
+    }
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
     }
   }
 
@@ -763,8 +867,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       }
 
       // Set initial locale and configure translations
-      this.playerState.setLocale(this.locale);
-      this.translationService.setLanguage(this.locale);
+      this.applyLocale();
 
       // Check if page view is available
       const loadedManifest = this.manifestService.getManifest();
@@ -817,6 +920,8 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     } catch (err) {
       this.handleError(err as Error);
     }
+    // Async completion (e.g. a reload from ngOnChanges): repaint the OnPush view.
+    this.cdr.markForCheck();
   }
 
   /**
@@ -988,6 +1093,10 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
    * Subscribe to state changes
    */
   private subscribeToStateChanges(): void {
+    if (this.stateSubscribed) {
+      return;
+    }
+    this.stateSubscribed = true;
     // Listen to panel changes
     this.playerState.currentPanel$
       .pipe(takeUntil(this.destroy$))
@@ -1510,16 +1619,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     } else if (newMode === 'canvas') {
       this.viewMode = 'canvas';
       this.videoSequencer.reset();
-      // Land the camera on the current panel when entering canvas view.
-      if (this.currentChapter) {
-        const panelId = this.getCurrentPanelId();
-        if (panelId) {
-          const placement = this.currentChapter.canvas?.placements?.[panelId];
-          if (placement) {
-            this.canvasCamera.jumpTo(this.canvasCamera.frameForPlacement(placement));
-          }
-        }
-      }
+      this.jumpCameraToCurrentPanel();
     } else {
       // Switch to panel view
       this.viewMode = 'panel';
@@ -1532,6 +1632,15 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     }
 
     console.log('View mode:', this.viewMode);
+  }
+
+  /** Land the canvas camera on the current panel (entering canvas view). */
+  private jumpCameraToCurrentPanel(): void {
+    const panelId = this.getCurrentPanelId();
+    const placement = panelId ? this.currentChapter?.canvas?.placements?.[panelId] : undefined;
+    if (placement) {
+      this.canvasCamera.jumpTo(this.canvasCamera.frameForPlacement(placement));
+    }
   }
 
   /**
@@ -1599,14 +1708,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   }
 
   onLocaleChange(locale: LocaleCode): void {
-    // Update content locale
+    // Content locale and GUI language stay in sync.
     this.locale = locale;
-    this.playerState.setLocale(locale);
-    
-    // Update GUI language (sync with content locale)
-    this.translationService.setLanguage(locale);
-    
-    console.log('Locale changed to:', locale);
+    this.applyLocale();
   }
 
   onToggleSpeech(): void {
@@ -2574,6 +2678,9 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       await this.httpEntitlement.resolveEntitlement({ workId: manifest?.meta?.id ?? '' });
       this.paywallService.setSnapshot(this.httpEntitlement.getSnapshot());
     }
+    // What the host passed replaces the snapshot wholesale; an age check the
+    // reader already passed on this device still counts.
+    this.restoreAgeVerification();
     this.buildExtrasList(this.manifestService.getManifest() ?? null);
 
     const gatedPanelId = this.paywallGate?.refId ?? this.getCurrentPanelId();
