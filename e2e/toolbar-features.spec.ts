@@ -86,6 +86,22 @@ test.describe('toolbar features', () => {
     await expect(toc).toBeHidden();
   });
 
+  test('ToC and thumbnails list the work when it is loaded via manifestUrl', async ({ page }) => {
+    // ?byUrl=1: the shell fetches the manifest itself (manifestUrl input).
+    await openPlayer(page, '?byUrl=1');
+    await expectPanel(page, 'p1-1');
+
+    await toolbarButton(page, 'Open table of contents').click();
+    const toc = page.getByRole('dialog', { name: 'Table of Contents' });
+    await expect(toc.locator('.chapter-item').first()).toBeVisible();
+    await toc.locator('.panel-card').nth(5).click();
+    await expectPanel(page, 'p2-1');
+
+    await toolbarButton(page, 'Show/hide thumbnail strip').click();
+    await page.getByRole('button', { name: 'Panel p1-3' }).click();
+    await expectPanel(page, 'p1-3');
+  });
+
   test('settings are saved and persist across a reload', async ({ page }) => {
     await openPlayer(page);
 

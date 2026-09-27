@@ -1568,6 +1568,15 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * The manifest actually loaded — from `manifest` or fetched via
+   * `manifestUrl`. Everything that lists the work (ToC, thumbnails) binds to
+   * this, never to the `manifest` input, which is unset for URL loading.
+   */
+  get loadedManifest(): PanelWaveManifest | undefined {
+    return this.manifestService.getManifest() ?? undefined;
+  }
+
   /** Balloon defaults for the canvas stage (same source as the viewport). */
   get manifestBalloonConfig(): BalloonConfig | null {
     return this.manifestService.getManifest()?.settings?.typography?.balloon_config ?? null;

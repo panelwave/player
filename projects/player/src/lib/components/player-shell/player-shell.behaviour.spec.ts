@@ -8,7 +8,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Subject } from 'rxjs';
 import { PlayerShellComponent } from './player-shell.component';
 import { TranslationService } from '../../services/translation.service';
@@ -191,6 +191,19 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     it('hides on a panel with a single path', async () => {
       await init();
       expect(shell.hasBranchesAhead).toBeFalse();
+    });
+  });
+
+  describe('manifestUrl loading', () => {
+    it('exposes the fetched manifest to the ToC and thumbnail strip', async () => {
+      shell.manifest = undefined;
+      shell.manifestUrl = '/works/behaviour.json';
+      shell.ngOnInit();
+      TestBed.inject(HttpTestingController).expectOne('/works/behaviour.json').flush(buildManifest());
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(shell.getCurrentPanelId()).toBe('p1');
+      expect(shell.loadedManifest?.chapters.map((c) => c.id)).toEqual(['c1']);
     });
   });
 });

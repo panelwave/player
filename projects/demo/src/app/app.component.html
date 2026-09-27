@@ -65,7 +65,8 @@
       @if (manifest && !loading) {
         <div class="device-frame" [style.width]="frameWidth" [style.height]="frameHeight">
           <pw-player-shell
-            [manifest]="manifest"
+            [manifest]="shellManifestUrl ? undefined : manifest"
+            [manifestUrl]="shellManifestUrl"
             [locale]="locale"
             [autoplay]="autoplay"
             [entitlementAdapter]="entitlementAdapter"

@@ -65,6 +65,13 @@ export class AppComponent implements OnInit, OnDestroy {
    */
   initialVariables?: Record<string, unknown>;
 
+  /**
+   * Dev/testing hook: `?byUrl=1` hands the shell the manifest URL
+   * (`manifestUrl` input) instead of the parsed object, exercising the
+   * shell's own loading path.
+   */
+  shellManifestUrl?: string;
+
   private readonly onEmbedMessage = (event: MessageEvent): void => {
     const message = event.data as EmbedConfigMessage | undefined;
     if (!message || message.type !== 'config' || !message.data) {
@@ -183,8 +190,11 @@ export class AppComponent implements OnInit, OnDestroy {
     // bundled sample. The manifest endpoint sends Access-Control-Allow-Origin: *
     // so this works cross-origin (run the demo on a free port, e.g. --port 4300,
     // while the CMS frontend keeps :4200 for its /api proxy).
-    const manifestUrl = params.get('manifest');
-    this.loadManifest(manifestUrl || 'assets/sample-manifest.json');
+    const manifestUrl = params.get('manifest') || 'assets/sample-manifest.json';
+    if (params.get('byUrl') === '1') {
+      this.shellManifestUrl = manifestUrl;
+    }
+    this.loadManifest(manifestUrl);
   }
 
   ngOnDestroy() {

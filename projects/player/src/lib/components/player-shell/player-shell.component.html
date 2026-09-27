@@ -117,7 +117,7 @@
       <!-- Thumbnail Strip -->
       <pw-thumbnail-strip
         [visible]="thumbnailsVisible"
-        [chapters]="manifest?.chapters || []"
+        [chapters]="loadedManifest?.chapters || []"
         [currentChapterId]="currentChapter?.id"
         [currentPanelId]="getCurrentPanelId()"
         [baseUrl]="''"
@@ -182,7 +182,7 @@
       @if (tocVisible) {
         <pw-toc-overlay
           [visible]="tocVisible"
-          [manifest]="manifest"
+          [manifest]="loadedManifest"
           [currentChapterId]="currentChapter?.id"
           [currentPanelId]="getCurrentPanelId()"
           [locale]="locale"
