@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 import type { PanelWaveManifest } from '../types/manifest.types';
-import type { PaywallGate } from '../types/entitlement.types';
+import type { PaywallGate, PurchaseInfo } from '../types/entitlement.types';
 import {
   ANONYMOUS_READER,
   chapterOrderFromManifest,
@@ -118,7 +118,31 @@ export class PaywallService {
       preview: rule?.previewPanelCount
         ? { previewPanels: rule.previewPanelCount }
         : undefined,
+      ruleId: rule?.id,
+      lockReason: decision.reason ?? undefined,
+      options: rule ? PaywallService.purchaseOptions(rule) : [],
     };
+  }
+
+  /**
+   * What the reader can buy to pass a rule: one option per required product
+   * (purchase) or per subscription tier (subscription). Without explicit
+   * ids, the rule's `requireEntitlement` key names the product, else the
+   * rule id. Age gates and free rules offer nothing to buy.
+   */
+  static purchaseOptions(rule: EvaluatorRule): PurchaseInfo[] {
+    const type = rule.entitlementType === 'purchase' ? 'one-time' : rule.entitlementType;
+    if (type !== 'one-time' && type !== 'subscription') return [];
+    const listed = type === 'one-time' ? rule.requiredProductIds : rule.subscriptionTiers;
+    const key = rule.entitlementKey !== rule.entitlementType ? rule.entitlementKey : undefined;
+    const ids = listed?.length ? listed : [key ?? rule.id];
+    return ids.map((productId) => ({
+      productId,
+      name: ids.length > 1 ? productId : rule.name ?? '',
+      description: rule.description,
+      price: rule.price,
+      type,
+    }));
   }
 
   /** The rule that gates a panel, for callers that need its price or name. */

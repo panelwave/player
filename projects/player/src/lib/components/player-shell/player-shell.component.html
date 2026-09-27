@@ -152,7 +152,9 @@
         <pw-paywall-overlay
           [visible]="paywallVisible"
           [gate]="paywallGate"
+          [purchaseOptions]="paywallGate.options || []"
           [locale]="locale"
+          (purchase)="paywallProductId = $event"
           (action)="onPaywallAction($event)"
           (close)="closePaywall()">
         </pw-paywall-overlay>

@@ -120,6 +120,35 @@ describe('PaywallService', () => {
     expect(service.isExtraLocked('ex-1')).toBe(false);
   });
 
+  it("offers the rule's products as purchase options on the gate", () => {
+    service.setManifest(manifestWithGate({ name: 'Full book', price: { amount: 4.99, currency: 'EUR' } }));
+    const gate = service.gateFor('p3');
+    expect(gate?.ruleId).toBe('gate');
+    expect(gate?.lockReason).toBe('purchase_required');
+    expect(gate?.options).toEqual([
+      { productId: 'book-1', name: 'Full book', description: undefined, price: { amount: 4.99, currency: 'EUR' }, type: 'one-time' },
+    ]);
+  });
+
+  it('offers one subscribe option per tier, falling back to the entitlement key', () => {
+    service.setManifest(manifestWithGate({ entitlementType: 'subscription', subscriptionTiers: ['silver', 'gold'] }));
+    expect(service.gateFor('p3')?.options?.map((o) => [o.productId, o.name, o.type])).toEqual([
+      ['silver', 'silver', 'subscription'],
+      ['gold', 'gold', 'subscription'],
+    ]);
+
+    // Original format: requireEntitlement "premium" names the tier.
+    service.setManifest(
+      manifestWithGate({ entitlementType: undefined, requireEntitlement: 'premium', requiredProductIds: undefined }),
+    );
+    expect(service.gateFor('p3')?.options?.map((o) => o.productId)).toEqual(['premium']);
+  });
+
+  it('offers nothing to buy for an age gate', () => {
+    service.setManifest(manifestWithGate({ entitlementType: 'age_gate', minimumAge: 18 }));
+    expect(service.gateFor('p3')?.options).toEqual([]);
+  });
+
   it('re-evaluates when the snapshot changes', () => {
     service.setManifest(manifestWithGate());
     expect(service.canAccess('p3')).toBe(false);

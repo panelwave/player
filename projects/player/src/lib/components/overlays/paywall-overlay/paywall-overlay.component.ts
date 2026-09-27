@@ -167,11 +167,12 @@ export class PaywallOverlayComponent {
   }
 
   /**
-   * Handle purchase option selection
+   * Handle purchase option selection: `purchase` carries the product id,
+   * `action` is 'subscribe' for a subscription option, else 'purchase'.
    */
-  onPurchaseOption(productId: string): void {
-    this.purchase.emit(productId);
-    this.action.emit('purchase');
+  onPurchaseOption(option: PurchaseInfo): void {
+    this.purchase.emit(option.productId);
+    this.action.emit(option.type === 'subscription' ? 'subscribe' : 'purchase');
   }
 
   /**

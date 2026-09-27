@@ -140,14 +140,28 @@ describe('PaywallOverlayComponent', () => {
     });
 
     it('emits purchase with the product id and a purchase action', () => {
-      qa('.purchase-option')[1].click();
-      expect(purchases).toEqual(['sub']);
+      qa('.purchase-option')[0].click();
+      expect(purchases).toEqual(['ch1']);
       expect(actions).toEqual(['purchase']);
       expect(closed).toBe(0);
     });
 
-    it('hides the login button and shows "Maybe Later" when options exist', () => {
-      expect(q('.login-btn')).toBeNull();
+    it('emits a subscribe action for a subscription option', () => {
+      qa('.purchase-option')[1].click();
+      expect(purchases).toEqual(['sub']);
+      expect(actions).toEqual(['subscribe']);
+    });
+
+    it('renders an option without name or price by its type label', () => {
+      set({ purchaseOptions: [{ productId: 'x', name: '', type: 'subscription' }] });
+      const btn = qa('.purchase-option')[0];
+      expect(btn.querySelector('.option-name')?.textContent).toBe('Subscribe');
+      expect(btn.querySelector('.option-price')).toBeNull();
+      expect(btn.querySelector('.option-type')).toBeNull();
+    });
+
+    it('keeps sign-in next to the options and shows "Maybe Later"', () => {
+      expect(q('.login-btn')).not.toBeNull();
       expect(text('.action-btn.secondary')).toBe('Maybe Later');
       expect(q('.action-btn.primary')).toBeNull();
     });

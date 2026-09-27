@@ -137,6 +137,24 @@ export interface PaywallGate {
   
   /** Preview information (optional) */
   preview?: PreviewInfo;
+
+  /** Id of the manifest paywall rule that raised the gate (optional) */
+  ruleId?: string;
+
+  /**
+   * Machine-readable lock reason (optional): `subscription_required`,
+   * `purchase_required`, `age_verification_required` or
+   * `entitlement_required`. The overlay translates it; `reason` stays the
+   * English sentence for hosts.
+   */
+  lockReason?: string;
+
+  /**
+   * What the reader can buy to pass the gate, derived from the rule
+   * (product ids / subscription tiers, name, price). The built-in overlay
+   * renders them as Buy / Subscribe buttons.
+   */
+  options?: PurchaseInfo[];
 }
 
 /**
@@ -163,8 +181,8 @@ export interface PurchaseInfo {
   /** Product name */
   name: string;
   
-  /** Price with currency */
-  price: {
+  /** Price with currency (optional: not every rule carries one) */
+  price?: {
     amount: number;
     currency: string;
   };

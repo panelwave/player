@@ -49,22 +49,26 @@
             <button
               class="purchase-option"
               type="button"
-              (click)="onPurchaseOption(option.productId)">
+              (click)="onPurchaseOption(option)">
               <div class="option-header">
-                <span class="option-name">{{ option.name }}</span>
-                <span class="option-price">{{ formatPrice(option.price.amount, option.price.currency) }}</span>
+                <span class="option-name">{{ option.name || getPurchaseTypeLabel(option.type) }}</span>
+                @if (option.price) {
+                  <span class="option-price">{{ formatPrice(option.price.amount, option.price.currency) }}</span>
+                }
               </div>
               @if (option.description) {
                 <p class="option-description">{{ option.description }}</p>
               }
-              <span class="option-type">{{ getPurchaseTypeLabel(option.type) }}</span>
+              @if (option.name) {
+                <span class="option-type">{{ getPurchaseTypeLabel(option.type) }}</span>
+              }
             </button>
           }
         </div>
       }
 
       <!-- Login Option -->
-      @if (showLogin && !purchaseOptions.length) {
+      @if (showLogin) {
         <button
           class="login-btn"
           type="button"

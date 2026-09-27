@@ -185,10 +185,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   @Input() readerToken?: string;
 
   /**
-   * Emitted when a reader acts on the paywall overlay. The host owns
-   * checkout — the player never talks to a payment provider itself.
+   * Emitted when a reader acts on the paywall overlay: `purchase` /
+   * `subscribe` (with the chosen option's `productId` — a product id or a
+   * subscription tier), `login` or `dismiss`. The host owns checkout — the
+   * player never talks to a payment provider itself; call
+   * `refreshEntitlements()` (or pass a new `entitlementSnapshot`) afterwards.
    */
-  @Output() paywallAction = new EventEmitter<{ action: PaywallAction; gate: PaywallGate }>();
+  @Output() paywallAction = new EventEmitter<{ action: PaywallAction; gate: PaywallGate; productId?: string }>();
 
   /**
    * Emitted after the reader answers an `age_gate` rule's overlay (verified or
@@ -396,6 +399,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   paywallGate: PaywallGate | null = null;
   paywallVisible = false;
+  /** Product id / tier of the overlay option the reader just picked. */
+  paywallProductId?: string;
   /** Adapter built from `entitlementEndpoint`, when the host supplied one. */
   private httpEntitlement?: HttpEntitlementAdapter;
 
@@ -1195,7 +1200,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           this.openPaywall(this.paywallService.gateFor(panelId) ?? {
             scope: 'panel',
             refId: panelId,
-            reason: 'This content requires an entitlement to access.',
+            reason: PaywallService.readerMessage(null),
+            lockReason: 'entitlement_required',
           });
           return;
         }
@@ -2659,9 +2665,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   onPaywallAction(action: PaywallAction): void {
     const gate = this.paywallGate;
+    const productId = action === 'purchase' || action === 'subscribe' ? this.paywallProductId : undefined;
     if (gate) {
-      this.paywallAction.emit({ action, gate });
+      this.paywallAction.emit({ action, gate, ...(productId ? { productId } : {}) });
     }
+    this.paywallProductId = undefined;
     this.closePaywall();
   }
 

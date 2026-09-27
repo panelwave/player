@@ -314,4 +314,32 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(shell.viewMode).toBe('panel');
     });
   });
+
+  describe('paywall purchase options', () => {
+    it("passes the rule's product on the gate and reports it with the action", async () => {
+      await init();
+      const emitted: unknown[] = [];
+      shell.paywallAction.subscribe((e) => emitted.push(e));
+
+      await shell.navigateNext();
+      expect(shell.paywallGate?.options?.map((o) => [o.productId, o.type])).toEqual([['p2-product', 'one-time']]);
+
+      // The overlay emits `purchase` (product id) before `action`.
+      shell.paywallProductId = 'p2-product';
+      shell.onPaywallAction('purchase');
+      expect(emitted).toEqual([
+        jasmine.objectContaining({ action: 'purchase', productId: 'p2-product', gate: jasmine.objectContaining({ refId: 'p2' }) }),
+      ]);
+      expect(shell.paywallVisible).toBeFalse();
+    });
+
+    it('reports login and dismiss without a product', async () => {
+      await init();
+      const emitted: { productId?: string }[] = [];
+      shell.paywallAction.subscribe((e) => emitted.push(e));
+      await shell.navigateNext();
+      shell.onPaywallAction('dismiss');
+      expect(emitted[0].productId).toBeUndefined();
+    });
+  });
 });
