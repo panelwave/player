@@ -34,7 +34,7 @@ rules (graph, variables, paywall, tracking) into behaviour.
 | `initialChapterId` | `string` | — | Start position (chapter). |
 | `initialPanelId` | `string` | — | Start position (panel). Without both, the reader's device bookmark is resumed, else the graph entry. |
 | `initialVariables` | `Record<string, unknown>` | — | Host-seeded variable values (may seed `readOnly` variables, e.g. a verified age). |
-| `autoplay` | `boolean` | `false` | Start in autoplay. |
+| `autoplay` | `boolean` | `false` | Start in autoplay (the reader's toolbar toggle takes over afterwards). |
 | `secondsPerPanel` | `number` | `5` | Autoplay pace. |
 | `reducedMotion` | `boolean` | `false` | Force reduced motion (also honours the OS setting). |
 | `showToolbar` | `boolean` | `false` | Toolbar visible on load (`T` toggles it). |
@@ -43,6 +43,11 @@ rules (graph, variables, paywall, tracking) into behaviour.
 | `entitlementSnapshot` | `EntitlementSnapshot` | — | What the reader owns (subscription tier, purchased products, verified age). Enables the manifest's `paywall.rules`. |
 | `entitlementEndpoint` | `string` | — | URL returning the snapshot (`{workId}` substituted) when the host prefers the player to fetch it. |
 | `readerToken` | `string` | — | Bearer token sent to `entitlementEndpoint`. |
+
+Inputs may change after init: `manifest` / `manifestUrl` reload the work
+(position, non-persistent variables, open overlays and autoplay reset),
+`entitlementSnapshot` re-evaluates the gates, and `locale`, `viewModeOverride`,
+`showToolbar`, `reducedMotion`, `secondsPerPanel` and `autoplay` apply live.
 
 ### Outputs
 
@@ -55,7 +60,7 @@ rules (graph, variables, paywall, tracking) into behaviour.
 | `localeChange` | `LocaleCode` | The reader switched the locale. |
 | `variableChange` | `{ key: string; value: unknown }` | A variable value changed. |
 | `cameraChange` | `CameraState` | Canvas view: the camera moved. |
-| `paywallAction` | `{ action: PaywallAction; gate: PaywallGate }` | The reader acted on the paywall overlay (checkout belongs to the host). |
+| `paywallAction` | `{ action: PaywallAction; gate: PaywallGate; productId?: string }` | The reader acted on the paywall overlay: `purchase` / `subscribe` (with the chosen product id or tier), `login`, `dismiss`. Checkout belongs to the host; `gate.options` lists what the rule sells. |
 | `ageVerified` | `AgeVerificationResult` | The reader answered an age gate. |
 | `likeChange` | `{ workId: string; liked: boolean }` | Like toggled (persisted on the device). |
 | `bookmarkChange` | `{ workId, chapterId, panelId, bookmarked }` | Bookmark set/cleared (persisted on the device, resumed on load). |
@@ -65,6 +70,9 @@ rules (graph, variables, paywall, tracking) into behaviour.
 
 `refreshEntitlements(snapshot?)` — re-check access after the host reports a
 completed purchase; drops the paywall when the gated panel is now accessible.
+
+`reload()` — reload the work from the current `manifest` / `manifestUrl`
+(also used by the error screen's Retry).
 
 ### Device-local state
 

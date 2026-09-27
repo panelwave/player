@@ -154,11 +154,18 @@ You can also pass a manifest object instead of a URL: `[manifest]="manifest"`
 | `initialChapterId` / `initialPanelId` | `string` | | Start at a specific position (otherwise: bookmark, then chapter entry) |
 | `initialVariables` | `Record<string, unknown>` | | Seed story variables once at start. May set `readOnly` variables, e.g. a verified `user.age` from your account system |
 | `showToolbar` | `boolean` | `false` | Show the reader toolbar |
-| `secondsPerPanel` | `number` | `5` | Autoplay interval. Readers start autoplay from the toolbar; the `autoplay` input exists but is not applied yet |
+| `autoplay` | `boolean` | `false` | Start auto-advancing; the reader's toolbar toggle takes over afterwards |
+| `secondsPerPanel` | `number` | `5` | Autoplay interval |
 | `reducedMotion` | `boolean` | `false` | Force reduced motion (the OS setting and the reader's preference also apply) |
 | `viewModeOverride` | `'auto' \| 'panel' \| 'canvas'` | `'auto'` | Force panel or infinite-canvas view |
 | `entitlementSnapshot` | `EntitlementSnapshot` | anonymous | What the reader owns; turns the manifest's `paywall.rules` on |
 | `entitlementEndpoint` / `readerToken` | `string` | | Let the player fetch the snapshot itself (`{workId}` is substituted) |
+
+Inputs may change after init: a new `manifest` / `manifestUrl` reloads the
+work (position, non-persistent variables, open overlays and autoplay reset),
+a new `entitlementSnapshot` re-evaluates the gates, and `locale`,
+`viewModeOverride`, `showToolbar`, `reducedMotion`, `secondsPerPanel` and
+`autoplay` apply live.
 
 ### Outputs
 
@@ -171,7 +178,7 @@ You can also pass a manifest object instead of a URL: `[manifest]="manifest"`
 | `localeChange` | `LocaleCode` | The language is switched |
 | `navigationAttempt` | `{ direction, target? }` | Any navigation attempt, allowed or not |
 | `cameraChange` | `CameraState` | The canvas-view camera moves |
-| `paywallAction` | `{ action, gate }` | The reader clicks purchase / subscribe / login / dismiss on a paywall |
+| `paywallAction` | `{ action, gate, productId? }` | The reader clicks Buy (`purchase`), Subscribe (`subscribe`), Sign in (`login`) or Maybe later (`dismiss`) on a paywall; `productId` is the chosen product id or tier |
 | `ageVerified` | `AgeVerificationResult` | The reader answers an age gate |
 | `likeChange` / `bookmarkChange` | `{ workId, … }` | Like or bookmark toggled (also stored locally) |
 | `error` | `Error` | A loading or runtime error happens |
@@ -185,11 +192,25 @@ reader owns, and handle checkout yourself:
 <pw-player-shell
   [manifestUrl]="url"
   [entitlementSnapshot]="{ subscriptionTier: null, purchasedProductIds: ['chapter-2'], ageVerified: false }"
-  (paywallAction)="openCheckout($event.gate)" />
+  (paywallAction)="onPaywall($event)" />
 ```
 
 Readers without access see the free preview and a paywall overlay, and
 navigation stops at the gate. Works without paywall rules aren't affected.
+
+- **Scopes:** `work` rules gate everything after their free preview;
+  `chapter` rules gate only the chapter named by `refId`, with the preview
+  counted within that chapter; `panel` rules gate exactly their panels;
+  `extras` rules lock an extras block, never panels.
+- **Buy / Subscribe:** the overlay offers a Buy option per product of a
+  purchase rule and a Subscribe option per tier of a subscription rule (name,
+  description and price from the rule), next to Sign in and Maybe later.
+  `paywallAction` emits `{ action: 'purchase' | 'subscribe' | 'login' |
+  'dismiss', gate, productId? }`; the options are also on `gate.options`.
+- **After checkout:** call `refreshEntitlements(snapshot)` on the shell or
+  pass a new `entitlementSnapshot`; the overlay closes once the reader is
+  through. Story keys and swipes do nothing while the paywall or the age
+  gate is open.
 
 ### Going further
 

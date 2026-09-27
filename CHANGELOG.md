@@ -8,6 +8,22 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- The shell reacts to input changes after init: a new `manifest` /
+  `manifestUrl` reloads the work (story state reset); `locale`,
+  `entitlementSnapshot` (gates re-evaluated), `viewModeOverride`,
+  `showToolbar`, `reducedMotion`, `secondsPerPanel` and `autoplay` apply
+  live. `reload()` is public (the error screen's Retry uses it).
+- Paywall overlay Buy / Subscribe options derived from the blocking rule
+  (products, tiers, name, description, price); `paywallAction` emits
+  `'subscribe'` and carries `productId`. `PaywallGate` gains `ruleId`,
+  `lockReason` and `options`; `PaywallService.purchaseOptions()`,
+  `isExtraLocked()`; evaluator exports `isExtraLocked`,
+  `chapterOrderFromManifest`.
+- Chapter-scoped paywall rules (`scope: "chapter"`, `refId`): gate only that
+  chapter's panels, free preview counted within the chapter.
+- Age gate, branch chooser and paywall reason are translated (`age_gate.*`,
+  `branch_chooser.*`, `paywall.reason_*` in en/de); month names via `Intl`.
+- Demo: `?byUrl=1` passes the manifest to the shell as `manifestUrl`.
 - Age gate: `age_gate` paywall rules now raise `pw-age-gate` (birth-date
   check) instead of the purchase overlay. A pass is persisted on the device,
   folded into the entitlement snapshot and the interrupted navigation resumes.
@@ -15,8 +31,8 @@ semver. The reader-facing product changelog lives on the docs site
 - Like and Bookmark toolbar actions: persisted per work on the device, tracked
   (`like`, `bookmark` events), emitted as `likeChange` / `bookmarkChange`. A
   bookmark is resumed on the next load when the host gives no initial position.
-- Choices: the toolbar shows the button when the current panel has more than
-  one outgoing edge; `pw-branch-chooser` lists the edges whose conditions pass
+- Choices: the toolbar shows the button when at least two outgoing edges of
+  the current panel are open (conditions evaluated); `pw-branch-chooser` lists the edges whose conditions pass
   and traverses the chosen one (transition, camera move, mutations). Tracked as
   `branch_choice`.
 - `CONTRIBUTING.md`, `docs/API.md`, GitHub Actions workflows (CI, release,
@@ -28,12 +44,30 @@ semver. The reader-facing product changelog lives on the docs site
   dev-tools drawer with live metrics and a layer debug overlay.
 
 ### Changed
+- `PurchaseInfo.price` is optional (rules without a price still offer Buy /
+  Subscribe).
+- Sign in stays visible next to purchase options on the paywall overlay.
+- Extras-scoped paywall rules no longer gate panels (they were mapped onto a
+  work gate and locked the whole work); they lock their extras block.
+- A new `entitlementSnapshot` / `refreshEntitlements()` keeps an age
+  verification the reader already passed on the device.
+- Canvas-view edge taps apply the edge's `action` mutations.
 - The speech-balloon engine (`comic-balloon.ts`, `balloon-geometry.ts`) is
   synced from the CMS editor, which is its master copy; do not edit the
   player files by hand (they carry a banner).
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- ToC and thumbnail strip were empty when the work was loaded via
+  `manifestUrl`.
+- The `autoplay` input was never applied.
+- Edge mutations were applied before the paywall check, so a blocked move
+  still changed variables (counters grew with every attempt).
+- Arrow keys, `T` and swipes moved the story behind an open paywall or age
+  gate; arrow keys in the age gate's selects reached the story.
+- The Choices button showed with fewer than two open paths (edge conditions
+  were not evaluated).
+- Retry on the error screen re-ran `ngOnInit` and duplicated subscriptions.
 - Plugin host: only messages from the plugin's own frame and origin are
   trusted; per-plugin waits, retry after a failed load, cleanup on dispose.
 - `panelChange` is emitted once per navigation (was twice).

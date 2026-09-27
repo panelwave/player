@@ -409,7 +409,9 @@ npm run e2e:ui    # interactive UI mode
 ```
 
 The demo app supports a `?deny=<panelId>[,<panelId>]` query parameter that installs
-a denying entitlement adapter, used by the gating tests.
+a denying entitlement adapter, used by the gating tests, and `?byUrl=1`, which
+hands the shell the manifest URL (`manifestUrl` input) instead of the parsed
+object.
 
 ---
 
@@ -489,11 +491,15 @@ Paywall rules come from the manifest's `paywall` block. Tell the shell what the 
 <pw-player-shell
   [manifestUrl]="url"
   [entitlementSnapshot]="{ subscriptionTier: null, purchasedProductIds: ['chapter-2'], ageVerified: false }"
-  (paywallAction)="openCheckout($event.gate)">
+  (paywallAction)="onPaywall($event)">
 </pw-player-shell>
 ```
 
 Or let the shell fetch the snapshot itself with `entitlementEndpoint` (`{workId}` is substituted) plus `readerToken`. Without a snapshot an anonymous one is used: readers see the free preview and the paywall overlay at the gate.
+
+Rule scopes: `work` gates everything after its free preview (counted across the work); `chapter` gates only the panels of the chapter named by `refId`, with `previewPanels` counted **within that chapter**, and wins over a work rule for those panels; `panel` gates exactly its panels (no preview); `extras` never gates panels — it locks the extras block named by `refId` in the extras viewer.
+
+The built-in overlay offers what the blocking rule sells: a **Buy** option per required product (`requiredProductIds`, else the `requireEntitlement` key, else the rule id) for purchase rules and a **Subscribe** option per tier (`subscriptionTiers`) for subscription rules, with the rule's `name`, `description` and `price`; **Sign in** and **Maybe later** stay. The same options are on `gate.options`. `paywallAction` emits `{ action, gate, productId? }` with `action` = `'purchase' | 'subscribe' | 'login' | 'dismiss'` (`productId` = the chosen product id or tier). Run checkout, then call `refreshEntitlements(snapshot)` on the shell or pass a new `entitlementSnapshot`; the overlay closes once the reader is through. While the paywall or the age gate is open, story keys and swipes do nothing, and edge mutations of a blocked move are not applied.
 
 > **Note on `EntitlementAdapter`:** the `entitlementAdapter` input is typed with an interface local to `player-shell.component.ts` (`hasAccess` / `getContext` / `purchase?`), which differs from the exported `EntitlementAdapter` in `lib/types` (`resolveEntitlement`, `getSignedUrl?`, …). Until the two are unified, prefer the snapshot inputs above. `NullEntitlementAdapter` (everything allowed) and `MockEntitlementAdapter` (for testing) are exported.
 
@@ -585,7 +591,7 @@ constructor(private playerState: PlayerStateService) {
 
 ## 🔧 Component API
 
-`PlayerShellComponent` (selector `pw-player-shell`) is configured via inputs:
+`PlayerShellComponent` (selector `pw-player-shell`) is configured via inputs. All of them may change after init: a new `manifest` / `manifestUrl` reloads the work (position, non-persistent variables, open overlays and autoplay reset), `entitlementSnapshot` re-evaluates the gates, and `locale`, `viewModeOverride`, `showToolbar`, `reducedMotion`, `secondsPerPanel` and `autoplay` apply live. (`initialVariables`, `initialChapterId` / `initialPanelId` and the entitlement endpoint are read on (re)load.)
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -598,7 +604,7 @@ constructor(private playerState: PlayerStateService) {
 | `locale` | `LocaleCode` | `'en-US'` | Initial locale |
 | `initialChapterId` | `string` | — | Start at a specific chapter |
 | `initialPanelId` | `string` | — | Start at a specific panel |
-| `autoplay` | `boolean` | `false` | Auto-advance through panels |
+| `autoplay` | `boolean` | `false` | Start auto-advancing (the reader's toolbar toggle takes over afterwards) |
 | `secondsPerPanel` | `number` | `5` | Autoplay interval |
 | `reducedMotion` | `boolean` | `false` | Force reduced motion |
 | `showToolbar` | `boolean` | `false` | Show the bottom toolbar |
@@ -615,7 +621,7 @@ And emits these outputs:
 | `variableChange` | `{ key, value }` | A story variable changed |
 | `navigationAttempt` | `{ direction, target? }` | Any navigation attempt |
 | `cameraChange` | `CameraState` | Canvas-view camera moved |
-| `paywallAction` | `{ action, gate }` | Reader clicks purchase / subscribe / login / dismiss on the paywall |
+| `paywallAction` | `{ action, gate, productId? }` | Reader clicks Buy (`purchase`) / Subscribe (`subscribe`) / Sign in (`login`) / Maybe later (`dismiss`) on the paywall |
 | `ageVerified` | `AgeVerificationResult` | Reader answers an age gate |
 | `likeChange` / `bookmarkChange` | `{ workId, … }` | Like or bookmark toggled (also persisted locally) |
 | `error` | `Error` | Loading/runtime error |
