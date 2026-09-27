@@ -2,8 +2,10 @@ import {
   ANONYMOUS_READER,
   evaluatePanelAccess,
   evaluateWorkAccess,
+  chapterOrderFromManifest,
   findWorkGateRule,
   fromManifestRule,
+  isExtraLocked,
   readingOrderFromManifest,
   rulesFromManifest,
   satisfiesRule,
@@ -126,6 +128,46 @@ describe('paywall-evaluator', () => {
       );
     });
 
+    it('gates only the panels of a chapter-scoped rule, preview counted within the chapter', () => {
+      const rules = [rule({ id: 'ch', scope: 'chapter', targetIds: ['c2'], previewPanelCount: 2 })];
+      // A panel of another chapter is free, whatever its global index.
+      expect(
+        evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'x', index: 50, chapterId: 'c1', chapterIndex: 7 }).locked,
+      ).toBe(false);
+      // Chapter 2: the first two panels are the preview even though their
+      // global index is far past 2.
+      const free = evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'a', index: 10, chapterId: 'c2', chapterIndex: 1 });
+      expect(free.locked).toBe(false);
+      expect(free.preview).toBe(true);
+      const gated = evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'b', index: 11, chapterId: 'c2', chapterIndex: 2 });
+      expect(gated.locked).toBe(true);
+      expect(gated.appliedRuleId).toBe('ch');
+    });
+
+    it('lets a chapter rule win over the work rule for its panels', () => {
+      const rules = [
+        rule({ id: 'work', previewPanelCount: 100 }),
+        rule({ id: 'ch', scope: 'chapter', targetIds: ['c2'] }),
+      ];
+      const d = evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'b', index: 3, chapterId: 'c2', chapterIndex: 0 });
+      expect(d.locked).toBe(true);
+      expect(d.appliedRuleId).toBe('ch');
+    });
+
+    it('never gates panels with an extras-scoped rule', () => {
+      const rules = [rule({ scope: 'extras', targetIds: ['ex-1'] })];
+      const d = evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'p', index: 9, chapterId: 'c1', chapterIndex: 9 });
+      expect(d.locked).toBe(false);
+      expect(d.appliedRuleId).toBeNull();
+    });
+
+    it('isExtraLocked follows extras-scoped rules and the snapshot', () => {
+      const rules = [rule({ scope: 'extras', targetIds: ['ex-1'], requiredProductIds: ['bonus'] })];
+      expect(isExtraLocked(rules, ANONYMOUS_READER, 'ex-1')).toBe(true);
+      expect(isExtraLocked(rules, ANONYMOUS_READER, 'ex-2')).toBe(false);
+      expect(isExtraLocked(rules, reader({ purchasedProductIds: ['bonus'] }), 'ex-1')).toBe(false);
+    });
+
     it('lets the first work/global rule win', () => {
       const rules = [rule({ id: 'a', scope: 'global' }), rule({ id: 'b', scope: 'work' })];
       expect(findWorkGateRule(rules)?.id).toBe('a');
@@ -189,12 +231,33 @@ describe('paywall-evaluator', () => {
       expect(r.targetPanelIds).toEqual(['p7']);
     });
 
-    it('maps the extras scope onto work so it still gates', () => {
+    it('keeps the extras scope (it gates the extras block, not the work)', () => {
       const r = fromManifestRule(
-        { scope: 'extras', requireEntitlement: 'premium' } as PaywallRule,
+        { scope: 'extras', refId: 'ex-1', requireEntitlement: 'premium' } as PaywallRule,
         0,
       );
-      expect(r.scope).toBe('work');
+      expect(r.scope).toBe('extras');
+      expect(r.targetIds).toEqual(['ex-1']);
+      expect(findWorkGateRule([r])).toBeNull();
+    });
+
+    it('turns a chapter rule refId into its target chapter and keeps display fields', () => {
+      const r = fromManifestRule(
+        {
+          scope: 'chapter',
+          refId: 'c2',
+          requireEntitlement: 'premium',
+          previewPanels: 3,
+          name: 'Chapter 2',
+          price: { amount: 2, currency: 'EUR' },
+        } as PaywallRule,
+        0,
+      );
+      expect(r.targetIds).toEqual(['c2']);
+      expect(r.previewPanelCount).toBe(3);
+      expect(r.name).toBe('Chapter 2');
+      expect(r.price).toEqual({ amount: 2, currency: 'EUR' });
+      expect(r.entitlementKey).toBe('premium');
     });
 
     it('gives a rule without an id a stable synthetic one', () => {
@@ -205,6 +268,17 @@ describe('paywall-evaluator', () => {
       expect(rulesFromManifest(null)).toEqual([]);
       expect(rulesFromManifest({ chapters: [] } as unknown as PanelWaveManifest)).toEqual([]);
     });
+  });
+
+  it('chapterOrderFromManifest numbers panels within each chapter', () => {
+    const order = chapterOrderFromManifest({
+      chapters: [
+        { id: 'c1', panels: { a: {}, b: {} } },
+        { id: 'c2', panels: { c: {} } },
+      ],
+    } as unknown as PanelWaveManifest);
+    expect(order.get('b')).toEqual({ chapterId: 'c1', chapterIndex: 1 });
+    expect(order.get('c')).toEqual({ chapterId: 'c2', chapterIndex: 0 });
   });
 
   describe('readingOrderFromManifest', () => {

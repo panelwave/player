@@ -1254,10 +1254,11 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
   private buildExtrasList(manifest: PanelWaveManifest | null): void {
     // Media (images / video / audio / thumbnails) resolve through the asset
     // catalog; see utils/extras-utils.ts for the ExtraBlock mapping.
+    // An extras-scoped paywall rule the reader does not satisfy locks its block.
     this.extrasList = extrasFromManifest(
       manifest?.extras as Record<string, unknown> | undefined,
       (assetId) => this.manifestService.getAsset(assetId) as CatalogLike | null
-    );
+    ).map((extra) => (this.paywallService.isExtraLocked(extra.id) ? { ...extra, gated: true } : extra));
   }
 
   /**
@@ -2535,6 +2536,7 @@ export class PlayerShellComponent implements OnInit, OnDestroy {
       await this.httpEntitlement.resolveEntitlement({ workId: manifest?.meta?.id ?? '' });
       this.paywallService.setSnapshot(this.httpEntitlement.getSnapshot());
     }
+    this.buildExtrasList(this.manifestService.getManifest() ?? null);
 
     const gatedPanelId = this.paywallGate?.refId ?? this.getCurrentPanelId();
     if (gatedPanelId && this.paywallService.canAccess(gatedPanelId)) {

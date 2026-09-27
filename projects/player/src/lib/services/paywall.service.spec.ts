@@ -96,6 +96,30 @@ describe('PaywallService', () => {
     expect(service.ruleFor('p1')?.id).toBe('gate'); // preview still names the rule
   });
 
+  it('applies a chapter rule to its chapter only, preview counted within it', () => {
+    service.setManifest(
+      manifestWithGate({ scope: 'chapter', refId: 'c2', previewPanelCount: 0, requiredProductIds: ['ch2'] }),
+    );
+    expect(service.canAccess('p1')).toBe(true);
+    expect(service.canAccess('p2')).toBe(true);
+    expect(service.canAccess('p3')).toBe(false);
+    const gate = service.gateFor('p3');
+    expect(gate?.scope).toBe('chapter');
+    expect(gate?.refId).toBe('c2');
+
+    // previewPanels: 1 frees the FIRST panel of chapter 2 (global index 2).
+    service.setManifest(manifestWithGate({ scope: 'chapter', refId: 'c2', previewPanelCount: 1 }));
+    expect(service.canAccess('p3')).toBe(true);
+  });
+
+  it('does not gate panels with an extras rule, but locks the extra', () => {
+    service.setManifest(manifestWithGate({ scope: 'extras', refId: 'ex-1', previewPanelCount: 0 }));
+    expect(service.canAccess('p3')).toBe(true);
+    expect(service.isExtraLocked('ex-1')).toBe(true);
+    service.setSnapshot({ subscriptionTier: null, purchasedProductIds: ['book-1'], ageVerified: false });
+    expect(service.isExtraLocked('ex-1')).toBe(false);
+  });
+
   it('re-evaluates when the snapshot changes', () => {
     service.setManifest(manifestWithGate());
     expect(service.canAccess('p3')).toBe(false);

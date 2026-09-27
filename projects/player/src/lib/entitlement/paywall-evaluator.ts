@@ -22,6 +22,11 @@
  *   free preview.
  * - Panel-scoped rules gate exactly their `targetPanelIds` — preview does NOT
  *   override an explicit panel gate.
+ * - Chapter-scoped rules gate only the panels of their chapter(s) (`refId`);
+ *   their free preview counts panels WITHIN that chapter. They take
+ *   precedence over a work gate for those panels.
+ * - Extras-scoped rules never gate panels — they gate the extras block named
+ *   by `refId` (see `isExtraLocked`).
  * - A gated panel unlocks when the gating rule's requirement is satisfied by
  *   the reader's entitlement snapshot.
  */
@@ -29,7 +34,7 @@
 import type { PanelWaveManifest, PaywallRule as ManifestPaywallRule } from '../types/manifest.types';
 
 export type EvaluatorEntitlementType = 'free' | 'subscription' | 'purchase' | 'age_gate';
-export type EvaluatorScope = 'global' | 'work' | 'chapter' | 'panel';
+export type EvaluatorScope = 'global' | 'work' | 'chapter' | 'panel' | 'extras';
 
 /** The rule shape the evaluator needs (a superset of the manifest rule). */
 export interface EvaluatorRule {
@@ -47,6 +52,15 @@ export interface EvaluatorRule {
   previewPanelCount?: number;
   /** Panels gated by a panel-scoped rule. */
   targetPanelIds?: string[];
+  /** Chapters (chapter scope) or extras blocks (extras scope) the rule gates — the manifest's `refId`. */
+  targetIds?: string[];
+  /** Reader-facing rule name and description (CMS), for purchase options. */
+  name?: string;
+  description?: string;
+  /** Display price (CMS). */
+  price?: { amount: number; currency: string };
+  /** The manifest's raw `requireEntitlement` key. */
+  entitlementKey?: string;
 }
 
 /** What the reader "has" — the shape payments produce and the player consumes. */
@@ -62,6 +76,10 @@ export interface EntitlementSnapshot {
 export interface PanelRef {
   id: string;
   index: number;
+  /** Chapter the panel belongs to (enables chapter-scoped rules). */
+  chapterId?: string;
+  /** Reading-order index within its chapter (chapter-rule preview counting). */
+  chapterIndex?: number;
 }
 
 export type LockReason =
@@ -148,31 +166,59 @@ export function evaluatePanelAccess(
     };
   }
 
-  // 2. Work/global gate with free preview.
-  const workRule = findWorkGateRule(active);
-  if (workRule) {
-    const previewCount = workRule.previewPanelCount ?? 0;
-    if (panel.index < previewCount) {
-      return {
-        panelId: panel.id,
-        locked: false,
-        reason: null,
-        appliedRuleId: workRule.id,
-        preview: true,
-      };
-    }
-    const ok = satisfiesRule(workRule, entitlement);
-    return {
-      panelId: panel.id,
-      locked: !ok,
-      reason: ok ? null : lockReasonFor(workRule),
-      appliedRuleId: workRule.id,
-      preview: false,
-    };
+  // 2. Chapter gates: only the panels of the named chapter, with the free
+  // preview counted within that chapter.
+  const chapterRule =
+    panel.chapterId === undefined
+      ? undefined
+      : active.find((r) => r.scope === 'chapter' && (r.targetIds ?? []).includes(panel.chapterId!));
+  if (chapterRule) {
+    return gateWithPreview(chapterRule, entitlement, panel.id, panel.chapterIndex ?? Number.MAX_SAFE_INTEGER);
   }
 
-  // 3. No gate at all — free content.
+  // 3. Work/global gate with free preview.
+  const workRule = findWorkGateRule(active);
+  if (workRule) {
+    return gateWithPreview(workRule, entitlement, panel.id, panel.index);
+  }
+
+  // 4. No gate at all — free content.
   return { panelId: panel.id, locked: false, reason: null, appliedRuleId: null, preview: false };
+}
+
+/** A work/chapter gate: panels before `previewPanelCount` (by `index`) are free. */
+function gateWithPreview(
+  rule: EvaluatorRule,
+  entitlement: EntitlementSnapshot,
+  panelId: string,
+  index: number,
+): AccessDecision {
+  if (index < (rule.previewPanelCount ?? 0)) {
+    return { panelId, locked: false, reason: null, appliedRuleId: rule.id, preview: true };
+  }
+  const ok = satisfiesRule(rule, entitlement);
+  return {
+    panelId,
+    locked: !ok,
+    reason: ok ? null : lockReasonFor(rule),
+    appliedRuleId: rule.id,
+    preview: false,
+  };
+}
+
+/** Is the extras block `extraId` locked by an extras-scoped rule? */
+export function isExtraLocked(
+  rules: EvaluatorRule[],
+  entitlement: EntitlementSnapshot,
+  extraId: string,
+): boolean {
+  return rules.some(
+    (r) =>
+      r.isActive &&
+      r.scope === 'extras' &&
+      (r.targetIds ?? []).includes(extraId) &&
+      !satisfiesRule(r, entitlement),
+  );
 }
 
 /** Evaluate a whole work (panels in reading order). */
@@ -233,7 +279,10 @@ export function fromManifestRule(rule: ManifestPaywallRule, index: number): Eval
     entitlementType = 'free';
   }
 
-  const scope = (raw['scope'] as string) === 'extras' ? 'work' : (raw['scope'] as EvaluatorScope);
+  // Extras-scoped rules keep their scope: they gate an extras block, never
+  // panels (mapping them onto 'work' used to lock the whole work).
+  const scope = raw['scope'] as EvaluatorScope | undefined;
+  const refId = raw['refId'] as string | undefined;
 
   return {
     id: (raw['id'] as string) ?? `rule-${index}`,
@@ -248,9 +297,12 @@ export function fromManifestRule(rule: ManifestPaywallRule, index: number): Eval
     targetPanelIds: (raw['targetPanelIds'] as string[] | undefined) ??
       // A panel-scoped rule from the original format names its single target
       // in refId rather than a list.
-      ((raw['scope'] as string) === 'panel' && raw['refId']
-        ? [raw['refId'] as string]
-        : undefined),
+      (scope === 'panel' && refId ? [refId] : undefined),
+    targetIds: (scope === 'chapter' || scope === 'extras') && refId ? [refId] : undefined,
+    name: raw['name'] as string | undefined,
+    description: raw['description'] as string | undefined,
+    price: raw['price'] as EvaluatorRule['price'],
+    entitlementKey: raw['requireEntitlement'] as string | undefined,
   };
 }
 
@@ -259,6 +311,19 @@ export function rulesFromManifest(manifest: PanelWaveManifest | null): Evaluator
   const rules = manifest?.paywall?.rules;
   if (!rules?.length) return [];
   return rules.map(fromManifestRule);
+}
+
+/** Chapter id and within-chapter index per panel id (chapter-rule previews). */
+export function chapterOrderFromManifest(
+  manifest: PanelWaveManifest | null,
+): Map<string, { chapterId: string; chapterIndex: number }> {
+  const out = new Map<string, { chapterId: string; chapterIndex: number }>();
+  for (const chapter of manifest?.chapters ?? []) {
+    Object.keys(chapter.panels ?? {}).forEach((panelId, chapterIndex) =>
+      out.set(panelId, { chapterId: chapter.id, chapterIndex }),
+    );
+  }
+  return out;
 }
 
 /**

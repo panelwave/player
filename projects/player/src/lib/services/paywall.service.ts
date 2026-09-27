@@ -5,7 +5,9 @@ import type { PanelWaveManifest } from '../types/manifest.types';
 import type { PaywallGate } from '../types/entitlement.types';
 import {
   ANONYMOUS_READER,
+  chapterOrderFromManifest,
   evaluatePanelAccess,
+  isExtraLocked,
   readingOrderFromManifest,
   rulesFromManifest,
   type AccessDecision,
@@ -31,6 +33,7 @@ import {
 export class PaywallService {
   private rules: EvaluatorRule[] = [];
   private readingOrder = new Map<string, number>();
+  private chapterOrder = new Map<string, { chapterId: string; chapterIndex: number }>();
   private manifest: PanelWaveManifest | null = null;
 
   private snapshotSubject = new BehaviorSubject<EntitlementSnapshot>(ANONYMOUS_READER);
@@ -43,6 +46,7 @@ export class PaywallService {
     this.readingOrder = new Map(
       readingOrderFromManifest(manifest).map((panelId, index) => [panelId, index]),
     );
+    this.chapterOrder = chapterOrderFromManifest(manifest);
   }
 
   /** Replace what the reader owns (after sign-in, or a completed purchase). */
@@ -76,7 +80,16 @@ export class PaywallService {
       return { panelId, locked: false, reason: null, appliedRuleId: null, preview: false };
     }
     const index = this.readingOrder.get(panelId) ?? Number.MAX_SAFE_INTEGER;
-    return evaluatePanelAccess(this.rules, this.snapshotSubject.value, { id: panelId, index });
+    return evaluatePanelAccess(this.rules, this.snapshotSubject.value, {
+      id: panelId,
+      index,
+      ...this.chapterOrder.get(panelId),
+    });
+  }
+
+  /** Is this extras block locked by an extras-scoped rule the reader does not satisfy? */
+  isExtraLocked(extraId: string): boolean {
+    return isExtraLocked(this.rules, this.snapshotSubject.value, extraId);
   }
 
   /** Convenience: may the reader open this panel? */
@@ -99,7 +112,7 @@ export class PaywallService {
 
     return {
       scope,
-      refId: rule?.scope === 'panel' ? panelId : undefined,
+      refId: rule?.scope === 'panel' ? panelId : scope === 'chapter' ? this.chapterOrder.get(panelId)?.chapterId : undefined,
       requireEntitlement: rule?.entitlementType,
       reason: PaywallService.readerMessage(decision.reason),
       preview: rule?.previewPanelCount
@@ -120,6 +133,7 @@ export class PaywallService {
     this.manifest = null;
     this.rules = [];
     this.readingOrder.clear();
+    this.chapterOrder.clear();
     this.snapshotSubject.next(ANONYMOUS_READER);
   }
 
