@@ -21,14 +21,41 @@ semver. The reader-facing product changelog lives on the docs site
   `branch_choice`.
 - `CONTRIBUTING.md`, `docs/API.md`, GitHub Actions workflows (CI, release,
   demo pages, size limit).
+- Hotspots are interactive in the canvas view (keyboard-activatable too).
+- Extras viewer shows the blocks' real media.
+- The current panel's art loads eagerly with `fetchpriority="high"`.
+- Demo app: manifest selector (URL / local file), responsive device frames,
+  dev-tools drawer with live metrics and a layer debug overlay.
+
+### Changed
+- The speech-balloon engine (`comic-balloon.ts`, `balloon-geometry.ts`) is
+  synced from the CMS editor, which is its master copy; do not edit the
+  player files by hand (they carry a banner).
+- Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Plugin host: only messages from the plugin's own frame and origin are
+  trusted; per-plugin waits, retry after a failed load, cleanup on dispose.
+- `panelChange` is emitted once per navigation (was twice).
+- Transitions honour the OS and in-player reduced-motion settings.
+- Modal/overlay bugs found by the new unit specs: the settings modal edits a
+  working copy and Escape cancels; share emits `native`; the TOC reacts to
+  input changes and Enter fires once; the thumbnail strip auto-scrolls to the
+  current panel; the age gate validates real calendar dates; the extras
+  "Other" filter works.
+- Balloon geometry: `curveAmount: 0` is respected, `maxWidth: 0` means
+  natural width, the bottom cut is clamped.
 - Edge `action` mutations are applied on ordinary next-navigation (the flow
   engine returned them, the shell dropped them).
 - `manifestUrl` input: `loadManifestFromUrl` no longer throws "not implemented".
 - Lint: 204 problems → 0. Keyboard and focus handling on every backdrop and
   clickable container; typed `NavigationResult.action` (`Mutation[]`),
   `requestIdleCallback` / `NetworkInformation` usage, no `any` in library code.
+
+### Tests
+- Unit coverage 63 % → 80 %; axe accessibility sweep over every modal,
+  overlay and view; heap-stability and frame-rate guards; E2E for speech,
+  audio/SFX toggles, thumbnails, table of contents and persisted settings.
 
 ## [1.0.0] — unreleased on npm
 
