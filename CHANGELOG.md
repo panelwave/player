@@ -8,6 +8,11 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of
+  the schema (the player already honoured it). Owning any listed product
+  unlocks the rule; the overlay offers one Buy option per product (labelled
+  by product id, at the rule's price, since the manifest carries ids only).
+  `PaywallRule` type documents the field; README format table covers 1.5/1.6.
 - The shell reacts to input changes after init: a new `manifest` /
   `manifestUrl` reloads the work (story state reset); `locale`,
   `entitlementSnapshot` (gates re-evaluated), `viewModeOverride`,

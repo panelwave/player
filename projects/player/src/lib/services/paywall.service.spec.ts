@@ -130,6 +130,29 @@ describe('PaywallService', () => {
     ]);
   });
 
+  it('offers one Buy option per listed product (format 1.6) and unlocks on any of them', () => {
+    service.setManifest(
+      manifestWithGate({
+        name: 'Finale',
+        requireEntitlement: 'edition',
+        requiredProductIds: ['edition', 'finale-single'],
+        price: { amount: 2.99, currency: 'EUR' },
+      }),
+    );
+    const options = service.gateFor('p3')?.options ?? [];
+    // The manifest carries product ids only: with several products each
+    // option is labelled by its id and shows the rule's display price.
+    expect(options.map((o) => [o.productId, o.name, o.type])).toEqual([
+      ['edition', 'edition', 'one-time'],
+      ['finale-single', 'finale-single', 'one-time'],
+    ]);
+    expect(options.every((o) => o.price?.amount === 2.99)).toBe(true);
+
+    service.setSnapshot({ subscriptionTier: null, purchasedProductIds: ['finale-single'], ageVerified: false });
+    expect(service.canAccess('p3')).toBe(true);
+    expect(service.gateFor('p3')).toBeNull();
+  });
+
   it('offers one subscribe option per tier, falling back to the entitlement key', () => {
     service.setManifest(manifestWithGate({ entitlementType: 'subscription', subscriptionTiers: ['silver', 'gold'] }));
     expect(service.gateFor('p3')?.options?.map((o) => [o.productId, o.name, o.type])).toEqual([

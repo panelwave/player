@@ -588,7 +588,7 @@ export interface PaywallRule {
   /** Tiers that satisfy a subscription rule; empty/absent = any tier (optional) */
   subscriptionTiers?: string[];
 
-  /** Products that satisfy a purchase rule; empty/absent = any purchase (optional) */
+  /** Products that unlock a purchase rule, any one suffices (format 1.6); absent = requireEntitlement key / any purchase (optional) */
   requiredProductIds?: string[];
 
   /** Embedded price for display in the paywall overlay (CMS) (optional) */

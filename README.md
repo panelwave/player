@@ -319,7 +319,7 @@ component completion reports under `docs/archive/player/repo-history/`.
 
 ### 📐 Format Support
 
-The player renders **PanelWave manifest format 1.4** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
+The player renders **PanelWave manifest format 1.6** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
 
 | Format | Feature | Player support |
 |--------|---------|----------------|
@@ -328,6 +328,8 @@ The player renders **PanelWave manifest format 1.4** (the schema lives at `schem
 | 1.2 | Edge-transition inheritance (`outputPresets.defaultTransition`), optional `mime` | ✅ |
 | 1.3 | Typography style presets (`textStyles` / `balloonPresets` + `styleRef`) | ✅ |
 | 1.4 | Infinite-canvas view mode (canvas placements, camera) | ✅ |
+| 1.5 | Asset folders + localization blocks (authoring metadata for the work archive) | ➖ read and ignored (not needed to render) |
+| 1.6 | Paywall product lists (`requiredProductIds` on purchase rules) | ✅ |
 
 ---
 
@@ -499,7 +501,7 @@ Or let the shell fetch the snapshot itself with `entitlementEndpoint` (`{workId}
 
 Rule scopes: `work` gates everything after its free preview (counted across the work); `chapter` gates only the panels of the chapter named by `refId`, with `previewPanels` counted **within that chapter**, and wins over a work rule for those panels; `panel` gates exactly its panels (no preview); `extras` never gates panels — it locks the extras block named by `refId` in the extras viewer. `ageGate` / `minimumAge` adds an age check on top of the rule's entitlement: the reader first answers the age gate, then sees the paywall if the purchase / subscription is still missing; only a rule with no entitlement and an age is a pure age gate.
 
-The built-in overlay offers what the blocking rule sells: a **Buy** option per required product (`requiredProductIds`, else the `requireEntitlement` key, else the rule id) for purchase rules and a **Subscribe** option per tier (`subscriptionTiers`) for subscription rules, with the rule's `name`, `description` and `price`; **Sign in** and **Maybe later** stay. The same options are on `gate.options`. `paywallAction` emits `{ action, gate, productId? }` with `action` = `'purchase' | 'subscribe' | 'login' | 'dismiss'` (`productId` = the chosen product id or tier). Run checkout, then call `refreshEntitlements(snapshot)` on the shell or pass a new `entitlementSnapshot`; the overlay closes once the reader is through. While the paywall or the age gate is open, story keys and swipes do nothing, and edge mutations of a blocked move are not applied.
+The built-in overlay offers what the blocking rule sells: a **Buy** option per required product (`requiredProductIds` — format 1.6; owning any one of them unlocks the rule — else the `requireEntitlement` key, else the rule id) for purchase rules and a **Subscribe** option per tier (`subscriptionTiers`) for subscription rules, with the rule's `name`, `description` and `price`; **Sign in** and **Maybe later** stay. The same options are on `gate.options`. `paywallAction` emits `{ action, gate, productId? }` with `action` = `'purchase' | 'subscribe' | 'login' | 'dismiss'` (`productId` = the chosen product id or tier). Run checkout, then call `refreshEntitlements(snapshot)` on the shell or pass a new `entitlementSnapshot`; the overlay closes once the reader is through. While the paywall or the age gate is open, story keys and swipes do nothing, and edge mutations of a blocked move are not applied.
 
 > **Note on `EntitlementAdapter`:** the `entitlementAdapter` input is typed with an interface local to `player-shell.component.ts` (`hasAccess` / `getContext` / `purchase?`), which differs from the exported `EntitlementAdapter` in `lib/types` (`resolveEntitlement`, `getSignedUrl?`, …). Until the two are unified, prefer the snapshot inputs above. `NullEntitlementAdapter` (everything allowed) and `MockEntitlementAdapter` (for testing) are exported.
 
@@ -717,13 +719,13 @@ Built with:
 - **Specifications:** internal docs repo (`docs/technical/player/`)
 - **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
 - **Live demo:** https://panelwave.github.io/player/
-- **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.5.0)
+- **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.6.0)
 - **Issues:** https://github.com/panelwave/player/issues
 - **Source:** https://github.com/panelwave/player (moved from Bitbucket 2026-09-27)
 
 ---
 
-**Version:** 1.0.1 on npm (Phase 6 complete + format 1.1–1.5 features)  
+**Version:** 1.0.1 on npm (Phase 6 complete + format 1.1–1.5 features; 1.6 on master, unreleased)  
 **Last Updated:** 2026-09-27  
 **Status:** Released (1.x); Testing & QA ongoing
 

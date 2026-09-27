@@ -253,6 +253,26 @@ describe('paywall-evaluator', () => {
       expect(r.previewPanelCount).toBe(4);
     });
 
+    it('reads a format 1.6 product list: owning any listed product unlocks', () => {
+      // What the CMS exports: requireEntitlement = first product for pre-1.6
+      // players, requiredProductIds = every unlocking product.
+      const r = fromManifestRule(
+        {
+          id: 'ch8',
+          scope: 'work',
+          requireEntitlement: 'edition',
+          entitlementType: 'purchase',
+          requiredProductIds: ['edition', 'ch8-single'],
+        } as PaywallRule,
+        0,
+      );
+      expect(r.entitlementType).toBe('purchase');
+      expect(r.requiredProductIds).toEqual(['edition', 'ch8-single']);
+      expect(satisfiesRule(r, reader({ purchasedProductIds: ['ch8-single'] }))).toBe(true);
+      expect(satisfiesRule(r, reader({ purchasedProductIds: ['edition'] }))).toBe(true);
+      expect(satisfiesRule(r, reader({ purchasedProductIds: ['other-book'] }))).toBe(false);
+    });
+
     it('treats an unknown entitlement marker as a purchase gate', () => {
       const r = fromManifestRule({ scope: 'work', requireEntitlement: 'token' } as PaywallRule, 0);
       expect(r.entitlementType).toBe('purchase');
