@@ -1,8 +1,13 @@
 /**
  * Comic Book Balloon Renderer (TypeScript)
  * Creates dynamic speech balloons with auto-sizing and smooth tails.
- * Ported from CMS: apps/cms-frontend/src/app/core/utils/comic-balloon.ts
+ *
+ * CANONICAL SOURCE of the balloon engine. The CMS editor uses a synced copy
+ * (panelwave-cms: `node scripts/sync-balloon-engine.mjs`) so the editor and
+ * the reader/preview render balloons identically — edit here, then sync.
  */
+
+import { thoughtTrailCircles } from './balloon-geometry';
 
 export interface BalloonPadding {
   top: number;
@@ -697,31 +702,14 @@ export class ComicBalloon {
 
   /** Add thought bubble tail (small ellipses leading to tail tip) */
   addThoughtBubbles(cx: number, cy: number, width: number, height: number, tailTip: { x: number; y: number }): void {
-    const numBubbles = 3;
-    const rx = width / 2;
-    const ry = height / 2;
+    // Geometry shared with the CMS canvas renderer (balloon-geometry.ts).
+    const circles = thoughtTrailCircles({ cx, cy, width, height }, tailTip);
 
-    const angle = Math.atan2(tailTip.y - cy, tailTip.x - cx);
-    const edgeX = cx + (rx + 5) * Math.cos(angle);
-    const edgeY = cy + (ry + 5) * Math.sin(angle);
-
-    const dx = tailTip.x - edgeX;
-    const dy = tailTip.y - edgeY;
-
-    const bubbleSizes = [8, 5, 3];
-
-    for (let i = 0; i < numBubbles; i++) {
-      const t = (i + 1) / numBubbles;
-      const adjustedT = 0.2 + t * 0.8;
-
-      const bubbleX = edgeX + dx * adjustedT;
-      const bubbleY = edgeY + dy * adjustedT;
-      const bubbleR = bubbleSizes[i];
-
+    for (const circle of circles) {
       const bubble = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      bubble.setAttribute('cx', bubbleX.toFixed(2));
-      bubble.setAttribute('cy', bubbleY.toFixed(2));
-      bubble.setAttribute('r', String(bubbleR));
+      bubble.setAttribute('cx', circle.x.toFixed(2));
+      bubble.setAttribute('cy', circle.y.toFixed(2));
+      bubble.setAttribute('r', String(circle.r));
       bubble.setAttribute('fill', this.options.fillColor);
       bubble.setAttribute('stroke', this.options.strokeColor);
       bubble.setAttribute('stroke-width', String(this.options.strokeWidth));
