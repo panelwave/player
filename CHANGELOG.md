@@ -10,9 +10,16 @@ semver. The reader-facing product changelog lives on the docs site
 ### Added
 - Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of
   the schema (the player already honoured it). Owning any listed product
-  unlocks the rule; the overlay offers one Buy option per product (labelled
-  by product id, at the rule's price, since the manifest carries ids only).
+  unlocks the rule; the overlay offers one Buy option per product.
   `PaywallRule` type documents the field; README format table covers 1.5/1.6.
+- Format 1.6: `paywall.products` (`PaywallProduct`: id, localized name /
+  description, price, type). Buy / Subscribe options take their label,
+  description and price from the entry with the option's id, resolved in the
+  reader's locale; without one they fall back to the rule's name (single
+  option) or the id (several), and the rule's description / price.
+  `PaywallService.gateFor(panelId, locale?)`, `purchaseOptions(rule, products?,
+  locale?, fallbackLocale?)`, `productsFromManifest()`; `PaywallProduct`
+  type exported.
 - The shell reacts to input changes after init: a new `manifest` /
   `manifestUrl` reloads the work (story state reset); `locale`,
   `entitlementSnapshot` (gates re-evaluated), `viewModeOverride`,

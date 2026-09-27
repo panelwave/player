@@ -552,6 +552,37 @@ export interface ExtraImage {
 export interface Paywall {
   /** Array of paywall rules */
   rules?: PaywallRule[];
+
+  /**
+   * Display info for the products / subscription tiers the rules reference by
+   * id (format 1.6) — labels, descriptions and prices of the Buy / Subscribe
+   * options (optional)
+   */
+  products?: PaywallProduct[];
+}
+
+/**
+ * One product or subscription tier from the host's catalogue (format 1.6).
+ * Informational: the rules decide what unlocks what.
+ */
+export interface PaywallProduct {
+  /** Id referenced by requiredProductIds / requireEntitlement / subscriptionTiers */
+  id: string;
+
+  /** Localized product name (optional) */
+  name?: LocalizedString;
+
+  /** Localized product description (optional) */
+  description?: LocalizedString;
+
+  /** Display price (optional) */
+  price?: {
+    amount: number;
+    currency: string;
+  };
+
+  /** One-time purchase or subscription tier (optional, informational) */
+  type?: 'purchase' | 'subscription';
 }
 
 /**

@@ -153,6 +153,57 @@ describe('PaywallService', () => {
     expect(service.gateFor('p3')).toBeNull();
   });
 
+  it('labels options from paywall.products in the reader locale (format 1.6)', () => {
+    const manifest = manifestWithGate({
+      name: 'Finale',
+      requiredProductIds: ['edition', 'finale-single', 'unlisted'],
+      price: { amount: 2.99, currency: 'EUR' },
+    }) as unknown as { meta: Record<string, unknown>; paywall: Record<string, unknown> };
+    manifest.meta['default_locale'] = 'en-US';
+    manifest.paywall['products'] = [
+      {
+        id: 'edition',
+        name: { 'en-US': 'Premium edition', 'de-DE': 'Premium-Ausgabe' },
+        description: { 'en-US': 'Everything', 'de-DE': 'Alles' },
+        price: { amount: 4.99, currency: 'EUR' },
+      },
+      { id: 'finale-single', name: { 'en-US': 'Finale only' } },
+      { id: 'edition', name: { 'en-US': 'Duplicate id (ignored)' } },
+    ];
+    service.setManifest(manifest as unknown as PanelWaveManifest);
+
+    const de = service.gateFor('p3', 'de-DE')?.options ?? [];
+    expect(de.map((o) => [o.productId, o.name, o.description, o.price?.amount])).toEqual([
+      ['edition', 'Premium-Ausgabe', 'Alles', 4.99],
+      // No German name: the work's default locale; no price: the rule's.
+      ['finale-single', 'Finale only', undefined, 2.99],
+      // No product entry: the bare id (several options) and the rule's price.
+      ['unlisted', 'unlisted', undefined, 2.99],
+    ]);
+    expect(service.gateFor('p3')?.options?.[0].name).toBe('Premium edition');
+  });
+
+  it('keeps the rule name for a single option without a product entry', () => {
+    service.setManifest(manifestWithGate({ name: 'Full book' }));
+    expect(PaywallService.productsFromManifest(null).size).toBe(0);
+    expect(service.gateFor('p3', 'de-DE')?.options?.map((o) => o.name)).toEqual(['Full book']);
+  });
+
+  it('labels subscription tiers from paywall.products too', () => {
+    const manifest = manifestWithGate({
+      entitlementType: 'subscription',
+      subscriptionTiers: ['gold'],
+      requiredProductIds: undefined,
+    }) as unknown as { paywall: Record<string, unknown> };
+    manifest.paywall['products'] = [
+      { id: 'gold', name: { 'en-US': 'Gold membership' }, price: { amount: 9, currency: 'USD' }, type: 'subscription' },
+    ];
+    service.setManifest(manifest as unknown as PanelWaveManifest);
+    expect(service.gateFor('p3', 'en-US')?.options).toEqual([
+      { productId: 'gold', name: 'Gold membership', description: undefined, price: { amount: 9, currency: 'USD' }, type: 'subscription' },
+    ]);
+  });
+
   it('offers one subscribe option per tier, falling back to the entitlement key', () => {
     service.setManifest(manifestWithGate({ entitlementType: 'subscription', subscriptionTiers: ['silver', 'gold'] }));
     expect(service.gateFor('p3')?.options?.map((o) => [o.productId, o.name, o.type])).toEqual([

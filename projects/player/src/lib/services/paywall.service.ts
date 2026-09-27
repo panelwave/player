@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
-import type { PanelWaveManifest } from '../types/manifest.types';
+import type { LocaleCode, PanelWaveManifest, PaywallProduct } from '../types/manifest.types';
 import type { PaywallGate, PurchaseInfo } from '../types/entitlement.types';
 import {
   ANONYMOUS_READER,
@@ -15,6 +15,7 @@ import {
   type EvaluatorRule,
   type LockReason,
 } from '../entitlement/paywall-evaluator';
+import { resolveLocalizedString } from '../utils/locale-utils';
 
 /**
  * Paywall service — decides whether the reader may see a panel, and describes
@@ -35,6 +36,7 @@ export class PaywallService {
   private readingOrder = new Map<string, number>();
   private chapterOrder = new Map<string, { chapterId: string; chapterIndex: number }>();
   private manifest: PanelWaveManifest | null = null;
+  private products = new Map<string, PaywallProduct>();
 
   private snapshotSubject = new BehaviorSubject<EntitlementSnapshot>(ANONYMOUS_READER);
   readonly snapshot$: Observable<EntitlementSnapshot> = this.snapshotSubject.asObservable();
@@ -47,6 +49,16 @@ export class PaywallService {
       readingOrderFromManifest(manifest).map((panelId, index) => [panelId, index]),
     );
     this.chapterOrder = chapterOrderFromManifest(manifest);
+    this.products = PaywallService.productsFromManifest(manifest);
+  }
+
+  /** `paywall.products` by id (format 1.6); the first entry wins on duplicate ids. */
+  static productsFromManifest(manifest: PanelWaveManifest | null): Map<string, PaywallProduct> {
+    const out = new Map<string, PaywallProduct>();
+    for (const product of manifest?.paywall?.products ?? []) {
+      if (product?.id && !out.has(product.id)) out.set(product.id, product);
+    }
+    return out;
   }
 
   /** Replace what the reader owns (after sign-in, or a completed purchase). */
@@ -100,9 +112,11 @@ export class PaywallService {
   /**
    * Describe the gate blocking a panel, or null when it is not gated.
    * The shape is the player's existing `PaywallGate`, so the overlay needs
-   * no changes to render it.
+   * no changes to render it. `locale` picks the language of product names
+   * and descriptions from `paywall.products` (fallback: the work's default
+   * locale).
    */
-  gateFor(panelId: string): PaywallGate | null {
+  gateFor(panelId: string, locale?: LocaleCode): PaywallGate | null {
     const decision = this.evaluate(panelId);
     if (!decision.locked) return null;
 
@@ -120,7 +134,9 @@ export class PaywallService {
         : undefined,
       ruleId: rule?.id,
       lockReason: decision.reason ?? undefined,
-      options: rule ? PaywallService.purchaseOptions(rule) : [],
+      options: rule
+        ? PaywallService.purchaseOptions(rule, this.products, locale ?? this.defaultLocale, this.defaultLocale)
+        : [],
     };
   }
 
@@ -129,20 +145,37 @@ export class PaywallService {
    * (purchase) or per subscription tier (subscription). Without explicit
    * ids, the rule's `requireEntitlement` key names the product, else the
    * rule id. Age gates and free rules offer nothing to buy.
+   *
+   * Labels (format 1.6): an option whose id has an entry in
+   * `paywall.products` takes that entry's localized name, description and
+   * price. Otherwise it falls back to the rule's name (a single option) or
+   * the bare id (several options), and to the rule's description and price.
    */
-  static purchaseOptions(rule: EvaluatorRule): PurchaseInfo[] {
+  static purchaseOptions(
+    rule: EvaluatorRule,
+    products: ReadonlyMap<string, PaywallProduct> = new Map(),
+    locale: LocaleCode = 'en-US',
+    fallbackLocale: LocaleCode = 'en-US',
+  ): PurchaseInfo[] {
     const type = rule.entitlementType === 'purchase' ? 'one-time' : rule.entitlementType;
     if (type !== 'one-time' && type !== 'subscription') return [];
     const listed = type === 'one-time' ? rule.requiredProductIds : rule.subscriptionTiers;
     const key = rule.entitlementKey !== rule.entitlementType ? rule.entitlementKey : undefined;
     const ids = listed?.length ? listed : [key ?? rule.id];
-    return ids.map((productId) => ({
-      productId,
-      name: ids.length > 1 ? productId : rule.name ?? '',
-      description: rule.description,
-      price: rule.price,
-      type,
-    }));
+    return ids.map((productId) => {
+      const product = products.get(productId);
+      const name = product?.name ? resolveLocalizedString(product.name, locale, fallbackLocale) : '';
+      const description = product?.description
+        ? resolveLocalizedString(product.description, locale, fallbackLocale)
+        : '';
+      return {
+        productId,
+        name: name || (ids.length > 1 ? productId : rule.name ?? ''),
+        description: description || rule.description,
+        price: product?.price ?? rule.price,
+        type,
+      };
+    });
   }
 
   /** The rule that gates a panel, for callers that need its price or name. */
@@ -152,10 +185,16 @@ export class PaywallService {
     return this.rules.find((r) => r.id === decision.appliedRuleId) ?? null;
   }
 
+  /** The work's default locale (product-label fallback). */
+  private get defaultLocale(): LocaleCode {
+    return this.manifest?.meta?.default_locale ?? 'en-US';
+  }
+
   /** Reset to a manifest-less, entitlement-less state. */
   clear(): void {
     this.manifest = null;
     this.rules = [];
+    this.products.clear();
     this.readingOrder.clear();
     this.chapterOrder.clear();
     this.snapshotSubject.next(ANONYMOUS_READER);

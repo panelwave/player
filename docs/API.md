@@ -106,7 +106,7 @@ All services are `providedIn: 'root'` unless noted.
 | `ManifestService` | Loading (`loadManifestFromUrl`, `loadManifestFromObject`), indexes, `getManifest()`, `getChapter()`. |
 | `FlowEngineService` | Graph traversal: `getNextPanel`, `getPreviousPanels`, `getEntry`, `findPath`, reachability, edge transitions and camera moves. |
 | `VariableStoreService` | Variables in five scopes, definitions, `applyMutations`, `createContext` for JSON Logic. |
-| `PaywallService` | Manifest `paywall.rules` evaluation: `evaluate`, `canAccess`, `gateFor`, `ruleFor`, snapshot. |
+| `PaywallService` | Manifest `paywall.rules` evaluation: `evaluate`, `canAccess`, `gateFor(panelId, locale?)`, `ruleFor`, snapshot. Buy / Subscribe options (`purchaseOptions`) are labelled from `paywall.products` (format 1.6) in the given locale, falling back to the rule's name / price. |
 | `EntitlementService` | Adapter-based entitlement (legacy path, used when a host adapter is set). |
 | `PlayerStateService` | Current panel/chapter/locale, reader preferences (`preferences$`, `updatePreference`). |
 | `TrackingService` | `track(type, data)`, consent + whitelist, endpoint batching. |

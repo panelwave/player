@@ -1197,7 +1197,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       if (this.entitlementAdapter) {
         const hasAccess = await this.entitlementAdapter.hasAccess(panelId);
         if (!hasAccess) {
-          this.openPaywall(this.paywallService.gateFor(panelId) ?? {
+          this.openPaywall(this.paywallService.gateFor(panelId, this.locale) ?? {
             scope: 'panel',
             refId: panelId,
             reason: PaywallService.readerMessage(null),
@@ -1214,7 +1214,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           this.openAgeGate(chapterId, panelId, transition, cameraMove, mutations);
           return;
         }
-        const gate = this.paywallService.gateFor(panelId);
+        const gate = this.paywallService.gateFor(panelId, this.locale);
         if (gate) {
           this.openPaywall(gate);
           return;

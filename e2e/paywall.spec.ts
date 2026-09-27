@@ -111,6 +111,35 @@ test.describe('paywall overlay', () => {
     await expectPanel(page, 'p1-1');
   });
 
+  test('paywall.products labels one Buy option per listed product (format 1.6)', async ({ page }) => {
+    const response = await page.request.get('/assets/sample-manifest.json');
+    const manifest = await response.json();
+    manifest.paywall = {
+      products: [
+        { id: 'alley-pack', name: { 'en-US': 'Alley pack' }, price: { amount: 1.99, currency: 'USD' } },
+        { id: 'full-book', name: { 'en-US': 'Full book' }, price: { amount: 5.99, currency: 'USD' } },
+      ],
+      rules: [
+        {
+          id: 'buy-p1-2',
+          scope: 'panel',
+          refId: 'p1-2',
+          requireEntitlement: 'alley-pack',
+          entitlementType: 'purchase',
+          requiredProductIds: ['alley-pack', 'full-book'],
+        },
+      ],
+    };
+    await stubManifest(page, manifest);
+    await openPlayer(page);
+
+    await page.keyboard.press('ArrowRight');
+    const options = page.locator('pw-paywall-overlay .paywall-modal .purchase-option');
+    await expect(options).toHaveCount(2);
+    await expect(options.locator('.option-name')).toHaveText(['Alley pack', 'Full book']);
+    await expect(options.locator('.option-price')).toHaveText(['$1.99', '$5.99']);
+  });
+
   test('a paid rule with an age asks for the age first, then offers Buy', async ({ page }) => {
     const response = await page.request.get('/assets/sample-manifest.json');
     const manifest = await response.json();

@@ -26,6 +26,7 @@ export type {
   ExtraImage,
   Paywall,
   PaywallRule,
+  PaywallProduct,
   Tracking,
   UISettings,
   LocalizedString,
