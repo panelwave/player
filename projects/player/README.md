@@ -1,24 +1,217 @@
-# Player
+# @panelwave/player
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.3.0.
+**The open-source Angular player for interactive graphic novels.** It renders
+[PanelWave](https://panelwave.org) manifests (`panelwave.json`): branching panel
+graphs, layered artwork, comic speech balloons, hotspots, video panels, audio,
+story variables, multilingual text and paywalls, all in one component.
 
-## Code scaffolding
+[![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/panelwave/player/blob/master/LICENSE)
+[![Angular](https://img.shields.io/badge/Angular-20-red)](https://angular.dev)
 
-Run `ng generate component component-name --project player` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module --project player`.
-> Note: Don't forget to add `--project player` or else it will be added to the default project in your `angular.json` file. 
+**[Live demo](https://panelwave.github.io/player/)** ·
+**[Documentation](https://docs.panelwave.org/player/overview)** ·
+**[Format spec](https://github.com/panelwave/schema)** ·
+**[Source](https://github.com/panelwave/player)**
 
-## Build
+---
 
-Run `ng build player` to build the project. The build artifacts will be stored in the `dist/` directory.
+## What it does
 
-## Publishing
+A PanelWave story is a **directed graph of panels**. Each chapter has an entry
+panel and edges between panels. Edges can carry a transition and a
+[JSON Logic](https://jsonlogic.com) condition, so readers' choices and story
+variables decide where the story goes. The player takes that manifest and turns
+it into a complete reading experience:
 
-After building your library with `ng build player`, go to the dist folder `cd dist/player` and run `npm publish`.
+- **Graph navigation:** branching and conditional paths, back/forward history,
+  resume from the last position, per-edge transitions.
+- **Two view modes:** classic one-panel-at-a-time reading, or an
+  **infinite canvas** where panels sit on a 2D stage and the camera pans and
+  zooms between them.
+- **Layered panels:** image, video, text, audio and plugin layers, with
+  responsive image variants (`w640`–`w2560`) and smart preloading.
+- **Speech balloons:** an SVG lettering engine with 9 balloon types (normal,
+  thought, shout, whisper, connector, …). Tails, style presets and
+  per-character overrides are all configurable.
+- **Hotspots:** clickable areas that navigate, set variables, open extras or
+  modals, or talk to plugins. They're keyboard-accessible and tracked.
+- **Variables and variants:** five scopes (global, chapter, page, session,
+  persistent). Panel variants swap content based on variables, e.g. an
+  age-appropriate version.
+- **Audio and video:** a WebAudio mixer (ambient, music, voice-over, SFX) and
+  sequenced video panels.
+- **Localization:** switch languages at runtime with fallback chains,
+  per-locale assets and RTL support. The UI ships in English and German.
+- **Monetization hooks:** paywall rules from the manifest (subscription,
+  purchase, age gates), evaluated against what the reader owns. Your app
+  handles checkout; the player never talks to a payment provider itself.
+- **Accessibility:** full keyboard control, screen-reader announcements,
+  `prefers-reduced-motion`, content warnings, and no serious axe violations.
+- **Reader toolbar:** table of contents, thumbnails, autoplay, settings,
+  share, like and bookmark.
 
-## Running unit tests
+Stories are authored in the PanelWave CMS or written by hand against the
+[open JSON Schema](https://github.com/panelwave/schema). The player supports
+format features through 1.4: video panels, edge-transition inheritance,
+typography style presets and the infinite canvas.
 
-Run `ng test player` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Installation
 
-## Further help
+```bash
+npm install @panelwave/player @ngx-translate/core
+```
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+Peer dependencies: `@angular/core` and `@angular/common` **^20**,
+`@ngx-translate/core` **^17**, `rxjs` **^7.8**.
+
+## Setup
+
+**1. Providers.** The player loads manifests over HTTP and uses ngx-translate
+for its UI strings:
+
+```typescript
+// app.config.ts
+import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { HttpClient, provideHttpClient } from '@angular/common/http';
+import { TranslateLoader, TranslateModule, TranslationObject } from '@ngx-translate/core';
+import { Observable } from 'rxjs';
+
+class PlayerTranslateLoader implements TranslateLoader {
+  constructor(private http: HttpClient) {}
+  getTranslation(lang: string): Observable<TranslationObject> {
+    return this.http.get<TranslationObject>(`./assets/i18n/${lang}.json`);
+  }
+}
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHttpClient(),
+    importProvidersFrom(
+      TranslateModule.forRoot({
+        loader: { provide: TranslateLoader, useClass: PlayerTranslateLoader, deps: [HttpClient] },
+      }),
+    ),
+  ],
+};
+```
+
+**2. Assets and fonts.** Copy the player's UI translations into your app,
+and include the balloon lettering fonts:
+
+```jsonc
+// angular.json → projects.<app>.architect.build.options
+"assets": [
+  { "glob": "*.json", "input": "node_modules/@panelwave/player/src/assets/i18n", "output": "assets/i18n" }
+],
+"styles": [
+  "node_modules/@panelwave/player/src/assets/fonts/balloon/balloon-fonts.css",
+  "src/styles.css"
+]
+```
+
+The bundled fonts are open-licensed (SIL OFL 1.1: Bangers, Comic Neue,
+Caveat, Anton and 10 more). The commercial Blambot font **Ames Pro** is not
+included. If your works use it, license it from [blambot.com](https://blambot.com)
+and add your own `@font-face`. Otherwise balloons fall back to Comic Neue.
+
+## Usage
+
+```typescript
+import { Component } from '@angular/core';
+import { PlayerShellComponent } from '@panelwave/player';
+
+@Component({
+  selector: 'app-reader',
+  imports: [PlayerShellComponent],
+  template: `
+    <pw-player-shell
+      manifestUrl="/stories/my-story/panelwave.json"
+      locale="en-US"
+      [showToolbar]="true"
+      (panelChange)="onPanel($event.panel.id)"
+      (error)="onError($event)" />
+  `,
+  styles: `:host { display: block; height: 100dvh; }`,
+})
+export class ReaderComponent {
+  onPanel(id: string) { console.log('now showing', id); }
+  onError(err: Error) { console.error(err); }
+}
+```
+
+You can also pass a manifest object instead of a URL: `[manifest]="manifest"`
+(type `PanelWaveManifest`).
+
+### Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `manifestUrl` | `string` | | Load the manifest from a URL |
+| `manifest` | `PanelWaveManifest` | | Or pass the manifest object directly |
+| `locale` | `LocaleCode` | `'en-US'` | Initial locale (BCP-47) |
+| `initialChapterId` / `initialPanelId` | `string` | | Start at a specific position (otherwise: bookmark, then chapter entry) |
+| `initialVariables` | `Record<string, unknown>` | | Seed story variables once at start. May set `readOnly` variables, e.g. a verified `user.age` from your account system |
+| `showToolbar` | `boolean` | `false` | Show the reader toolbar |
+| `autoplay` / `secondsPerPanel` | `boolean` / `number` | `false` / `5` | Auto-advance through panels |
+| `reducedMotion` | `boolean` | `false` | Force reduced motion (the OS setting and the reader's preference also apply) |
+| `viewModeOverride` | `'auto' \| 'panel' \| 'canvas'` | `'auto'` | Force panel or infinite-canvas view |
+| `entitlementSnapshot` | `EntitlementSnapshot` | anonymous | What the reader owns; turns the manifest's `paywall.rules` on |
+| `entitlementEndpoint` / `readerToken` | `string` | | Let the player fetch the snapshot itself (`{workId}` is substituted) |
+
+### Outputs
+
+| Output | Payload | Fires when |
+|---|---|---|
+| `ready` | `void` | The manifest is loaded and the player is ready |
+| `panelChange` | `{ panel, chapter }` | The reader moves to a new panel |
+| `chapterChange` | `Chapter` | A chapter boundary is crossed |
+| `variableChange` | `{ key, value }` | A story variable changes |
+| `localeChange` | `LocaleCode` | The language is switched |
+| `navigationAttempt` | `{ direction, target? }` | Any navigation attempt, allowed or not |
+| `cameraChange` | `CameraState` | The canvas-view camera moves |
+| `paywallAction` | `{ action, gate }` | The reader clicks purchase / subscribe / login / dismiss on a paywall |
+| `ageVerified` | `AgeVerificationResult` | The reader answers an age gate |
+| `likeChange` / `bookmarkChange` | `{ workId, … }` | Like or bookmark toggled (also stored locally) |
+| `error` | `Error` | A loading or runtime error happens |
+
+### Paywalls
+
+Declare rules in the manifest's `paywall` block. Then tell the player what the
+reader owns, and handle checkout yourself:
+
+```html
+<pw-player-shell
+  [manifestUrl]="url"
+  [entitlementSnapshot]="{ subscriptionTier: null, purchasedProductIds: ['chapter-2'], ageVerified: false }"
+  (paywallAction)="openCheckout($event.gate)" />
+```
+
+Readers without access see the free preview and a paywall overlay, and
+navigation stops at the gate. Works without paywall rules aren't affected.
+
+### Going further
+
+The package also exports the services and building blocks behind the shell:
+`PlayerStateService` (observable reading state), `VariableStoreService`,
+`FlowEngineService`, `TranslationService`, `PluginHostService` (message bus
+for sandboxed plugin layers), the `ComicBalloon` renderer with
+`mergeBalloonConfig`, and all manifest types. See the
+[documentation](https://docs.panelwave.org/player/overview) for the full API.
+
+## Browser support
+
+Chrome / Edge 120+, Firefox 120+, Safari 17+ (desktop and iOS),
+Android Chrome 120+.
+
+## Related packages
+
+- [`@panelwave/types`](https://www.npmjs.com/package/@panelwave/types): TypeScript types for PanelWave manifests
+- [`@panelwave/cli`](https://www.npmjs.com/package/@panelwave/cli): validate, bundle, diff and upgrade manifests
+- [PanelWave format](https://github.com/panelwave/schema): the open JSON Schema (CC BY 4.0)
+
+## License
+
+[MIT](https://github.com/panelwave/player/blob/master/LICENSE). The bundled
+balloon fonts are under SIL OFL 1.1 (see `src/assets/fonts/balloon/LICENSES.md`),
+and the UI icons are from [Lucide](https://lucide.dev) (ISC).

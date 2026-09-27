@@ -729,11 +729,12 @@ Built with:
 
 ## 📞 Links
 
-- **Documentation:** [projects/player/README.md](projects/player/README.md)
+- **Documentation:** https://docs.panelwave.org/player/overview (package README: [projects/player/README.md](projects/player/README.md))
 - **Specifications:** internal docs repo (`docs/technical/player/`)
-- **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player) (coming soon)
+- **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
+- **Live demo:** https://panelwave.github.io/player/
 - **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.5.0)
-- **Issues:** GitHub Issues (coming soon)
+- **Issues:** https://github.com/panelwave/player/issues
 - **Discussions:** GitHub Discussions (coming soon)
 
 ---
