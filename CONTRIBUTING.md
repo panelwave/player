@@ -31,6 +31,24 @@ npm run e2e:ui                  # Playwright UI mode
 ng lint player
 ```
 
+### Consumer smoke test (Angular compatibility)
+
+```bash
+ng build player --configuration production
+npm run smoke:consumer -- --angular 22            # or 20 / 21
+npm run smoke:consumer -- --angular 22 --zone     # zone.js app instead of zoneless
+```
+
+`scripts/consumer-smoke.mjs` packs `dist/player`, generates a fresh app with
+that major's CLI in the OS temp dir, installs the tarball with strict peer
+resolution, wires it up as the package README describes, runs a production
+build and renders the demo manifest in headless Chromium (screenshot in
+`test-results/`). CI runs it for every major in the `@angular/*` peer range;
+when that range changes, change the `consumer-smoke` matrix in
+`.github/workflows/ci.yml` with it. Needs a Node version the chosen CLI
+accepts (Angular 22: Node >= 22.22.3; CI uses 24). `--manifest <file>`
+additionally renders a manifest with speech bubbles, `--keep` keeps the app.
+
 On Windows Karma needs the system Chrome:
 `CHROME_BIN="C:\Program Files\Google\Chrome\Application\chrome.exe"`.
 

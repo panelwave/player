@@ -7,7 +7,21 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Changed
+- Peer dependencies accept Angular 21 and 22: `@angular/core` and
+  `@angular/common` are `^20.0.0 || ^21.0.0 || ^22.0.0` (was `^20.0.0`, which
+  made npm refuse the install on newer apps). Verified with fresh Angular
+  20.3 / 21.2 / 22.2 apps: strict-peer install, production build (the
+  partial-compiled package links cleanly) and a headless render, zoneless and
+  zone.js. No library code changes were needed.
+- Package README: the usage example read `$event.panel.id` from
+  `panelChange`, which does not compile (`Panel` has no `id`; panels are keyed
+  by id in the manifest). It now uses `$event.chapter.id`. The setup section
+  mentions `allowedCommonJsDependencies` for `json-logic-js`.
+
 ### Added
+- `npm run smoke:consumer -- --angular <major>` (`scripts/consumer-smoke.mjs`)
+  and a CI matrix job running it for Angular 20, 21 and 22.
 - Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of
   the schema (the player already honoured it). Owning any listed product
   unlocks the rule; the overlay offers one Buy option per product.

@@ -3,7 +3,7 @@
 **Open-source Angular library** for rendering interactive graphic novels in the PanelWave JSON format. High-performance, accessible, and extensible player with graph-based navigation, multilingual support, and plugin system.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Angular](https://img.shields.io/badge/Angular-20%2B-red)](https://angular.io)
+[![Angular](https://img.shields.io/badge/Angular-20%20%7C%2021%20%7C%2022-red)](https://angular.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)](https://www.typescriptlang.org/)
 [![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
 [![ci](https://github.com/panelwave/player/actions/workflows/ci.yml/badge.svg)](https://github.com/panelwave/player/actions/workflows/ci.yml)
@@ -14,7 +14,7 @@
 
 ## 🎯 Overview
 
-PanelWave Player is an **Angular 20+ library** that renders interactive graphic novels using the open **PanelWave JSON format**. It provides a complete, production-ready player with advanced features:
+PanelWave Player is an **Angular library (20, 21 and 22)** that renders interactive graphic novels using the open **PanelWave JSON format**. It provides a complete, production-ready player with advanced features:
 
 - **📖 Graph-Based Navigation** - Non-linear storytelling with conditional branching
 - **🗺️ Two View Modes** - Classic panel view and an **infinite-canvas view** with camera pan/zoom (`CanvasStageComponent`, format 1.4)
@@ -34,8 +34,15 @@ PanelWave Player is an **Angular 20+ library** that renders interactive graphic 
 ### Installation
 
 ```bash
-npm install @panelwave/player
+npm install @panelwave/player @ngx-translate/core
 ```
+
+**Compatibility:** Angular **20, 21 and 22** (`@angular/core` / `@angular/common`
+peer range `^20.0.0 || ^21.0.0 || ^22.0.0`), `@ngx-translate/core` ^17, `rxjs` ^7.8.
+The library is built with Angular 20 in partial-compilation mode and linked by
+the host's Angular version; CI proves each supported major with a consumer smoke
+test (`npm run smoke:consumer -- --angular <major>`, see
+[CONTRIBUTING.md](CONTRIBUTING.md)). Zone.js and zoneless apps both work.
 
 ### Basic Usage
 
@@ -218,7 +225,7 @@ panelwave-player/
 ## 🛠️ Technology Stack
 
 ### Core
-- **Framework:** Angular 20+ (standalone components)
+- **Framework:** built with Angular 20 (standalone components); runs on Angular 20, 21 and 22
 - **Language:** TypeScript 5.8+ (strict mode)
 - **State Management:** RxJS BehaviorSubjects
 - **Logic Engine:** json-logic-js (condition evaluation)

@@ -19,8 +19,8 @@
     "url": "https://github.com/panelwave/player/issues"
   },
   "peerDependencies": {
-    "@angular/common": "^20.0.0",
-    "@angular/core": "^20.0.0",
+    "@angular/common": "^20.0.0 || ^21.0.0 || ^22.0.0",
+    "@angular/core": "^20.0.0 || ^21.0.0 || ^22.0.0",
     "@ngx-translate/core": "^17.0.0",
     "rxjs": "^7.8.0"
   },

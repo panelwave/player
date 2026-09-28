@@ -7,7 +7,7 @@ story variables, multilingual text and paywalls, all in one component.
 
 [![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/panelwave/player/blob/master/LICENSE)
-[![Angular](https://img.shields.io/badge/Angular-20-red)](https://angular.dev)
+[![Angular](https://img.shields.io/badge/Angular-20%20%7C%2021%20%7C%2022-red)](https://angular.dev)
 
 **[Live demo](https://panelwave.github.io/player/)** ·
 **[Documentation](https://docs.panelwave.org/player/overview)** ·
@@ -64,8 +64,15 @@ authoring metadata the player doesn't need).
 npm install @panelwave/player @ngx-translate/core
 ```
 
-Peer dependencies: `@angular/core` and `@angular/common` **^20**,
+Peer dependencies: `@angular/core` and `@angular/common` **^20, ^21 or ^22**,
 `@ngx-translate/core` **^17**, `rxjs` **^7.8**.
+
+**Angular compatibility.** The package is compiled with Angular 20 in partial
+(linker) mode, so newer Angular versions link it at build time. Every CI run
+installs the packed library into a fresh `ng new` app on Angular 20, 21 and
+22 (strict peer resolution, production build, headless render of a sample
+manifest); the player works with zone.js and zoneless change detection (the
+default for new Angular 21+ apps).
 
 ## Setup
 
@@ -117,6 +124,10 @@ Caveat, Anton and 10 more). The commercial Blambot font **Ames Pro** is not
 included. If your works use it, license it from [blambot.com](https://blambot.com)
 and add your own `@font-face`. Otherwise balloons fall back to Comic Neue.
 
+The player depends on `json-logic-js`, a CommonJS module. To silence the
+build warning about it, add `"allowedCommonJsDependencies": ["json-logic-js"]`
+to the same build options.
+
 ## Usage
 
 ```typescript
@@ -131,13 +142,13 @@ import { PlayerShellComponent } from '@panelwave/player';
       manifestUrl="/stories/my-story/panelwave.json"
       locale="en-US"
       [showToolbar]="true"
-      (panelChange)="onPanel($event.panel.id)"
+      (panelChange)="onPanel($event.chapter.id)"
       (error)="onError($event)" />
   `,
   styles: `:host { display: block; height: 100dvh; }`,
 })
 export class ReaderComponent {
-  onPanel(id: string) { console.log('now showing', id); }
+  onPanel(chapterId: string) { console.log('new panel in chapter', chapterId); }
   onError(err: Error) { console.error(err); }
 }
 ```

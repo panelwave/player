@@ -10,7 +10,8 @@
     "lint": "ng lint",
     "e2e": "playwright test --project=chromium --project=mobile",
     "e2e:all": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "smoke:consumer": "node scripts/consumer-smoke.mjs"
   },
   "private": true,
   "dependencies": {
