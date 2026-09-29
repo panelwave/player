@@ -19,7 +19,7 @@ import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
 import { VariableStoreService } from '../../services/variable-store.service';
-import type { PanelWaveManifest } from '../../types';
+import type { PanelWaveManifest, PlayerPanelChangeEvent } from '../../types';
 
 /** p1 → p2 (edge increments `tries`) → p3; p2 is sold separately. */
 const buildManifest = (over: Record<string, unknown> = {}): PanelWaveManifest =>
@@ -312,6 +312,69 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       shell.viewMode = 'page';
       await change('viewModeOverride', 'panel');
       expect(shell.viewMode).toBe('panel');
+    });
+  });
+
+  describe('panelChange output', () => {
+    let events: PlayerPanelChangeEvent[];
+    const ids = () => events.map((e) => [e.panelId, e.previousPanelId ?? null, e.chapter.id]);
+
+    beforeEach(() => {
+      events = [];
+      shell.panelChange.subscribe((e) => events.push(e));
+    });
+
+    it('carries the entry panel id, without a previous panel, once', async () => {
+      await init();
+      expect(ids()).toEqual([['p1', null, 'c1']]);
+      expect(events[0].panel).toBe(shell.loadedManifest!.chapters[0].panels['p1']);
+    });
+
+    it('carries the new and the previous panel id on each move', async () => {
+      shell.entitlementSnapshot = { subscriptionTier: null, purchasedProductIds: ['p2-product'], ageVerified: false };
+      await init();
+      await shell.navigateNext();
+      await shell.navigateNext();
+      await shell.navigatePrevious();
+      expect(ids()).toEqual([
+        ['p1', null, 'c1'],
+        ['p2', 'p1', 'c1'],
+        ['p3', 'p2', 'c1'],
+        ['p2', 'p3', 'c1'],
+      ]);
+    });
+
+    it('does not fire for a move the paywall blocks', async () => {
+      await init();
+      await shell.navigateNext();
+      expect(shell.paywallVisible).toBeTrue();
+      expect(ids()).toEqual([['p1', null, 'c1']]);
+    });
+
+    it('keeps the previous panel across a chapter change', async () => {
+      const manifest = buildManifest({ paywall: undefined });
+      manifest.chapters.push({
+        id: 'c2',
+        title: { 'en-US': 'Two' },
+        panels: { q1: { layers: [] } },
+        graph: { entry: 'q1', edges: [] },
+      } as unknown as PanelWaveManifest['chapters'][number]);
+      shell.manifest = manifest;
+      await init();
+      await shell.navigateToPanel('c2', 'q1');
+      expect(ids()).toEqual([
+        ['p1', null, 'c1'],
+        ['q1', 'p1', 'c2'],
+      ]);
+    });
+
+    it('starts over without a previous panel after a reload', async () => {
+      shell.entitlementSnapshot = { subscriptionTier: null, purchasedProductIds: ['p2-product'], ageVerified: false };
+      await init();
+      await shell.navigateNext();
+      events = [];
+      await change('manifest', buildManifest());
+      expect(ids()).toEqual([['p1', null, 'c1']]);
     });
   });
 

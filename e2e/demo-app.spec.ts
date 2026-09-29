@@ -22,7 +22,8 @@ test.describe('demo app tooling', () => {
 
     await tools.getByRole('tab', { name: 'Events' }).click();
     await expect(tools.locator('.events')).toContainText('panelChange');
-    await expect(tools.locator('.events')).toContainText('"panel":"p1-2"');
+    // The payload carries the panel id and the one before it.
+    await expect(tools.locator('.events')).toContainText('"panel":"p1-2","previous":"p1-1"');
     // One navigation, one panelChange (the shell used to emit it twice).
     await expect(tools.locator('.events li', { hasText: '"panel":"p1-2"' })).toHaveCount(1);
 

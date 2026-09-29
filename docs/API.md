@@ -54,7 +54,7 @@ Inputs may change after init: `manifest` / `manifestUrl` reload the work
 | Output | Payload | When |
 |--------|---------|------|
 | `ready` | `void` | Manifest loaded and the initial panel is on screen. |
-| `panelChange` | `{ panel: Panel; chapter: Chapter }` | The current panel changed. |
+| `panelChange` | `PlayerPanelChangeEvent`: `{ panel: Panel; chapter: Chapter; panelId: string; previousPanelId?: string }` | The current panel changed. `panelId` is the panel's key in `chapter.panels` (`Panel.id` is optional in the format, so don't read it from `panel`); `previousPanelId` is the panel before it, possibly in the previous chapter, and unset for the first panel after a (re)load. Fires once per change, not for a navigation the paywall or age gate blocks. |
 | `chapterChange` | `Chapter` | The current chapter changed. |
 | `navigationAttempt` | `{ direction: 'next' \| 'previous' \| 'panel'; target?: string }` | Before a navigation is resolved (also when it is blocked). |
 | `localeChange` | `LocaleCode` | The reader switched the locale. |
@@ -128,7 +128,8 @@ All services are `providedIn: 'root'` unless noted.
 `export * from './lib/types'` — every manifest interface (`PanelWaveManifest`,
 `Chapter`, `Page`, `Panel`, `Layer` kinds, `Edge`, `Graph`, `Hotspot`,
 `SpeechBubble`, `PaywallRule`, `VariableDefinition`, …), the entitlement types
-(`EntitlementSnapshot`, `PaywallGate`, `EntitlementAdapter`) and player events.
+(`EntitlementSnapshot`, `PaywallGate`, `EntitlementAdapter`) and player events
+(`PlayerPanelChangeEvent` is the `panelChange` payload).
 The interfaces mirror `@panelwave/types` for schema 1.5.
 
 ## Versioning

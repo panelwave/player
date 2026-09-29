@@ -3,7 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PlayerShellComponent } from 'player';
 import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
-import type { Chapter, Panel, PanelWaveManifest } from 'player';
+import type { PanelWaveManifest, PlayerPanelChangeEvent } from 'player';
 
 /**
  * Config message posted by an embedding host (the CMS preview iframe):
@@ -318,12 +318,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.log('ready', '');
   }
 
-  onPanelChange(event: { panel: Panel; chapter: Chapter }) {
+  onPanelChange(event: PlayerPanelChangeEvent) {
     this.panelChanges++;
-    // Panels carry no id of their own — it is their key in chapter.panels.
-    const panels = (event.chapter?.panels ?? {}) as Record<string, Panel>;
-    const panelId = Object.keys(panels).find((id) => panels[id] === event.panel) ?? '?';
-    this.log('panelChange', { panel: panelId, chapter: event.chapter?.id });
+    this.log('panelChange', { panel: event.panelId, previous: event.previousPanelId ?? null, chapter: event.chapter.id });
   }
 
   onError(error: Error) {

@@ -175,6 +175,7 @@ export type {
   PlayerErrorCode,
   PlayerEventData,
   PanelChangeEvent,
+  PlayerPanelChangeEvent,
   DecisionEvent,
   PaywallEvent,
   ErrorEvent,

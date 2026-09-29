@@ -584,14 +584,27 @@ The shell component emits everything you need as outputs:
 </pw-player-shell>
 ```
 
-Or subscribe to the state service directly:
+`panelChange` carries the panel's id (its key in `chapter.panels`) and the
+id of the panel before it. Read the id from `panelId`, not from `panel`:
+`Panel.id` is optional in the format and usually absent.
+
+```typescript
+import type { PlayerPanelChangeEvent } from '@panelwave/player';
+
+onPanelChange(e: PlayerPanelChangeEvent) {
+  console.log('Navigated to panel', e.panelId, 'in chapter', e.chapter.id, 'from', e.previousPanelId);
+}
+```
+
+Or subscribe to the state service directly (`currentPanel$` emits the
+`Panel` object only; the id comes with `panelChange`):
 
 ```typescript
 import { PlayerStateService } from '@panelwave/player';
 
 constructor(private playerState: PlayerStateService) {
   this.playerState.currentPanel$.subscribe(panel => {
-    console.log('Navigated to panel:', panel?.id);
+    console.log('Navigated to panel:', panel?.title);
   });
 }
 ```
@@ -624,7 +637,7 @@ And emits these outputs:
 | Output | Payload | Fires when |
 |--------|---------|------------|
 | `ready` | `void` | Manifest loaded, player ready |
-| `panelChange` | `{ panel, chapter }` | Navigation to a new panel |
+| `panelChange` | `PlayerPanelChangeEvent`: `{ panel, chapter, panelId, previousPanelId? }` | Navigation to a new panel; `panelId` is its key in `chapter.panels`, `previousPanelId` the panel before it (unset for the first panel after a load) |
 | `chapterChange` | `Chapter` | Chapter boundary crossed |
 | `localeChange` | `LocaleCode` | Language switched |
 | `variableChange` | `{ key, value }` | A story variable changed |

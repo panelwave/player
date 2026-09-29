@@ -15,11 +15,18 @@ semver. The reader-facing product changelog lives on the docs site
   partial-compiled package links cleanly) and a headless render, zoneless and
   zone.js. No library code changes were needed.
 - Package README: the usage example read `$event.panel.id` from
-  `panelChange`, which does not compile (`Panel` has no `id`; panels are keyed
-  by id in the manifest). It now uses `$event.chapter.id`. The setup section
-  mentions `allowedCommonJsDependencies` for `json-logic-js`.
+  `panelChange`, which does not compile (the player's `Panel` type has no
+  `id`; panels are keyed by id in the manifest). It now reads the new
+  `$event.panelId`. The setup section mentions `allowedCommonJsDependencies`
+  for `json-logic-js`.
 
 ### Added
+- `panelChange` carries the panel id: the payload (new exported type
+  `PlayerPanelChangeEvent`) gains `panelId` (the panel's key in
+  `chapter.panels`) and `previousPanelId` (the panel before it, possibly in
+  the previous chapter; unset for the first panel after a load or reload).
+  Additive: `panel` and `chapter` are unchanged, so existing handlers keep
+  working. Hosts no longer need to look the id up by object identity.
 - `npm run smoke:consumer -- --angular <major>` (`scripts/consumer-smoke.mjs`)
   and a CI matrix job running it for Angular 20, 21 and 22.
 - Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of

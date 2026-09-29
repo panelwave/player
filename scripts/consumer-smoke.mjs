@@ -21,11 +21,12 @@
  *
  * Usage (from the repo root, after `ng build player --configuration production`):
  *   node scripts/consumer-smoke.mjs --angular 22
- *   node scripts/consumer-smoke.mjs --angular 21 --tarball ../panelwave-player-1.1.0.tgz --keep
+ *   node scripts/consumer-smoke.mjs --angular 21 --tarball ../panelwave-player-x.y.z.tgz --keep
  *
  * Options:
  *   --angular <major>   Angular major for the consumer app (required)
- *   --tarball <path>    Use this package tarball instead of packing dist/player
+ *   --tarball <path>    Use this package tarball instead of packing dist/player (the app
+ *                       reads panelId from (panelChange): needs a release after 1.1.0)
  *   --workdir <dir>     Scratch directory (default: <os tmp>/pw-consumer-ng<major>)
  *   --screenshot <path> Screenshot file (default: test-results/consumer-smoke-ng<major>.png)
  *   --manifest <path>   Also render this manifest and require speech balloons within
@@ -170,7 +171,7 @@ export const appConfig: ApplicationConfig = {
   writeFileSync(
     join(appDir, 'src', 'app', 'app.ts'),
     `import { Component } from '@angular/core';
-import { PlayerShellComponent } from '@panelwave/player';
+import { PlayerShellComponent, type PlayerPanelChangeEvent } from '@panelwave/player';
 
 @Component({
   selector: 'app-root',
@@ -181,7 +182,7 @@ import { PlayerShellComponent } from '@panelwave/player';
       locale="en-US"
       [showToolbar]="true"
       (ready)="flag('pwReady', 'true')"
-      (panelChange)="onPanel($event.chapter.id)"
+      (panelChange)="onPanel($event)"
       (error)="flag('pwError', $event.message)" />
   \`,
   styles: \`:host { display: block; height: 100dvh; }\`,
@@ -189,8 +190,10 @@ import { PlayerShellComponent } from '@panelwave/player';
 export class App {
   readonly manifestUrl = new URLSearchParams(location.search).get('manifest') ?? 'sample-manifest.json';
   private panelChanges = 0;
-  onPanel(chapterId: string) {
-    this.flag('pwChapter', chapterId);
+  onPanel(e: PlayerPanelChangeEvent) {
+    this.flag('pwChapter', e.chapter.id);
+    this.flag('pwPanel', e.panelId);
+    this.flag('pwPreviousPanel', e.previousPanelId ?? '');
     this.flag('pwPanelChanges', String(++this.panelChanges));
   }
   flag(key: string, value: string) {
@@ -306,8 +309,10 @@ async function renderCheck(root) {
     // Input -> state -> render round trip (exercises change detection).
     await page.keyboard.press('ArrowRight');
     await page.locator('.t-frame [data-layer-id="ly-p1-2-bg"]').waitFor({ state: 'visible', timeout: 15_000 });
-    // (panelChange) fired for the entry panel and again for p1-2.
+    // (panelChange) fired for the entry panel and again for p1-2, with both ids.
     await page.waitForFunction(() => Number(document.documentElement.dataset['pwPanelChanges']) >= 2, null, { timeout: 5_000 });
+    const ids = await page.evaluate(() => [document.documentElement.dataset['pwPanel'], document.documentElement.dataset['pwPreviousPanel']]);
+    if (ids[0] !== 'p1-2' || ids[1] !== 'p1-1') problems.push(`(panelChange) ids: expected p1-2 from p1-1, got ${ids[0]} from ${ids[1]}`);
     const toolbarButtons = await page.locator('pw-player-shell button').count();
     await settle();
     await page.screenshot({ path: screenshot });

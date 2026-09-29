@@ -43,6 +43,7 @@ import type {
   LocalizedString,
   Mutation,
   Edge,
+  PlayerPanelChangeEvent,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -300,9 +301,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   @Output() ready = new EventEmitter<void>();
 
   /**
-   * Panel changed
+   * The current panel changed. Carries the panel's id (`panelId`, its key in
+   * `chapter.panels`) and the id of the panel before it (`previousPanelId`).
    */
-  @Output() panelChange = new EventEmitter<{ panel: Panel; chapter: Chapter }>();
+  @Output() panelChange = new EventEmitter<PlayerPanelChangeEvent>();
 
   /**
    * Chapter changed
@@ -616,6 +618,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private workCompleteTracked = false;
   private lastTrackedPanelId?: string;
 
+  /** Id of the panel of the last `panelChange` emission (its `previousPanelId` source). */
+  private lastPanelChangeId?: string;
+
   /** Bound pagehide handler so add/removeEventListener match. */
   private readonly onPageHide = (): void => this.endAnalyticsSession();
 
@@ -699,6 +704,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     this.endAnalyticsSession();
     this.analyticsSessionStarted = this.analyticsSessionEnded = this.workCompleteTracked = false;
     this.lastTrackedPanelId = undefined;
+    this.lastPanelChangeId = undefined;
     this.closePaywall();
     this.closeAgeGate();
     this.tocVisible = this.settingsVisible = this.languageModalVisible = this.charactersVisible = false;
@@ -1042,9 +1048,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    * one-time `work_complete` signal.
    */
   private trackPanelView(panel: Panel, chapter: Chapter): void {
-    // Panels don't carry their own id — resolve it from the chapter's map
-    // (same identity lookup as getCurrentPanelId).
-    const panelId = Object.entries(chapter.panels ?? {}).find(([, p]) => p === panel)?.[0];
+    const panelId = this.panelIdOf(panel, chapter);
     if (!panelId || panelId === this.lastTrackedPanelId) {
       return;
     }
@@ -1063,6 +1067,15 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         chapterId: chapter.id,
       });
     }
+  }
+
+  /**
+   * A panel's id: its key in `chapter.panels`. Panels don't reliably carry
+   * their own id (`Panel.id` is optional in the format), so resolve it by
+   * identity, as getCurrentPanelId() does.
+   */
+  private panelIdOf(panel: Panel, chapter: Chapter): string | undefined {
+    return Object.entries(chapter.panels ?? {}).find(([, p]) => p === panel)?.[0];
   }
 
   /** An end panel (no outgoing edges) of the manifest's last chapter. */
@@ -1111,7 +1124,16 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           // Resolve variants before emitting so consumers (and the
           // tracked event) see the effective panel state.
           this.refreshResolvedPanels();
-          this.panelChange.emit({ panel, chapter: this.currentChapter });
+          // Panels are keyed by id in chapter.panels; the lookup always hits
+          // for a panel the shell navigated to ('' only guards the type).
+          const panelId = this.panelIdOf(panel, this.currentChapter) ?? '';
+          this.panelChange.emit({
+            panel,
+            chapter: this.currentChapter,
+            panelId,
+            previousPanelId: this.lastPanelChangeId,
+          });
+          this.lastPanelChangeId = panelId || undefined;
           this.trackPanelView(panel, this.currentChapter);
         }
       });

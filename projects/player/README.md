@@ -132,7 +132,7 @@ to the same build options.
 
 ```typescript
 import { Component } from '@angular/core';
-import { PlayerShellComponent } from '@panelwave/player';
+import { PlayerShellComponent, type PlayerPanelChangeEvent } from '@panelwave/player';
 
 @Component({
   selector: 'app-reader',
@@ -142,13 +142,15 @@ import { PlayerShellComponent } from '@panelwave/player';
       manifestUrl="/stories/my-story/panelwave.json"
       locale="en-US"
       [showToolbar]="true"
-      (panelChange)="onPanel($event.chapter.id)"
+      (panelChange)="onPanel($event)"
       (error)="onError($event)" />
   `,
   styles: `:host { display: block; height: 100dvh; }`,
 })
 export class ReaderComponent {
-  onPanel(chapterId: string) { console.log('new panel in chapter', chapterId); }
+  onPanel(e: PlayerPanelChangeEvent) {
+    console.log(`panel ${e.panelId} in chapter ${e.chapter.id} (came from ${e.previousPanelId ?? 'start'})`);
+  }
   onError(err: Error) { console.error(err); }
 }
 ```
@@ -184,7 +186,7 @@ a new `entitlementSnapshot` re-evaluates the gates, and `locale`,
 | Output | Payload | Fires when |
 |---|---|---|
 | `ready` | `void` | The manifest is loaded and the player is ready |
-| `panelChange` | `{ panel, chapter }` | The reader moves to a new panel |
+| `panelChange` | `PlayerPanelChangeEvent`: `{ panel, chapter, panelId, previousPanelId? }` | The reader moves to a new panel. `panelId` is the panel's key in `chapter.panels` (read the id from here: `panel.id` is optional in the format and usually absent); `previousPanelId` is the panel before it, unset for the first panel after a (re)load |
 | `chapterChange` | `Chapter` | A chapter boundary is crossed |
 | `variableChange` | `{ key, value }` | A story variable changes |
 | `localeChange` | `LocaleCode` | The language is switched |

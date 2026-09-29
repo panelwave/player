@@ -3,7 +3,8 @@
  * Player-specific types for runtime state and configuration
  */
 
-import type { PanelWaveManifest, LocaleCode } from './manifest.types';
+import type { PanelWaveManifest, LocaleCode, Chapter } from './manifest.types';
+import type { Panel } from './panel.types';
 import type { VariableStore } from './variable.types';
 
 /**
@@ -366,6 +367,30 @@ export interface PanelChangeEvent {
   
   /** Transition used */
   transition?: string;
+}
+
+/**
+ * Payload of `<pw-player-shell>`'s `(panelChange)` output.
+ *
+ * Panels are keyed by id in `chapter.panels`; the optional `Panel.id` of the
+ * format is not required and is usually absent, so read the id from
+ * `panelId`, not from `panel`.
+ */
+export interface PlayerPanelChangeEvent {
+  /** The panel that is now current (the manifest object, variants unresolved). */
+  panel: Panel;
+
+  /** The chapter the panel belongs to. */
+  chapter: Chapter;
+
+  /** Id of the current panel: its key in `chapter.panels`. */
+  panelId: string;
+
+  /**
+   * Id of the panel that was current before this change (it may belong to
+   * the previous chapter). Undefined for the first panel after a (re)load.
+   */
+  previousPanelId?: string;
 }
 
 /**
