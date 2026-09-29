@@ -20,7 +20,7 @@ import {
 
 import { HttpClient } from '@angular/common/http';
 import { Subject, takeUntil } from 'rxjs';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { TranslatePipe, TranslateLoader } from '@ngx-translate/core';
 import { CustomTranslateLoader } from '../../utils/translation-loader';
 
 import { PlayerEvent } from '../../types';
@@ -126,7 +126,7 @@ export interface EntitlementAdapter {
     selector: 'pw-player-shell',
     providers: [CanvasCameraService],
     imports: [
-    TranslateModule,
+    TranslatePipe,
     ViewportComponent,
     CanvasStageComponent,
     ToolbarComponent,

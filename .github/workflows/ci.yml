@@ -71,14 +71,22 @@ jobs:
   # Installs the packed library into a fresh `ng new` app of each supported
   # Angular major (strict peer resolution), builds it in production mode (the
   # partial-compiled library goes through that major's linker) and renders the
-  # demo manifest in headless Chromium. Keep the matrix in step with the
-  # @angular/* peer range in projects/player/package.json.
+  # demo manifest in headless Chromium. Every Angular major runs with the
+  # newest @ngx-translate/core major; the older one runs on the lowest and
+  # highest Angular major. Keep the matrix in step with the @angular/* and
+  # @ngx-translate/core peer ranges in projects/player/package.json.
   consumer-smoke:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         angular: [20, 21, 22]
+        translate: [18]
+        include:
+          - angular: 20
+            translate: 17
+          - angular: 22
+            translate: 17
     steps:
       - uses: actions/checkout@v4
 
@@ -96,13 +104,13 @@ jobs:
       - name: Build library
         run: npx ng build player --configuration production
 
-      - name: Consumer smoke test (Angular ${{ matrix.angular }})
-        run: npm run smoke:consumer -- --angular ${{ matrix.angular }}
+      - name: Consumer smoke test (Angular ${{ matrix.angular }}, ngx-translate ${{ matrix.translate }})
+        run: npm run smoke:consumer -- --angular ${{ matrix.angular }} --ngx-translate ${{ matrix.translate }}
 
       - name: Screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: consumer-smoke-ng${{ matrix.angular }}
+          name: consumer-smoke-ng${{ matrix.angular }}-t${{ matrix.translate }}
           path: test-results/consumer-smoke-*.png
           if-no-files-found: ignore

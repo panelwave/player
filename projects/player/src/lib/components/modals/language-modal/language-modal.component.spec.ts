@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule } from '@ngx-translate/core';
+import { provideTranslateService } from '@ngx-translate/core';
 
 import { LanguageModalComponent } from './language-modal.component';
 
@@ -16,7 +16,7 @@ describe('LanguageModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LanguageModalComponent, TranslateModule.forRoot()],
+      imports: [LanguageModalComponent], providers: [provideTranslateService()],
     }).compileComponents();
     fixture = TestBed.createComponent(LanguageModalComponent);
     component = fixture.componentInstance;

@@ -18,7 +18,7 @@ import {
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
@@ -40,7 +40,7 @@ export interface Character {
  */
 @Component({
     selector: 'pw-character-roster',
-    imports: [FormsModule, TranslateModule, PwIconComponent],
+    imports: [FormsModule, TranslatePipe, PwIconComponent],
     templateUrl: './character-roster.component.html',
     styleUrls: ['./character-roster.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

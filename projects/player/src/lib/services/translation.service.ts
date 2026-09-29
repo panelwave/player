@@ -18,8 +18,10 @@ export class TranslationService {
   private readonly translate = inject(TranslateService);
 
   constructor() {
-    // Set default language - translations will be loaded via HTTP
-    this.translate.setDefaultLang('en');
+    // Fallback language - translations will be loaded via HTTP.
+    // setFallbackLang / getCurrentLang / getFallbackLang exist in
+    // ngx-translate 17 and 18 (the default* aliases are gone in 18).
+    this.translate.setFallbackLang('en');
     this.translate.use('en');
   }
 
@@ -43,7 +45,7 @@ export class TranslationService {
    * Get current GUI language
    */
   getCurrentLanguage(): string {
-    return this.translate.currentLang || this.translate.defaultLang || 'en';
+    return this.translate.getCurrentLang() || this.translate.getFallbackLang() || 'en';
   }
 
   /**

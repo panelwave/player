@@ -65,12 +65,13 @@ npm install @panelwave/player @ngx-translate/core
 ```
 
 Peer dependencies: `@angular/core` and `@angular/common` **^20, ^21 or ^22**,
-`@ngx-translate/core` **^17**, `rxjs` **^7.8**.
+`@ngx-translate/core` **^17 or ^18**, `rxjs` **^7.8**.
 
 **Angular compatibility.** The package is compiled with Angular 20 in partial
 (linker) mode, so newer Angular versions link it at build time. Every CI run
 installs the packed library into a fresh `ng new` app on Angular 20, 21 and
-22 (strict peer resolution, production build, headless render of a sample
+22 with ngx-translate 18, and on Angular 20 and 22 with ngx-translate 17
+(strict peer resolution, production build, headless render of a sample
 manifest); the player works with zone.js and zoneless change detection (the
 default for new Angular 21+ apps).
 
@@ -81,13 +82,13 @@ for its UI strings:
 
 ```typescript
 // app.config.ts
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, inject } from '@angular/core';
 import { HttpClient, provideHttpClient } from '@angular/common/http';
-import { TranslateLoader, TranslateModule, TranslationObject } from '@ngx-translate/core';
+import { TranslateLoader, TranslationObject, provideTranslateService } from '@ngx-translate/core';
 import { Observable } from 'rxjs';
 
 class PlayerTranslateLoader implements TranslateLoader {
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
   getTranslation(lang: string): Observable<TranslationObject> {
     return this.http.get<TranslationObject>(`./assets/i18n/${lang}.json`);
   }
@@ -96,14 +97,20 @@ class PlayerTranslateLoader implements TranslateLoader {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHttpClient(),
-    importProvidersFrom(
-      TranslateModule.forRoot({
-        loader: { provide: TranslateLoader, useClass: PlayerTranslateLoader, deps: [HttpClient] },
-      }),
-    ),
+    provideTranslateService({
+      loader: { provide: TranslateLoader, useClass: PlayerTranslateLoader },
+    }),
   ],
 };
 ```
+
+This works with ngx-translate 17 and 18. (`TranslateModule.forRoot()` still
+works on 17 but no longer exists in 18.) Pass the loader as an explicit
+provider as shown: on 18, `provideTranslateLoader(PlayerTranslateLoader)`
+fails in production builds for a plain (non-`@Injectable`) class, because
+18 tells classes from factory functions by their source text, and the
+minified class no longer looks like one ("Class constructor … cannot be
+invoked without 'new'").
 
 **2. Assets and fonts.** Copy the player's UI translations into your app,
 and include the balloon lettering fonts:

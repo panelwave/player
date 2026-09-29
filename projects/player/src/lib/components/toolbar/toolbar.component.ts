@@ -11,7 +11,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import type { LocaleCode } from '../../types';
 import { PwIconComponent } from '../icon/pw-icon.component';
 
@@ -21,7 +21,7 @@ import { PwIconComponent } from '../icon/pw-icon.component';
  */
 @Component({
     selector: 'pw-toolbar',
-    imports: [TranslateModule, PwIconComponent],
+    imports: [TranslatePipe, PwIconComponent],
     templateUrl: './toolbar.component.html',
     styleUrls: ['./toolbar.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

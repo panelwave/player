@@ -1,7 +1,7 @@
 import { ChangeDetectorRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { ExtrasViewerComponent, type Extra } from './extras-viewer.component';
 import { PwIconComponent } from '../../icon/pw-icon.component';
@@ -69,7 +69,7 @@ describe('ExtrasViewerComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ExtrasViewerComponent, TranslateModule.forRoot()],
+      imports: [ExtrasViewerComponent], providers: [provideTranslateService()],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {

@@ -1,6 +1,6 @@
 import { ChangeDetectorRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import type { Chapter, Page, Panel, PanelWaveManifest } from '../../../types';
 import { TocOverlayComponent, type TocNavigationTarget } from './toc-overlay.component';
@@ -55,7 +55,7 @@ describe('TocOverlayComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TocOverlayComponent, TranslateModule.forRoot()],
+      imports: [TocOverlayComponent], providers: [provideTranslateService()],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', { toc: { title: 'Contents', current: 'Now reading', no_results: 'Nothing for "{{query}}"' } });

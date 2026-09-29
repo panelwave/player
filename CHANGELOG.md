@@ -14,6 +14,18 @@ semver. The reader-facing product changelog lives on the docs site
   20.3 / 21.2 / 22.2 apps: strict-peer install, production build (the
   partial-compiled package links cleanly) and a headless render, zoneless and
   zone.js. No library code changes were needed.
+- Peer dependency accepts ngx-translate 18: `@ngx-translate/core` is
+  `^17.0.0 || ^18.0.0` (was `^17.0.0`, a conflict for hosts on the new
+  `latest`). 18 removed `TranslateModule` and the `default*` aliases, so the
+  components import the standalone `TranslatePipe` and `TranslationService`
+  uses `setFallbackLang` / `getCurrentLang` / `getFallbackLang`, all of which
+  exist in 17 too. Hosts on 18 must register ngx-translate with
+  `provideTranslateService({ loader: { provide: TranslateLoader, useClass:
+  ... } })`; the README setup now uses that form, which also works on 17
+  (`provideTranslateLoader(SomeClass)` breaks 18 production builds for a
+  plain class: its class detection fails on minified code). The consumer smoke
+  test takes `--ngx-translate <major>` (default 18) and CI covers Angular
+  20/21/22 on 18 plus 20 and 22 on 17.
 - Package README: the usage example read `$event.panel.id` from
   `panelChange`, which does not compile (the player's `Panel` type has no
   `id`; panels are keyed by id in the manifest). It now reads the new

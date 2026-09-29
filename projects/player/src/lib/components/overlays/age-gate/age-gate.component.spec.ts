@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { AgeGateComponent, type AgeVerificationResult } from './age-gate.component';
 
@@ -304,7 +304,7 @@ describe('AgeGateComponent (localized)', () => {
     (fixture.nativeElement.querySelector(sel) as HTMLElement | null)?.textContent?.replace(/\s+/g, ' ').trim();
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [AgeGateComponent, TranslateModule.forRoot()] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [AgeGateComponent], providers: [provideTranslateService()] }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('de', { age_gate: {"title": "Altersprüfung erforderlich", "close": "Schließen", "warning": "Dieser Inhalt ist nur für Personen ab {{age}} Jahren freigegeben.", "prompt": "Bitte gib dein Geburtsdatum ein:", "month": "Monat", "day": "Tag", "year": "Jahr", "verify": "Alter bestätigen", "privacy": "Deine Angaben sind privat und werden nicht gespeichert.", "error_incomplete": "Bitte gib dein vollständiges Geburtsdatum ein.", "error_month": "Bitte gib einen gültigen Monat ein (1-12).", "error_day": "Bitte gib einen gültigen Tag ein (1-{{max}}).", "error_year": "Bitte gib ein gültiges Jahr ein (1900-{{max}}).", "error_too_young": "Du musst mindestens {{age}} Jahre alt sein, um diesen Inhalt zu sehen."} });
     translate.use('de');

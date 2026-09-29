@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { SettingsModalComponent, type Preferences, type VariableChange } from './settings-modal.component';
 import type { VariableDefinition } from '../../../types';
@@ -49,7 +49,7 @@ describe('SettingsModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SettingsModalComponent, TranslateModule.forRoot()],
+      imports: [SettingsModalComponent], providers: [provideTranslateService()],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {

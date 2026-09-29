@@ -71,9 +71,11 @@ describe('TranslationService', () => {
 
   describe('getCurrentLanguage fallbacks', () => {
     interface FakeTranslate {
-      currentLang: string;
-      defaultLang: string | null;
-      setDefaultLang: jasmine.Spy;
+      current: string | null;
+      fallback: string | null;
+      getCurrentLang(): string | null;
+      getFallbackLang(): string | null;
+      setFallbackLang: jasmine.Spy;
       use: jasmine.Spy;
     }
     let fake: FakeTranslate;
@@ -81,9 +83,11 @@ describe('TranslationService', () => {
 
     beforeEach(() => {
       fake = {
-        currentLang: '',
-        defaultLang: null,
-        setDefaultLang: jasmine.createSpy('setDefaultLang'),
+        current: null,
+        fallback: null,
+        getCurrentLang: () => fake.current,
+        getFallbackLang: () => fake.fallback,
+        setFallbackLang: jasmine.createSpy('setFallbackLang'),
         use: jasmine.createSpy('use'),
       };
       TestBed.configureTestingModule({
@@ -92,16 +96,16 @@ describe('TranslationService', () => {
       service = TestBed.inject(TranslationService);
     });
 
-    it('configures English as default and active language on construction', () => {
-      expect(fake.setDefaultLang).toHaveBeenCalledWith('en');
+    it('configures English as fallback and active language on construction', () => {
+      expect(fake.setFallbackLang).toHaveBeenCalledWith('en');
       expect(fake.use).toHaveBeenCalledWith('en');
     });
 
-    it('prefers currentLang, then defaultLang, then "en"', () => {
+    it('prefers the current language, then the fallback, then "en"', () => {
       expect(service.getCurrentLanguage()).toBe('en');
-      fake.defaultLang = 'fr';
+      fake.fallback = 'fr';
       expect(service.getCurrentLanguage()).toBe('fr');
-      fake.currentLang = 'it';
+      fake.current = 'it';
       expect(service.getCurrentLanguage()).toBe('it');
     });
   });

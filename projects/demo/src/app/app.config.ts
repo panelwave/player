@@ -1,7 +1,7 @@
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, inject } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, HttpClient } from '@angular/common/http';
-import { TranslateModule, TranslateLoader, TranslationObject } from '@ngx-translate/core';
+import { TranslateLoader, TranslationObject, provideTranslateService } from '@ngx-translate/core';
 import { Observable } from 'rxjs';
 
 import { routes } from './app.routes';
@@ -10,32 +10,21 @@ import { routes } from './app.routes';
  * Simple TranslateLoader for demo app
  */
 export class DemoTranslateLoader implements TranslateLoader {
-  constructor(private http: HttpClient) {}
-  
+  private readonly http = inject(HttpClient);
+
   getTranslation(lang: string): Observable<TranslationObject> {
     return this.http.get<TranslationObject>(`./assets/i18n/${lang}.json`);
   }
-}
-
-/**
- * Factory function for TranslateLoader
- */
-export function createTranslateLoader(http: HttpClient): TranslateLoader {
-  return new DemoTranslateLoader(http);
 }
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideHttpClient(),
-    importProvidersFrom(
-      TranslateModule.forRoot({
-        loader: {
-          provide: TranslateLoader,
-          useFactory: createTranslateLoader,
-          deps: [HttpClient]
-        }
-      })
-    )
-  ]
+    // provideTranslateService works with ngx-translate 17 and 18
+    // (TranslateModule.forRoot is gone in 18). The loader is an explicit
+    // provider: 18's provideTranslateLoader(Class) mistakes a minified plain
+    // class for a factory function in production builds.
+    provideTranslateService({ loader: { provide: TranslateLoader, useClass: DemoTranslateLoader } }),
+  ],
 };

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { PaywallOverlayComponent, type PaywallAction } from './paywall-overlay.component';
 import type { PaywallGate, PurchaseInfo } from '../../../types/entitlement.types';
@@ -246,7 +246,7 @@ describe('PaywallOverlayComponent (localized)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PaywallOverlayComponent, TranslateModule.forRoot()],
+      imports: [PaywallOverlayComponent], providers: [provideTranslateService()],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('de', {

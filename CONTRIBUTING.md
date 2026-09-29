@@ -37,15 +37,22 @@ ng lint player
 ng build player --configuration production
 npm run smoke:consumer -- --angular 22            # or 20 / 21
 npm run smoke:consumer -- --angular 22 --zone     # zone.js app instead of zoneless
+npm run smoke:consumer -- --angular 20 --ngx-translate 17   # default: 18
 ```
 
 `scripts/consumer-smoke.mjs` packs `dist/player`, generates a fresh app with
 that major's CLI in the OS temp dir, installs the tarball with strict peer
 resolution, wires it up as the package README describes, runs a production
 build and renders the demo manifest in headless Chromium (screenshot in
-`test-results/`). CI runs it for every major in the `@angular/*` peer range;
-when that range changes, change the `consumer-smoke` matrix in
-`.github/workflows/ci.yml` with it. Needs a Node version the chosen CLI
+`test-results/`). CI runs it for every major in the `@angular/*` peer range
+with the newest `@ngx-translate/core` major, and for the lowest and highest
+Angular major with the older ngx-translate major; when either peer range
+changes, change the `consumer-smoke` matrix in `.github/workflows/ci.yml`
+with it. The repo itself builds and tests against the lowest supported
+majors (Angular 20, ngx-translate 17), so only use ngx-translate APIs that
+exist in every supported major (`provideTranslateService`, `TranslatePipe`,
+`setFallbackLang` / `getCurrentLang` / `getFallbackLang`; not
+`TranslateModule` or the `default*` aliases, both gone in 18). Needs a Node version the chosen CLI
 accepts (Angular 22: Node >= 22.22.3; CI uses 24). `--manifest <file>`
 additionally renders a manifest with speech bubbles, `--keep` keeps the app.
 

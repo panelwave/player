@@ -38,7 +38,9 @@ npm install @panelwave/player @ngx-translate/core
 ```
 
 **Compatibility:** Angular **20, 21 and 22** (`@angular/core` / `@angular/common`
-peer range `^20.0.0 || ^21.0.0 || ^22.0.0`), `@ngx-translate/core` ^17, `rxjs` ^7.8.
+peer range `^20.0.0 || ^21.0.0 || ^22.0.0`), `@ngx-translate/core` ^17 or ^18
+(register it with `provideTranslateService()`, which both majors have; 18 removed
+`TranslateModule`), `rxjs` ^7.8.
 The library is built with Angular 20 in partial-compilation mode and linked by
 the host's Angular version; CI proves each supported major with a consumer smoke
 test (`npm run smoke:consumer -- --angular <major>`, see

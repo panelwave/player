@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { BranchChooserComponent, type BranchChoice } from './branch-chooser.component';
 
@@ -79,7 +79,7 @@ describe('BranchChooserComponent (labels)', () => {
   });
 
   it('translates title, close and the fallback label', async () => {
-    await TestBed.configureTestingModule({ imports: [BranchChooserComponent, TranslateModule.forRoot()] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [BranchChooserComponent], providers: [provideTranslateService()] }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('de', { branch_chooser: {"title": "Wähle deinen Weg", "close": "Schließen", "option": "Option {{n}}"} });
     translate.use('de');

@@ -4,7 +4,7 @@
 
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 import type { LocaleCode } from '../../../types';
 
@@ -14,7 +14,7 @@ import type { LocaleCode } from '../../../types';
  */
 @Component({
     selector: 'pw-language-modal',
-    imports: [TranslateModule, PwIconComponent],
+    imports: [TranslatePipe, PwIconComponent],
     templateUrl: './language-modal.component.html',
     styleUrls: ['./language-modal.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

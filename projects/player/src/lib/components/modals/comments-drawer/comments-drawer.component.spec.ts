@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { CommentsDrawerComponent, type Comment, type CommentPost } from './comments-drawer.component';
 
@@ -53,7 +53,7 @@ describe('CommentsDrawerComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CommentsDrawerComponent, TranslateModule.forRoot()],
+      imports: [CommentsDrawerComponent], providers: [provideTranslateService()],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {

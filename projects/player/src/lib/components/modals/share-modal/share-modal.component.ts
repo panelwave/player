@@ -15,7 +15,7 @@ import {
   inject,
 } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
@@ -29,7 +29,7 @@ export type SharePlatform = 'twitter' | 'facebook' | 'reddit' | 'email' | 'copy'
  */
 @Component({
     selector: 'pw-share-modal',
-    imports: [TranslateModule, PwIconComponent],
+    imports: [TranslatePipe, PwIconComponent],
     templateUrl: './share-modal.component.html',
     styleUrls: ['./share-modal.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

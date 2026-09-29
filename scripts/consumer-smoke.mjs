@@ -14,21 +14,25 @@
  *      Chromium, `(ready)` fires, arrow-key navigation reaches the second
  *      panel, and the console stays free of errors. A screenshot is saved.
  *
- * The app is set up exactly as the package README describes (providers,
- * i18n assets, balloon fonts, allowedCommonJsDependencies), with zoneless
+ * The app is set up exactly as the package README describes (providers via
+ * provideTranslateService, which ngx-translate 17 and 18 both have, i18n
+ * assets, balloon fonts, allowedCommonJsDependencies), with zoneless
  * change detection (the default for new Angular 21+ apps) unless --zone is
  * passed.
  *
  * Usage (from the repo root, after `ng build player --configuration production`):
  *   node scripts/consumer-smoke.mjs --angular 22
+ *   node scripts/consumer-smoke.mjs --angular 20 --ngx-translate 17
  *   node scripts/consumer-smoke.mjs --angular 21 --tarball ../panelwave-player-x.y.z.tgz --keep
  *
  * Options:
  *   --angular <major>   Angular major for the consumer app (required)
+ *   --ngx-translate <major>  @ngx-translate/core major to install (default 18)
  *   --tarball <path>    Use this package tarball instead of packing dist/player (the app
- *                       reads panelId from (panelChange): needs a release after 1.1.0)
- *   --workdir <dir>     Scratch directory (default: <os tmp>/pw-consumer-ng<major>)
- *   --screenshot <path> Screenshot file (default: test-results/consumer-smoke-ng<major>.png)
+ *                       reads panelId from (panelChange) and needs ngx-translate 18
+ *                       support: a release after 1.1.0)
+ *   --workdir <dir>     Scratch directory (default: <os tmp>/pw-consumer-ng<major>-t<ngx-translate>)
+ *   --screenshot <path> Screenshot file (default: test-results/consumer-smoke-ng<major>-t<ngx-translate>.png)
  *   --manifest <path>   Also render this manifest and require speech balloons within
  *                       its first 6 panels; screenshot saved as *-extra.png
  *   --zone              Generate a zone.js app instead of the CLI default
@@ -57,18 +61,24 @@ const option = (name) => {
 };
 const major = option('angular');
 if (!major || !/^\d+$/.test(major)) {
-  console.error('usage: node scripts/consumer-smoke.mjs --angular <major> [--tarball <path>] [--workdir <dir>] [--screenshot <path>] [--manifest <path>] [--zone] [--keep]');
+  console.error('usage: node scripts/consumer-smoke.mjs --angular <major> [--ngx-translate <major>] [--tarball <path>] [--workdir <dir>] [--screenshot <path>] [--manifest <path>] [--zone] [--keep]');
+  process.exit(2);
+}
+const ngxMajor = option('ngx-translate') ?? '18';
+if (!/^\d+$/.test(ngxMajor)) {
+  console.error('--ngx-translate takes a major version, e.g. 17 or 18');
   process.exit(2);
 }
 const useZone = flag('zone');
 const extraManifest = option('manifest') && resolve(option('manifest'));
-const workdir = resolve(option('workdir') ?? join(tmpdir(), `pw-consumer-ng${major}${useZone ? '-zone' : ''}`));
-const screenshot = resolve(option('screenshot') ?? join(repoRoot, 'test-results', `consumer-smoke-ng${major}${useZone ? '-zone' : ''}.png`));
+const variant = `ng${major}-t${ngxMajor}${useZone ? '-zone' : ''}`;
+const workdir = resolve(option('workdir') ?? join(tmpdir(), `pw-consumer-${variant}`));
+const screenshot = resolve(option('screenshot') ?? join(repoRoot, 'test-results', `consumer-smoke-${variant}.png`));
 const appName = 'consumer';
 const appDir = join(workdir, appName);
 
 // ---------------------------------------------------------------- helpers
-const step = (msg) => console.log(`\n[consumer-smoke ng${major}] ${msg}`);
+const step = (msg) => console.log(`\n[consumer-smoke ${variant}] ${msg}`);
 const quote = (a) => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
 
 /** Run a command, stream its output, and fail the smoke test on a non-zero exit. */
@@ -129,8 +139,8 @@ async function main() {
 
   // 3. Install the player the way a host does. No --legacy-peer-deps: a peer
   //    range that excludes this Angular major must fail here.
-  step('npm install @panelwave/player (strict peer resolution)');
-  run('npm', ['install', '--no-audit', '--no-fund', tarball, '@ngx-translate/core@^17'], appDir);
+  step(`npm install @panelwave/player + @ngx-translate/core@^${ngxMajor} (strict peer resolution)`);
+  run('npm', ['install', '--no-audit', '--no-fund', tarball, `@ngx-translate/core@^${ngxMajor}`], appDir);
   run('npm', ['ls', '@panelwave/player', '@angular/core', '@angular/common', 'rxjs', 'json-logic-js', '@ngx-translate/core', 'tslib'], appDir);
   const versionOf = (pkg) => readJson(join(appDir, 'node_modules', pkg, 'package.json')).version;
 
@@ -142,13 +152,13 @@ async function main() {
   }
   writeFileSync(
     join(appDir, 'src', 'app', 'app.config.ts'),
-    `import { ApplicationConfig, importProvidersFrom, provideBrowserGlobalErrorListeners, ${useZone ? 'provideZoneChangeDetection' : 'provideZonelessChangeDetection'} } from '@angular/core';
+    `import { ApplicationConfig, inject, provideBrowserGlobalErrorListeners, ${useZone ? 'provideZoneChangeDetection' : 'provideZonelessChangeDetection'} } from '@angular/core';
 import { HttpClient, provideHttpClient } from '@angular/common/http';
-import { TranslateLoader, TranslateModule, TranslationObject } from '@ngx-translate/core';
+import { TranslateLoader, TranslationObject, provideTranslateService } from '@ngx-translate/core';
 import { Observable } from 'rxjs';
 
 class PlayerTranslateLoader implements TranslateLoader {
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
   getTranslation(lang: string): Observable<TranslationObject> {
     return this.http.get<TranslationObject>(\`./assets/i18n/\${lang}.json\`);
   }
@@ -159,11 +169,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     ${useZone ? 'provideZoneChangeDetection({ eventCoalescing: true })' : 'provideZonelessChangeDetection()'},
     provideHttpClient(),
-    importProvidersFrom(
-      TranslateModule.forRoot({
-        loader: { provide: TranslateLoader, useClass: PlayerTranslateLoader, deps: [HttpClient] },
-      }),
-    ),
+    provideTranslateService({ loader: { provide: TranslateLoader, useClass: PlayerTranslateLoader } }),
   ],
 };
 `,
@@ -244,7 +250,7 @@ export class App {
   };
   step(`PASS ${JSON.stringify(summary, null, 2)}`);
   if (process.env.GITHUB_STEP_SUMMARY) {
-    writeFileSync(process.env.GITHUB_STEP_SUMMARY, `### Consumer smoke: Angular ${summary.angular}\n\n\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\`\n`, { flag: 'a' });
+    writeFileSync(process.env.GITHUB_STEP_SUMMARY, `### Consumer smoke: Angular ${summary.angular}, ngx-translate ${summary.ngxTranslate}\n\n\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\`\n`, { flag: 'a' });
   }
 }
 
@@ -351,6 +357,6 @@ main()
     if (!flag('keep')) rmSync(workdir, { recursive: true, force: true });
   })
   .catch((err) => {
-    console.error(`\n[consumer-smoke ng${major}] FAIL: ${err.message}\n(scratch kept at ${workdir})`);
+    console.error(`\n[consumer-smoke ${variant}] FAIL: ${err.message}\n(scratch kept at ${workdir})`);
     process.exit(1);
   });

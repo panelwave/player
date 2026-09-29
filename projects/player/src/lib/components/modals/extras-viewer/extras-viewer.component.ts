@@ -14,7 +14,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
@@ -44,7 +44,7 @@ export interface Extra {
  */
 @Component({
     selector: 'pw-extras-viewer',
-    imports: [TranslateModule, PwIconComponent],
+    imports: [TranslatePipe, PwIconComponent],
     templateUrl: './extras-viewer.component.html',
     styleUrls: ['./extras-viewer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
