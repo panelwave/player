@@ -1,6 +1,6 @@
 {
   "name": "@panelwave/player",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Open-source Angular library for PanelWave interactive graphic novels",
   "keywords": [
     "angular",
