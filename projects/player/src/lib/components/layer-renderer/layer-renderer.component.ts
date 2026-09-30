@@ -23,6 +23,7 @@ import type {
   ImageVariant,
 } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
+import { AssetUrlService } from '../../services/asset-url.service';
 import { VideoLayerComponent, type LayerViewMode } from '../layers/video-layer/video-layer.component';
 import {
   resolvePlayMode,
@@ -44,6 +45,7 @@ import { selectImageVariantForWidth } from '../../utils/image-variant-utils';
 })
 export class LayerRendererComponent {
   private manifestService = inject(ManifestService);
+  private readonly assetUrl = inject(AssetUrlService);
 
   /**
    * Layer to render
@@ -191,7 +193,8 @@ export class LayerRendererComponent {
   }
 
   /**
-   * Get image source URL
+   * Image source URL, resolved against the manifest's assets.base / manifest
+   * URL (the <img> is rendered by this component).
    */
   getImageSrc(): string {
     if (this.layer.kind !== 'image') return '';
@@ -207,13 +210,13 @@ export class LayerRendererComponent {
           asset.variants as ImageVariant[],
           this.targetWidth
         );
-        return variant?.src ?? asset.variants[0].src;
+        return this.assetUrl.resolve(variant?.src ?? asset.variants[0].src, 'image');
       }
     }
 
-    // Fall back to direct src if provided (resolved downstream by pw-image-layer).
+    // Fall back to direct src if provided.
     const src = (this.layer as Record<string, unknown>)['src'];
-    return typeof src === 'string' ? src : '';
+    return typeof src === 'string' ? this.assetUrl.resolve(src, 'image') : '';
   }
 
   /**

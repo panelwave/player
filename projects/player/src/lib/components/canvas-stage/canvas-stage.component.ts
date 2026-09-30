@@ -43,6 +43,7 @@ import type { Hotspot } from '../../types';
 
 import { CanvasCameraService, CameraState } from '../../services/canvas-camera.service';
 import { ManifestService } from '../../services/manifest.service';
+import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
@@ -128,6 +129,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   readonly camera = inject(CanvasCameraService);
   private readonly manifestService = inject(ManifestService);
+  private readonly assetUrlService = inject(AssetUrlService);
   private readonly preloadService = inject(PreloadService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -334,7 +336,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
           this.preloadService.add({
             id: variant.src,
             type: 'image',
-            url: variant.src,
+            url: this.assetUrlService.resolve(variant.src, 'image'),
             priority: candidate.priority,
             panelId: candidate.panelId,
           });
@@ -503,7 +505,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
       return '';
     }
     const asset = this.manifestService.getAsset(assetId);
-    return asset?.variants?.[0]?.src ?? '';
+    return this.assetUrlService.resolve(asset?.variants?.[0]?.src, 'image');
   }
 
   backgroundStyle(): Record<string, string> {

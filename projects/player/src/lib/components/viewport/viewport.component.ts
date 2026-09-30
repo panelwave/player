@@ -31,6 +31,7 @@ import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-
 import { PwIconComponent } from '../icon/pw-icon.component';
 import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Graph, PreloadSettings, Transition, Hotspot, VariableContext } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
+import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 
@@ -65,6 +66,7 @@ const VARIANT_SETTLE_MS = 180;
 })
 export class ViewportComponent implements OnChanges, OnDestroy {
   private manifestService = inject(ManifestService);
+  private assetUrlService = inject(AssetUrlService);
   private preloadService = inject(PreloadService);
   private elementRef = inject(ElementRef<HTMLElement>);
   private cdr = inject(ChangeDetectorRef);
@@ -581,7 +583,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
           this.preloadService.add({
             id: variant.src,
             type: 'image',
-            url: variant.src,
+            url: this.assetUrlService.resolve(variant.src, 'image'),
             priority: 'high',
             panelId,
           });
