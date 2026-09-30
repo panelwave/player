@@ -72,6 +72,8 @@ export interface BalloonRenderResult {
   width: number;
   height: number;
   svg: SVGSVGElement;
+  /** True when the text needs more height than a fixed maxHeight allows (it is cut off). */
+  textOverflows: boolean;
   balloon: ComicBalloon;
   update: (newText?: string, newTailOptions?: TailOptions | null) => BalloonRenderResult;
   updateTail: (newTailOptions: TailOptions | null) => BalloonRenderResult;
@@ -363,6 +365,7 @@ export class ComicBalloon {
     return {
       width: balloonWidth,
       height: balloonHeight,
+      textOverflows: this.options.maxHeight > 0 && naturalHeight > balloonHeight + 0.5,
       svg: this.svg,
       balloon: this,
       update: (newText?: string, newTailOptions?: TailOptions | null) =>
