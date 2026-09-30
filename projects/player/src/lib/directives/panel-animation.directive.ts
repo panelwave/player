@@ -68,8 +68,6 @@ const ANIMATED_STYLE_PROPS = ['opacity', 'translate', 'rotate', 'scale', 'filter
 /** Class of the host's child that the camera move transforms. */
 export const PANEL_CAMERA_CLASS = 'pw-panel-camera';
 
-const CAMERA_STYLE_PROPS = ['transform', 'transform-origin'] as const;
-
 @Directive({
   selector: '[pwPanelAnimation]',
   standalone: true,
