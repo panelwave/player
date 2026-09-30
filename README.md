@@ -63,6 +63,8 @@ export class AppComponent {
 }
 ```
 
+Relative asset references resolve against the manifest's `assets.base` (per category, then `mediaBase`) and, failing that, the manifest's own URL — so an unzipped PanelWave work archive (`manifest.json` + `assets/`) plays directly from any static host.
+
 ### With Options
 
 All configuration is passed as individual inputs on the shell component (see [Component API](#-component-api) for the full list):
