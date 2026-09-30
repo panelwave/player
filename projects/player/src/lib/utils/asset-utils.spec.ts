@@ -5,6 +5,8 @@
 import {
   resolveAssetUrl,
   isAbsoluteUrl,
+  pickAssetBase,
+  resolveManifestAssetUrl,
   selectBestImageVariant,
   selectVariantByFormat,
   getAssetFromCatalog,
@@ -464,5 +466,34 @@ describe('AssetUtils (category base selection)', () => {
     expect(selectVariantByFormat(variants, ['image/webp'])).toBe(variants[1]);
     expect(selectVariantByFormat(variants, ['image/avif'])).toBe(variants[2]);
     expect(selectVariantByFormat(variants, ['image/gif'])).toBe(variants[0]);
+  });
+
+  describe('resolveManifestAssetUrl', () => {
+    const base: AssetBase = { mediaBase: 'https://cdn.example/works/w1/assets/', imageBase: 'https://img.example/' };
+
+    it('passes absolute and data URLs through', () => {
+      expect(resolveManifestAssetUrl('https://x/a.png', base, 'image', 'https://host/m.json')).toBe('https://x/a.png');
+      expect(resolveManifestAssetUrl('data:image/png;base64,AA', base, 'image')).toBe('data:image/png;base64,AA');
+    });
+
+    it('prefers the category base, then mediaBase', () => {
+      expect(resolveManifestAssetUrl('a.png', base, 'image')).toBe('https://img.example/a.png');
+      expect(resolveManifestAssetUrl('video/c.mp4', base, 'video')).toBe('https://cdn.example/works/w1/assets/video/c.mp4');
+      expect(pickAssetBase(base, 'audio')).toBe('https://cdn.example/works/w1/assets/');
+      expect(pickAssetBase(undefined, 'audio')).toBe('');
+    });
+
+    it('falls back to the manifest URL like an HTML relative link', () => {
+      expect(resolveManifestAssetUrl('assets/sha256-a/w1280.webp', undefined, 'image', 'https://host/tarmac/manifest.json'))
+        .toBe('https://host/tarmac/assets/sha256-a/w1280.webp');
+      expect(resolveManifestAssetUrl('../shared/x.png', {}, 'image', 'https://host/tarmac/manifest.json'))
+        .toBe('https://host/shared/x.png');
+    });
+
+    it('returns the reference unchanged without any base', () => {
+      expect(resolveManifestAssetUrl('a.png')).toBe('a.png');
+      expect(resolveManifestAssetUrl('')).toBe('');
+      expect(resolveManifestAssetUrl(undefined)).toBe('');
+    });
   });
 });

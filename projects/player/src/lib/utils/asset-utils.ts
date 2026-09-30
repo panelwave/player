@@ -51,34 +51,7 @@ export function resolveAssetUrl(
     return assetId;
   }
 
-  // Select appropriate base URL based on category
-  let baseUrl = assetBase.mediaBase || '';
-
-  if (category && assetBase) {
-    switch (category) {
-      case 'image':
-        baseUrl = assetBase.imageBase || assetBase.mediaBase || '';
-        break;
-      case 'audio':
-        baseUrl = assetBase.audioBase || assetBase.mediaBase || '';
-        break;
-      case 'video':
-        baseUrl = assetBase.videoBase || assetBase.mediaBase || '';
-        break;
-      case 'subtitle':
-        baseUrl = assetBase.mediaBase || '';
-        break;
-      case 'vector':
-        baseUrl = assetBase.imageBase || assetBase.mediaBase || '';
-        break;
-      case 'json':
-        baseUrl = assetBase.mediaBase || '';
-        break;
-      case 'pluginPayload':
-        baseUrl = assetBase.pluginsBase || assetBase.mediaBase || '';
-        break;
-    }
-  }
+  let baseUrl = pickAssetBase(assetBase, category);
 
   // Ensure base URL ends with slash
   if (baseUrl && !baseUrl.endsWith('/')) {
@@ -89,6 +62,59 @@ export function resolveAssetUrl(
   const cleanAssetId = assetId.startsWith('/') ? assetId.slice(1) : assetId;
 
   return baseUrl + cleanAssetId;
+}
+
+/**
+ * The base URL `assets.base` provides for a category (category-specific
+ * first, `mediaBase` as fallback), or '' when the manifest declares none.
+ */
+export function pickAssetBase(assetBase?: AssetBase, category?: AssetCategory): string {
+  if (!assetBase) {
+    return '';
+  }
+  const specific: Partial<Record<AssetCategory, string | undefined>> = {
+    image: assetBase.imageBase,
+    vector: assetBase.imageBase,
+    audio: assetBase.audioBase,
+    video: assetBase.videoBase,
+    pluginPayload: assetBase.pluginsBase,
+  };
+  return (category && specific[category]) || assetBase.mediaBase || '';
+}
+
+/**
+ * Resolve a manifest asset reference (`src`, poster, portrait, thumbnail…)
+ * to a loadable URL. Format rule (schema README, "Asset URLs"): absolute
+ * URLs — including data: and blob: — pass through; relative ones resolve
+ * against `assets.base.<category>Base`, then `assets.base.mediaBase`, then
+ * the URL the manifest document itself was loaded from (the rule HTML uses
+ * for relative links, which makes an unzipped work archive — `manifest.json`
+ * next to `assets/` — playable via `manifestUrl`). Without any base the
+ * reference is returned as-is, i.e. relative to the host page.
+ */
+export function resolveManifestAssetUrl(
+  src: string | undefined | null,
+  assetBase?: AssetBase,
+  category?: AssetCategory,
+  manifestUrl?: string | null
+): string {
+  if (!src) {
+    return '';
+  }
+  if (isAbsoluteUrl(src)) {
+    return src;
+  }
+  if (pickAssetBase(assetBase, category)) {
+    return resolveAssetUrl(src, assetBase, category);
+  }
+  if (manifestUrl) {
+    try {
+      return new URL(src, manifestUrl).toString();
+    } catch {
+      return src;
+    }
+  }
+  return src;
 }
 
 /**

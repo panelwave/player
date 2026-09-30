@@ -30,6 +30,8 @@ export {
 // Asset utilities
 export {
   resolveAssetUrl,
+  pickAssetBase,
+  resolveManifestAssetUrl,
   isAbsoluteUrl,
   selectBestImageVariant,
   selectVariantByFormat,
