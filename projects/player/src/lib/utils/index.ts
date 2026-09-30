@@ -105,6 +105,15 @@ export {
   type VariantContext,
 } from './variant-utils';
 
+// Focus-rect placement for panel view (Panel.formatViews[...].minimalFocusRect)
+export {
+  OUTPUT_FORMAT_ASPECT,
+  NO_FOCUS_TRANSFORM,
+  pickFocusRect,
+  focusTransform,
+  type PanelFocusTransform,
+} from './focus-rect-utils';
+
 // Layer keyframe animations (schema PanelAnimations.keyframes, 1.6+)
 export {
   KEYFRAME_BLUR_REFERENCE_WIDTH,

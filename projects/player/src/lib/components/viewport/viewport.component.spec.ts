@@ -233,6 +233,57 @@ describe('ViewportComponent', () => {
       expect(transform).toBe('translate(-50%, -50%) scale(1)');
     });
 
+    describe('focus rect placement (formatViews.minimalFocusRect)', () => {
+      const phonePanel: Panel = {
+        ...mockPanel,
+        formatViews: { 'mobile-portrait': { minimalFocusRect: { x: 0.65, y: 0.1, w: 0.2, h: 0.8 } } },
+      };
+
+      /** Render the panel in panel view inside a phone-sized host. */
+      const renderOnPhone = (panel: Panel): void => {
+        const host = fixture.nativeElement as HTMLElement;
+        host.style.cssText = 'display:block; position:relative; width:400px; height:800px;';
+        fixture.componentRef.setInput('viewMode', 'panel');
+        fixture.componentRef.setInput('panel', panel);
+        fixture.componentRef.setInput('currentPanelId', 'p1');
+        fixture.detectChanges();
+        component.updateFocusTransform();
+      };
+
+      it('centers the crop on the focus rect when the panel is wider than the screen', () => {
+        renderOnPhone(phonePanel);
+        // 1280 px wide panel, rect center at 75 %: 320 px right of the middle.
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-320px, 0px) scale(1)');
+      });
+
+      it('keeps the panel centered without a focus rect', () => {
+        renderOnPhone(mockPanel);
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(0px, 0px) scale(1)');
+      });
+
+      it('applies the placement in reduced-motion mode too (it is a resting position, not motion)', () => {
+        renderOnPhone(phonePanel);
+        component.reducedMotion = true;
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-320px, 0px) scale(1)');
+      });
+
+      it('adds pan and zoom on top of the placement', () => {
+        renderOnPhone(phonePanel);
+        component.panX = 10;
+        component.panY = 20;
+        component.zoom = 1.5;
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-310px, 20px) scale(1.5)');
+      });
+
+      it('does not apply in page view', () => {
+        renderOnPhone(phonePanel);
+        fixture.componentRef.setInput('viewMode', 'page');
+        fixture.detectChanges();
+        component.updateFocusTransform();
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(0px, 0px) scale(1)');
+      });
+    });
+
     it('should reset transform', () => {
       spyOn(component.transformChange, 'emit');
 

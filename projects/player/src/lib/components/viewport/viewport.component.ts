@@ -20,6 +20,12 @@ import {
 
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
+import {
+  NO_FOCUS_TRANSFORM,
+  focusTransform,
+  pickFocusRect,
+  type PanelFocusTransform,
+} from '../../utils/focus-rect-utils';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
@@ -312,7 +318,49 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   private readonly variantWidths = new Map<string, number>();
   private variantSettleTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Panel-view placement derived from the panel's focus rect
+   * (formatViews[...].minimalFocusRect): on a screen smaller than the panel
+   * the crop is centered on that rect instead of the panel's middle.
+   */
+  private focus: PanelFocusTransform = NO_FOCUS_TRANSFORM;
+  private focusFrame: number | null = null;
+
+  /** Recompute the focus placement once the current panel is laid out. */
+  private scheduleFocusUpdate(): void {
+    if (typeof requestAnimationFrame === 'undefined') {
+      this.updateFocusTransform();
+      return;
+    }
+    if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
+    this.focusFrame = requestAnimationFrame(() => {
+      this.focusFrame = null;
+      this.updateFocusTransform();
+    });
+  }
+
+  /** Measure viewport + panel box and place the panel on its focus rect. */
+  updateFocusTransform(): void {
+    let next = NO_FOCUS_TRANSFORM;
+    if (this.viewMode === 'panel' && this.panel?.formatViews) {
+      const host = this.elementRef.nativeElement as HTMLElement;
+      const viewport = host.querySelector<HTMLElement>('.viewport-container') ?? host;
+      const box = host.querySelector<HTMLElement>('.t-frame .panel-container');
+      if (box) {
+        const rect = pickFocusRect(this.panel.formatViews, viewport.clientWidth, viewport.clientHeight);
+        next = focusTransform(box.offsetWidth, box.offsetHeight, viewport.clientWidth, viewport.clientHeight, rect);
+      }
+    }
+    if (next.offsetX !== this.focus.offsetX || next.offsetY !== this.focus.offsetY || next.scale !== this.focus.scale) {
+      this.focus = next;
+      this.cdr.markForCheck();
+    }
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['panel'] || changes['viewMode']) {
+      this.scheduleFocusUpdate();
+    }
     if (changes['panel']) {
       // Reset pan/zoom when panel changes
       if (changes['panel'].currentValue !== changes['panel'].previousValue) {
@@ -382,15 +430,20 @@ export class ViewportComponent implements OnChanges, OnDestroy {
       clearTimeout(this.variantSettleTimer);
       this.variantSettleTimer = null;
     }
+    if (this.focusFrame !== null) {
+      cancelAnimationFrame(this.focusFrame);
+      this.focusFrame = null;
+    }
   }
 
   /**
    * Re-resolve variants after the viewport size changed (debounced like the
-   * canvas stage's camera settle).
+   * canvas stage's camera settle), and re-place the panel on its focus rect.
    */
   @HostListener('window:resize')
   onWindowResize(): void {
     this.scheduleVariantSettle();
+    this.scheduleFocusUpdate();
   }
 
   // --------------------------------------------------------------------------
@@ -743,14 +796,19 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Get transform style for viewport
    */
   getTransformStyle(): string {
+    // The focus placement is where the panel rests (not motion), so it
+    // applies in reduced-motion mode too.
+    const { offsetX, offsetY, scale } = this.focus;
     if (this.reducedMotion) {
-      // No transform in reduced motion mode
-      return 'translate(-50%, -50%) scale(1)';
+      // No pan/zoom in reduced motion mode
+      return offsetX === 0 && offsetY === 0 && scale === 1
+        ? 'translate(-50%, -50%) scale(1)'
+        : `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
     }
 
     // First translate centers the panel (-50%, -50%)
-    // Then apply pan offsets and zoom
-    return `translate(-50%, -50%) translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
+    // Then apply pan offsets (plus the focus placement) and zoom
+    return `translate(-50%, -50%) translate(${this.panX + offsetX}px, ${this.panY + offsetY}px) scale(${this.zoom * scale})`;
   }
 
   /**

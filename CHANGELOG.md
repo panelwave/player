@@ -41,6 +41,17 @@ semver. The reader-facing product changelog lives on the docs site
   working. Hosts no longer need to look the id up by object identity.
 - `npm run smoke:consumer -- --angular <major>` (`scripts/consumer-smoke.mjs`)
   and a CI matrix job running it for Angular 20, 21 and 22.
+- Panel view honours `Panel.formatViews[format].minimalFocusRect`. A panel
+  is shown at its natural size, centered — on a screen smaller than the panel
+  (a landscape panel on a phone) that cropped it around its middle, whatever
+  the author marked as important. The crop is now centered on the focus rect:
+  the panel is shifted (never past its own edge) and shrinks only when the
+  rect itself does not fit the screen. Of the formats a panel defines a focus
+  rect for, the one whose frame is closest in aspect ratio to the viewport
+  applies (the player has no active output format). Without a focus rect, or
+  when the panel fits the screen, nothing changes. The rect is relative to the
+  panel box, like speech bubbles and hotspots. Pure helpers `pickFocusRect` /
+  `focusTransform` are exported from `utils/focus-rect-utils`.
 - Format 1.6: layer keyframe animations. `Panel.animations.keyframes`
   (`AnimationKeyframe`: `layerId`, `property`, `timeMs`, `value`, optional
   `easing`) animate a layer's opacity, offset (`transform.x` / `transform.y`,
