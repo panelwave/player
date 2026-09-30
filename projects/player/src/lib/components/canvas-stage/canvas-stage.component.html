@@ -37,6 +37,9 @@
         [class.unrevealed]="!entry.revealed"
         [style]="placementStyle(entry)"
         [attr.data-panel-id]="entry.panelId"
+        [pwPanelAnimation]="entry.revealed ? entry.panel.animations : null"
+        [pwPanelAnimationKey]="entry.panelId"
+        [pwPanelAnimationReducedMotion]="reducedMotion"
         [attr.aria-hidden]="isCurrent(entry.panelId) ? null : true"
         [attr.inert]="isCurrent(entry.panelId) ? null : ''">
 

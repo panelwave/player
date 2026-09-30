@@ -36,6 +36,8 @@ export interface Extra {
   mediaType?: 'image' | 'video' | 'audio' | 'document';
   gated?: boolean;
   tags?: string[];
+  /** Character sheets: names of the characters shown (one, or several on an ensemble sheet). */
+  characters?: LocalizedString[];
 }
 
 /**
@@ -168,6 +170,16 @@ export class ExtrasViewerComponent implements OnChanges {
    */
   getExtraDescription(extra: Extra): string {
     return this.getLocalizedString(extra.description) || '';
+  }
+
+  /**
+   * Names of the characters a character sheet shows ("Ferdl · Lena · Tobi").
+   */
+  getExtraCharacters(extra: Extra): string {
+    return (extra.characters ?? [])
+      .map((name) => this.getLocalizedString(name))
+      .filter((name) => name.length > 0)
+      .join(' · ');
   }
 
   /**

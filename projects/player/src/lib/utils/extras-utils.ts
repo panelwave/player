@@ -25,6 +25,9 @@ export interface CatalogLike {
 
 export type AssetLookup = (assetId: string) => CatalogLike | null | undefined;
 
+/** Resolves a character id to its (localized) name; undefined when unknown. */
+export type CharacterNameLookup = (characterId: string) => LocalizedString | undefined;
+
 interface ExtraBlockLike {
   id?: string;
   title?: LocalizedString;
@@ -36,6 +39,20 @@ interface ExtraBlockLike {
   url?: string;
   thumbnail?: string;
   gated?: boolean;
+  characterId?: string;
+  characterIds?: string[];
+}
+
+/**
+ * Character ids a character sheet shows: `characterIds` (ensemble sheet,
+ * schema 1.6+) is authoritative when present, else the single `characterId`.
+ */
+export function sheetCharacterIds(block: { characterId?: string; characterIds?: string[] }): string[] {
+  const list = Array.isArray(block.characterIds)
+    ? block.characterIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  if (list.length > 0) return [...new Set(list)];
+  return typeof block.characterId === 'string' && block.characterId.length > 0 ? [block.characterId] : [];
 }
 
 /** Thumbnail width to aim for (the grid tiles are small). */
@@ -57,7 +74,12 @@ export function catalogSrc(lookup: AssetLookup, assetId: string | undefined, wid
   return selectImageVariantForWidth(variants as unknown as ImageVariant[], width)?.src ?? variants[0].src ?? '';
 }
 
-export function extraFromBlock(block: ExtraBlockLike, type: ExtraType, lookup: AssetLookup): Extra {
+export function extraFromBlock(
+  block: ExtraBlockLike,
+  type: ExtraType,
+  lookup: AssetLookup,
+  characterName?: CharacterNameLookup
+): Extra {
   const imageId = firstId(block.images);
   const videoId = firstId(block.video);
   const audioId = firstId(block.audio);
@@ -84,6 +106,13 @@ export function extraFromBlock(block: ExtraBlockLike, type: ExtraType, lookup: A
     thumbnail = lookup(videoId)?.poster?.src || undefined;
   }
 
+  // Character sheets: names of the characters shown (unknown ids are skipped).
+  const characters = characterName
+    ? sheetCharacterIds(block)
+        .map((id) => characterName(id))
+        .filter((name): name is LocalizedString => !!name)
+    : [];
+
   return {
     id: block.id ?? '',
     type,
@@ -95,23 +124,32 @@ export function extraFromBlock(block: ExtraBlockLike, type: ExtraType, lookup: A
     asset,
     thumbnail,
     gated: block.gated === true,
+    ...(characters.length > 0 ? { characters } : {}),
   };
 }
 
 /** Flatten the keyed extras object in the order the viewer lists it. */
-export function extrasFromManifest(extras: Record<string, unknown> | undefined, lookup: AssetLookup): Extra[] {
+export function extrasFromManifest(
+  extras: Record<string, unknown> | undefined,
+  lookup: AssetLookup,
+  characterName?: CharacterNameLookup
+): Extra[] {
   if (!extras) return [];
   const out: Extra[] = [];
   const push = (block: unknown, type: ExtraType): void => {
     const b = block as ExtraBlockLike | null;
-    if (b && typeof b === 'object' && b.id) out.push(extraFromBlock(b, type, lookup));
+    if (b && typeof b === 'object' && !Array.isArray(b) && b.id) {
+      out.push(extraFromBlock(b, type, lookup, characterName));
+    }
   };
   const each = (key: string, type: ExtraType): void => {
     const list = extras[key];
     if (Array.isArray(list)) list.forEach((b) => push(b, type));
   };
   push(extras['cover'], 'cover');
-  push(extras['alt_cover'], 'cover');
+  // alt_cover: one block, or several (array form, schema 1.6+).
+  if (Array.isArray(extras['alt_cover'])) each('alt_cover', 'cover');
+  else push(extras['alt_cover'], 'cover');
   push(extras['author_info'], 'other');
   each('author_interviews', 'interview');
   each('bonus_art', 'art');

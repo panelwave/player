@@ -103,6 +103,7 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Speech Bubbles** - Comic-book balloon rendering (normal, thought, shout, whisper, connector, cut-top variants) with configurable tails, hide-border effects, and per-character/per-bubble style overrides
 - **Style Presets** - Work-level `settings.typography.textStyles` / `balloonPresets` referenced via `styleRef` on text layers and speech bubbles (format 1.3)
 - **Hotspots** - Interactive areas (rect, circle, polygon; normalized panel-relative geometry) with all five manifest actions: `goTo` (mutations + transition), `setVariables`, `openExtras` (opens the viewer at the item), `openModal` (localized title/content dialog), `pluginEvent`. Conditional visibility via `visibleIf` (JSON Logic), localized labels/ariaLabels, keyboard activation (Tab + Enter/Space at the shape centroid). Every click is tracked as `hotspot_click {panelId, chapterId, hotspotId?, x, y, hit}` — clicks that miss all hotspots are recorded with `hit: false` (dead clicks) for the CMS click heatmap. Rendered in panel and page views; render-only in canvas view (taps keep edge navigation)
+- **Layer Animations** - Keyframe animations per panel (`animations.keyframes`, format 1.6): opacity, offset, scale, rotation, blur, brightness, contrast and saturation per layer, with per-keyframe easing and optional looping. Starts when the panel is shown (panel view: it becomes current; page / canvas view: it scrolls into view), pauses off-screen, and shows the end state without motion under reduced motion
 - **Variants** - Conditional content based on variables/entitlements
 - **Preloading** - Intelligent lookahead with configurable distance
 - **Image Cache** - LRU cache with memory budget management
@@ -339,6 +340,9 @@ The player renders **PanelWave manifest format 1.6** (the schema lives at `schem
 | 1.4 | Infinite-canvas view mode (canvas placements, camera) | ✅ |
 | 1.5 | Asset folders + localization blocks (authoring metadata for the work archive) | ➖ read and ignored (not needed to render) |
 | 1.6 | Paywall product lists (`requiredProductIds` on purchase rules) and product display info (`paywall.products`) | ✅ |
+| 1.6 | Layer keyframe animations (`animations.keyframes` / `loop`) | ✅ |
+| 1.6 | Several alternative covers (`extras.alt_cover` as an array) and ensemble character sheets (`characterIds`) | ✅ |
+| 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ❌ not rendered yet |
 
 ---
 

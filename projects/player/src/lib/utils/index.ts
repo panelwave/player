@@ -104,3 +104,18 @@ export {
   type ResolvedPanel,
   type VariantContext,
 } from './variant-utils';
+
+// Layer keyframe animations (schema PanelAnimations.keyframes, 1.6+)
+export {
+  KEYFRAME_BLUR_REFERENCE_WIDTH,
+  hasKeyframes,
+  buildKeyframeTracks,
+  keyframeAnimationDuration,
+  sampleTrack,
+  sampleKeyframes,
+  animationTime,
+  layerAnimationStyles,
+  type LayerAnimationState,
+  type LayerAnimationStyles,
+  type KeyframeTracks,
+} from './keyframe-animation';

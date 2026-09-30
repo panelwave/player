@@ -1412,7 +1412,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     // An extras-scoped paywall rule the reader does not satisfy locks its block.
     this.extrasList = extrasFromManifest(
       manifest?.extras as Record<string, unknown> | undefined,
-      (assetId) => this.manifestService.getAsset(assetId) as CatalogLike | null
+      (assetId) => this.manifestService.getAsset(assetId) as CatalogLike | null,
+      // Character sheets list who is on them (one character, or an ensemble).
+      (characterId) => manifest?.meta?.characters?.find((c) => c.id === characterId)?.name
     ).map((extra) => (this.paywallService.isExtraLocked(extra.id) ? { ...extra, gated: true } : extra));
   }
 

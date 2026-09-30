@@ -46,6 +46,7 @@ import { ManifestService } from '../../services/manifest.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
+import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 
@@ -74,7 +75,7 @@ const CAMERA_EMIT_INTERVAL_MS = 100;
 
 @Component({
   selector: 'pw-canvas-stage',
-  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent],
+  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective],
   templateUrl: './canvas-stage.component.html',
   styleUrls: ['./canvas-stage.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -19,6 +19,7 @@ import {
 } from '@angular/core';
 
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
+import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
@@ -51,7 +52,7 @@ const VARIANT_SETTLE_MS = 180;
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent],
+    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

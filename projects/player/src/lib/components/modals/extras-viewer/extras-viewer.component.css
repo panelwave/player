@@ -276,6 +276,16 @@
   -webkit-box-orient: vertical;
 }
 
+.extra-characters {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .extra-description {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
@@ -359,6 +369,13 @@
 .detail-audio {
   width: 100%;
   max-width: 500px;
+}
+
+.detail-characters {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
 }
 
 .detail-description {

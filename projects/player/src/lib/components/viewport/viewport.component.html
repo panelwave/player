@@ -54,7 +54,11 @@
 
       <div [class]="'t-frame ' + enterAnimationClass">
         @if (panel) {
-          <div class="panel-container" tabindex="0" (click)="onPanelContainerClick($event, currentPanelId)" (keydown.enter)="onPanelContainerClick($any($event), currentPanelId)">
+          <div class="panel-container" tabindex="0"
+               [pwPanelAnimation]="panel.animations"
+               [pwPanelAnimationKey]="currentPanelId || ''"
+               [pwPanelAnimationReducedMotion]="reducedMotion"
+               (click)="onPanelContainerClick($event, currentPanelId)" (keydown.enter)="onPanelContainerClick($any($event), currentPanelId)">
             <!-- Render layers using LayerRenderer -->
             @for (layer of panel.layers; track layer.id) {
               <pw-layer-renderer
@@ -198,6 +202,9 @@
                 <div class="panel-content"
                      [style.clip-path]="getPanelContentClipPath(placement)"
                      [style.transform]="getPanelContentTransform(placement)"
+                     [pwPanelAnimation]="panelData.animations"
+                     [pwPanelAnimationKey]="placement.panelId"
+                     [pwPanelAnimationReducedMotion]="reducedMotion"
                      tabindex="0"
                      (click)="onPanelContainerClick($event, placement.panelId)"
                      (keydown.enter)="onPanelContainerClick($any($event), placement.panelId)">

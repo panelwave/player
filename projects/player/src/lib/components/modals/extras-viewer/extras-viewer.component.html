@@ -108,6 +108,9 @@
 
                 <div class="extra-info">
                   <h3 class="extra-title">{{ getExtraTitle(extra) }}</h3>
+                  @if (getExtraCharacters(extra)) {
+                    <p class="extra-characters">{{ getExtraCharacters(extra) }}</p>
+                  }
                   @if (getExtraDescription(extra)) {
                     <p class="extra-description">{{ getExtraDescription(extra) }}</p>
                   }
@@ -173,6 +176,10 @@
                   rel="noopener noreferrer">
                   {{ 'extras.open_document' | translate }}
                 </a>
+              }
+
+              @if (getExtraCharacters(selectedExtra)) {
+                <div class="detail-characters">{{ getExtraCharacters(selectedExtra) }}</div>
               }
 
               @if (getExtraDescription(selectedExtra)) {

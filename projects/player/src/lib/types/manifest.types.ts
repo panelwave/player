@@ -487,8 +487,8 @@ export interface Extras {
   /** Cover image(s) (optional) */
   cover?: ExtraItem;
   
-  /** Alternative covers (optional) */
-  alt_cover?: ExtraItem;
+  /** Alternative cover(s): one block, or several (array form, schema 1.6+) */
+  alt_cover?: ExtraItem | ExtraItem[];
   
   /** Character sheets (optional) */
   character_sheets?: ExtraItem[];
@@ -533,6 +533,12 @@ export interface ExtraItem {
   
   /** Whether this extra is behind a paywall (optional) */
   gated?: boolean;
+
+  /** Character sheets: the character shown (first of characterIds for ensemble sheets) */
+  characterId?: string;
+
+  /** Character sheets: all characters shown on an ensemble sheet (schema 1.6+) */
+  characterIds?: string[];
 }
 
 /**

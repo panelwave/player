@@ -39,7 +39,13 @@ export interface Panel {
 
   /** Array of panel variants based on conditions (optional) */
   variants?: PanelVariant[];
-  
+
+  /**
+   * Animation of the panel while it is shown (schema `PanelAnimations`):
+   * layer keyframes (schema 1.6+) and/or a camera move.
+   */
+  animations?: PanelAnimations;
+
   /** Whether this panel can be shared socially (optional) */
   shareable?: boolean;
   
@@ -86,6 +92,84 @@ export interface PanelAudioTrack {
 
   /** JSON Logic condition; the track only plays when it evaluates true (optional) */
   visibleIf?: JsonLogic;
+}
+
+/**
+ * Layer property a keyframe animates (schema 1.6+).
+ *
+ * - `opacity`: 0-1, replaces the layer's opacity
+ * - `transform.x` / `transform.y`: offset from the layer's resting position as a
+ *   fraction of the panel's width / height (0.1 = 10 % right / down)
+ * - `transform.scale`: scale factor around the layer's center (1 = unchanged)
+ * - `transform.rotation`: degrees clockwise around the layer's center
+ * - `blur`: blur radius in px at a panel width of 1024 px (scaled with the rendered panel)
+ * - `brightness` / `contrast` / `saturate`: multiplier (1 = unchanged)
+ */
+export type AnimatableProperty =
+  | 'opacity'
+  | 'transform.x'
+  | 'transform.y'
+  | 'transform.scale'
+  | 'transform.rotation'
+  | 'blur'
+  | 'brightness'
+  | 'contrast'
+  | 'saturate';
+
+/** Easing names the schema allows on animations and keyframes. */
+export type AnimationEasing = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out';
+
+/**
+ * One keyframe of a layer animation (schema `AnimationKeyframe`, 1.6+).
+ */
+export interface AnimationKeyframe {
+  /** Keyframe identifier (optional) */
+  id?: string;
+
+  /** Id of the animated layer (`Panel.layers[].id`) */
+  layerId: string;
+
+  /** Animated property */
+  property: AnimatableProperty;
+
+  /** Position on the animation's timeline in milliseconds */
+  timeMs: number;
+
+  /** Property value at this keyframe (units: see {@link AnimatableProperty}) */
+  value: number;
+
+  /** Easing from this keyframe to the next one of the same track (default `linear`) */
+  easing?: AnimationEasing;
+}
+
+/**
+ * Panel animation (schema `PanelAnimations`).
+ */
+export interface PanelAnimations {
+  /** Human-friendly name (authoring aid) */
+  name?: string;
+
+  /** Camera move start (normalized rect of the panel) */
+  startViewportRect?: NormalizedRect;
+
+  /** Camera move end (normalized rect of the panel) */
+  endViewportRect?: NormalizedRect;
+
+  /** Total running time; when omitted, keyframes run until their last keyframe */
+  durationMs?: number;
+
+  /** Easing of the camera move */
+  easing?: AnimationEasing;
+
+  /** Restart from 0 when durationMs is reached (default false) */
+  loop?: boolean;
+
+  /**
+   * Layer keyframes. Keyframes with the same layerId + property form a track;
+   * values hold before the first / after the last keyframe and are interpolated
+   * in between with the earlier keyframe's easing.
+   */
+  keyframes?: AnimationKeyframe[];
 }
 
 /**

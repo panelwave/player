@@ -41,6 +41,26 @@ semver. The reader-facing product changelog lives on the docs site
   working. Hosts no longer need to look the id up by object identity.
 - `npm run smoke:consumer -- --angular <major>` (`scripts/consumer-smoke.mjs`)
   and a CI matrix job running it for Angular 20, 21 and 22.
+- Format 1.6: layer keyframe animations. `Panel.animations.keyframes`
+  (`AnimationKeyframe`: `layerId`, `property`, `timeMs`, `value`, optional
+  `easing`) animate a layer's opacity, offset (`transform.x` / `transform.y`,
+  fractions of the panel box), `transform.scale`, `transform.rotation`,
+  `blur`, `brightness`, `contrast` and `saturate`; `loop` restarts the run.
+  The animation starts when the panel is shown (panel view: it becomes the
+  current panel; page and canvas view: at least a quarter of it is visible),
+  a looping animation pauses off-screen, and reduced motion shows the end
+  state without motion. Implemented by `PanelAnimationDirective` on the panel
+  box (frame loop outside the Angular zone) on top of the pure helpers in
+  `utils/keyframe-animation` (exported: `buildKeyframeTracks`, `sampleTrack`,
+  `sampleKeyframes`, `layerAnimationStyles`, ...). New exported types
+  `PanelAnimations`, `AnimationKeyframe`, `AnimatableProperty`,
+  `AnimationEasing`; `Panel.animations` is typed. The camera-move fields
+  (`startViewportRect` / `endViewportRect`) are still not rendered.
+- Format 1.6: `extras.alt_cover` may be an array. Every alternative cover is
+  listed in the extras viewer (an array was silently dropped before).
+- Format 1.6: ensemble character sheets. A character sheet's `characterIds`
+  (or the single `characterId`) are resolved to the characters' names and
+  shown under the sheet's title in the extras viewer (`Extra.characters`).
 - Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of
   the schema (the player already honoured it). Owning any listed product
   unlocks the rule; the overlay offers one Buy option per product.

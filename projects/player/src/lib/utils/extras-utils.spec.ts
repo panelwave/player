@@ -1,4 +1,4 @@
-import { catalogSrc, extraFromBlock, extrasFromManifest, type AssetLookup, type CatalogLike } from './extras-utils';
+import { catalogSrc, extraFromBlock, extrasFromManifest, sheetCharacterIds, type AssetLookup, type CatalogLike } from './extras-utils';
 
 describe('extras-utils', () => {
   const catalog: Record<string, CatalogLike> = {
@@ -72,5 +72,51 @@ describe('extras-utils', () => {
       'cover:cover:image', 'other:author:document', 'art:art-1:image', 'bts:bts-1:video',
     ]);
     expect(extrasFromManifest(undefined, lookup)).toEqual([]);
+  });
+
+  it('lists every alternative cover: single block or array form (schema 1.6)', () => {
+    const single = extrasFromManifest({ alt_cover: { id: 'alt-a', images: [ { assetId: 'img-1' } ] } }, lookup);
+    expect(single.map((e) => `${e.type}:${e.id}`)).toEqual([ 'cover:alt-a' ]);
+
+    const several = extrasFromManifest({
+      cover: { id: 'cover', images: [ { assetId: 'img-1' } ] },
+      alt_cover: [
+        { id: 'alt-a', images: [ { assetId: 'img-1' } ] },
+        { id: 'alt-b', images: [ { assetId: 'img-1' } ] },
+      ],
+    }, lookup);
+    expect(several.map((e) => `${e.type}:${e.id}`)).toEqual([ 'cover:cover', 'cover:alt-a', 'cover:alt-b' ]);
+  });
+
+  describe('character sheets', () => {
+    const names: Record<string, { 'en-US': string }> = {
+      ferdl: { 'en-US': 'Ferdl' },
+      lena: { 'en-US': 'Lena' },
+    };
+    const characterName = (id: string) => names[id];
+
+    it('sheetCharacterIds prefers characterIds over characterId and de-duplicates', () => {
+      expect(sheetCharacterIds({ characterId: 'ferdl' })).toEqual([ 'ferdl' ]);
+      expect(sheetCharacterIds({ characterId: 'ferdl', characterIds: [ 'ferdl', 'lena', 'ferdl' ] })).toEqual([ 'ferdl', 'lena' ]);
+      expect(sheetCharacterIds({ characterIds: [] , characterId: 'lena' })).toEqual([ 'lena' ]);
+      expect(sheetCharacterIds({})).toEqual([]);
+    });
+
+    it('carries the names of the characters an (ensemble) sheet shows', () => {
+      const list = extrasFromManifest({
+        character_sheets: [
+          { id: 'solo', characterId: 'ferdl', images: [ { assetId: 'img-1' } ] },
+          { id: 'cast', characterId: 'ferdl', characterIds: [ 'ferdl', 'lena', 'unknown' ], images: [ { assetId: 'img-1' } ] },
+        ],
+      }, lookup, characterName);
+      expect(list[0].characters).toEqual([ { 'en-US': 'Ferdl' } ]);
+      // Unknown ids are skipped instead of showing a raw id.
+      expect(list[1].characters).toEqual([ { 'en-US': 'Ferdl' }, { 'en-US': 'Lena' } ]);
+    });
+
+    it('omits characters when no name lookup is given', () => {
+      const [ sheet ] = extrasFromManifest({ character_sheets: [ { id: 'solo', characterId: 'ferdl' } ] }, lookup);
+      expect(sheet.characters).toBeUndefined();
+    });
   });
 });
