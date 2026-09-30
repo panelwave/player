@@ -8,6 +8,7 @@ export * from './lib/types';
 // Services (export only the service classes, not re-exporting types)
 export { PlayerStateService } from './lib/services/player-state.service';
 export { ManifestService } from './lib/services/manifest.service';
+export { AssetUrlService } from './lib/services/asset-url.service';
 export { VariableStoreService } from './lib/services/variable-store.service';
 export { FlowEngineService } from './lib/services/flow-engine.service';
 export { ImageCacheService } from './lib/services/image-cache.service';

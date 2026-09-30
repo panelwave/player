@@ -33,6 +33,8 @@ interface ManifestIndexes {
 export class ManifestService {
   private manifest: PanelWaveManifest | null = null;
   private indexes: ManifestIndexes | null = null;
+  /** Absolute URL the current manifest was fetched from (null for object manifests). */
+  private manifestUrl: string | null = null;
 
   private readonly http = inject(HttpClient);
 
@@ -46,6 +48,7 @@ export class ManifestService {
       map((manifest) => {
         this.validateManifest(manifest);
         this.setManifest(manifest);
+        this.manifestUrl = absoluteDocumentUrl(url);
         return manifest;
       }),
       catchError((error) => {
@@ -64,6 +67,7 @@ export class ManifestService {
     try {
       this.validateManifest(manifest);
       this.setManifest(manifest);
+      this.manifestUrl = null;
       return of(manifest);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Validation failed';
@@ -87,6 +91,15 @@ export class ManifestService {
   }
 
   /**
+   * The URL the current manifest was loaded from, absolute — the last
+   * fallback for relative asset references (AssetUrlService); null when the
+   * manifest was supplied as an object.
+   */
+  getManifestUrl(): string | null {
+    return this.manifestUrl;
+  }
+
+  /**
    * Check if a manifest is loaded
    */
   hasManifest(): boolean {
@@ -99,6 +112,7 @@ export class ManifestService {
   clearManifest(): void {
     this.manifest = null;
     this.indexes = null;
+    this.manifestUrl = null;
   }
 
   /**
@@ -361,5 +375,15 @@ export class ManifestService {
     }
 
     return this.indexes.assets.size;
+  }
+}
+
+/** `url` made absolute against the document (relative manifest URLs are common in demos); unchanged when that fails. */
+function absoluteDocumentUrl(url: string): string {
+  try {
+    const base = typeof document !== 'undefined' ? document.baseURI : undefined;
+    return new URL(url, base).toString();
+  } catch {
+    return url;
   }
 }
