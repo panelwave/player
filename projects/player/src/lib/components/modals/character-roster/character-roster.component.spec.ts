@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { CharacterRosterComponent, type Character } from './character-roster.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 interface FakeAudio {
   src: string;
@@ -13,6 +14,12 @@ interface FakeAudio {
   addEventListener: (name: string, cb: () => void) => void;
   removeEventListener: jasmine.Spy<(name: string, cb: () => void) => void>;
 }
+
+/** Stub resolver: relative references get a fake base, absolute ones pass through. */
+const assetUrlStub = {
+  resolve: (src?: string | null) =>
+    !src ? '' : /^[a-z][a-z0-9+.-]*:/i.test(src) ? src : 'https://assets.example/' + src,
+};
 
 describe('CharacterRosterComponent', () => {
   let fixture: ComponentFixture<CharacterRosterComponent>;
@@ -55,7 +62,8 @@ describe('CharacterRosterComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CharacterRosterComponent], providers: [provideTranslateService()],
+      imports: [CharacterRosterComponent],
+      providers: [provideTranslateService(), { provide: AssetUrlService, useValue: assetUrlStub }],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {
@@ -67,7 +75,6 @@ describe('CharacterRosterComponent', () => {
     component = fixture.componentInstance;
     fixture.componentRef.setInput('characters', characters);
     fixture.componentRef.setInput('visible', true);
-    fixture.componentRef.setInput('baseUrl', 'https://assets.example/');
     fixture.detectChanges();
   });
 
@@ -87,7 +94,7 @@ describe('CharacterRosterComponent', () => {
     expect(cards[2].querySelector('.character-role')).toBeNull();
   });
 
-  it('resolves avatars: relative via baseUrl, absolute as-is, placeholder initials otherwise', () => {
+  it('resolves avatars: relative via AssetUrlService, absolute as-is, placeholder initials otherwise', () => {
     const cards = el().querySelectorAll('.character-card');
     expect((cards[0].querySelector('img') as HTMLImageElement).getAttribute('src')).toBe('https://assets.example/avatars/mira.png');
     expect((cards[1].querySelector('img') as HTMLImageElement).getAttribute('src')).toBe('https://cdn.example/rook.png');
@@ -209,7 +216,7 @@ describe('CharacterRosterComponent', () => {
   });
 
   describe('voice samples', () => {
-    it('plays a relative sample via baseUrl and toggles off on second click', async () => {
+    it('plays a relative sample via AssetUrlService and toggles off on second click', async () => {
       const audio = makeAudio();
       const ctor = spyOn(window, 'Audio').and.returnValue(audio as unknown as HTMLAudioElement);
 

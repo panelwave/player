@@ -4,10 +4,17 @@ import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import type { Chapter, Page, Panel, PanelWaveManifest } from '../../../types';
 import { TocOverlayComponent, type TocNavigationTarget } from './toc-overlay.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 function page(id: string, readingOrder: string[], title?: Record<string, string>): Page {
   return { id, title, readingOrder, layout: { format: 'mobile-portrait' } } as Page;
 }
+
+/** Stub resolver: relative references get a fake base, absolute ones pass through. */
+const assetUrlStub = {
+  resolve: (src?: string | null) =>
+    !src ? '' : /^[a-z][a-z0-9+.-]*:/i.test(src) ? src : 'https://assets.example/' + src,
+};
 
 describe('TocOverlayComponent', () => {
   let fixture: ComponentFixture<TocOverlayComponent>;
@@ -55,7 +62,8 @@ describe('TocOverlayComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TocOverlayComponent], providers: [provideTranslateService()],
+      imports: [TocOverlayComponent],
+      providers: [provideTranslateService(), { provide: AssetUrlService, useValue: assetUrlStub }],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', { toc: { title: 'Contents', current: 'Now reading', no_results: 'Nothing for "{{query}}"' } });
@@ -143,7 +151,7 @@ describe('TocOverlayComponent', () => {
   });
 
   it('lists panels of a page-less chapter with resolved thumbnails and titles', () => {
-    create({ chapters, visible: true, baseUrl: 'https://assets.example/', currentPanelId: 'p2' });
+    create({ chapters, visible: true, currentPanelId: 'p2' });
     const cards = el().querySelectorAll('.chapter-item')[0].querySelectorAll('.panel-card');
     expect(cards.length).toBe(3);
     expect(cards[0].querySelector('img')?.getAttribute('src')).toBe('https://assets.example/thumbs/p1.png');

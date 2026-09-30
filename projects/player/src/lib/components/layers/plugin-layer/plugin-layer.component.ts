@@ -14,6 +14,7 @@ import { inject,
   OnDestroy,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
@@ -41,11 +42,6 @@ export class PluginLayerComponent implements OnInit, OnDestroy {
    * Plugin source URL
    */
   @Input() src = '';
-
-  /**
-   * Base URL for resolving relative paths
-   */
-  @Input() baseUrl = '';
 
   /**
    * Sandbox permissions
@@ -88,6 +84,7 @@ export class PluginLayerComponent implements OnInit, OnDestroy {
   private messageListener?: (event: MessageEvent) => void;
 
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly assetUrl = inject(AssetUrlService);
 
   ngOnInit(): void {
     // Setup message listener
@@ -106,18 +103,11 @@ export class PluginLayerComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get full plugin URL
+   * Full plugin URL: absolute src as-is, relative src resolved against the
+   * manifest's assets.base / manifest URL (AssetUrlService).
    */
   getPluginUrl(): string {
-    if (!this.src) return '';
-    
-    // If already absolute URL, return as-is
-    if (this.src.startsWith('http://') || this.src.startsWith('https://')) {
-      return this.src;
-    }
-    
-    // Otherwise prepend base URL
-    return this.baseUrl + this.src;
+    return this.assetUrl.resolve(this.src, 'pluginPayload');
   }
 
   /**

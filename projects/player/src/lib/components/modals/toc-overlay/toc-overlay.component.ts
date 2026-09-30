@@ -13,11 +13,13 @@ import {
   SimpleChanges,
   ChangeDetectionStrategy,
   HostListener,
+  inject,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 import type { Chapter, Panel, Page, LocaleCode, LocalizedString, PanelWaveManifest } from '../../../types';
 
 /**
@@ -65,10 +67,7 @@ export class TocOverlayComponent implements OnInit, OnChanges {
    */
   @Input() locale: LocaleCode = 'en-US';
 
-  /**
-   * Base URL for thumbnails
-   */
-  @Input() baseUrl = '';
+  private readonly assetUrl = inject(AssetUrlService);
 
   /**
    * Visible state
@@ -256,25 +255,11 @@ export class TocOverlayComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Get thumbnail URL for panel
+   * Thumbnail URL for a panel: absolute as-is, relative via the manifest's assets.base / manifest URL.
    */
   getThumbnailUrl(panel: Panel): string {
     const thumbnail = (panel as Panel & { thumbnail?: string }).thumbnail;
-    if (!thumbnail) {
-      return '';
-    }
-
-    // Absolute URL
-    if (
-      thumbnail.startsWith('http://') ||
-      thumbnail.startsWith('https://') ||
-      thumbnail.startsWith('data:')
-    ) {
-      return thumbnail;
-    }
-
-    // Relative URL
-    return this.baseUrl + thumbnail;
+    return this.assetUrl.resolve(thumbnail, 'image');
   }
 
   /**

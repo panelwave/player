@@ -9,7 +9,9 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 import { PwIconComponent } from '../../icon/pw-icon.component';
 
@@ -37,11 +39,6 @@ export class ImageLayerComponent {
   @Input() alt = '';
 
   /**
-   * Base URL for resolving relative paths
-   */
-  @Input() baseUrl = '';
-
-  /**
    * Enable lazy loading
    */
   @Input() lazy = true;
@@ -65,19 +62,14 @@ export class ImageLayerComponent {
   loading = true;
   error = false;
 
+  private readonly assetUrl = inject(AssetUrlService);
+
   /**
-   * Get full image URL
+   * Full image URL: absolute src as-is, relative src resolved against the
+   * manifest's assets.base / manifest URL (AssetUrlService).
    */
   getImageUrl(): string {
-    if (!this.src) return '';
-    
-    // If already absolute URL, return as-is
-    if (this.src.startsWith('http://') || this.src.startsWith('https://') || this.src.startsWith('data:')) {
-      return this.src;
-    }
-    
-    // Otherwise prepend base URL
-    return this.baseUrl + this.src;
+    return this.assetUrl.resolve(this.src, 'image');
   }
 
   /**

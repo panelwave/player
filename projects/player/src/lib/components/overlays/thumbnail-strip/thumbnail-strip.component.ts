@@ -22,6 +22,7 @@ import {
 
 import type { Chapter, Panel } from '../../../types';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 /**
  * Thumbnail navigation target
@@ -59,6 +60,7 @@ interface ThumbnailItem {
 })
 export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
   private readonly injector = inject(Injector);
+  private readonly assetUrl = inject(AssetUrlService);
 
   /**
    * Whether a post-render scroll to the current panel is already queued
@@ -79,11 +81,6 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
    * Current panel ID
    */
   @Input() currentPanelId?: string;
-
-  /**
-   * Base URL for thumbnails
-   */
-  @Input() baseUrl = '';
 
   /**
    * Visible state
@@ -230,24 +227,10 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
   }
 
   /**
-   * Get thumbnail URL
+   * Thumbnail URL: absolute as-is, relative via the manifest's assets.base / manifest URL.
    */
   getThumbnailUrl(item: ThumbnailItem): string {
-    if (!item.thumbnail) {
-      return '';
-    }
-
-    // Absolute URL
-    if (
-      item.thumbnail.startsWith('http://') ||
-      item.thumbnail.startsWith('https://') ||
-      item.thumbnail.startsWith('data:')
-    ) {
-      return item.thumbnail;
-    }
-
-    // Relative URL
-    return this.baseUrl + item.thumbnail;
+    return this.assetUrl.resolve(item.thumbnail, 'image');
   }
 
   /**

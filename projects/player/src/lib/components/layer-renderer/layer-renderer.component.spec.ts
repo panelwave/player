@@ -100,12 +100,11 @@ describe('LayerRendererComponent', () => {
       expect(component.getVideoReverseSrc()).toBe('');
     });
 
-    it('returns the RAW direct src (baseUrl resolved downstream, not double-applied)', () => {
+    it('returns the RAW direct src (URL resolution happens downstream, not double-applied)', () => {
       spyOn(manifestService, 'getAsset').and.returnValue(null);
-      component.baseUrl = 'https://cdn.example/';
       component.layer = { kind: 'video', id: 'v1', src: 'clip.mp4' } as unknown as VideoLayer;
 
-      // No baseUrl prefixing here — pw-video-layer.resolveUrl owns it.
+      // No resolution here — pw-video-layer (AssetUrlService) owns it.
       expect(component.getVideoSrc()).toBe('clip.mp4');
     });
   });

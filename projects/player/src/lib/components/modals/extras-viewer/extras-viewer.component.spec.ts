@@ -4,7 +4,14 @@ import { By } from '@angular/platform-browser';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 
 import { ExtrasViewerComponent, type Extra } from './extras-viewer.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+
+/** Stub resolver: relative references get a fake base, absolute ones pass through. */
+const assetUrlStub = {
+  resolve: (src?: string | null) =>
+    !src ? '' : /^[a-z][a-z0-9+.-]*:/i.test(src) ? src : 'https://assets.example/' + src,
+};
 
 describe('ExtrasViewerComponent', () => {
   let fixture: ComponentFixture<ExtrasViewerComponent>;
@@ -69,7 +76,8 @@ describe('ExtrasViewerComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ExtrasViewerComponent], providers: [provideTranslateService()],
+      imports: [ExtrasViewerComponent],
+      providers: [provideTranslateService(), { provide: AssetUrlService, useValue: assetUrlStub }],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', {
@@ -90,7 +98,7 @@ describe('ExtrasViewerComponent', () => {
     purchases = 0;
     component.close.subscribe(() => closed++);
     component.purchase.subscribe(() => purchases++);
-    set({ extras, baseUrl: 'https://assets.example/', visible: true });
+    set({ extras, visible: true });
   });
 
   describe('gallery', () => {
@@ -157,7 +165,7 @@ describe('ExtrasViewerComponent', () => {
       expect(filterButtons().map((b) => text(b))).toEqual(['All (0)']);
     });
 
-    it('resolves thumbnails against baseUrl and keeps absolute URLs', () => {
+    it('resolves thumbnails through AssetUrlService and keeps absolute URLs', () => {
       const imgs = qa<HTMLImageElement>('.thumbnail-image');
       expect(imgs[0].getAttribute('src')).toBe('https://assets.example/thumbs/cover1.jpg');
       expect(imgs[0].alt).toBe('Main Cover');

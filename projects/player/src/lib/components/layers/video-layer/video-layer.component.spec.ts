@@ -9,6 +9,7 @@ import { VideoControllerService } from '../../../services/video-controller.servi
 import { UserGestureService } from '../../../services/user-gesture.service';
 import { TrackingService } from '../../../services/tracking.service';
 import { AudioEngineService } from '../../../services/audio-engine.service';
+import { AssetUrlService } from '../../../services/asset-url.service';
 import {
   VideoSequencerService,
   type SequencedVideo,
@@ -28,6 +29,12 @@ class MockGestureService {
     this.interacted = value;
   }
 }
+
+/** Stub resolver: relative references get the fake CDN base, absolute ones pass through. */
+const assetUrlStub = {
+  resolve: (src?: string | null) =>
+    !src ? '' : /^[a-z][a-z0-9+.-]*:/i.test(src) ? src : 'https://cdn/' + src,
+};
 
 describe('VideoLayerComponent', () => {
   let fixture: ComponentFixture<VideoLayerComponent>;
@@ -65,6 +72,7 @@ describe('VideoLayerComponent', () => {
       providers: [
         VideoControllerService,
         { provide: UserGestureService, useValue: gesture },
+        { provide: AssetUrlService, useValue: assetUrlStub },
       ],
     }).compileComponents();
 
@@ -81,8 +89,7 @@ describe('VideoLayerComponent', () => {
   });
 
   describe('URL resolution', () => {
-    it('prepends baseUrl to relative sources', () => {
-      component.baseUrl = 'https://cdn/';
+    it('resolves relative sources through AssetUrlService', () => {
       component.src = 'clip.mp4';
       expect(component.getVideoUrl()).toBe('https://cdn/clip.mp4');
     });
@@ -186,7 +193,6 @@ describe('VideoLayerComponent', () => {
     it('swaps to the reverse variant for the backward pass', () => {
       component.playMode = 'pingpong';
       component.reverseSrc = 'clip-rev.mp4';
-      component.baseUrl = 'https://cdn/';
       component.startAtMs = 0;
       component.onLoadedMetadata();
       setupVideoElement(10);
@@ -202,7 +208,6 @@ describe('VideoLayerComponent', () => {
       beforeEach(() => {
         component.playMode = 'pingpong';
         component.reverseSrc = 'clip-rev.mp4';
-        component.baseUrl = 'https://cdn/';
         component.startAtMs = 0;
         component.onLoadedMetadata();
         setupVideoElement(10);
@@ -268,7 +273,6 @@ describe('VideoLayerComponent', () => {
       beforeEach(() => {
         component.playMode = 'pingpong';
         component.reverseSrc = 'clip-rev.mp4';
-        component.baseUrl = 'https://cdn/';
         component.startAtMs = 0;
         component.onLoadedMetadata();
         setupVideoElement(10);

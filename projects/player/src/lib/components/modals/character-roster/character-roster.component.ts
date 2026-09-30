@@ -20,6 +20,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 import type { LocaleCode, LocalizedString } from '../../../types';
 
 /**
@@ -47,6 +48,7 @@ export interface Character {
 })
 export class CharacterRosterComponent implements OnInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly assetUrl = inject(AssetUrlService);
 
   /**
    * Listeners attached to the current audio element (removed on stop)
@@ -62,11 +64,6 @@ export class CharacterRosterComponent implements OnInit, OnChanges, OnDestroy {
    * Current locale
    */
   @Input() locale: LocaleCode = 'en-US';
-
-  /**
-   * Base URL for assets
-   */
-  @Input() baseUrl = '';
 
   /**
    * Visible state
@@ -194,24 +191,10 @@ export class CharacterRosterComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
-   * Get avatar URL
+   * Avatar URL: absolute as-is, relative via the manifest's assets.base / manifest URL.
    */
   getAvatarUrl(character: Character): string {
-    if (!character.avatar) {
-      return '';
-    }
-
-    // Absolute URL
-    if (
-      character.avatar.startsWith('http://') ||
-      character.avatar.startsWith('https://') ||
-      character.avatar.startsWith('data:')
-    ) {
-      return character.avatar;
-    }
-
-    // Relative URL
-    return this.baseUrl + character.avatar;
+    return this.assetUrl.resolve(character.avatar, 'image');
   }
 
   /**
@@ -277,9 +260,7 @@ export class CharacterRosterComponent implements OnInit, OnChanges, OnDestroy {
   private startVoiceSample(url: string): void {
     this.stopVoiceSample(); // Stop any existing audio
 
-    const audioUrl = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')
-      ? url
-      : this.baseUrl + url;
+    const audioUrl = this.assetUrl.resolve(url, 'audio');
 
     const audio = new Audio(audioUrl);
     this.audioElement = audio;

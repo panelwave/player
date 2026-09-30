@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import type { Chapter, Panel } from '../../../types';
 import { ThumbnailStripComponent, type ThumbnailNavigationTarget } from './thumbnail-strip.component';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 function chapter(id: string, panelIds: string[], title?: Record<string, string>): Chapter {
   const panels: Record<string, Panel> = {};
@@ -20,6 +21,12 @@ function scrollSpy(el: HTMLElement): jasmine.Spy<(options: ScrollToOptions) => v
   return spyOn(el, 'scrollTo') as unknown as jasmine.Spy<(options: ScrollToOptions) => void>;
 }
 
+/** Stub resolver: relative references get a fake base, absolute ones pass through. */
+const assetUrlStub = {
+  resolve: (src?: string | null) =>
+    !src ? '' : /^[a-z][a-z0-9+.-]*:/i.test(src) ? src : 'https://cdn.example/' + src,
+};
+
 describe('ThumbnailStripComponent', () => {
   let fixture: ComponentFixture<ThumbnailStripComponent>;
   let component: ThumbnailStripComponent;
@@ -29,7 +36,7 @@ describe('ThumbnailStripComponent', () => {
     chapter('ch2', ['p4', 'p5']),
   ];
 
-  function setup(inputs: Partial<Record<'chapters' | 'currentChapterId' | 'currentPanelId' | 'lockedPanels' | 'visible' | 'baseUrl', unknown>>): void {
+  function setup(inputs: Partial<Record<'chapters' | 'currentChapterId' | 'currentPanelId' | 'lockedPanels' | 'visible', unknown>>): void {
     Object.entries(inputs).forEach(([k, v]) => fixture.componentRef.setInput(k, v));
     fixture.detectChanges();
   }
@@ -43,7 +50,10 @@ describe('ThumbnailStripComponent', () => {
   }
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [ThumbnailStripComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [ThumbnailStripComponent],
+      providers: [{ provide: AssetUrlService, useValue: assetUrlStub }],
+    }).compileComponents();
     fixture = TestBed.createComponent(ThumbnailStripComponent);
     component = fixture.componentInstance;
   });
@@ -130,8 +140,7 @@ describe('ThumbnailStripComponent', () => {
       expect(component.getThumbnailUrl(base)).toBe('');
     });
 
-    it('keeps absolute and data URLs and prefixes relative ones with baseUrl', () => {
-      component.baseUrl = 'https://cdn.example/';
+    it('keeps absolute and data URLs and resolves relative ones through AssetUrlService', () => {
       expect(component.getThumbnailUrl({ ...base, thumbnail: 'http://a/x.png' })).toBe('http://a/x.png');
       expect(component.getThumbnailUrl({ ...base, thumbnail: 'https://a/x.png' })).toBe('https://a/x.png');
       expect(component.getThumbnailUrl({ ...base, thumbnail: 'data:image/png;base64,AA' })).toBe('data:image/png;base64,AA');

@@ -38,6 +38,7 @@ import { VideoControllerService } from '../../../services/video-controller.servi
 import { UserGestureService } from '../../../services/user-gesture.service';
 import { AudioEngineService } from '../../../services/audio-engine.service';
 import { TrackingService } from '../../../services/tracking.service';
+import { AssetUrlService } from '../../../services/asset-url.service';
 import {
   VideoSequencerService,
   type SequencedVideo,
@@ -66,6 +67,7 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   private readonly sequencer = inject(VideoSequencerService);
   private readonly audioEngine = inject(AudioEngineService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly assetUrl = inject(AssetUrlService);
 
   /** Follows the player-wide Audio toggle (engine master mute). */
   private masterMuteSub?: Subscription;
@@ -76,9 +78,6 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Reverse-variant URL used for the pingpong backward pass (empty if none). */
   @Input() reverseSrc = '';
-
-  /** Base URL for resolving relative paths. */
-  @Input() baseUrl = '';
 
   /** Poster image URL. */
   @Input() poster = '';
@@ -237,15 +236,12 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   getPosterUrl(): string {
-    return this.resolveUrl(this.poster);
+    return this.assetUrl.resolve(this.poster, 'image');
   }
 
+  /** Absolute URLs as-is; relative ones via the manifest's assets.base / manifest URL. */
   private resolveUrl(value: string): string {
-    if (!value) return '';
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      return value;
-    }
-    return this.baseUrl + value;
+    return this.assetUrl.resolve(value, 'video');
   }
 
   private get video(): HTMLVideoElement | undefined {

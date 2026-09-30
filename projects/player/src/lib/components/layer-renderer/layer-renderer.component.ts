@@ -56,11 +56,6 @@ export class LayerRendererComponent {
   @Input() locale: LocaleCode = 'en-US';
 
   /**
-   * Base URL for resolving asset paths
-   */
-  @Input() baseUrl = '';
-
-  /**
    * Required display width in physical pixels for image variant selection
    * (canvas view variant-by-zoom). 0 keeps the legacy first-variant pick.
    */
@@ -216,9 +211,9 @@ export class LayerRendererComponent {
       }
     }
 
-    // Fall back to direct src if provided
+    // Fall back to direct src if provided (resolved downstream by pw-image-layer).
     const src = (this.layer as Record<string, unknown>)['src'];
-    return src ? `${this.baseUrl}${src}` : '';
+    return typeof src === 'string' ? src : '';
   }
 
   /**
@@ -259,9 +254,9 @@ export class LayerRendererComponent {
 
   /**
    * Get the forward (default) video source URL. Catalog and direct-src paths
-   * both return the RAW src — baseUrl resolution (and skipping already-absolute
-   * URLs) is owned downstream by `pw-video-layer` (`resolveUrl`), so prefixing
-   * here would double-apply it.
+   * both return the RAW src — URL resolution (assets.base / manifest URL, and
+   * skipping already-absolute URLs) is owned downstream by `pw-video-layer`
+   * via AssetUrlService, so resolving here would double-apply it.
    */
   getVideoSrc(): string {
     if (this.layer.kind !== 'video') return '';
@@ -286,9 +281,8 @@ export class LayerRendererComponent {
 
   /**
    * Get the poster URL for the video (empty string if none). Sourced from
-   * the catalog asset's `poster.src` (schema 1.1+); resolved against the
-   * renderer's `baseUrl` downstream by `pw-video-layer`, same as
-   * `getVideoSrc()`.
+   * the catalog asset's `poster.src` (schema 1.1+); resolved downstream by
+   * `pw-video-layer` via AssetUrlService, same as `getVideoSrc()`.
    */
   getVideoPoster(): string {
     const asset = this.getVideoAsset();

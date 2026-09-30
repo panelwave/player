@@ -12,11 +12,13 @@ import {
   HostListener,
   OnChanges,
   SimpleChanges,
+  inject,
 } from '@angular/core';
 
 import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
-import type { LocaleCode, LocalizedString } from '../../../types';
+import type { AssetCategory, LocaleCode, LocalizedString } from '../../../types';
+import { AssetUrlService } from '../../../services/asset-url.service';
 
 /**
  * Extra item type
@@ -67,10 +69,7 @@ export class ExtrasViewerComponent implements OnChanges {
    */
   @Input() locale: LocaleCode = 'en-US';
 
-  /**
-   * Base URL for assets
-   */
-  @Input() baseUrl = '';
+  private readonly assetUrl = inject(AssetUrlService);
 
   /**
    * Visible state
@@ -183,45 +182,18 @@ export class ExtrasViewerComponent implements OnChanges {
   }
 
   /**
-   * Get thumbnail URL
+   * Thumbnail URL: absolute as-is, relative via the manifest's assets.base / manifest URL.
    */
   getThumbnailUrl(extra: Extra): string {
-    if (!extra.thumbnail) {
-      return '';
-    }
-
-    // Absolute URL
-    if (
-      extra.thumbnail.startsWith('http://') ||
-      extra.thumbnail.startsWith('https://') ||
-      extra.thumbnail.startsWith('data:')
-    ) {
-      return extra.thumbnail;
-    }
-
-    // Relative URL
-    return this.baseUrl + extra.thumbnail;
+    return this.assetUrl.resolve(extra.thumbnail, 'image');
   }
 
   /**
-   * Get asset URL
+   * Asset URL, resolved with the base of the extra's media type (image / video /
+   * audio; documents fall back to mediaBase).
    */
   getAssetUrl(extra: Extra): string {
-    if (!extra.asset) {
-      return '';
-    }
-
-    // Absolute URL
-    if (
-      extra.asset.startsWith('http://') ||
-      extra.asset.startsWith('https://') ||
-      extra.asset.startsWith('data:')
-    ) {
-      return extra.asset;
-    }
-
-    // Relative URL
-    return this.baseUrl + extra.asset;
+    return this.assetUrl.resolve(extra.asset, extraCategory(extra));
   }
 
   /**
@@ -343,4 +315,11 @@ export class ExtrasViewerComponent implements OnChanges {
       default: return 'lucidePaperclip';
     }
   }
+}
+
+/** The asset category an extra's media type maps to for base-URL selection. */
+function extraCategory(extra: Extra): AssetCategory | undefined {
+  return extra.mediaType === 'image' || extra.mediaType === 'video' || extra.mediaType === 'audio'
+    ? extra.mediaType
+    : undefined;
 }

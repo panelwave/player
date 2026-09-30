@@ -120,7 +120,6 @@
         [chapters]="loadedManifest?.chapters || []"
         [currentChapterId]="currentChapter?.id"
         [currentPanelId]="getCurrentPanelId()"
-        [baseUrl]="''"
         [lockedPanels]="[]"
         (navigate)="onThumbnailNavigate($event)"
         (close)="onThumbnailsClose()">
@@ -188,7 +187,6 @@
           [currentChapterId]="currentChapter?.id"
           [currentPanelId]="getCurrentPanelId()"
           [locale]="locale"
-          [baseUrl]="''"
           (navigate)="onTocNavigate($event)"
           (close)="tocVisible = false">
         </pw-toc-overlay>
@@ -223,7 +221,6 @@
           [visible]="charactersVisible"
           [characters]="characters"
           [locale]="locale"
-          [baseUrl]="''"
           (close)="charactersVisible = false">
         </pw-character-roster>
       }
