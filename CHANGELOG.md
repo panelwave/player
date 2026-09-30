@@ -65,8 +65,23 @@ semver. The reader-facing product changelog lives on the docs site
   `utils/keyframe-animation` (exported: `buildKeyframeTracks`, `sampleTrack`,
   `sampleKeyframes`, `layerAnimationStyles`, ...). New exported types
   `PanelAnimations`, `AnimationKeyframe`, `AnimatableProperty`,
-  `AnimationEasing`; `Panel.animations` is typed. The camera-move fields
-  (`startViewportRect` / `endViewportRect`) are still not rendered.
+  `AnimationEasing`; `Panel.animations` is typed.
+- Camera moves. `Panel.animations.startViewportRect` / `endViewportRect` were
+  part of the format since 1.0 but never rendered. The panel's artwork
+  (layers, hotspots, speech bubbles) now pans and zooms inside the panel box
+  from the start rect to the end rect over `durationMs`, eased by `easing`,
+  on the same timeline as the layer keyframes (`loop` applies to both). A
+  missing rect is the whole panel (only an end rect = push-in, only a start
+  rect = pull-back); without a duration the end rect is shown as a static
+  framing. The rect is fitted with a uniform scale and centered, and the
+  artwork never leaves the box uncovered. Works in panel, page and canvas
+  view. Pure helpers in `utils/camera-move` (exported: `cameraMoveRects`,
+  `hasCameraMove`, `sampleViewportRect`, `viewportRectTransform`,
+  `panelAnimationPlayTime`, ...).
+- Autoplay waits for a panel's animation: in panel and canvas view the panel
+  stays at least as long as a non-looping animation runs, so a dwell time
+  shorter than the animation no longer cuts it off. Looping animations,
+  reduced motion and page view keep the plain dwell time.
 - Format 1.6: `extras.alt_cover` may be an array. Every alternative cover is
   listed in the extras viewer (an array was silently dropped before).
 - Format 1.6: ensemble character sheets. A character sheet's `characterIds`
@@ -134,6 +149,15 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Panel animations are clipped by the panel box. In panel view a layer that
+  slid in from outside the panel (or any layer moved across its edge) was
+  painted over the panel's surroundings; the box now clips its content while
+  an animation is attached.
+- A layer keeps its own opacity while other properties of it are animated.
+  Animating only a layer's offset or scale reset its manifest `opacity` to
+  fully opaque; the same happened when an animation was detached.
+- The outgoing panel of a transition holds the end state of its animation
+  instead of snapping back to the resting state while it leaves.
 - `ageGate` / `minimumAge` is an age check on top of the rule's entitlement
   (schema semantics): a rule with a custom `requireEntitlement` marker (or
   `premium`) plus an age no longer degrades to a pure age gate, and purchase /

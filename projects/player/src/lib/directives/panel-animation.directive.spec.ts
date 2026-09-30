@@ -11,9 +11,13 @@ import { PanelAnimationDirective } from './panel-animation.directive';
       style="width: 400px; height: 300px; position: relative;"
       [pwPanelAnimation]="animations"
       [pwPanelAnimationKey]="key"
-      [pwPanelAnimationReducedMotion]="reducedMotion">
-      <div data-layer-id="l1" class="layer"></div>
-      <div data-layer-id="l2" class="layer"></div>
+      [pwPanelAnimationReducedMotion]="reducedMotion"
+      [pwPanelAnimationStatic]="isStatic">
+      <div class="pw-panel-camera">
+        <div data-layer-id="l1" class="layer"></div>
+        <div data-layer-id="l2" class="layer"></div>
+        <div data-layer-id="l3" class="layer" style="opacity: 0.4;"></div>
+      </div>
     </div>
   `,
 })
@@ -21,6 +25,7 @@ class HostComponent {
   animations: PanelAnimations | null = null;
   key = 'p1';
   reducedMotion = false;
+  isStatic = false;
 }
 
 describe('PanelAnimationDirective', () => {
@@ -44,6 +49,9 @@ describe('PanelAnimationDirective', () => {
     frames.clear();
     pending.forEach(([, cb]) => cb(timestamp));
   };
+
+  const panel = (): HTMLElement => fixture.nativeElement.querySelector('.panel') as HTMLElement;
+  const camera = (): HTMLElement => fixture.nativeElement.querySelector('.pw-panel-camera') as HTMLElement;
 
   const setVisible = (visible: boolean): void => {
     observerCallback?.(
@@ -99,11 +107,136 @@ describe('PanelAnimationDirective', () => {
     (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = originalObserver;
   });
 
-  it('does nothing without keyframes', () => {
+  it('does nothing without keyframes or a camera move', () => {
     host.animations = { durationMs: 1000 };
     fixture.detectChanges();
     expect(frames.size).toBe(0);
     expect(layer('l1').style.opacity).toBe('');
+    expect(panel().style.overflow).toBe('');
+  });
+
+  it('clips the panel box while an animation is attached', () => {
+    host.animations = fade;
+    fixture.detectChanges();
+    expect(panel().style.overflow).toBe('hidden');
+
+    host.animations = null;
+    fixture.detectChanges();
+    expect(panel().style.overflow).toBe('');
+  });
+
+  it('keeps the inline styles of a layer for properties that are not animated', () => {
+    // l3 carries its own opacity (0.4); only its offset is animated.
+    host.animations = {
+      durationMs: 1000,
+      keyframes: [
+        { layerId: 'l3', property: 'transform.x', timeMs: 0, value: 0.25 },
+        { layerId: 'l3', property: 'transform.x', timeMs: 1000, value: 0 },
+      ],
+    };
+    fixture.detectChanges();
+    setVisible(true);
+    flushFrame(0);
+    flushFrame(200);
+    expect(layer('l3').style.opacity).toBe('0.4');
+    expect(translateX('l3')).toBe(80);
+  });
+
+  it('gives a layer its own opacity back when the animation is detached', () => {
+    host.animations = {
+      durationMs: 1000,
+      keyframes: [
+        { layerId: 'l3', property: 'opacity', timeMs: 0, value: 0 },
+        { layerId: 'l3', property: 'opacity', timeMs: 1000, value: 1 },
+      ],
+    };
+    fixture.detectChanges();
+    flushFrame(0);
+    expect(layer('l3').style.opacity).toBe('0');
+
+    host.animations = null;
+    fixture.detectChanges();
+    expect(layer('l3').style.opacity).toBe('0.4');
+  });
+
+  describe('camera move', () => {
+    // Push in from the whole panel to its middle half (scale 2) over 1 s.
+    const pushIn: PanelAnimations = {
+      startViewportRect: { x: 0, y: 0, w: 1, h: 1 },
+      endViewportRect: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },
+      durationMs: 1000,
+    };
+
+    it('transforms the camera element from the start rect to the end rect', () => {
+      host.animations = pushIn;
+      fixture.detectChanges();
+      expect(panel().style.overflow).toBe('hidden');
+
+      flushFrame(0); // start state: the whole panel, no transform
+      expect(camera().style.transform).toBe('');
+
+      setVisible(true);
+      flushFrame(100);
+      flushFrame(350);
+      flushFrame(600); // 500 ms in: rect 0.125 / 0.125 / 0.75 / 0.75 -> scale 4/3
+      expect(camera().style.transform).toBe('translate(-66.67px, -50px) scale(1.3333)');
+      expect(camera().style.transformOrigin).toContain('0');
+
+      flushFrame(850);
+      flushFrame(1100);
+      flushFrame(1200); // done: middle half of the 400 x 300 panel
+      expect(camera().style.transform).toBe('translate(-200px, -150px) scale(2)');
+      expect(frames.size).toBe(0);
+    });
+
+    it('runs together with layer keyframes on one timeline', () => {
+      host.animations = { ...pushIn, keyframes: fade.keyframes };
+      fixture.detectChanges();
+      setVisible(true);
+      flushFrame(0);
+      flushFrame(250);
+      flushFrame(500);
+      expect(Number(layer('l1').style.opacity)).toBeCloseTo(0.5, 2);
+      expect(camera().style.transform).toBe('translate(-66.67px, -50px) scale(1.3333)');
+    });
+
+    it('shows the end rect at once for reduced motion', () => {
+      host.animations = pushIn;
+      host.reducedMotion = true;
+      fixture.detectChanges();
+      flushFrame(0);
+      expect(camera().style.transform).toBe('translate(-200px, -150px) scale(2)');
+      expect(frames.size).toBe(0);
+    });
+
+    it('shows a framing without a duration (static zoom)', () => {
+      host.animations = { endViewportRect: { x: 0.5, y: 0, w: 0.5, h: 0.5 } };
+      fixture.detectChanges();
+      flushFrame(0);
+      expect(camera().style.transform).toBe('translate(-400px, 0px) scale(2)');
+    });
+
+    it('resets the camera when the animation is detached', () => {
+      host.animations = pushIn;
+      host.reducedMotion = true;
+      fixture.detectChanges();
+      flushFrame(0);
+      host.animations = null;
+      fixture.detectChanges();
+      expect(camera().style.transform).toBe('');
+      expect(panel().style.overflow).toBe('');
+    });
+  });
+
+  it('holds the end state without playing when static (outgoing panel)', () => {
+    host.animations = fade;
+    host.isStatic = true;
+    fixture.detectChanges();
+    flushFrame(0);
+    expect(layer('l1').style.opacity).toBe('1');
+    expect(translateX('l1')).toBe(0);
+    expect(frames.size).toBe(0);
+    expect(observerCallback).toBeNull();
   });
 
   it('shows the start state, then animates once the panel is visible', () => {

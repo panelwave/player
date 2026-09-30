@@ -57,6 +57,7 @@ import { VideoControllerService } from '../../services/video-controller.service'
 import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { resolveStartMode } from '../../utils/video-config-utils';
 import { shouldReduceMotion } from '../../utils/animation-utils';
+import { panelAnimationPlayTime } from '../../utils/camera-move';
 import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
@@ -2308,7 +2309,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     // Use panel-specific durationMs if available, otherwise use global setting (in seconds)
-    const durationMs = (this.effectivePanel ?? this.currentPanel)?.durationMs ?? (this.secondsPerPanel * 1000);
+    let durationMs = (this.effectivePanel ?? this.currentPanel)?.durationMs ?? (this.secondsPerPanel * 1000);
+
+    // A panel animation (keyframes / camera move) is never cut short: the
+    // panel stays at least until a non-looping animation has played. Page view
+    // shows several panels at once and keeps the plain dwell time.
+    if (this.viewMode !== 'page' && !this.motionReduced) {
+      durationMs = Math.max(durationMs, panelAnimationPlayTime((this.effectivePanel ?? this.currentPanel)?.animations));
+    }
 
     // Ensure we have a valid duration
     if (!durationMs || durationMs <= 0) {

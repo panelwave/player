@@ -104,7 +104,10 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Style Presets** - Work-level `settings.typography.textStyles` / `balloonPresets` referenced via `styleRef` on text layers and speech bubbles (format 1.3)
 - **Hotspots** - Interactive areas (rect, circle, polygon; normalized panel-relative geometry) with all five manifest actions: `goTo` (mutations + transition), `setVariables`, `openExtras` (opens the viewer at the item), `openModal` (localized title/content dialog), `pluginEvent`. Conditional visibility via `visibleIf` (JSON Logic), localized labels/ariaLabels, keyboard activation (Tab + Enter/Space at the shape centroid). Every click is tracked as `hotspot_click {panelId, chapterId, hotspotId?, x, y, hit}` — clicks that miss all hotspots are recorded with `hit: false` (dead clicks) for the CMS click heatmap. Rendered in panel and page views; render-only in canvas view (taps keep edge navigation)
 - **Focus Rects** - In panel view a panel larger than the screen (a landscape panel on a phone) is cropped around its `formatViews[format].minimalFocusRect` instead of its middle; the panel shrinks only when the rect itself does not fit. The rect of the format whose frame is closest to the screen's shape applies
-- **Layer Animations** - Keyframe animations per panel (`animations.keyframes`, format 1.6): opacity, offset, scale, rotation, blur, brightness, contrast and saturation per layer, with per-keyframe easing and optional looping. Starts when the panel is shown (panel view: it becomes current; page / canvas view: it scrolls into view), pauses off-screen, and shows the end state without motion under reduced motion
+- **Panel Animations** - One animation per panel (`animations`), in every view mode:
+  - *Layer keyframes* (`animations.keyframes`, format 1.6): opacity, offset, scale, rotation, blur, brightness, contrast and saturation per layer, with per-keyframe easing
+  - *Camera moves* (`animations.startViewportRect` → `endViewportRect`): the panel's artwork — layers, hotspots and speech bubbles together — pans and zooms inside the panel box from one viewport rect to the other. A missing rect is the whole panel; the rect is fitted with a uniform scale, never stretched
+  - Both run on one timeline (`durationMs`, optional `loop`). The animation starts when the panel is shown (panel view: it becomes current; page / canvas view: it scrolls into view), pauses off-screen, is clipped by the panel box, and shows the end state without motion under reduced motion. Autoplay waits for a non-looping animation to finish before it advances
 - **Variants** - Conditional content based on variables/entitlements
 - **Preloading** - Intelligent lookahead with configurable distance
 - **Image Cache** - LRU cache with memory budget management
@@ -343,7 +346,7 @@ The player renders **PanelWave manifest format 1.6** (the schema lives at `schem
 | 1.6 | Paywall product lists (`requiredProductIds` on purchase rules) and product display info (`paywall.products`) | ✅ |
 | 1.6 | Layer keyframe animations (`animations.keyframes` / `loop`) | ✅ |
 | 1.6 | Several alternative covers (`extras.alt_cover` as an array) and ensemble character sheets (`characterIds`) | ✅ |
-| 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ❌ not rendered yet |
+| 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ✅ |
 
 ---
 

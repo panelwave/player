@@ -128,3 +128,17 @@ export {
   type LayerAnimationStyles,
   type KeyframeTracks,
 } from './keyframe-animation';
+
+// Panel camera moves (schema PanelAnimations.startViewportRect / endViewportRect)
+export {
+  FULL_VIEWPORT_RECT,
+  NO_CAMERA_TRANSFORM,
+  normalizeViewportRect,
+  cameraMoveRects,
+  hasCameraMove,
+  sampleViewportRect,
+  viewportRectTransform,
+  cameraTransformCss,
+  panelAnimationPlayTime,
+  type CameraTransform,
+} from './camera-move';

@@ -302,6 +302,61 @@ describe('PlayerShellComponent auto-advance', () => {
       passComplete$.next('v1');
       expect(nav).not.toHaveBeenCalled();
     });
+
+    describe('panel animations', () => {
+      const animated = (animations: Panel['animations']): Panel => ({ ...imagePanel(), animations });
+      const fade = [
+        { layerId: 'l1', property: 'opacity' as const, timeMs: 0, value: 0 },
+        { layerId: 'l1', property: 'opacity' as const, timeMs: 3000, value: 1 },
+      ];
+
+      it('stays on the panel until a longer animation has played', () => {
+        shell.currentPanel = animated({ durationMs: 3000, keyframes: fade });
+        const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+        priv().startAutoplay();
+
+        jasmine.clock().tick(2999); // dwell time (1 s) is long over
+        expect(nav).not.toHaveBeenCalled();
+        jasmine.clock().tick(2);
+        expect(nav).toHaveBeenCalledTimes(1);
+      });
+
+      it('waits for a camera move as well', () => {
+        shell.currentPanel = animated({ durationMs: 2500, endViewportRect: { x: 0, y: 0, w: 0.5, h: 0.5 } });
+        const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+        priv().startAutoplay();
+        jasmine.clock().tick(2499);
+        expect(nav).not.toHaveBeenCalled();
+        jasmine.clock().tick(2);
+        expect(nav).toHaveBeenCalledTimes(1);
+      });
+
+      it('keeps the dwell time for a looping animation (it never ends)', () => {
+        shell.currentPanel = animated({ durationMs: 3000, loop: true, keyframes: fade });
+        const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+        priv().startAutoplay();
+        jasmine.clock().tick(1001);
+        expect(nav).toHaveBeenCalledTimes(1);
+      });
+
+      it('keeps the dwell time under reduced motion (the end state shows at once)', () => {
+        shell.currentPanel = animated({ durationMs: 3000, keyframes: fade });
+        shell.reducedMotion = true;
+        const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+        priv().startAutoplay();
+        jasmine.clock().tick(1001);
+        expect(nav).toHaveBeenCalledTimes(1);
+      });
+
+      it('keeps the dwell time in page view (several panels share the page)', () => {
+        shell.currentPanel = animated({ durationMs: 3000, keyframes: fade });
+        shell.viewMode = 'page';
+        const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+        priv().startAutoplay();
+        jasmine.clock().tick(1001);
+        expect(nav).toHaveBeenCalledTimes(1);
+      });
+    });
   });
 
   describe('page view — queue completion coupling (§4.3.6)', () => {

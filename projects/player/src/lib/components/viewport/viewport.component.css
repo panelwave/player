@@ -45,6 +45,16 @@
 }
 
 /*
+ * The artwork of a panel (layers, hotspots, speech bubbles). It fills the
+ * panel box; a camera move (PanelAnimationDirective) transforms it inside
+ * that box.
+ */
+.pw-panel-camera {
+  position: absolute;
+  inset: 0;
+}
+
+/*
  * Panel-change transitions (manifest edge transitions).
  * The entering panel renders inside `.t-frame`; during a transition the
  * outgoing panel stays visible in the absolutely-positioned `.t-frame-leave`

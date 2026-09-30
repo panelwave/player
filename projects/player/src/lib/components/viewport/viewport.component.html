@@ -24,30 +24,36 @@
       <!-- Outgoing panel during a manifest edge transition -->
       @if (leavingPanel) {
         <div [class]="'t-frame-leave ' + leaveAnimationClass" aria-hidden="true">
-          <div class="panel-container">
-            @for (layer of leavingPanel.layers; track layer.id) {
-              <pw-layer-renderer
-                [layer]="layer"
-                [locale]="locale"
-                [viewMode]="viewMode"
-                [viewActive]="false"
-                [reducedMotion]="reducedMotion"
-                [targetWidth]="targetWidthFor(leavingPanelId)"
-                [panelId]="leavingPanelId">
-              </pw-layer-renderer>
-            }
+          <!-- The outgoing panel holds the end state of its animation. -->
+          <div class="panel-container"
+               [pwPanelAnimation]="leavingPanel.animations"
+               [pwPanelAnimationKey]="leavingPanelId || ''"
+               [pwPanelAnimationStatic]="true">
+            <div class="pw-panel-camera">
+              @for (layer of leavingPanel.layers; track layer.id) {
+                <pw-layer-renderer
+                  [layer]="layer"
+                  [locale]="locale"
+                  [viewMode]="viewMode"
+                  [viewActive]="false"
+                  [reducedMotion]="reducedMotion"
+                  [targetWidth]="targetWidthFor(leavingPanelId)"
+                  [panelId]="leavingPanelId">
+                </pw-layer-renderer>
+              }
 
-            @if (speechEnabled && leavingPanel.speechBubbles && leavingPanel.speechBubbles.length > 0) {
-              <pw-speech-bubbles
-                [bubbles]="leavingPanel.speechBubbles"
-                [locale]="locale"
-                [containerWidth]="getContainerWidth()"
-                [containerHeight]="getContainerHeight()"
-                [readingScale]="getReadingScale()"
-                [workBalloonConfig]="workBalloonConfig"
-                [characters]="characters">
-              </pw-speech-bubbles>
-            }
+              @if (speechEnabled && leavingPanel.speechBubbles && leavingPanel.speechBubbles.length > 0) {
+                <pw-speech-bubbles
+                  [bubbles]="leavingPanel.speechBubbles"
+                  [locale]="locale"
+                  [containerWidth]="getContainerWidth()"
+                  [containerHeight]="getContainerHeight()"
+                  [readingScale]="getReadingScale()"
+                  [workBalloonConfig]="workBalloonConfig"
+                  [characters]="characters">
+                </pw-speech-bubbles>
+              }
+            </div>
           </div>
         </div>
       }
@@ -59,44 +65,47 @@
                [pwPanelAnimationKey]="currentPanelId || ''"
                [pwPanelAnimationReducedMotion]="reducedMotion"
                (click)="onPanelContainerClick($event, currentPanelId)" (keydown.enter)="onPanelContainerClick($any($event), currentPanelId)">
-            <!-- Render layers using LayerRenderer -->
-            @for (layer of panel.layers; track layer.id) {
-              <pw-layer-renderer
-                [layer]="layer"
-                [locale]="locale"
-                [viewMode]="viewMode"
-                [viewActive]="true"
-                [reducedMotion]="reducedMotion"
-                [targetWidth]="targetWidthFor(currentPanelId)"
-                [panelId]="currentPanelId || ''"
-                (layerClick)="layerClick.emit($event)">
-              </pw-layer-renderer>
-            }
+            <!-- Everything that belongs to the artwork; a camera move transforms it as one. -->
+            <div class="pw-panel-camera">
+              <!-- Render layers using LayerRenderer -->
+              @for (layer of panel.layers; track layer.id) {
+                <pw-layer-renderer
+                  [layer]="layer"
+                  [locale]="locale"
+                  [viewMode]="viewMode"
+                  [viewActive]="true"
+                  [reducedMotion]="reducedMotion"
+                  [targetWidth]="targetWidthFor(currentPanelId)"
+                  [panelId]="currentPanelId || ''"
+                  (layerClick)="layerClick.emit($event)">
+                </pw-layer-renderer>
+              }
 
-            <!-- Interactive hotspots overlay (below speech bubbles) -->
-            @if (interactive && panel.hotspots && panel.hotspots.length > 0) {
-              <pw-hotspots-overlay
-                [hotspots]="panel.hotspots"
-                [locale]="locale"
-                [containerWidth]="getContainerWidth()"
-                [containerHeight]="getContainerHeight()"
-                [context]="variableContext"
-                (hotspotActivate)="onHotspotActivate($event, currentPanelId)">
-              </pw-hotspots-overlay>
-            }
+              <!-- Interactive hotspots overlay (below speech bubbles) -->
+              @if (interactive && panel.hotspots && panel.hotspots.length > 0) {
+                <pw-hotspots-overlay
+                  [hotspots]="panel.hotspots"
+                  [locale]="locale"
+                  [containerWidth]="getContainerWidth()"
+                  [containerHeight]="getContainerHeight()"
+                  [context]="variableContext"
+                  (hotspotActivate)="onHotspotActivate($event, currentPanelId)">
+                </pw-hotspots-overlay>
+              }
 
-            <!-- Speech bubbles overlay for panel view -->
-            @if (speechEnabled && panel.speechBubbles && panel.speechBubbles.length > 0) {
-              <pw-speech-bubbles
-                [bubbles]="panel.speechBubbles"
-                [locale]="locale"
-                [containerWidth]="getContainerWidth()"
-                [containerHeight]="getContainerHeight()"
-                [readingScale]="getReadingScale()"
-                [workBalloonConfig]="workBalloonConfig"
-                [characters]="characters">
-              </pw-speech-bubbles>
-            }
+              <!-- Speech bubbles overlay for panel view -->
+              @if (speechEnabled && panel.speechBubbles && panel.speechBubbles.length > 0) {
+                <pw-speech-bubbles
+                  [bubbles]="panel.speechBubbles"
+                  [locale]="locale"
+                  [containerWidth]="getContainerWidth()"
+                  [containerHeight]="getContainerHeight()"
+                  [readingScale]="getReadingScale()"
+                  [workBalloonConfig]="workBalloonConfig"
+                  [characters]="characters">
+                </pw-speech-bubbles>
+              }
+            </div>
           </div>
         } @else {
           <div class="no-panel">
@@ -133,31 +142,36 @@
                   @if (getLeavingPanel(placement.panelId); as panelData) {
                     <div class="panel-content"
                          [style.clip-path]="getPanelContentClipPath(placement)"
-                         [style.transform]="getPanelContentTransform(placement)">
-                      @for (layer of panelData.layers; track layer.id) {
-                        <pw-layer-renderer
-                          [layer]="layer"
-                          [locale]="locale"
-                          [viewMode]="viewMode"
-                          [viewActive]="false"
-                          [reducedMotion]="reducedMotion"
-                          [targetWidth]="targetWidthFor(placement.panelId)"
-                          [panelId]="placement.panelId"
-                          [placementId]="placement.panelId">
-                        </pw-layer-renderer>
-                      }
+                         [style.transform]="getPanelContentTransform(placement)"
+                         [pwPanelAnimation]="panelData.animations"
+                         [pwPanelAnimationKey]="placement.panelId"
+                         [pwPanelAnimationStatic]="true">
+                      <div class="pw-panel-camera">
+                        @for (layer of panelData.layers; track layer.id) {
+                          <pw-layer-renderer
+                            [layer]="layer"
+                            [locale]="locale"
+                            [viewMode]="viewMode"
+                            [viewActive]="false"
+                            [reducedMotion]="reducedMotion"
+                            [targetWidth]="targetWidthFor(placement.panelId)"
+                            [panelId]="placement.panelId"
+                            [placementId]="placement.panelId">
+                          </pw-layer-renderer>
+                        }
 
-                      @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
-                        <pw-speech-bubbles
-                          [bubbles]="panelData.speechBubbles"
-                          [locale]="locale"
-                          [containerWidth]="getPagePanelWidth(placement)"
-                          [containerHeight]="getPagePanelHeight(placement)"
-                          [readingScale]="getReadingScale()"
-                          [workBalloonConfig]="workBalloonConfig"
-                          [characters]="characters">
-                        </pw-speech-bubbles>
-                      }
+                        @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
+                          <pw-speech-bubbles
+                            [bubbles]="panelData.speechBubbles"
+                            [locale]="locale"
+                            [containerWidth]="getPagePanelWidth(placement)"
+                            [containerHeight]="getPagePanelHeight(placement)"
+                            [readingScale]="getReadingScale()"
+                            [workBalloonConfig]="workBalloonConfig"
+                            [characters]="characters">
+                          </pw-speech-bubbles>
+                        }
+                      </div>
                     </div>
                   }
                 </div>
@@ -208,49 +222,51 @@
                      tabindex="0"
                      (click)="onPanelContainerClick($event, placement.panelId)"
                      (keydown.enter)="onPanelContainerClick($any($event), placement.panelId)">
-                  <!-- Render panel layers -->
-                  @for (layer of panelData.layers; track layer.id) {
-                    <pw-layer-renderer
-                      [layer]="layer"
-                      [locale]="locale"
-                      [altText]="getAltText(layer)"
-                      [viewMode]="viewMode"
-                      [reducedMotion]="reducedMotion"
-                      [targetWidth]="targetWidthFor(placement.panelId)"
-                      [panelId]="placement.panelId"
-                      [placementId]="placement.panelId"
-                      [readingOrderIndex]="readingOrderIndexOf(placement.panelId)"
-                      [placementZ]="placement.z || 0"
-                      [placementY]="placement.y"
-                      [placementX]="placement.x"
-                      (layerClick)="layerClick.emit($event)">
-                    </pw-layer-renderer>
-                  }
+                  <div class="pw-panel-camera">
+                    <!-- Render panel layers -->
+                    @for (layer of panelData.layers; track layer.id) {
+                      <pw-layer-renderer
+                        [layer]="layer"
+                        [locale]="locale"
+                        [altText]="getAltText(layer)"
+                        [viewMode]="viewMode"
+                        [reducedMotion]="reducedMotion"
+                        [targetWidth]="targetWidthFor(placement.panelId)"
+                        [panelId]="placement.panelId"
+                        [placementId]="placement.panelId"
+                        [readingOrderIndex]="readingOrderIndexOf(placement.panelId)"
+                        [placementZ]="placement.z || 0"
+                        [placementY]="placement.y"
+                        [placementX]="placement.x"
+                        (layerClick)="layerClick.emit($event)">
+                      </pw-layer-renderer>
+                    }
 
-                  <!-- Interactive hotspots overlay for page view panels -->
-                  @if (interactive && panelData.hotspots && panelData.hotspots.length > 0) {
-                    <pw-hotspots-overlay
-                      [hotspots]="panelData.hotspots"
-                      [locale]="locale"
-                      [containerWidth]="getPagePanelWidth(placement)"
-                      [containerHeight]="getPagePanelHeight(placement)"
-                      [context]="variableContext"
-                      (hotspotActivate)="onHotspotActivate($event, placement.panelId)">
-                    </pw-hotspots-overlay>
-                  }
+                    <!-- Interactive hotspots overlay for page view panels -->
+                    @if (interactive && panelData.hotspots && panelData.hotspots.length > 0) {
+                      <pw-hotspots-overlay
+                        [hotspots]="panelData.hotspots"
+                        [locale]="locale"
+                        [containerWidth]="getPagePanelWidth(placement)"
+                        [containerHeight]="getPagePanelHeight(placement)"
+                        [context]="variableContext"
+                        (hotspotActivate)="onHotspotActivate($event, placement.panelId)">
+                      </pw-hotspots-overlay>
+                    }
 
-                  <!-- Speech bubbles overlay for page view panels -->
-                  @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
-                    <pw-speech-bubbles
-                      [bubbles]="panelData.speechBubbles"
-                      [locale]="locale"
-                      [containerWidth]="getPagePanelWidth(placement)"
-                      [containerHeight]="getPagePanelHeight(placement)"
-                      [readingScale]="getReadingScale()"
-                      [workBalloonConfig]="workBalloonConfig"
-                      [characters]="characters">
-                    </pw-speech-bubbles>
-                  }
+                    <!-- Speech bubbles overlay for page view panels -->
+                    @if (speechEnabled && panelData.speechBubbles && panelData.speechBubbles.length > 0) {
+                      <pw-speech-bubbles
+                        [bubbles]="panelData.speechBubbles"
+                        [locale]="locale"
+                        [containerWidth]="getPagePanelWidth(placement)"
+                        [containerHeight]="getPagePanelHeight(placement)"
+                        [readingScale]="getReadingScale()"
+                        [workBalloonConfig]="workBalloonConfig"
+                        [characters]="characters">
+                      </pw-speech-bubbles>
+                    }
+                  </div>
                 </div>
               }
               

@@ -55,6 +55,12 @@
     0 8px 48px rgba(0, 0, 0, 0.6);
 }
 
+/* The panel's artwork; a panel camera move transforms it inside the panel box. */
+.pw-panel-camera {
+  position: absolute;
+  inset: 0;
+}
+
 .canvas-panel-veil {
   position: absolute;
   inset: 0;
