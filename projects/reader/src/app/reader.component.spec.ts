@@ -115,20 +115,59 @@ describe('ReaderComponent', () => {
     expect(paywall.canAccess('a')).toBeTrue();
   });
 
-  it("review mode: owns the rules' products and tiers, but the age stays unverified", () => {
+  /** Load in review mode and let the shell initialise its PaywallService. */
+  async function review(rules: unknown[]) {
     const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false, mode: 'review' });
     http
       .expectOne('https://x/m.json')
-      .flush(validManifest('en-US', { c: { id: 'c' } }, gatedRules));
+      .flush(validManifest('en-US', { b: { id: 'b' }, c: { id: 'c' } }, rules));
     fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+    await new Promise((resolve) => setTimeout(resolve));
+    return fixture;
+  }
 
+  it('review mode: purchase and subscription rules are dropped, everything is readable', async () => {
+    const fixture = await review([
+      {
+        id: 'sale',
+        scope: 'panel',
+        refId: 'b',
+        entitlementType: 'purchase',
+        requiredProductIds: ['b-product'],
+      },
+      { id: 'club', scope: 'work', entitlementType: 'subscription', subscriptionTiers: ['gold'] },
+    ]);
     const inst = shellOf(fixture);
     expect(inst.entitlementAdapter).toBeUndefined();
-    expect(inst.entitlementSnapshot).toEqual({
-      subscriptionTier: 'gold',
-      purchasedProductIds: ['b-product'],
-      ageVerified: false,
+    expect(inst.entitlementSnapshot).toBeUndefined();
+    expect(inst.manifest?.paywall?.rules).toEqual([]);
+    const paywall = TestBed.inject(PaywallService);
+    for (const id of ['a', 'b', 'c']) {
+      expect(paywall.canAccess(id)).withContext(id).toBeTrue();
+    }
+  });
+
+  it('review mode: a purchase rule with an age keeps only its age gate', async () => {
+    await review([
+      {
+        id: 'adult-sale',
+        scope: 'panel',
+        refId: 'c',
+        entitlementType: 'purchase',
+        requiredProductIds: ['p'],
+        minimumAge: 18,
+      },
+    ]);
+    const paywall = TestBed.inject(PaywallService);
+    expect(paywall.evaluate('c').reason).toBe('age_verification_required');
+    paywall.setSnapshot({
+      subscriptionTier: null,
+      purchasedProductIds: [],
+      ageVerified: true,
+      age: 30,
     });
+    expect(paywall.canAccess('c')).toBeTrue(); // nothing left to buy
   });
 
   it('shows an error with retry when the fetch fails', () => {

@@ -407,7 +407,7 @@ prettier --write .
 
 ### Reader app
 
-`projects/reader` is the full-window reader behind read.panelwave.org: a small Angular app that fetches a manifest and mounts `<pw-player-shell>` plus a "Made with PanelWave" badge. In production a server injects `window.__PW_READER__ = {manifestUrl, embed, locale, mode}` into `index.html` (and renders `<title>` itself). Gating is the shell's own: `paywall.rules` and `"x-locked": true` stubs are evaluated for an anonymous reader, so paywall and age gates work as in the player. `mode: 'review'` (review links) passes an entitlement snapshot that owns every product and tier the rules name; the age is never pre-verified. For local development use the query fallback:
+`projects/reader` is the full-window reader behind read.panelwave.org: a small Angular app that fetches a manifest and mounts `<pw-player-shell>` plus a "Made with PanelWave" badge. In production a server injects `window.__PW_READER__ = {manifestUrl, embed, locale, mode}` into `index.html` (and renders `<title>` itself). Gating is the shell's own: `paywall.rules` and `"x-locked": true` stubs are evaluated for an anonymous reader, so paywall and age gates work as in the player. `mode: 'review'` (review links) cuts every paywall rule down to its age part before handing the manifest to the shell: purchase and subscription gates disappear, age gates stay (the age is never pre-verified). For local development use the query fallback:
 
 ```bash
 npx ng build player            # the reader imports the built library
