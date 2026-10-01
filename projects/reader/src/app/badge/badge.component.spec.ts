@@ -18,6 +18,16 @@ describe('BadgeComponent', () => {
     fixture.destroy();
   }));
 
+  it('sits bottom-left so it never covers the player toolbar toggle', fakeAsync(() => {
+    fixture = TestBed.createComponent(BadgeComponent);
+    fixture.detectChanges();
+    const style = getComputedStyle(link());
+    expect(style.left).toBe('12px');
+    expect(style.bottom).toBe('12px');
+    expect(style.right).not.toBe('12px');
+    fixture.destroy();
+  }));
+
   it('hides after 3 s idle and returns on pointermove', fakeAsync(() => {
     fixture = TestBed.createComponent(BadgeComponent);
     fixture.detectChanges();
