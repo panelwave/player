@@ -1143,20 +1143,34 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         throw new Error(`Chapter not found: ${chapterId}`);
       }
 
+      // First panel in chapter from graph entry
+      const entry = this.flowEngine.getEntry(chapter.graph);
+      const firstPanelId = typeof entry === 'string' ? entry : entry[0];
+
+      // A chapter jump (TOC) into a gated entry stops like any other move:
+      // the gate opens and the reader stays where they were.
+      const hadPosition = !!this.currentPanel;
+      if (firstPanelId && hadPosition && (await this.raiseGateIfBlocked(chapterId, firstPanelId))) {
+        return;
+      }
+
       this.currentChapter = chapter;
       this.chapterChange.emit(chapter);
       this.visitedPanelIds = [];
       this.updateCanvasAvailability();
 
-      // Get first panel in chapter from graph entry
-      const entry = this.flowEngine.getEntry(chapter.graph);
-      const firstPanelId = typeof entry === 'string' ? entry : entry[0];
       if (firstPanelId) {
         const panelData = this.manifestService.getPanel(firstPanelId);
         if (panelData) {
           this.playerState.setCurrentPanel(panelData.panel);
           this.currentPanel = panelData.panel;
           this.refreshVariableContext();
+        }
+        // The initial position has nowhere else to be: the reader lands on
+        // the entry and the gate opens over it (renderers show the locked
+        // placeholder, never its content).
+        if (!hadPosition) {
+          await this.raiseGateIfBlocked(chapterId, firstPanelId);
         }
       }
     } catch (err) {
@@ -1182,34 +1196,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   ): Promise<void> {
     try {
       this.viewportTransition = transition ?? null;
-      // Check entitlement. A host-supplied adapter still wins — it is the
-      // documented override — but a refusal now raises the paywall instead of
-      // throwing a navigation error at the reader.
-      if (this.entitlementAdapter) {
-        const hasAccess = await this.entitlementAdapter.hasAccess(panelId);
-        if (!hasAccess) {
-          this.openPaywall(this.paywallService.gateFor(panelId, this.locale) ?? {
-            scope: 'panel',
-            refId: panelId,
-            reason: PaywallService.readerMessage(null),
-            lockReason: 'entitlement_required',
-          });
-          return;
-        }
-      } else if (!this.paywallService.canAccess(panelId)) {
-        // Manifest paywall rules (schema `paywall.rules`) evaluated against
-        // what the reader owns. Navigation stops here: the reader stays on
-        // the last panel they were entitled to see.
-        if (this.paywallService.evaluate(panelId).reason === 'age_verification_required') {
-          // An age gate is answered in-player (birth date), not by checkout.
-          this.openAgeGate(chapterId, panelId, transition, cameraMove, mutations);
-          return;
-        }
-        const gate = this.paywallService.gateFor(panelId, this.locale);
-        if (gate) {
-          this.openPaywall(gate);
-          return;
-        }
+      // Navigation stops at a gate: the reader stays on the last panel they
+      // were entitled to see. Without a position yet (initial load, resumed
+      // bookmark) the reader is placed on the panel under the gate instead —
+      // renderers show the locked placeholder — unless a host adapter refused
+      // (its decisions can't drive the placeholder).
+      const blocked = await this.raiseGateIfBlocked(chapterId, panelId, transition, cameraMove, mutations);
+      if (blocked && (this.currentPanel || this.entitlementAdapter)) {
+        return;
       }
 
       const chapter = this.manifestService.getChapter(chapterId);
@@ -1223,7 +1217,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       }
 
       // Edge `action` mutations (schema: "applied when traversing this edge").
-      if (mutations?.length) {
+      if (mutations?.length && !blocked) {
         this.variableStore.applyMutations(mutations, { chapterId });
       }
 
@@ -1255,6 +1249,48 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     } catch (err) {
       this.handleError(err as Error);
     }
+  }
+
+  /**
+   * Raise the gate in front of a panel the reader may not open: the age gate
+   * for an unanswered age requirement (answered in-player), the paywall
+   * otherwise. A host-supplied adapter still wins — it is the documented
+   * override. Returns true when a gate was raised.
+   */
+  private async raiseGateIfBlocked(
+    chapterId: string,
+    panelId: string,
+    transition?: Transition,
+    cameraMove?: CameraMove,
+    mutations?: Mutation[]
+  ): Promise<boolean> {
+    if (this.entitlementAdapter) {
+      if (await this.entitlementAdapter.hasAccess(panelId)) {
+        return false;
+      }
+      this.openPaywall(this.paywallService.gateFor(panelId, this.locale) ?? {
+        scope: 'panel',
+        refId: panelId,
+        reason: PaywallService.readerMessage(null),
+        lockReason: 'entitlement_required',
+      });
+      return true;
+    }
+    if (this.paywallService.canAccess(panelId)) {
+      return false;
+    }
+    // Manifest paywall rules (schema `paywall.rules`) evaluated against what
+    // the reader owns.
+    if (this.paywallService.evaluate(panelId).reason === 'age_verification_required') {
+      this.openAgeGate(chapterId, panelId, transition, cameraMove, mutations);
+      return true;
+    }
+    const gate = this.paywallService.gateFor(panelId, this.locale);
+    if (gate) {
+      this.openPaywall(gate);
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -1609,6 +1645,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         // Start the page-view video sequence; video components register as
         // they render and visibility drives the queue.
         this.videoSequencer.start();
+        this.promptAgeGateForPage();
       } else {
         console.warn('No page found for current panel');
       }
@@ -2523,10 +2560,38 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private onPageChanged(): void {
     if (this.viewMode === 'page') {
       this.videoSequencer.start();
+      this.promptAgeGateForPage();
     }
     if (this.autoplayEnabled) {
       this.startAutoplay();
     }
+  }
+
+  /**
+   * Page view shows a whole page at once, so the per-panel navigation gate
+   * never runs: panels the paywall locks render as placeholders. When some of
+   * them only wait for the reader's age, ask once for the page (the highest
+   * minimum age among them); confirming unlocks them in place.
+   */
+  private promptAgeGateForPage(): void {
+    if (!this.currentPage || this.entitlementAdapter || this.ageGateVisible) {
+      return;
+    }
+    const ages = (this.currentPage.layout?.placements ?? [])
+      .map((placement) => placement.panelId)
+      .filter(
+        (panelId) =>
+          this.paywallService.isPanelLocked(panelId) &&
+          this.paywallService.evaluate(panelId).reason === 'age_verification_required'
+      )
+      .map((panelId) => this.paywallService.ruleFor(panelId)?.minimumAge ?? 18);
+    if (ages.length === 0) {
+      return;
+    }
+    this.ageGateMinimumAge = Math.max(...ages);
+    this.pendingAgeGatedNavigation = null;
+    this.ageGateVisible = true;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -2747,8 +2812,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
 
     // Retry the move: navigateToPanel re-checks the gate, so a rule that
     // also needs a purchase / subscription now raises the paywall (with its
-    // Buy / Subscribe options) instead of letting the reader through.
-    if (pending) {
+    // Buy / Subscribe options) instead of letting the reader through. A gate
+    // raised over the panel the reader is already on (initial load) only
+    // needs that re-check: the placeholder gives way on its own.
+    if (pending && pending.chapterId === this.currentChapter?.id && pending.panelId === this.getCurrentPanelId()) {
+      await this.raiseGateIfBlocked(pending.chapterId, pending.panelId);
+      this.cdr.markForCheck();
+    } else if (pending) {
       await this.navigateToPanel(
         pending.chapterId,
         pending.panelId,

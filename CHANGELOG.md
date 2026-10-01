@@ -152,6 +152,17 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- The entry panel is gated on the initial load and on chapter jumps. Only
+  panel-to-panel moves checked the paywall, so a work or chapter whose first
+  panel was gated (e.g. a work-wide age gate without a preview) was shown
+  straight away. Now the initial load places the reader on the entry with
+  the age gate (age requirement) or the paywall open over the locked
+  placeholder; confirming the age reveals it in place. A chapter jump (TOC)
+  into a gated entry stops like any other move: the gate opens and the
+  reader stays put. A resumed bookmark / `initialPanelId` on a gated panel
+  behaves like the initial load. In page view, turning onto (or switching
+  to) a page with age-locked panels asks for the age once; confirming
+  unlocks them in place.
 - Page view and canvas view no longer render gated panels. The paywall was
   only checked when navigating panel by panel, so a page (or a revealed
   canvas panel) showed the content of panels the reader had not paid for or
