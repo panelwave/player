@@ -50,6 +50,7 @@ import { LayerRendererComponent } from '../layer-renderer/layer-renderer.compone
 import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
 import { LockedPanelComponent } from '../locked-panel/locked-panel.component';
 import { isLockedPanel } from '../../utils/panel-lock';
+import { PaywallService } from '../../services/paywall.service';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 
@@ -135,6 +136,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
   private readonly preloadService = inject(PreloadService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly paywall = inject(PaywallService);
 
   private readonly destroy$ = new Subject<void>();
 
@@ -171,6 +173,8 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     this.camera.state$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
       this.onCameraState(state);
     });
+    // A lock can flip without an input change (age confirmed, purchase): repaint.
+    this.paywall.changes$.pipe(takeUntil(this.destroy$)).subscribe(() => this.cdr.markForCheck());
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(() => this.onHostResize());
       this.resizeObserver.observe(this.elementRef.nativeElement);
@@ -556,9 +560,13 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     return panelId === this.currentPanelId;
   }
 
-  /** True for a server-side paywall stub (`"x-locked": true`). */
-  isLocked(panel: Panel | null | undefined): boolean {
-    return isLockedPanel(panel);
+  /**
+   * Show the locked placeholder instead of the panel's content: a server
+   * stub (`"x-locked": true`), or a panel the paywall rules lock for the
+   * reader's current snapshot (age gate not yet answered, not purchased).
+   */
+  isLocked(panel: Panel | null | undefined, panelId?: string | null): boolean {
+    return isLockedPanel(panel) || (!!panelId && this.paywall.isPanelLocked(panelId));
   }
 
   trackPlacement(_index: number, entry: StagePlacement): string {

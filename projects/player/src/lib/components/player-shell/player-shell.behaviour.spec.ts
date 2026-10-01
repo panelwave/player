@@ -19,6 +19,7 @@ import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
 import { VariableStoreService } from '../../services/variable-store.service';
+import { PaywallService } from '../../services/paywall.service';
 import type { PanelWaveManifest, PlayerPanelChangeEvent } from '../../types';
 
 /** p1 → p2 (edge increments `tries`) → p3; p2 is sold separately. */
@@ -471,6 +472,18 @@ describe('PlayerShellComponent behaviour (real services)', () => {
 
       await shell.navigatePrevious();
       expect(shell.getCurrentPanelId()).toBe('p2');
+    });
+  });
+
+  describe('render-time locks vs. a host adapter', () => {
+    it('enforces the rules for rendering without an adapter, not with one', async () => {
+      await init();
+      const paywall = TestBed.inject(PaywallService);
+      expect(paywall.isPanelLocked('p2')).toBeTrue();
+
+      shell.entitlementAdapter = { hasAccess: () => Promise.resolve(true), getContext: () => Promise.resolve({}) };
+      await change('manifest', buildManifest());
+      expect(paywall.isPanelLocked('p2')).toBeFalse();
     });
   });
 

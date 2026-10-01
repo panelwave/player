@@ -152,6 +152,16 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Page view and canvas view no longer render gated panels. The paywall was
+  only checked when navigating panel by panel, so a page (or a revealed
+  canvas panel) showed the content of panels the reader had not paid for or
+  confirmed their age for. Viewport and canvas stage now show the locked
+  placeholder for any panel `PaywallService.isPanelLocked(panelId)` reports
+  (new: the evaluation for the current snapshot, memoized per rules +
+  snapshot), plus `x-locked` stubs as before, and repaint on the new
+  `PaywallService.changes$`. While a host `entitlementAdapter` decides
+  access (`setEnforced(false)`, set by the shell), rules do not lock
+  rendering. Works without rules are unaffected.
 - Chapters without graph edges are readable: next/previous follow the
   chapter's reading order (entry, then `chapter.panels` key order) instead of
   stopping on the entry panel, and `work_complete` fires only on the last

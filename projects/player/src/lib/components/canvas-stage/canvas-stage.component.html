@@ -46,7 +46,7 @@
         @if (entry.revealed) {
           <!-- The panel's artwork; a panel camera move (PanelAnimations) transforms it as one. -->
           <div class="pw-panel-camera">
-            @if (isLocked(entry.panel)) {
+            @if (isLocked(entry.panel, entry.panelId)) {
               <pw-locked-panel-placeholder></pw-locked-panel-placeholder>
             } @else {
               @for (layer of entry.panel.layers; track layer.id) {

@@ -2619,6 +2619,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private async loadEntitlementSnapshot(): Promise<void> {
     const manifest = this.manifestService.getManifest();
     this.paywallService.setManifest(manifest);
+    // A host adapter wins over the manifest rules: renderers then lock only
+    // x-locked stubs, not panels the rules would gate.
+    this.paywallService.setEnforced(!this.entitlementAdapter);
 
     if (this.entitlementSnapshot) {
       this.paywallService.setSnapshot(this.entitlementSnapshot);

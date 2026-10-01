@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import type { LocaleCode, PanelWaveManifest, PaywallProduct } from '../types/manifest.types';
 import type { PaywallGate, PurchaseInfo } from '../types/entitlement.types';
@@ -41,8 +41,20 @@ export class PaywallService {
   /** Panels the server stripped for this reader (`"x-locked": true`). */
   private lockedPanels = new Set<string>();
 
+  /** Decisions per panel for the current rules + snapshot (cleared on change). */
+  private decisions = new Map<string, AccessDecision>();
+  /** False while a host entitlement adapter decides access (see setEnforced). */
+  private enforced = true;
+
   private snapshotSubject = new BehaviorSubject<EntitlementSnapshot>(ANONYMOUS_READER);
   readonly snapshot$: Observable<EntitlementSnapshot> = this.snapshotSubject.asObservable();
+
+  private changesSubject = new Subject<void>();
+  /**
+   * Fires whenever a lock can flip: new manifest, new snapshot, enforcement
+   * change or clear(). Renderers re-check `isPanelLocked` on it.
+   */
+  readonly changes$: Observable<void> = this.changesSubject.asObservable();
 
   /** Load the rules and reading order from a manifest. Safe to call repeatedly. */
   setManifest(manifest: PanelWaveManifest | null): void {
@@ -60,6 +72,7 @@ export class PaywallService {
           .map(([panelId]) => panelId),
       ),
     );
+    this.changed();
   }
 
   /** `paywall.products` by id (format 1.6); the first entry wins on duplicate ids. */
@@ -73,7 +86,31 @@ export class PaywallService {
 
   /** Replace what the reader owns (after sign-in, or a completed purchase). */
   setSnapshot(snapshot: EntitlementSnapshot | null | undefined): void {
+    this.decisions.clear();
     this.snapshotSubject.next(snapshot ?? ANONYMOUS_READER);
+    this.changesSubject.next();
+  }
+
+  /**
+   * Whether the rules are this service's to enforce. The shell turns it off
+   * while a host `entitlementAdapter` decides access (the adapter wins over
+   * manifest rules): the rules then still describe gates, but renderers no
+   * longer lock panels by them (`x-locked` stubs stay locked regardless).
+   */
+  setEnforced(enforced: boolean): void {
+    if (this.enforced !== enforced) {
+      this.enforced = enforced;
+      this.changesSubject.next();
+    }
+  }
+
+  /**
+   * Should renderers show the locked placeholder for this panel? True when
+   * the rules are enforced here and the reader's snapshot does not open it.
+   * Memoized per rules + snapshot, so it is cheap to call from templates.
+   */
+  isPanelLocked(panelId: string): boolean {
+    return this.enforced && this.evaluate(panelId).locked;
   }
 
   getSnapshot(): EntitlementSnapshot {
@@ -105,6 +142,15 @@ export class PaywallService {
    * (never the age, which would re-open the age gate forever on a stub).
    */
   evaluate(panelId: string): AccessDecision {
+    let decision = this.decisions.get(panelId);
+    if (!decision) {
+      decision = this.decide(panelId);
+      this.decisions.set(panelId, decision);
+    }
+    return decision;
+  }
+
+  private decide(panelId: string): AccessDecision {
     const decision: AccessDecision =
       this.rules.length === 0
         ? { panelId, locked: false, reason: null, appliedRuleId: null, preview: false }
@@ -224,7 +270,15 @@ export class PaywallService {
     this.lockedPanels.clear();
     this.readingOrder.clear();
     this.chapterOrder.clear();
+    this.decisions.clear();
     this.snapshotSubject.next(ANONYMOUS_READER);
+    this.changesSubject.next();
+  }
+
+  /** Drop memoized decisions and tell renderers. */
+  private changed(): void {
+    this.decisions.clear();
+    this.changesSubject.next();
   }
 
   /**

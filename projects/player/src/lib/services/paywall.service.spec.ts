@@ -272,6 +272,52 @@ describe('PaywallService', () => {
     expect(service.canAccess('anything')).toBe(true);
   });
 
+  describe('render-time locks (isPanelLocked, changes$)', () => {
+    it('locks what the evaluation locks, and follows snapshot changes', () => {
+      service.setManifest(manifestWithGate({ entitlementType: 'age_gate', minimumAge: 18 }));
+      expect(service.isPanelLocked('p1')).toBe(false); // free preview
+      expect(service.isPanelLocked('p3')).toBe(true);
+      service.setSnapshot({ subscriptionTier: null, purchasedProductIds: [], ageVerified: true, age: 30 });
+      expect(service.isPanelLocked('p3')).toBe(false);
+    });
+
+    it('memoizes decisions until the snapshot or manifest changes', () => {
+      service.setManifest(manifestWithGate());
+      const first = service.evaluate('p3');
+      expect(service.evaluate('p3')).toBe(first);
+      service.setSnapshot({ subscriptionTier: null, purchasedProductIds: ['book-1'], ageVerified: false });
+      expect(service.evaluate('p3')).not.toBe(first);
+      expect(service.evaluate('p3').locked).toBe(false);
+      service.setManifest(manifestWithGate({ requiredProductIds: ['other'] }));
+      expect(service.evaluate('p3').locked).toBe(true);
+    });
+
+    it('does not lock rendering while a host adapter decides access (not enforced)', () => {
+      service.setManifest(manifestWithGate());
+      service.setEnforced(false);
+      expect(service.isPanelLocked('p3')).toBe(false);
+      expect(service.canAccess('p3')).toBe(false); // the rules still describe the gate
+      service.setEnforced(true);
+      expect(service.isPanelLocked('p3')).toBe(true);
+    });
+
+    it('announces every change that can flip a lock', () => {
+      let count = 0;
+      service.changes$.subscribe(() => count++);
+      const initial = count;
+      service.setManifest(manifestWithGate());
+      service.setSnapshot(null);
+      service.setEnforced(false);
+      service.clear();
+      expect(count - initial).toBe(4);
+    });
+
+    it('locks nothing for a work without rules', () => {
+      service.setManifest(freeManifest());
+      expect(service.isPanelLocked('p1')).toBe(false);
+    });
+  });
+
   describe('x-locked panels (server-stripped stubs)', () => {
     /** A public manifest: p2's content was stripped by the server. */
     const lockedManifest = (rules?: unknown[]): PanelWaveManifest =>

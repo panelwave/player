@@ -11,7 +11,8 @@ import { LayerRendererComponent } from '../layer-renderer/layer-renderer.compone
 import { ManifestService } from '../../services/manifest.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
-import type { Panel, Page, PanelPlacement } from '../../types';
+import { PaywallService } from '../../services/paywall.service';
+import type { Panel, Page, PanelPlacement, PanelWaveManifest } from '../../types';
 
 describe('ViewportComponent', () => {
   let component: ViewportComponent;
@@ -1402,6 +1403,71 @@ describe('ViewportComponent', () => {
       const host: HTMLElement = fixture.nativeElement;
       expect(host.querySelector('.pt-frame-leave .pw-locked-panel')).not.toBeNull();
       expect(host.querySelector('.pt-frame-leave pw-layer-renderer')).toBeNull();
+    });
+  });
+
+  describe('Locked panels (paywall rules)', () => {
+    /** p1 is age-gated (panel rule); p2/p3 are free. */
+    const ageGated = (): PanelWaveManifest =>
+      ({
+        meta: { id: 'w' },
+        chapters: [{ id: 'c', panels: { p1: {}, p2: {}, p3: {} }, graph: { entry: 'p1', edges: [] } }],
+        paywall: { rules: [{ id: 'adult', scope: 'panel', refId: 'p1', entitlementType: 'age_gate', minimumAge: 18 }] },
+      }) as unknown as PanelWaveManifest;
+    const verified = { subscriptionTier: null, purchasedProductIds: [], ageVerified: true, age: 30 };
+
+    it('shows the placeholder for an age-locked panel in page view until the age is verified', () => {
+      const paywall = TestBed.inject(PaywallService);
+      paywall.setManifest(ageGated());
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('speechEnabled', true);
+      fixture.componentRef.setInput('panels', { ...mockPanels, p1: mockPanel });
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      const locks = host.querySelectorAll('.pw-locked-panel');
+      expect(locks.length).toBe(1);
+      expect(locks[0].closest('[data-panel-id]')?.getAttribute('data-panel-id')).toBe('p1');
+      expect(host.querySelector('[data-panel-id="p1"] pw-layer-renderer')).toBeNull();
+
+      paywall.setSnapshot(verified);
+      fixture.detectChanges();
+      expect(host.querySelector('.pw-locked-panel')).toBeNull();
+      expect(host.querySelector('[data-panel-id="p1"] pw-layer-renderer')).not.toBeNull();
+    });
+
+    it('shows the placeholder for a locked current panel in panel view', () => {
+      TestBed.inject(PaywallService).setManifest(ageGated());
+      fixture.componentRef.setInput('viewMode', 'panel');
+      fixture.componentRef.setInput('currentPanelId', 'p1');
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelector('.pw-locked-panel')).not.toBeNull();
+      expect(host.querySelector('pw-layer-renderer')).toBeNull();
+    });
+
+    it('locks nothing by rules the service does not enforce (host adapter)', () => {
+      const paywall = TestBed.inject(PaywallService);
+      paywall.setManifest(ageGated());
+      paywall.setEnforced(false);
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.pw-locked-panel')).toBeNull();
+    });
+
+    it('shows no placeholders when the work has no rules', () => {
+      TestBed.inject(PaywallService).setManifest({
+        meta: { id: 'w' },
+        chapters: [{ id: 'c', panels: { p1: {}, p2: {}, p3: {} }, graph: { entry: 'p1', edges: [] } }],
+      } as unknown as PanelWaveManifest);
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.pw-locked-panel')).toBeNull();
     });
   });
 

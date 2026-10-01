@@ -5,7 +5,8 @@ import { CanvasStageComponent, CANVAS_PANEL_BUDGET } from './canvas-stage.compon
 import { CanvasCameraService } from '../../services/canvas-camera.service';
 import { ManifestService } from '../../services/manifest.service';
 import { PreloadService } from '../../services/preload.service';
-import type { CanvasLayout, Panel } from '../../types';
+import { PaywallService } from '../../services/paywall.service';
+import type { CanvasLayout, Panel, PanelWaveManifest } from '../../types';
 
 describe('CanvasStageComponent', () => {
   let fixture: ComponentFixture<CanvasStageComponent>;
@@ -199,6 +200,47 @@ describe('CanvasStageComponent', () => {
 
     it('renders no placeholder for unlocked panels', () => {
       setInputs(canvas, { a: panel(), paid: panel() }, 'a');
+      expect(fixture.nativeElement.querySelector('.pw-locked-panel')).toBeNull();
+    });
+  });
+
+  describe('locked panels (paywall rules)', () => {
+    const canvas: CanvasLayout = {
+      placements: {
+        a: { x: 0, y: 0, w: 1024, h: 576 },
+        adult: { x: 1100, y: 0, w: 512, h: 512 },
+      },
+    };
+    const art = (): Panel => ({ layers: [{ kind: 'image', id: 'l1', assetId: 'img-1', z: 0 }] }) as unknown as Panel;
+    const manifest = (rules?: unknown[]): PanelWaveManifest =>
+      ({
+        meta: { id: 'w' },
+        chapters: [{ id: 'c', panels: { a: {}, adult: {} }, graph: { entry: 'a', edges: [] } }],
+        ...(rules ? { paywall: { rules } } : {}),
+      }) as unknown as PanelWaveManifest;
+
+    it('shows the placeholder for a revealed age-locked panel until the age is verified', () => {
+      const paywall = TestBed.inject(PaywallService);
+      paywall.setManifest(
+        manifest([{ id: 'r', scope: 'panel', refId: 'adult', entitlementType: 'age_gate', minimumAge: 18 }]),
+      );
+      setInputs(canvas, { a: art(), adult: art() }, 'a');
+      const host: HTMLElement = fixture.nativeElement;
+      const locks = host.querySelectorAll('.pw-locked-panel');
+      expect(locks.length).toBe(1);
+      expect(locks[0].closest('[data-panel-id]')?.getAttribute('data-panel-id')).toBe('adult');
+      expect(host.querySelector('[data-panel-id="adult"] pw-layer-renderer')).toBeNull();
+      expect(host.querySelector('[data-panel-id="a"] pw-layer-renderer')).not.toBeNull();
+
+      paywall.setSnapshot({ subscriptionTier: null, purchasedProductIds: [], ageVerified: true, age: 30 });
+      fixture.detectChanges();
+      expect(host.querySelector('.pw-locked-panel')).toBeNull();
+      expect(host.querySelector('[data-panel-id="adult"] pw-layer-renderer')).not.toBeNull();
+    });
+
+    it('shows no placeholders when the work has no rules', () => {
+      TestBed.inject(PaywallService).setManifest(manifest());
+      setInputs(canvas, { a: art(), adult: art() }, 'a');
       expect(fixture.nativeElement.querySelector('.pw-locked-panel')).toBeNull();
     });
   });

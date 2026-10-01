@@ -31,6 +31,8 @@ import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-
 import { PwIconComponent } from '../icon/pw-icon.component';
 import { LockedPanelComponent } from '../locked-panel/locked-panel.component';
 import { isLockedPanel } from '../../utils/panel-lock';
+import { PaywallService } from '../../services/paywall.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Graph, PreloadSettings, Transition, Hotspot, VariableContext } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
@@ -72,6 +74,11 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   private preloadService = inject(PreloadService);
   private elementRef = inject(ElementRef<HTMLElement>);
   private cdr = inject(ChangeDetectorRef);
+  private paywall = inject(PaywallService);
+  /** A lock can flip without an input change (age confirmed, purchase): repaint. */
+  private paywallChanges = this.paywall.changes$
+    .pipe(takeUntilDestroyed())
+    .subscribe(() => this.cdr.markForCheck());
 
   /**
    * Panel to render (panel view)
@@ -789,9 +796,13 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     return [...placements].sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
   }
 
-  /** True for a server-side paywall stub (`"x-locked": true`). */
-  isLocked(panel: Panel | null | undefined): boolean {
-    return isLockedPanel(panel);
+  /**
+   * Show the locked placeholder instead of the panel's content: a server
+   * stub (`"x-locked": true`), or a panel the paywall rules lock for the
+   * reader's current snapshot (age gate not yet answered, not purchased).
+   */
+  isLocked(panel: Panel | null | undefined, panelId?: string | null): boolean {
+    return isLockedPanel(panel) || (!!panelId && this.paywall.isPanelLocked(panelId));
   }
 
   /**
