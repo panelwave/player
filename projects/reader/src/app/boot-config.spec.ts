@@ -1,0 +1,31 @@
+import { readBootConfig } from './boot-config';
+
+function fakeWin(search: string, injected?: unknown): Window {
+  return { location: { search }, __PW_READER__: injected } as unknown as Window;
+}
+
+describe('readBootConfig', () => {
+  it('reads the server-injected window config', () => {
+    const cfg = readBootConfig(
+      fakeWin('', { manifestUrl: '/api/public/read/t/w/manifest', embed: true, locale: 'de-DE', title: 'Work' }),
+    );
+    expect(cfg).toEqual({ manifestUrl: '/api/public/read/t/w/manifest', embed: true, locale: 'de-DE', title: 'Work' });
+  });
+
+  it('falls back to ?manifest= and ?embed=1', () => {
+    expect(readBootConfig(fakeWin('?manifest=http%3A%2F%2Fx%2Fm.json&embed=1'))).toEqual({
+      manifestUrl: 'http://x/m.json',
+      embed: true,
+    });
+    expect(readBootConfig(fakeWin('?manifest=a.json')).embed).toBeFalse();
+  });
+
+  it('prefers the injected config over the query', () => {
+    expect(readBootConfig(fakeWin('?manifest=q.json', { manifestUrl: 'i.json', embed: false })).manifestUrl).toBe('i.json');
+  });
+
+  it('returns an empty manifestUrl when nothing is configured', () => {
+    expect(readBootConfig(fakeWin(''))).toEqual({ manifestUrl: '', embed: false });
+    expect(readBootConfig(fakeWin('', {})).manifestUrl).toBe('');
+  });
+});

@@ -37,6 +37,15 @@ jobs:
       - name: Build library
         run: npx ng build player --configuration production
 
+      - name: Lint reader
+        run: npx ng lint reader
+
+      - name: Reader unit tests
+        run: npx ng test reader --watch=false --browsers=ChromeHeadless
+
+      - name: Build reader
+        run: npx ng build reader
+
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:

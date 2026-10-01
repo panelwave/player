@@ -1,0 +1,63 @@
+:host {
+  display: block;
+}
+
+.pw-reader-shell {
+  position: fixed;
+  inset: 0;
+}
+
+.pwr-state {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  color: #eee;
+  font-size: 16px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.pwr-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pwr-spin 0.9s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 3s;
+  }
+}
+
+.pwr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.pwr-retry {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font: 600 14px Barlow, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+@keyframes pwr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

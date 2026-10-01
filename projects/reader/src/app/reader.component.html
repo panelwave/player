@@ -1,0 +1,26 @@
+@switch (state()) {
+  @case ('ready') {
+    <pw-player-shell
+      class="pw-reader-shell"
+      [manifest]="manifest() ?? undefined"
+      [locale]="config.locale ?? 'en-US'"
+      [entitlementAdapter]="adapter()"
+      [showToolbar]="false" />
+  }
+  @case ('loading') {
+    <div class="pwr-state" role="status" aria-live="polite">
+      <span class="pwr-spinner" aria-hidden="true"></span>
+      <span class="pwr-sr">Loading…</span>
+    </div>
+  }
+  @case ('error') {
+    <div class="pwr-state" role="alert">
+      <p>This work could not be loaded. Please try again later.</p>
+      <button type="button" class="pwr-retry" (click)="load()">Try again</button>
+    </div>
+  }
+  @case ('empty') {
+    <div class="pwr-state"><p>Nothing to read here.</p></div>
+  }
+}
+<pwr-badge />

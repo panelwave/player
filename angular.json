@@ -163,6 +163,123 @@
           }
         }
       }
+    },
+    "reader": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "projects/reader",
+      "sourceRoot": "projects/reader/src",
+      "prefix": "pwr",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/reader",
+            "index": "projects/reader/src/index.html",
+            "browser": "projects/reader/src/main.ts",
+            "polyfills": [
+              "zone.js"
+            ],
+            "tsConfig": "projects/reader/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              "projects/reader/src/favicon.ico",
+              "projects/reader/src/assets",
+              {
+                "glob": "*.json",
+                "input": "projects/player/src/assets/i18n",
+                "output": "assets/i18n"
+              }
+            ],
+            "styles": [
+              "projects/reader/src/styles.scss"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "600kb",
+                  "maximumError": "1.2mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb",
+                  "maximumError": "10kb"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "reader:build:production"
+            },
+            "development": {
+              "buildTarget": "reader:build:development"
+            }
+          },
+          "defaultConfiguration": "development",
+          "options": {
+            "port": 4300
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular/build:extract-i18n",
+          "options": {
+            "buildTarget": "reader:build"
+          }
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ],
+            "tsConfig": "projects/reader/tsconfig.spec.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              "projects/reader/src/favicon.ico",
+              "projects/reader/src/assets",
+              {
+                "glob": "*.json",
+                "input": "projects/player/src/assets/i18n",
+                "output": "assets/i18n"
+              }
+            ],
+            "styles": [
+              "projects/reader/src/styles.scss"
+            ],
+            "scripts": []
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/reader/**/*.ts",
+              "projects/reader/**/*.html"
+            ],
+            "eslintConfig": "projects/reader/eslint.config.js"
+          }
+        }
+      }
     }
   },
   "schematics": {

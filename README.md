@@ -214,6 +214,7 @@ panelwave-player/
 │   │           ├── image-variant-utils.ts  # Responsive variant selection
 │   │           └── translation-loader.ts
 │   │
+│   ├── reader/                    # Public reader app (read.panelwave.org frontend)
 │   └── demo/                      # Demo application
 │       └── src/
 │           └── assets/            # Sample manifests
@@ -404,6 +405,17 @@ ng lint
 prettier --write .
 ```
 
+### Reader app
+
+`projects/reader` is the full-window reader behind read.panelwave.org: a small Angular app that fetches a manifest and mounts `<pw-player-shell>` plus a "Made with PanelWave" badge. In production a server injects `window.__PW_READER__ = {manifestUrl, embed, locale, title}` into `index.html`; for local development use the query fallback:
+
+```bash
+npx ng build player            # the reader imports the built library
+npx ng serve reader            # http://localhost:4300/?manifest=<url>[&embed=1]
+npx ng test reader --watch=false --browsers=ChromeHeadless
+npx ng build reader --base-href /
+```
+
 ### Testing
 
 ```bash
@@ -472,6 +484,7 @@ cd dist/player && npm pack --dry-run
 | Workflow | Runs on | What it does |
 |---|---|---|
 | `ci.yml` | push to `master`, PRs | lint, unit tests, library build, Playwright E2E (in the `mcr.microsoft.com/playwright` image, whose tag must match the locked `@playwright/test` version) |
+| `ci.yml` (reader steps) | same | lints, tests and builds the public reader app (`projects/reader`) after the library build |
 | `demo-pages.yml` | push to `master` | builds the demo app and deploys it to [panelwave.github.io/player](https://panelwave.github.io/player/) |
 | `size-limit.yml` | PRs | fails when the FESM bundle, minified + gzipped (what a host ships), exceeds 180 KB |
 | `release.yml` | manual | npm release (above) |
