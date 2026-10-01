@@ -61,6 +61,7 @@ import { panelAnimationPlayTime } from '../../utils/camera-move';
 import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
+import { chapterReadingOrder, isChapterEndPanel } from '../../utils/reading-order';
 
 import { ViewportComponent } from '../viewport/viewport.component';
 import { CanvasStageComponent } from '../canvas-stage/canvas-stage.component';
@@ -976,7 +977,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     this.analyticsPanelOrder.clear();
     let order = 0;
     for (const chapter of manifest.chapters ?? []) {
-      for (const panelId of this.readingOrderForChapter(chapter)) {
+      for (const panelId of chapterReadingOrder(chapter)) {
         if (!this.analyticsPanelOrder.has(panelId)) {
           this.analyticsPanelOrder.set(panelId, ++order);
         }
@@ -989,42 +990,6 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       locale: this.locale,
       totalPanels: this.analyticsTotalPanels,
     });
-  }
-
-  /**
-   * Deterministic reading order for a chapter: breadth-first over the graph
-   * from the entry panel(s), then any unreachable panels in declaration
-   * order (branching narratives have no single true order — BFS approximates
-   * "distance from start", which is what the funnel needs).
-   */
-  private readingOrderForChapter(chapter: Chapter): string[] {
-    const orderedIds: string[] = [];
-    const seen = new Set<string>();
-    const graph = chapter.graph;
-
-    const entry = graph ? this.flowEngine.getEntry(graph) : undefined;
-    const queue: string[] = entry === undefined ? [] : typeof entry === 'string' ? [entry] : [...entry];
-
-    while (queue.length > 0) {
-      const panelId = queue.shift()!;
-      if (seen.has(panelId)) {
-        continue;
-      }
-      seen.add(panelId);
-      orderedIds.push(panelId);
-      for (const edge of graph?.edges ?? []) {
-        if (edge.from === panelId && !seen.has(edge.to)) {
-          queue.push(edge.to);
-        }
-      }
-    }
-
-    for (const panelId of Object.keys(chapter.panels ?? {})) {
-      if (!seen.has(panelId)) {
-        orderedIds.push(panelId);
-      }
-    }
-    return orderedIds;
   }
 
   /**
@@ -1079,13 +1044,16 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     return Object.entries(chapter.panels ?? {}).find(([, p]) => p === panel)?.[0];
   }
 
-  /** An end panel (no outgoing edges) of the manifest's last chapter. */
+  /**
+   * An end panel of the manifest's last chapter: no outgoing edges, or —
+   * in a chapter without edges — the last panel in reading order.
+   */
   private isEndOfWork(panelId: string, chapter: Chapter): boolean {
     const chapters = this.manifestService.getManifest()?.chapters ?? [];
     if (chapters.length > 0 && chapters[chapters.length - 1]?.id !== chapter.id) {
       return false;
     }
-    return !(chapter.graph?.edges ?? []).some((edge) => edge.from === panelId);
+    return isChapterEndPanel(chapter, panelId);
   }
 
   /**
@@ -1482,8 +1450,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       const currentPanelId = this.getCurrentPanelId();
       if (!currentPanelId) return;
 
-      const result = this.flowEngine.getNextPanel(
-        this.currentChapter.graph,
+      const result = this.flowEngine.getNextInChapter(
+        this.currentChapter,
         currentPanelId,
         context,
         this.flowEngine.getDefaultTransition(this.manifestService.getManifest()?.settings),
@@ -1518,10 +1486,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       const currentPanelId = this.getCurrentPanelId();
       if (!currentPanelId) return;
 
-      const previousPanels = this.flowEngine.getPreviousPanels(
-        this.currentChapter.graph,
-        currentPanelId
-      );
+      const previousPanels = this.flowEngine.getPreviousInChapter(this.currentChapter, currentPanelId);
 
       if (previousPanels.length > 0) {
         // Navigate to the first previous panel, replaying the traversed

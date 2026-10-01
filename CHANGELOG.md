@@ -152,6 +152,12 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Chapters without graph edges are readable: next/previous follow the
+  chapter's reading order (entry, then `chapter.panels` key order) instead of
+  stopping on the entry panel, and `work_complete` fires only on the last
+  panel. Chapters with edges keep graph semantics. New
+  `FlowEngineService.getNextInChapter` / `getPreviousInChapter`; the
+  reading order lives in `utils/reading-order`.
 - `PaywallService` treats a panel marked `"x-locked": true` as locked
   even when no rule gates it (or the reader satisfies the rule, or it sits in
   a free preview): the server stripped its content, so nothing could be shown.

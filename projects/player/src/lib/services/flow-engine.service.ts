@@ -4,8 +4,9 @@
  */
 
 import { inject, Injectable } from '@angular/core';
-import type { CameraMove, Edge, Graph, Mutation, Settings, Transition } from '../types';
+import type { CameraMove, Chapter, Edge, Graph, Mutation, Settings, Transition } from '../types';
 import { evaluateJsonLogic } from '../utils';
+import { chapterReadingOrder, isEdgelessChapter } from '../utils/reading-order';
 import { EntitlementService } from './entitlement.service';
 
 /**
@@ -73,6 +74,44 @@ export class FlowEngineService {
       cameraMove: selectedEdge.cameraMove ?? defaultCameraMove,
       action: selectedEdge.action,
     };
+  }
+
+  /**
+   * Next panel within a chapter. A chapter WITH edges uses the graph
+   * ({@link getNextPanel}, conditions and priorities included). A chapter
+   * without any edges follows its reading order (entry, then
+   * `chapter.panels` key order) with the format defaults; null after the
+   * last panel.
+   */
+  getNextInChapter(
+    chapter: Chapter,
+    currentPanelId: string,
+    context: Record<string, unknown>,
+    defaultTransition?: Transition,
+    defaultCameraMove?: CameraMove
+  ): NavigationResult {
+    if (!isEdgelessChapter(chapter)) {
+      return this.getNextPanel(chapter.graph, currentPanelId, context, defaultTransition, defaultCameraMove);
+    }
+    const order = chapterReadingOrder(chapter);
+    const index = order.indexOf(currentPanelId);
+    const next = index < 0 ? undefined : order[index + 1];
+    return next
+      ? { nextPanelId: next, transition: defaultTransition, cameraMove: defaultCameraMove }
+      : { nextPanelId: null };
+  }
+
+  /**
+   * Previous panel(s) within a chapter: the sources of edges into the panel,
+   * or — in a chapter without edges — the panel before it in reading order.
+   */
+  getPreviousInChapter(chapter: Chapter, currentPanelId: string): string[] {
+    if (!isEdgelessChapter(chapter)) {
+      return this.getPreviousPanels(chapter.graph, currentPanelId);
+    }
+    const order = chapterReadingOrder(chapter);
+    const index = order.indexOf(currentPanelId);
+    return index > 0 ? [order[index - 1]] : [];
   }
 
   /**

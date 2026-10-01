@@ -435,4 +435,55 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(tries()).toBe(1);
     });
   });
+
+  describe('chapters without edges', () => {
+    /** One chapter, three panels, no edges: the reading order is the key order. */
+    const edgeless = (): PanelWaveManifest =>
+      buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            panels: { p1: { layers: [] }, p2: { layers: [] }, p3: { layers: [] } },
+            graph: { entry: 'p1', edges: [] },
+          },
+        ],
+      });
+
+    it('reads p1 → p2 → p3 and back, completing the work only on p3', async () => {
+      const track = spyOn(TestBed.inject(TrackingService), 'track');
+      const completed = () => track.calls.allArgs().filter(([name]) => name === 'work_complete');
+      shell.manifest = edgeless();
+      await init();
+      expect(shell.getCurrentPanelId()).toBe('p1');
+      expect(completed()).toEqual([]);
+
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('p2');
+      expect(completed()).toEqual([]);
+
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('p3');
+      expect(completed()).toEqual([['work_complete', { panelId: 'p3', chapterId: 'c1' }]]);
+
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('p3');
+
+      await shell.navigatePrevious();
+      expect(shell.getCurrentPanelId()).toBe('p2');
+    });
+  });
+
+  describe('x-locked panels', () => {
+    it('raises the paywall for a stripped panel even without a rule', async () => {
+      shell.manifest = buildManifest({ paywall: undefined });
+      (shell.manifest.chapters[0].panels['p2'] as unknown as Record<string, unknown>)['x-locked'] = true;
+      await init();
+
+      await shell.navigateNext();
+      expect(shell.paywallVisible).toBeTrue();
+      expect(shell.paywallGate?.lockReason).toBe('purchase_required');
+      expect(shell.getCurrentPanelId()).toBe('p1');
+    });
+  });
 });

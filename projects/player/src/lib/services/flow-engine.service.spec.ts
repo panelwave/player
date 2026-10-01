@@ -4,7 +4,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { FlowEngineService } from './flow-engine.service';
-import type { Graph } from '../types';
+import type { Chapter, Graph } from '../types';
 
 describe('FlowEngineService', () => {
   let service: FlowEngineService;
@@ -498,6 +498,46 @@ describe('FlowEngineService', () => {
       expect(reachable).toContain('p2');
       expect(reachable).toContain('p3');
       expect(reachable.length).toBe(3);
+    });
+  });
+
+  describe('chapter navigation (getNextInChapter / getPreviousInChapter)', () => {
+    const chapterOf = (graph: Graph, panels = ['p1', 'p2', 'p3']): Chapter =>
+      ({
+        id: 'c',
+        panels: Object.fromEntries(panels.map((id) => [id, { layers: [] }])),
+        graph,
+      }) as unknown as Chapter;
+    const fade = { type: 'fade', durationMs: 200 } as const;
+
+    it('follows the reading order in a chapter without edges', () => {
+      const chapter = chapterOf({ entry: 'p1', edges: [] });
+      expect(service.getNextInChapter(chapter, 'p1', {}, fade)).toEqual({
+        nextPanelId: 'p2',
+        transition: fade,
+        cameraMove: undefined,
+      });
+      expect(service.getNextInChapter(chapter, 'p2', {}).nextPanelId).toBe('p3');
+      expect(service.getNextInChapter(chapter, 'p3', {}).nextPanelId).toBeNull();
+      expect(service.getNextInChapter(chapter, 'nope', {}).nextPanelId).toBeNull();
+
+      expect(service.getPreviousInChapter(chapter, 'p3')).toEqual(['p2']);
+      expect(service.getPreviousInChapter(chapter, 'p2')).toEqual(['p1']);
+      expect(service.getPreviousInChapter(chapter, 'p1')).toEqual([]);
+    });
+
+    it('keeps graph semantics when the chapter has edges', () => {
+      // p2 is unreachable by edges and stays so: no reading-order fallback.
+      const chapter = chapterOf({ entry: 'p1', edges: [{ from: 'p1', to: 'p3' }] });
+      expect(service.getNextInChapter(chapter, 'p1', {}).nextPanelId).toBe('p3');
+      expect(service.getNextInChapter(chapter, 'p3', {}).nextPanelId).toBeNull();
+      expect(service.getPreviousInChapter(chapter, 'p3')).toEqual(['p1']);
+      expect(service.getPreviousInChapter(chapter, 'p2')).toEqual([]);
+
+      const conditional = chapterOf(conditionalGraph, ['p1', 'p2', 'p3', 'p4']);
+      expect(service.getNextInChapter(conditional, 'p1', { choice: 'b' })).toEqual(
+        service.getNextPanel(conditionalGraph, 'p1', { choice: 'b' })
+      );
     });
   });
 });
