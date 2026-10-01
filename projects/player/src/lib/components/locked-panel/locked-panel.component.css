@@ -64,3 +64,16 @@
     height: 20px;
   }
 }
+
+.pw-locked-panel--actionable {
+  cursor: pointer;
+}
+
+.pw-locked-panel--actionable:hover {
+  background: #262931;
+}
+
+.pw-locked-panel--actionable:focus-visible {
+  outline: 2px solid #8ab4ff;
+  outline-offset: -2px;
+}

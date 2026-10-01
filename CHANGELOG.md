@@ -9,6 +9,11 @@ semver. The reader-facing product changelog lives on the docs site
 
 ### Added
 - Locked-panel placeholder for manifests that mark panels `"x-locked": true` (server-side paywall views).
+- Page view: a locked panel's placeholder is a button (click, Enter, Space;
+  label `player.locked.unlock`). Activating it raises the gate for that panel
+  in place: the age gate when only the age is missing, otherwise the paywall
+  with that panel's purchase / subscribe options. New viewport output
+  `lockedPanelActivate` (panel id).
 
 ### Changed
 - Peer dependencies accept Angular 21 and 22: `@angular/core` and

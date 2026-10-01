@@ -2585,11 +2585,47 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    * minimum age among them); confirming unlocks them in place.
    */
   private promptAgeGateForPage(): void {
-    if (!this.currentPage || this.entitlementAdapter || this.ageGateVisible) {
+    if (!this.currentPage) {
       return;
     }
-    const ages = (this.currentPage.layout?.placements ?? [])
-      .map((placement) => placement.panelId)
+    this.promptAgeGate((this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId));
+  }
+
+  /**
+   * Page view: the reader activated a locked panel's placeholder. Raise the
+   * gate that unlocks it in place, without moving: the age gate when only
+   * the age is missing, otherwise the paywall for that panel (the same gate
+   * a panel move would raise). A panel that is not locked raises nothing.
+   */
+  onLockedPanelActivate(panelId: string): void {
+    if (this.ageGateVisible || this.paywallVisible) {
+      return;
+    }
+    const decision = this.paywallService.evaluate(panelId);
+    if (!decision.locked) {
+      return;
+    }
+    if (decision.reason === 'age_verification_required' && !this.entitlementAdapter) {
+      this.promptAgeGate([panelId]);
+      return;
+    }
+    const gate = this.paywallService.gateFor(panelId, this.locale);
+    if (gate) {
+      this.openPaywall(gate);
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Ask once for the age the given panels wait for (the highest minimum
+   * age among those locked only by their age), with no pending move:
+   * confirming unlocks them in place.
+   */
+  private promptAgeGate(panelIds: string[]): void {
+    if (this.entitlementAdapter || this.ageGateVisible) {
+      return;
+    }
+    const ages = panelIds
       .filter(
         (panelId) =>
           this.paywallService.isPanelLocked(panelId) &&

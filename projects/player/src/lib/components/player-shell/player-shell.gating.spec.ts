@@ -181,6 +181,49 @@ describe('PlayerShellComponent gating (real template)', () => {
       expect(text()).toContain('Bravo');
     });
 
+    it('activating a purchase-locked placeholder opens the paywall for that panel', async () => {
+      await start(
+        manifestWith({
+          paywall: {
+            rules: [{ id: 'buy-p2', scope: 'panel', refId: 'p2', entitlementType: 'purchase', requiredProductIds: ['book'] }],
+          },
+        }),
+      );
+      shell.onToggleView();
+      shell.navigateToNextPage();
+      await settle();
+      expect(shell.paywallVisible).toBeFalse();
+
+      const lock = (fixture.nativeElement as HTMLElement).querySelector('[data-panel-id="p2"] .pw-locked-panel') as HTMLElement;
+      lock.click();
+      await settle();
+      expect(shell.paywallVisible).toBeTrue();
+      expect(shell.paywallGate?.ruleId).toBe('buy-p2');
+      expect(shell.paywallGate?.lockReason).toBe('purchase_required');
+
+      shell.closePaywall();
+      lock.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      await settle();
+      expect(shell.paywallVisible).toBeTrue();
+    });
+
+    it('activating an age-locked placeholder asks for the age', async () => {
+      await start(p2AgeGated());
+      shell.onToggleView();
+      shell.navigateToNextPage();
+      await settle();
+      shell.closeAgeGate();
+      await settle();
+
+      ((fixture.nativeElement as HTMLElement).querySelector('[data-panel-id="p2"] .pw-locked-panel') as HTMLElement).click();
+      await settle();
+      expect(shell.ageGateVisible).toBeTrue();
+      expect(shell.paywallVisible).toBeFalse();
+      await shell.onAgeGateVerify(verified);
+      await settle();
+      expect(text()).toContain('Bravo');
+    });
+
     it('shows no placeholders when the work has no rules', async () => {
       await start(manifestWith({}));
       shell.onToggleView();

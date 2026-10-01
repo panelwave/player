@@ -1,4 +1,11 @@
-<div class="pw-locked-panel" role="img" [attr.aria-label]="t('title')">
+<div class="pw-locked-panel"
+     [class.pw-locked-panel--actionable]="actionable"
+     [attr.role]="actionable ? 'button' : 'img'"
+     [attr.tabindex]="actionable ? 0 : null"
+     [attr.aria-label]="actionable ? t('unlock') : t('title')"
+     (click)="onActivate($event)"
+     (keydown.enter)="onActivate($event)"
+     (keydown.space)="onActivate($event)">
   <svg class="pw-locked-panel__icon" viewBox="0 0 24 24" width="32" height="32" fill="none"
        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
        aria-hidden="true" focusable="false">

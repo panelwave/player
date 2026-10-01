@@ -1391,6 +1391,43 @@ describe('ViewportComponent', () => {
       expect(host.querySelector('pw-speech-bubbles')).toBeNull();
     });
 
+    it('makes the page-view placeholder a button that asks to unlock its panel', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', { p1: lockedPanel(), p2: mockPanels['p2'], p3: mockPanels['p3'] });
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      const activated: string[] = [];
+      component.lockedPanelActivate.subscribe((id: string) => activated.push(id));
+      spyOn(component.viewportClick, 'emit');
+
+      const lock = (fixture.nativeElement as HTMLElement).querySelector('.pw-locked-panel') as HTMLElement;
+      expect(lock.getAttribute('role')).toBe('button');
+      expect(lock.getAttribute('tabindex')).toBe('0');
+      expect(lock.getAttribute('aria-label')).toBe('Unlock this panel');
+
+      lock.click();
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      lock.dispatchEvent(enter);
+      const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+      lock.dispatchEvent(space);
+
+      expect(activated).toEqual(['p1', 'p1', 'p1']);
+      expect(enter.defaultPrevented).toBeTrue();
+      expect(space.defaultPrevented).toBeTrue();
+      // The activation is the placeholder's: no tap-to-advance underneath.
+      expect(component.viewportClick.emit).not.toHaveBeenCalled();
+    });
+
+    it('keeps the panel-view and leaving placeholders static', () => {
+      fixture.componentRef.setInput('viewMode', 'panel');
+      fixture.componentRef.setInput('currentPanelId', 'p1');
+      fixture.componentRef.setInput('panel', lockedPanel());
+      fixture.detectChanges();
+      const lock = (fixture.nativeElement as HTMLElement).querySelector('.pw-locked-panel') as HTMLElement;
+      expect(lock.getAttribute('role')).toBe('img');
+      expect(lock.hasAttribute('tabindex')).toBeFalse();
+    });
+
     it('renders the placeholder for a leaving locked page panel', () => {
       fixture.componentRef.setInput('viewMode', 'page');
       fixture.componentRef.setInput('panels', mockPanels);

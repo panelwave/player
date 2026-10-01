@@ -246,6 +246,12 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    */
   @Output() deadClick = new EventEmitter<{ x: number; y: number; panelId: string | null }>();
 
+  /**
+   * Page view: the reader activated a locked panel's placeholder (click,
+   * Enter, Space). Emits the panel id so the host can raise its gate.
+   */
+  @Output() lockedPanelActivate = new EventEmitter<string>();
+
   // Focus state for navigation
   focusedPanelId: string | null = null;
   focusedPanelIndex = -1;

@@ -220,7 +220,8 @@
   "player": {
     "locked": {
       "title": "Gesperrt",
-      "message": "Dieses Panel gehört zur Vollversion."
+      "message": "Dieses Panel gehört zur Vollversion.",
+      "unlock": "Dieses Panel freischalten"
     }
   }
 }

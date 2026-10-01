@@ -220,7 +220,8 @@
   "player": {
     "locked": {
       "title": "Locked",
-      "message": "This panel is part of the full edition."
+      "message": "This panel is part of the full edition.",
+      "unlock": "Unlock this panel"
     }
   }
 }

@@ -236,7 +236,9 @@
                      (keydown.enter)="onPanelContainerClick($any($event), placement.panelId)">
                   <div class="pw-panel-camera">
                     @if (isLocked(panelData, placement.panelId)) {
-                      <pw-locked-panel-placeholder></pw-locked-panel-placeholder>
+                      <pw-locked-panel-placeholder
+                        [actionable]="true"
+                        (activate)="lockedPanelActivate.emit(placement.panelId)"></pw-locked-panel-placeholder>
                     } @else {
                       <!-- Render panel layers -->
                       @for (layer of panelData.layers; track layer.id) {
