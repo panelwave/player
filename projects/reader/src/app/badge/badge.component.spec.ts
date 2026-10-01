@@ -6,7 +6,6 @@ describe('BadgeComponent', () => {
   const link = () => fixture.nativeElement.querySelector('a.pw-badge') as HTMLAnchorElement;
   const hidden = () => link().classList.contains('pw-badge--hidden');
 
-
   it('links to panelwave.org with utm params and is visible initially', fakeAsync(() => {
     fixture = TestBed.createComponent(BadgeComponent);
     fixture.detectChanges();
