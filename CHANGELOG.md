@@ -157,6 +157,10 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- `PreloadService` no longer preloads the assets of a panel the paywall locks
+  for the reader (neighbour warming in panel and canvas view fetched gated
+  artwork ahead of the gate). Items of panel ids the paywall does not know,
+  or without a panel id, load as before.
 - Panel audio of a gated panel no longer plays under the gate. The shell
   synced the current panel's `audio` tracks whatever its lock state, so an
   age-gated or paid entry panel played its music behind the age gate /

@@ -6,6 +6,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Subject, Observable } from 'rxjs';
 import { ImageCacheService } from './image-cache.service';
+import { PaywallService } from './paywall.service';
 
 /**
  * Preload priority
@@ -106,6 +107,7 @@ export class PreloadService {
   private idlePending = 0;
 
   private readonly imageCache = inject(ImageCacheService);
+  private readonly paywall = inject(PaywallService);
 
   constructor() {
     this.detectNetwork();
@@ -113,11 +115,20 @@ export class PreloadService {
   }
 
   /**
-   * Add item to preload queue
+   * Add item to preload queue.
+   *
+   * Items of a panel the paywall locks for the reader (the renderers show
+   * its placeholder) are skipped: gated artwork is not fetched ahead of the
+   * gate. A later call after the lock lifts preloads them. Only panel ids
+   * the paywall knows are judged; items without one (or with a legacy index
+   * id from preloadNext) load as before.
    */
   add(item: PreloadItem): void {
     // Check if already loaded or in queue
     if (this.loaded.has(item.id) || this.isInQueue(item.id)) {
+      return;
+    }
+    if (this.isLockedPanel(item.panelId)) {
       return;
     }
 
@@ -221,6 +232,11 @@ export class PreloadService {
 
     // Filter valid indices
     return indices.filter((i) => i >= 0 && i < totalPanels);
+  }
+
+  /** Does the paywall lock this (known) panel for the reader? */
+  private isLockedPanel(panelId: string | undefined): boolean {
+    return panelId !== undefined && this.paywall.indexOf(panelId) >= 0 && this.paywall.isPanelLocked(panelId);
   }
 
   /**

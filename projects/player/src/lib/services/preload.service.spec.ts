@@ -5,6 +5,8 @@
 import { TestBed } from '@angular/core/testing';
 import { PreloadService, PreloadItem, PreloadStatus } from './preload.service';
 import { ImageCacheService } from './image-cache.service';
+import { PaywallService } from './paywall.service';
+import type { PanelWaveManifest } from '../types/manifest.types';
 
 describe('PreloadService', () => {
   let service: PreloadService;
@@ -79,6 +81,68 @@ describe('PreloadService', () => {
       });
 
       service.add(item);
+    });
+  });
+
+  describe('locked panels (paywall)', () => {
+    /** p1 free (preview), p2 behind a work purchase rule, p3 an x-locked stub. */
+    const manifest = {
+      meta: { id: 'w' },
+      chapters: [
+        {
+          id: 'c',
+          panels: { p1: {}, p2: {}, p3: { 'x-locked': true } },
+          graph: { entry: 'p1', edges: [] },
+        },
+      ],
+      paywall: {
+        rules: [{ id: 'buy', scope: 'work', entitlementType: 'purchase', requiredProductIds: ['book'], previewPanelCount: 1 }],
+      },
+    } as unknown as PanelWaveManifest;
+    const item = (id: string, panelId?: string): PreloadItem => ({
+      id,
+      type: 'image',
+      url: `${id}.jpg`,
+      priority: 'high',
+      ...(panelId ? { panelId } : {}),
+    });
+    const queued = () => service.getQueueStatus().queued + service.getQueueStatus().loading + service.getQueueStatus().loaded;
+    let paywall: PaywallService;
+
+    beforeEach(() => {
+      paywall = TestBed.inject(PaywallService);
+      paywall.setManifest(manifest);
+    });
+
+    afterEach(() => paywall.clear());
+
+    it('skips the assets of a panel the paywall locks', () => {
+      service.add(item('a2', 'p2'));
+      service.add(item('a3', 'p3'));
+      expect(queued()).toBe(0);
+      expect(imageCacheSpy.preload).not.toHaveBeenCalled();
+    });
+
+    it('preloads open panels, items without a panel and panel ids the paywall does not know', () => {
+      service.add(item('a1', 'p1'));
+      service.add(item('plain'));
+      service.add(item('legacy', '7'));
+      expect(imageCacheSpy.preload).toHaveBeenCalledWith('a1.jpg');
+      expect(imageCacheSpy.preload).toHaveBeenCalledWith('plain.jpg');
+      expect(imageCacheSpy.preload).toHaveBeenCalledWith('legacy.jpg');
+    });
+
+    it('preloads a panel once the reader owns it', () => {
+      paywall.setSnapshot({ subscriptionTier: null, purchasedProductIds: ['book'], ageVerified: false });
+      service.add(item('a2', 'p2'));
+      expect(imageCacheSpy.preload).toHaveBeenCalledWith('a2.jpg');
+    });
+
+    it('follows the renderers when the rules are not enforced (host adapter)', () => {
+      paywall.setEnforced(false);
+      service.add(item('a2', 'p2'));
+      expect(imageCacheSpy.preload).toHaveBeenCalledWith('a2.jpg');
+      paywall.setEnforced(true);
     });
   });
 
