@@ -445,6 +445,11 @@ The demo app supports a `?deny=<panelId>[,<panelId>]` query parameter that insta
 a denying entitlement adapter, used by the gating tests, and `?byUrl=1`, which
 hands the shell the manifest URL (`manifestUrl` input) instead of the parsed
 object.
+`?entitlements=free,premium,purchased:<productId>,age-verified` (the CMS
+preview's entitlement simulator syntax, also read from the embed config's
+`entitlements` array) passes the matching `entitlementSnapshot` to the shell:
+`basic` / `premium` / `pro` set the subscription tier, `purchased:X` owns product
+X, `age-verified` is a verified adult, anything else grants nothing.
 
 ---
 

@@ -69,4 +69,51 @@ describe('AppComponent (demo)', () => {
   afterEach(() => {
     http.match(() => true).forEach((r) => r.flush({}));
   });
+
+  describe('entitlements (CMS preview simulator)', () => {
+    const manifest = { panelwave: { version: '1.6.0' }, meta: {}, chapters: [] };
+
+    it('maps the embed config entitlements onto the shell snapshot', () => {
+      const { fixture, app } = create();
+      fixture.detectChanges();
+      http.match(() => true).forEach((r) => r.flush(manifest));
+      expect(app.entitlementSnapshot).toBeUndefined();
+
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: 'config', data: { entitlements: ['free', 'premium', 'purchased:prod-123', 'age-verified'] } },
+        }),
+      );
+      expect(app.entitlementSnapshot).toEqual({
+        subscriptionTier: 'premium',
+        purchasedProductIds: ['prod-123'],
+        ageVerified: true,
+        age: 99,
+      });
+
+      // A config without entitlements drops the override again.
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'config', data: {} } }));
+      expect(app.entitlementSnapshot).toBeUndefined();
+      fixture.destroy();
+    });
+
+    it('reads ?entitlements= for the standalone demo', () => {
+      const original = window.location.href;
+      history.replaceState(null, '', '?entitlements=purchased:book,age-verified');
+      try {
+        const { fixture, app } = create();
+        fixture.detectChanges();
+        http.match(() => true).forEach((r) => r.flush(manifest));
+        expect(app.entitlementSnapshot).toEqual({
+          subscriptionTier: null,
+          purchasedProductIds: ['book'],
+          ageVerified: true,
+          age: 99,
+        });
+        fixture.destroy();
+      } finally {
+        history.replaceState(null, '', original);
+      }
+    });
+  });
 });

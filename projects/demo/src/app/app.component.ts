@@ -3,7 +3,8 @@ import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { PlayerShellComponent } from 'player';
 import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
-import type { PanelWaveManifest, PlayerPanelChangeEvent } from 'player';
+import type { EntitlementSnapshot, PanelWaveManifest, PlayerPanelChangeEvent } from 'player';
+import { snapshotFromEntitlements } from './entitlements';
 
 /**
  * Config message posted by an embedding host (the CMS preview iframe):
@@ -19,6 +20,11 @@ interface EmbedConfigMessage {
     viewMode?: string;
     /** Initial variable values keyed by variable id (seeded at init; may set read-only vars). */
     variables?: Record<string, unknown>;
+    /**
+     * The CMS entitlement simulator's tokens, e.g. ['free', 'premium',
+     * 'purchased:prod-123', 'age-verified'] (see entitlements.ts).
+     */
+    entitlements?: string[];
     [key: string]: unknown;
   };
 }
@@ -58,6 +64,14 @@ export class AppComponent implements OnInit, OnDestroy {
   };
 
   /**
+   * What the simulated reader owns, passed to the shell's
+   * `entitlementSnapshot`. Sources: the embed host's config `entitlements`
+   * (the CMS preview's entitlement simulator), or `?entitlements=` in the
+   * same comma-separated syntax. Undefined = the shell's anonymous reader.
+   */
+  entitlementSnapshot?: EntitlementSnapshot;
+
+  /**
    * Initial variable values passed to the shell (seeded privileged at
    * init, so manifest-declared read-only variables can be populated).
    * Sources: the embed host's config message, or the dev/testing hook
@@ -89,6 +103,7 @@ export class AppComponent implements OnInit, OnDestroy {
       message.data.variables && typeof message.data.variables === 'object'
         ? message.data.variables
         : undefined;
+    this.entitlementSnapshot = snapshotFromEntitlements(message.data.entitlements);
     if (message.data.manifest) {
       // Recreate the shell so the new manifest initializes cleanly.
       this.manifest = null;
@@ -166,6 +181,11 @@ export class AppComponent implements OnInit, OnDestroy {
       } catch {
         console.warn('Ignoring invalid ?vars= JSON');
       }
+    }
+
+    const entitlements = params.get('entitlements');
+    if (entitlements !== null) {
+      this.entitlementSnapshot = snapshotFromEntitlements(entitlements);
     }
 
     const deny = params.get('deny');
