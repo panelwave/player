@@ -216,5 +216,11 @@
     "title": "Choose your path",
     "close": "Close",
     "option": "Option {{n}}"
+  },
+  "player": {
+    "locked": {
+      "title": "Locked",
+      "message": "This panel is part of the full edition."
+    }
   }
 }

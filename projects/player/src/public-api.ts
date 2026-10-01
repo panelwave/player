@@ -67,6 +67,7 @@ export { TranslationService } from './lib/services/translation.service';
 export * from './lib/player.service';
 
 // Utilities
+export { isLockedPanel } from './lib/utils/panel-lock';
 export {
   DEFAULT_BALLOON_CONFIG,
   mergeBalloonConfig,

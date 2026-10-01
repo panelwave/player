@@ -63,6 +63,13 @@ export interface Panel {
   
   /** Plugin instances for this panel (optional) */
   plugins?: PluginInstance[];
+
+  /**
+   * Server-side paywall stub: public manifests strip the content of paid
+   * panels and set this flag. The player renders a lock placeholder instead
+   * of layers, bubbles and hotspots (see `isLockedPanel`).
+   */
+  'x-locked'?: boolean;
 }
 
 /**

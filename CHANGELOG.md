@@ -7,6 +7,9 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Added
+- Locked-panel placeholder for manifests that mark panels `"x-locked": true` (server-side paywall views).
+
 ### Changed
 - Peer dependencies accept Angular 21 and 22: `@angular/core` and
   `@angular/common` are `^20.0.0 || ^21.0.0 || ^22.0.0` (was `^20.0.0`, which

@@ -1325,6 +1325,86 @@ describe('ViewportComponent', () => {
   // Edge Cases & Error Handling
   // ======================
 
+  describe('Locked panels (x-locked)', () => {
+    const lockedPanel = (): Panel =>
+      ({
+        title: { 'en-US': 'Paid' },
+        'x-locked': true,
+        // A stub carries no content, but make sure nothing leaks even if it did.
+        layers: [{ kind: 'image', id: 'l1', assetId: 'img-1', z: 0 }],
+        speechBubbles: [{ id: 'b1', text: { 'en-US': 'Secret' }, x: 0.1, y: 0.1, w: 0.2, h: 0.1 }],
+      } as unknown as Panel);
+
+    it('renders the placeholder instead of layers and bubbles in panel view', () => {
+      fixture.componentRef.setInput('viewMode', 'panel');
+      fixture.componentRef.setInput('speechEnabled', true);
+      fixture.componentRef.setInput('currentPanelId', 'p1');
+      fixture.componentRef.setInput('panel', lockedPanel());
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      const lock = host.querySelector('.pw-locked-panel');
+      expect(lock).not.toBeNull();
+      expect(lock?.getAttribute('role')).toBe('img');
+      expect(lock?.getAttribute('aria-label')).toBe('Locked');
+      expect(lock?.textContent).toContain('This panel is part of the full edition.');
+      expect(host.querySelector('pw-layer-renderer')).toBeNull();
+      expect(host.querySelector('pw-speech-bubbles')).toBeNull();
+      expect(host.querySelector('pw-hotspots-overlay')).toBeNull();
+    });
+
+    it('renders no placeholder for an unlocked panel', () => {
+      fixture.componentRef.setInput('viewMode', 'panel');
+      fixture.componentRef.setInput('currentPanelId', 'p1');
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelector('.pw-locked-panel')).toBeNull();
+      expect(host.querySelector('pw-layer-renderer')).not.toBeNull();
+    });
+
+    it('renders the placeholder for the leaving panel', () => {
+      fixture.componentRef.setInput('viewMode', 'panel');
+      fixture.componentRef.setInput('currentPanelId', 'p1');
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.detectChanges();
+      // Transition state is plain component state; an input change re-checks the OnPush view.
+      component.leavingPanel = lockedPanel();
+      component.leavingPanelId = 'p0';
+      fixture.componentRef.setInput('locale', 'de-DE');
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelectorAll('.pw-locked-panel').length).toBe(1);
+      expect(host.querySelector('.t-frame-leave .pw-locked-panel')).not.toBeNull();
+    });
+
+    it('renders the placeholder only for the locked panel in page view', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('speechEnabled', true);
+      fixture.componentRef.setInput('panels', { p1: lockedPanel(), p2: mockPanels['p2'], p3: mockPanels['p3'] });
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      const locks = host.querySelectorAll('.pw-locked-panel');
+      expect(locks.length).toBe(1);
+      expect(locks[0].closest('[data-panel-id]')?.getAttribute('data-panel-id')).toBe('p1');
+      expect(host.querySelector('pw-speech-bubbles')).toBeNull();
+    });
+
+    it('renders the placeholder for a leaving locked page panel', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      component.leavingPage = mockPage;
+      component.leavingPagePanels = { p1: lockedPanel() };
+      fixture.componentRef.setInput('locale', 'de-DE');
+      fixture.detectChanges();
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelector('.pt-frame-leave .pw-locked-panel')).not.toBeNull();
+      expect(host.querySelector('.pt-frame-leave pw-layer-renderer')).toBeNull();
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle empty page placements', () => {
       component.page = {

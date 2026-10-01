@@ -172,6 +172,37 @@ describe('CanvasStageComponent', () => {
     });
   });
 
+  describe('locked panels (x-locked)', () => {
+    const canvas: CanvasLayout = {
+      placements: {
+        a: { x: 0, y: 0, w: 1024, h: 576 },
+        paid: { x: 1100, y: 0, w: 512, h: 512 },
+      },
+    };
+
+    it('renders the placeholder instead of layers and bubbles', () => {
+      const locked = {
+        'x-locked': true,
+        layers: [{ kind: 'image', id: 'l1', assetId: 'img-1', z: 0 }],
+        speechBubbles: [{ id: 'b1', text: { 'en-US': 'Secret' }, x: 0.1, y: 0.1, w: 0.2, h: 0.1 }],
+      } as unknown as Panel;
+      component.speechEnabled = true;
+      setInputs(canvas, { a: panel(), paid: locked }, 'a');
+      const host: HTMLElement = fixture.nativeElement;
+      const locks = host.querySelectorAll('.pw-locked-panel');
+      expect(locks.length).toBe(1);
+      expect(locks[0].closest('[data-panel-id]')?.getAttribute('data-panel-id')).toBe('paid');
+      expect(host.querySelector('[data-panel-id="paid"] pw-layer-renderer')).toBeNull();
+      expect(host.querySelector('[data-panel-id="paid"] pw-speech-bubbles')).toBeNull();
+      expect(host.querySelector('[data-panel-id="paid"] pw-hotspots-overlay')).toBeNull();
+    });
+
+    it('renders no placeholder for unlocked panels', () => {
+      setInputs(canvas, { a: panel(), paid: panel() }, 'a');
+      expect(fixture.nativeElement.querySelector('.pw-locked-panel')).toBeNull();
+    });
+  });
+
   describe('rendering', () => {
     it('renders veiled panels without their layers', () => {
       const canvas: CanvasLayout = {

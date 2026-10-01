@@ -48,6 +48,8 @@ import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
+import { LockedPanelComponent } from '../locked-panel/locked-panel.component';
+import { isLockedPanel } from '../../utils/panel-lock';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 
@@ -76,7 +78,7 @@ const CAMERA_EMIT_INTERVAL_MS = 100;
 
 @Component({
   selector: 'pw-canvas-stage',
-  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective],
+  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective, LockedPanelComponent],
   templateUrl: './canvas-stage.component.html',
   styleUrls: ['./canvas-stage.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -552,6 +554,11 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   isCurrent(panelId: string): boolean {
     return panelId === this.currentPanelId;
+  }
+
+  /** True for a server-side paywall stub (`"x-locked": true`). */
+  isLocked(panel: Panel | null | undefined): boolean {
+    return isLockedPanel(panel);
   }
 
   trackPlacement(_index: number, entry: StagePlacement): string {

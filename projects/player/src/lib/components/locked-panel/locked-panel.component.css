@@ -1,0 +1,66 @@
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.pw-locked-panel {
+  container-type: size;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  overflow: hidden;
+  background: #1d1f24;
+  color: #c9ccd3;
+  text-align: center;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.pw-locked-panel__icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  opacity: 0.85;
+}
+
+.pw-locked-panel__title,
+.pw-locked-panel__message {
+  margin: 0;
+}
+
+.pw-locked-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e6e8ec;
+}
+
+.pw-locked-panel__message {
+  max-width: 24em;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Tiny panels: icon + title only. */
+@container (max-width: 159px) {
+  .pw-locked-panel__message {
+    display: none;
+  }
+}
+
+@container (max-height: 79px) {
+  .pw-locked-panel__message {
+    display: none;
+  }
+  .pw-locked-panel__icon {
+    width: 20px;
+    height: 20px;
+  }
+}

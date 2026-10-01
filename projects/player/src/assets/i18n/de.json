@@ -216,5 +216,11 @@
     "title": "Wähle deinen Weg",
     "close": "Schließen",
     "option": "Option {{n}}"
+  },
+  "player": {
+    "locked": {
+      "title": "Gesperrt",
+      "message": "Dieses Panel gehört zur Vollversion."
+    }
   }
 }

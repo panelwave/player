@@ -46,43 +46,47 @@
         @if (entry.revealed) {
           <!-- The panel's artwork; a panel camera move (PanelAnimations) transforms it as one. -->
           <div class="pw-panel-camera">
-            @for (layer of entry.panel.layers; track layer.id) {
-              <pw-layer-renderer
-                [layer]="layer"
-                [locale]="locale"
-                viewMode="panel"
-                [viewActive]="isCurrent(entry.panelId)"
-                [reducedMotion]="reducedMotion"
-                [targetWidth]="targetWidthFor(entry.panelId)"
-                [panelId]="entry.panelId">
-              </pw-layer-renderer>
-            }
+            @if (isLocked(entry.panel)) {
+              <pw-locked-panel-placeholder></pw-locked-panel-placeholder>
+            } @else {
+              @for (layer of entry.panel.layers; track layer.id) {
+                <pw-layer-renderer
+                  [layer]="layer"
+                  [locale]="locale"
+                  viewMode="panel"
+                  [viewActive]="isCurrent(entry.panelId)"
+                  [reducedMotion]="reducedMotion"
+                  [targetWidth]="targetWidthFor(entry.panelId)"
+                  [panelId]="entry.panelId">
+                </pw-layer-renderer>
+              }
 
-            <!-- Hotspots are interactive on the CURRENT panel (the one the
-                 camera frames); other panels show them render-only, and a
-                 tap there keeps its panel-navigation meaning. -->
-            @if (entry.panel.hotspots && entry.panel.hotspots.length > 0) {
-              <pw-hotspots-overlay
-                [hotspots]="entry.panel.hotspots"
-                [locale]="locale"
-                [containerWidth]="entry.placement.w"
-                [containerHeight]="entry.placement.h"
-                [context]="variableContext"
-                [interactive]="interactive && isCurrent(entry.panelId)"
-                (hotspotActivate)="hotspotActivate.emit({ hotspot: $event.hotspot, x: $event.x, y: $event.y, panelId: entry.panelId })">
-              </pw-hotspots-overlay>
-            }
+              <!-- Hotspots are interactive on the CURRENT panel (the one the
+                   camera frames); other panels show them render-only, and a
+                   tap there keeps its panel-navigation meaning. -->
+              @if (entry.panel.hotspots && entry.panel.hotspots.length > 0) {
+                <pw-hotspots-overlay
+                  [hotspots]="entry.panel.hotspots"
+                  [locale]="locale"
+                  [containerWidth]="entry.placement.w"
+                  [containerHeight]="entry.placement.h"
+                  [context]="variableContext"
+                  [interactive]="interactive && isCurrent(entry.panelId)"
+                  (hotspotActivate)="hotspotActivate.emit({ hotspot: $event.hotspot, x: $event.x, y: $event.y, panelId: entry.panelId })">
+                </pw-hotspots-overlay>
+              }
 
-            @if (speechEnabled && entry.panel.speechBubbles && entry.panel.speechBubbles.length > 0) {
-              <pw-speech-bubbles
-                [bubbles]="entry.panel.speechBubbles"
-                [locale]="locale"
-                [containerWidth]="entry.placement.w"
-                [containerHeight]="entry.placement.h"
-                [readingScale]="getReadingScale()"
-                [workBalloonConfig]="workBalloonConfig"
-                [characters]="characters">
-              </pw-speech-bubbles>
+              @if (speechEnabled && entry.panel.speechBubbles && entry.panel.speechBubbles.length > 0) {
+                <pw-speech-bubbles
+                  [bubbles]="entry.panel.speechBubbles"
+                  [locale]="locale"
+                  [containerWidth]="entry.placement.w"
+                  [containerHeight]="entry.placement.h"
+                  [readingScale]="getReadingScale()"
+                  [workBalloonConfig]="workBalloonConfig"
+                  [characters]="characters">
+                </pw-speech-bubbles>
+              }
             }
           </div>
         } @else {

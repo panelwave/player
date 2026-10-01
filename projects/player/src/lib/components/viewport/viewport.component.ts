@@ -29,6 +29,8 @@ import {
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
+import { LockedPanelComponent } from '../locked-panel/locked-panel.component';
+import { isLockedPanel } from '../../utils/panel-lock';
 import type { Panel, ViewMode, LocaleCode, Page, PanelPlacement, Layer, LocalizedString, AssetCatalogItem, BalloonConfig, Character, Graph, PreloadSettings, Transition, Hotspot, VariableContext } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
@@ -59,7 +61,7 @@ const VARIANT_SETTLE_MS = 180;
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective],
+    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective, LockedPanelComponent],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -790,6 +792,11 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   /**
    * Panel lookup for the leaving page's placements.
    */
+  /** True for a server-side paywall stub (`"x-locked": true`). */
+  isLocked(panel: Panel | null | undefined): boolean {
+    return isLockedPanel(panel);
+  }
+
   getLeavingPanel(panelId: string): Panel | undefined {
     return this.leavingPagePanels[panelId];
   }
