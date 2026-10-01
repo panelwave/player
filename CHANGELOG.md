@@ -152,6 +152,13 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- `PaywallService` treats a panel marked `"x-locked": true` as locked
+  even when no rule gates it (or the reader satisfies the rule, or it sits in
+  a free preview): the server stripped its content, so nothing could be shown.
+  The gate keeps the applying rule's reason while that rule locks, else
+  subscription/purchase required — never the age, so a confirmed age does
+  not re-open the age gate on a stub. `isFreeWork` is false when the
+  manifest has locked panels.
 - Panel animations are clipped by the panel box. In panel view a layer that
   slid in from outside the panel (or any layer moved across its edge) was
   painted over the panel's surroundings; the box now clips its content while

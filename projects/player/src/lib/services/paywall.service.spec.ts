@@ -271,4 +271,71 @@ describe('PaywallService', () => {
     expect(service.isFreeWork).toBe(true);
     expect(service.canAccess('anything')).toBe(true);
   });
+
+  describe('x-locked panels (server-stripped stubs)', () => {
+    /** A public manifest: p2's content was stripped by the server. */
+    const lockedManifest = (rules?: unknown[]): PanelWaveManifest =>
+      ({
+        meta: { id: 'work-locked' },
+        chapters: [
+          {
+            id: 'c1',
+            panels: { p1: {}, p2: { 'x-locked': true }, p3: { 'x-locked': 'true' } },
+          },
+        ],
+        ...(rules ? { paywall: { rules } } : {}),
+      }) as unknown as PanelWaveManifest;
+
+    it('locks an x-locked panel even when no rule gates it', () => {
+      service.setManifest(lockedManifest());
+      expect(service.isFreeWork).toBe(false);
+      expect(service.canAccess('p1')).toBe(true);
+      expect(service.canAccess('p2')).toBe(false);
+      const gate = service.gateFor('p2');
+      expect(gate?.lockReason).toBe('purchase_required');
+      expect(gate?.reason).toContain('available to buy');
+    });
+
+    it('only counts a boolean true as a lock', () => {
+      service.setManifest(lockedManifest());
+      expect(service.canAccess('p3')).toBe(true);
+    });
+
+    it('locks an x-locked panel inside the free preview, with the rule as the reason', () => {
+      service.setManifest(
+        lockedManifest([{ id: 'sub', scope: 'work', entitlementType: 'subscription', previewPanelCount: 5 }]),
+      );
+      const decision = service.evaluate('p2');
+      expect(decision.locked).toBe(true);
+      expect(decision.reason).toBe('subscription_required');
+      expect(decision.appliedRuleId).toBe('sub');
+      expect(decision.preview).toBe(false);
+      expect(service.gateFor('p2')?.options?.map((o) => o.type)).toEqual(['subscription']);
+    });
+
+    it('stays locked when the snapshot satisfies the rule (the content is not there)', () => {
+      service.setManifest(
+        lockedManifest([{ id: 'buy', scope: 'panel', refId: 'p2', entitlementType: 'purchase', requiredProductIds: ['x'] }]),
+      );
+      service.setSnapshot({ subscriptionTier: null, purchasedProductIds: ['x'], ageVerified: false });
+      expect(service.evaluate('p2')).toEqual(
+        jasmine.objectContaining({ locked: true, reason: 'purchase_required', appliedRuleId: 'buy' }),
+      );
+    });
+
+    it("keeps the rule's own lock reason (age first), then falls back to a purchase lock", () => {
+      service.setManifest(lockedManifest([{ id: 'adult', scope: 'panel', refId: 'p2', minimumAge: 18 }]));
+      expect(service.evaluate('p2').reason).toBe('age_verification_required');
+
+      // Age confirmed: the age gate must not re-open forever on a stub.
+      service.setSnapshot({ subscriptionTier: null, purchasedProductIds: [], ageVerified: true, age: 30 });
+      expect(service.evaluate('p2')).toEqual(jasmine.objectContaining({ locked: true, reason: 'purchase_required' }));
+    });
+
+    it('clear() forgets the locked panels', () => {
+      service.setManifest(lockedManifest());
+      service.clear();
+      expect(service.canAccess('p2')).toBe(true);
+    });
+  });
 });

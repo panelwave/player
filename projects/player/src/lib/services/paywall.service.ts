@@ -16,6 +16,7 @@ import {
   type LockReason,
 } from '../entitlement/paywall-evaluator';
 import { resolveLocalizedString } from '../utils/locale-utils';
+import { isLockedPanel } from '../utils/panel-lock';
 
 /**
  * Paywall service — decides whether the reader may see a panel, and describes
@@ -37,6 +38,8 @@ export class PaywallService {
   private chapterOrder = new Map<string, { chapterId: string; chapterIndex: number }>();
   private manifest: PanelWaveManifest | null = null;
   private products = new Map<string, PaywallProduct>();
+  /** Panels the server stripped for this reader (`"x-locked": true`). */
+  private lockedPanels = new Set<string>();
 
   private snapshotSubject = new BehaviorSubject<EntitlementSnapshot>(ANONYMOUS_READER);
   readonly snapshot$: Observable<EntitlementSnapshot> = this.snapshotSubject.asObservable();
@@ -50,6 +53,13 @@ export class PaywallService {
     );
     this.chapterOrder = chapterOrderFromManifest(manifest);
     this.products = PaywallService.productsFromManifest(manifest);
+    this.lockedPanels = new Set(
+      (manifest?.chapters ?? []).flatMap((chapter) =>
+        Object.entries(chapter.panels ?? {})
+          .filter(([, panel]) => isLockedPanel(panel))
+          .map(([panelId]) => panelId),
+      ),
+    );
   }
 
   /** `paywall.products` by id (format 1.6); the first entry wins on duplicate ids. */
@@ -70,9 +80,9 @@ export class PaywallService {
     return this.snapshotSubject.value;
   }
 
-  /** True when the work carries no paywall rules at all. */
+  /** True when the work carries no paywall rules and no locked panels. */
   get isFreeWork(): boolean {
-    return this.rules.length === 0;
+    return this.rules.length === 0 && this.lockedPanels.size === 0;
   }
 
   /** Reading-order index used for preview counting, or -1 when unknown. */
@@ -86,17 +96,33 @@ export class PaywallService {
    * An unknown panel id gets `MAX_SAFE_INTEGER` as its index so it falls
    * OUTSIDE any free preview: a panel the reading order does not know about
    * must not be handed out as a free sample.
+   *
+   * Defence in depth: a panel the server stripped (`"x-locked": true`) is
+   * locked whatever the rules say — its content is not in the manifest, so
+   * neither a free preview nor an entitlement can show it. The applying
+   * rule's own lock reason is kept while it locks; otherwise the reason is
+   * the rule's purchase/subscription requirement, else `purchase_required`
+   * (never the age, which would re-open the age gate forever on a stub).
    */
   evaluate(panelId: string): AccessDecision {
-    if (this.rules.length === 0) {
-      return { panelId, locked: false, reason: null, appliedRuleId: null, preview: false };
+    const decision: AccessDecision =
+      this.rules.length === 0
+        ? { panelId, locked: false, reason: null, appliedRuleId: null, preview: false }
+        : evaluatePanelAccess(this.rules, this.snapshotSubject.value, {
+            id: panelId,
+            index: this.readingOrder.get(panelId) ?? Number.MAX_SAFE_INTEGER,
+            ...this.chapterOrder.get(panelId),
+          });
+    if (decision.locked || !this.lockedPanels.has(panelId)) {
+      return decision;
     }
-    const index = this.readingOrder.get(panelId) ?? Number.MAX_SAFE_INTEGER;
-    return evaluatePanelAccess(this.rules, this.snapshotSubject.value, {
-      id: panelId,
-      index,
-      ...this.chapterOrder.get(panelId),
-    });
+    const rule = this.rules.find((r) => r.id === decision.appliedRuleId);
+    return {
+      ...decision,
+      locked: true,
+      reason: rule?.entitlementType === 'subscription' ? 'subscription_required' : 'purchase_required',
+      preview: false,
+    };
   }
 
   /** Is this extras block locked by an extras-scoped rule the reader does not satisfy? */
@@ -195,6 +221,7 @@ export class PaywallService {
     this.manifest = null;
     this.rules = [];
     this.products.clear();
+    this.lockedPanels.clear();
     this.readingOrder.clear();
     this.chapterOrder.clear();
     this.snapshotSubject.next(ANONYMOUS_READER);
