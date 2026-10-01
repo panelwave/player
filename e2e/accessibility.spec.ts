@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { openPlayer, expectPanel } from './helpers/player';
+import { openPlayer, expectPanel, dismissCover } from './helpers/player';
 
 /**
  * Checklist (Accessibility): "Run axe-core in E2E tests".
@@ -101,6 +101,7 @@ test.describe('accessibility (axe-core) — modals, overlays, views', () => {
   test('canvas view has no serious violations', async ({ page }, testInfo) => {
     await openPlayer(page);
     await page.getByRole('button', { name: 'Infinite Canvas' }).click();
+    await dismissCover(page, true);
     await expect(page.locator('.canvas-panel.current')).toBeVisible();
     await scanPlayer(page, testInfo, 'canvas');
   });

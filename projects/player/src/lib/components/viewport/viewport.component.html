@@ -126,7 +126,7 @@
   
   <!-- Page View -->
   @if (viewMode === 'page' && page) {
-    <div class="viewport-page">
+    <div class="viewport-page" [style.--pw-page-aspect]="pageAspect">
       <div class="page-stage">
         <!-- Outgoing page during a Page.transitions in/out change -->
         @if (leavingPage) {

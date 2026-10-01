@@ -5,8 +5,9 @@ import { openPlayer, expectPanel } from './helpers/player';
  * Checklist: "Autoplay start/stop".
  *
  * Autoplay is toolbar-driven (no keyboard shortcut, and the shell's
- * [autoplay] input is not consulted). Panels advance after
- * durationMs ?? secondsPerPanel * 1000. Sample durations:
+ * [autoplay] input is not consulted). By default panels advance on the
+ * author's timing, durationMs ?? secondsPerPanel * 1000; a speed the
+ * reader picks applies to every panel. Sample durations:
  * p1-1: 3000ms, p1-2: 6000ms, p1-3: 2500ms.
  */
 
@@ -25,7 +26,8 @@ test.describe('autoplay', () => {
     // Progress bar and speed controls only exist while autoplay runs.
     await expect(page.locator('.autoplay-progress-bar')).toBeVisible();
     await expect(page.locator('.autoplay-controls')).toBeVisible();
-    await expect(page.locator('.autoplay-controls .control-value')).toHaveText('5s');
+    // The author's timing is the default; it shows the current panel's time.
+    await expect(page.locator('.autoplay-controls .control-value')).toContainText('Author');
 
     // p1-1 advances after ~3s, p1-2 after ~6s more.
     await expectPanel(page, 'p1-2', 6_000);
@@ -41,19 +43,24 @@ test.describe('autoplay', () => {
     await expectPanel(page, 'p1-3');
   });
 
-  test('speed controls adjust seconds per panel within bounds', async ({ page }) => {
+  test('speed controls switch to the reader’s speed and back to the author’s timing', async ({ page }) => {
     await openPlayer(page);
 
     await page.getByRole('button', { name: 'Enable/disable autoplay' }).click();
     const value = page.locator('.autoplay-controls .control-value');
-    await expect(value).toHaveText('5s');
+    await expect(value).toContainText('Author');
 
     await page.getByRole('button', { name: 'Increase speed' }).click();
-    await expect(value).toHaveText('6s');
+    await expect(value).not.toContainText('Author');
+    const picked = parseFloat((await value.textContent()) ?? '');
+    expect(picked).toBeGreaterThan(0);
 
     const decrease = page.getByRole('button', { name: 'Decrease speed' });
     await decrease.click();
     await decrease.click();
-    await expect(value).toHaveText('4s');
+    await expect(value).toHaveText(`${Math.max(0.5, picked - 2)}s`);
+
+    await page.getByRole('button', { name: "Use the author's panel timing" }).click();
+    await expect(value).toContainText('Author');
   });
 });

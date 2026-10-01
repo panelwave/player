@@ -4,10 +4,13 @@
  * All families here are open-licensed (SIL OFL 1.1, from Google Fonts) and
  * ship with the @panelwave/player package — see LICENSES.md in this folder.
  *
- * The Ames Pro family (Blambot, commercial) is deliberately NOT included.
- * If your works use it, license it separately and add your own @font-face
- * for 'Ames Italic' / 'Ames Bold Italic' / 'Ames Regular'; balloons fall
- * back to Comic Neue otherwise (the default stack is
+ * The Ames Pro family (Blambot, commercial) is deliberately NOT included —
+ * neither here nor in works exported from the PanelWave CMS. PanelWave's own
+ * players (CMS preview, read.panelwave.org) load it under PanelWave's
+ * license, which covers PanelWave's domains only. Self-hosting a work whose
+ * balloons use Ames requires your own license: add your own @font-face for
+ * 'Ames Italic' / 'Ames Bold Italic' / 'Ames Regular'. Without it, balloons
+ * fall back to Comic Neue (the default stack is
  * "'Ames Italic', 'Comic Neue', sans-serif").
  *
  * URLs are relative to this file, so it works from

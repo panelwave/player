@@ -143,53 +143,96 @@
   min-width: 100%;
 }
 
-/* Thumbnail wrapper */
+/* Thumbnail wrapper (left/width set per tile) */
 .thumbnail-wrapper {
   position: absolute;
-  top: 0;
+  top: 12px;
   width: 120px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* Chapter separator */
-.thumbnail-wrapper.chapter-start {
-  padding-top: 32px;
-}
-
+/* Chapter separator: a narrow title card between the chapters' panels */
 .chapter-separator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  width: 100%;
+  height: 100px;
+  padding: 10px 8px 10px 14px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.chapter-separator::before,
-.chapter-separator::after {
+.chapter-separator::before {
   content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.2);
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.chapter-separator.current-chapter::before {
+  background: rgba(0, 150, 255, 0.9);
+}
+
+.chapter-separator:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.separator-number {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
 }
 
 .separator-title {
   font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  padding: 0 8px;
+  letter-spacing: 0.04em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Cover tile */
+.cover-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 4px;
 }
 
 /* Thumbnail item */
 .thumbnail-item {
   position: relative;
-  width: 120px;
+  width: 100%;
   height: 100px;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -331,12 +374,8 @@
     padding: 10px 12px 12px;
   }
 
-  .thumbnail-wrapper {
-    width: 100px;
-  }
-
-  .thumbnail-item {
-    width: 100px;
+  .thumbnail-item,
+  .chapter-separator {
     height: 80px;
   }
 
@@ -379,12 +418,8 @@
 }
 
 @media (max-width: 480px) {
-  .thumbnail-wrapper {
-    width: 80px;
-  }
-
-  .thumbnail-item {
-    width: 80px;
+  .thumbnail-item,
+  .chapter-separator {
     height: 64px;
   }
 
@@ -395,6 +430,7 @@
 
 /* Focus styles */
 .close-btn:focus-visible,
+.chapter-separator:focus-visible,
 .thumbnail-item:focus-visible {
   outline: 2px solid rgba(0, 120, 215, 0.8);
   outline-offset: 2px;

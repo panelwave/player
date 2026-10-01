@@ -20,6 +20,13 @@ import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 import { AssetUrlService } from '../../../services/asset-url.service';
+import { ManifestService } from '../../../services/manifest.service';
+import { PaywallService } from '../../../services/paywall.service';
+import { pagesForFormat } from '../../../utils/page-format-utils';
+import { panelThumbnailSrc } from '../../../utils/thumbnail-utils';
+import { chapterReadingOrder } from '../../../utils/reading-order';
+import { isLockedPanel } from '../../../utils/panel-lock';
+import type { CatalogLike } from '../../../utils/extras-utils';
 import type { Chapter, Panel, Page, LocaleCode, LocalizedString, PanelWaveManifest } from '../../../types';
 
 /**
@@ -28,6 +35,8 @@ import type { Chapter, Panel, Page, LocaleCode, LocalizedString, PanelWaveManife
 export interface TocNavigationTarget {
   chapterId: string;
   panelId?: string;
+  /** The reader picked the cover (chapterId is empty then). */
+  cover?: boolean;
 }
 
 /**
@@ -68,6 +77,20 @@ export class TocOverlayComponent implements OnInit, OnChanges {
   @Input() locale: LocaleCode = 'en-US';
 
   private readonly assetUrl = inject(AssetUrlService);
+  private readonly manifestService = inject(ManifestService);
+  private readonly paywall = inject(PaywallService);
+
+  /**
+   * Page format of the page sequence the player shows; only those pages are
+   * listed (null: every page).
+   */
+  @Input() pageFormat: string | null = null;
+
+  /** Thumbnail of the work's cover; a cover entry heads the list when set. */
+  @Input() coverThumbnail = '';
+
+  /** The cover is on screen. */
+  @Input() coverCurrent = false;
 
   /**
    * Visible state
@@ -209,21 +232,23 @@ export class TocOverlayComponent implements OnInit, OnChanges {
    */
   getPanels(chapter: Chapter): { id: string; panel: Panel }[] {
     if (!chapter.panels) return [];
-    return Object.entries(chapter.panels).map(([id, panel]) => ({ id, panel }));
+    return chapterReadingOrder(chapter)
+      .filter((id) => chapter.panels[id])
+      .map((id) => ({ id, panel: chapter.panels[id] }));
   }
 
   /**
    * Get pages for chapter
    */
   getPages(chapter: Chapter): Page[] {
-    return chapter.pages || [];
+    return pagesForFormat(chapter.pages, this.pageFormat);
   }
 
   /**
    * Check if chapter has pages
    */
   hasPages(chapter: Chapter): boolean {
-    return !!(chapter.pages && chapter.pages.length > 0);
+    return this.getPages(chapter).length > 0;
   }
 
   /**
@@ -257,9 +282,26 @@ export class TocOverlayComponent implements OnInit, OnChanges {
   /**
    * Thumbnail URL for a panel: absolute as-is, relative via the manifest's assets.base / manifest URL.
    */
-  getThumbnailUrl(panel: Panel): string {
-    const thumbnail = (panel as Panel & { thumbnail?: string }).thumbnail;
-    return this.assetUrl.resolve(thumbnail, 'image');
+  /**
+   * Small rendition of the panel's artwork (none for a locked panel: its art
+   * is not shown ahead of the gate).
+   */
+  getThumbnailUrl(panel: Panel, panelId?: string): string {
+    if (isLockedPanel(panel) || (panelId && this.paywall.isPanelLocked(panelId))) {
+      return '';
+    }
+    const lookup = (assetId: string): CatalogLike | null =>
+      this.manifestService.getAsset(assetId) as CatalogLike | null;
+    return this.assetUrl.resolve(panelThumbnailSrc(panel, lookup), 'image');
+  }
+
+  /** Cover thumbnail URL (empty when the work has no cover). */
+  getCoverUrl(): string {
+    return this.coverThumbnail ? this.assetUrl.resolve(this.coverThumbnail, 'image') : '';
+  }
+
+  navigateToCover(): void {
+    this.navigate.emit({ chapterId: '', cover: true });
   }
 
   /**

@@ -50,6 +50,14 @@ describe('extras-utils', () => {
     expect(linked.thumbnail).toBe('https://cdn/img-1-320.webp');
   });
 
+  it('an image extra linked by url only (CMS export) is its own thumbnail', () => {
+    const cover = extraFromBlock({ id: 'c', contentType: 'image', url: 'https://s3/cover.jpg' }, 'cover', lookup);
+    expect(cover.asset).toBe('https://s3/cover.jpg');
+    expect(cover.thumbnail).toBe('https://s3/cover.jpg');
+    const pdf = extraFromBlock({ id: 'p', contentType: 'pdf', url: 'https://x/doc.pdf' }, 'other', lookup);
+    expect(pdf.thumbnail).toBeUndefined();
+  });
+
   it('text-only and unresolvable image blocks render as text, never as a broken image', () => {
     expect(extraFromBlock({ id: 't', text: { 'en-US': 'About the author' } }, 'other', lookup).mediaType).toBe('document');
     const broken = extraFromBlock({ id: 'b', images: [ { assetId: 'missing' } ] }, 'art', lookup);

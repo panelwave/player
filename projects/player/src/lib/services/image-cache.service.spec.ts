@@ -239,53 +239,42 @@ describe('ImageCacheService', () => {
   });
 
   describe('preload', () => {
-    it('should preload single image', async () => {
-      const mockUrl = 'https://example.com/image.jpg';
-      const mockBitmap = { width: 100, height: 100 } as any;
+    // 1×1 transparent GIF; a fragment makes distinct URLs of the same bytes.
+    const GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-      spyOn(window, 'fetch').and.callFake(() =>
-        Promise.resolve(
-          new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
-            status: 200,
-          })
-        )
-      );
+    it('warms an image the way <img> loads it (no fetch) and remembers it', async () => {
+      const fetchSpy = spyOn(window, 'fetch').and.callThrough();
 
-      spyOn(window as any, 'createImageBitmap').and.returnValue(
-        Promise.resolve(mockBitmap)
-      );
+      await service.preload(GIF);
 
-      await service.preload(mockUrl);
-
-      expect(service.has(mockUrl)).toBe(true);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(service.has(GIF)).toBe(true);
     });
 
     it('should preload batch of images', async () => {
-      const mockUrls = [
-        'https://example.com/image1.jpg',
-        'https://example.com/image2.jpg',
-        'https://example.com/image3.jpg',
-      ];
+      const urls = [GIF + '#1', GIF + '#2', GIF + '#3'];
 
-      const mockBitmap = { width: 100, height: 100 } as any;
+      await service.preloadBatch(urls);
 
-      spyOn(window, 'fetch').and.callFake(() =>
-        Promise.resolve(
-          new Response(new Blob(['fake-image'], { type: 'image/jpeg' }), {
-            status: 200,
-          })
-        )
-      );
-
-      spyOn(window as any, 'createImageBitmap').and.returnValue(
-        Promise.resolve(mockBitmap)
-      );
-
-      await service.preloadBatch(mockUrls);
-
-      mockUrls.forEach((url) => {
+      urls.forEach((url) => {
         expect(service.has(url)).toBe(true);
       });
+    });
+
+    it('swallows a failed preload and does not remember it', async () => {
+      spyOn(console, 'warn');
+      const broken = 'data:image/png;base64,not-an-image';
+
+      await service.preload(broken);
+
+      expect(service.has(broken)).toBe(false);
+      expect(console.warn).toHaveBeenCalled();
+    });
+
+    it('clear() forgets warmed images', async () => {
+      await service.preload(GIF);
+      service.clear();
+      expect(service.has(GIF)).toBe(false);
     });
   });
 

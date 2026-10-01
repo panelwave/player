@@ -49,6 +49,12 @@ export class ImageCacheService {
    */
   private readonly supportsImageBitmap = typeof createImageBitmap === 'function';
 
+  /** Images warmed for `<img>` rendering (see preload), least recent first. */
+  private warmed = new Map<string, HTMLImageElement>();
+
+  /** How many warmed images stay referenced (a few panels/pages ahead). */
+  private readonly WARM_LIMIT = 48;
+
   /**
    * Load an image from cache or network
    */
@@ -201,14 +207,48 @@ export class ImageCacheService {
   }
 
   /**
-   * Preload an image
+   * Preload an image for an upcoming `<img>`: loads it the way an `<img>`
+   * does (same URL, no CORS request) and decodes it, then keeps the element
+   * alive so the browser's memory cache serves the next `<img src>` with the
+   * decoded pixels — the panel appears in the frame it mounts, without the
+   * blank gap a cold load (or a fetch()/ImageBitmap copy the `<img>` never
+   * uses) leaves between autoplay panels.
    */
   async preload(url: string): Promise<void> {
-    try {
-      await this.load(url);
-    } catch (error) {
-      console.error(`Failed to preload image: ${url}`, error);
+    if (!url) return;
+    const warm = this.warmed.get(url);
+    if (warm) {
+      this.warmed.delete(url);
+      this.warmed.set(url, warm);
+      return;
     }
+    try {
+      const img = await this.warmImage(url);
+      this.warmed.set(url, img);
+      while (this.warmed.size > this.WARM_LIMIT) {
+        const oldest = this.warmed.keys().next().value;
+        if (oldest === undefined) break;
+        this.warmed.delete(oldest);
+      }
+    } catch (error) {
+      console.warn(`Failed to preload image: ${url}`, error);
+    }
+  }
+
+  /** Load and decode an image through an `Image` element. */
+  private warmImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        // decode() can reject for images the browser drops from its decode
+        // cache; the bytes are loaded either way.
+        const decoded = typeof img.decode === 'function' ? img.decode() : Promise.resolve();
+        decoded.then(() => resolve(img), () => resolve(img));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = url;
+    });
   }
 
   /**
@@ -222,7 +262,7 @@ export class ImageCacheService {
    * Check if URL is cached
    */
   has(url: string): boolean {
-    return this.cache.has(url);
+    return this.cache.has(url) || this.warmed.has(url);
   }
 
   /**
@@ -253,6 +293,7 @@ export class ImageCacheService {
     });
 
     this.cache.clear();
+    this.warmed.clear();
     this.currentMemoryUsage = 0;
   }
 

@@ -42,7 +42,10 @@
     "share_panel": "Panel teilen",
     "comments": "Kommentare",
     "comments_view": "Kommentare anzeigen",
-    "close": "Werkzeugleiste schließen"
+    "close": "Werkzeugleiste schließen",
+    "author_timing": "Autor",
+    "author_timing_use": "Timing des Autors verwenden",
+    "show": "Werkzeugleiste anzeigen"
   },
   "character_roster": {
     "title": "Charaktere",
@@ -223,5 +226,11 @@
       "message": "Dieses Panel gehört zur Vollversion.",
       "unlock": "Dieses Panel freischalten"
     }
+  },
+  "navigation": {
+    "cover": "Cover",
+    "cover_open": "Cover anzeigen",
+    "start_reading": "Cover – Lesen beginnen",
+    "chapter_n": "Kapitel {{n}}"
   }
 }

@@ -9,7 +9,6 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { PlayerShellComponent, type PanelWaveManifest } from 'player';
-import { BadgeComponent } from './badge/badge.component';
 import { readBootConfig, type ReaderBootConfig } from './boot-config';
 import { forReview } from './review-rules';
 
@@ -23,7 +22,7 @@ type State = 'empty' | 'loading' | 'error' | 'ready';
  */
 @Component({
   selector: 'pwr-root',
-  imports: [PlayerShellComponent, BadgeComponent],
+  imports: [PlayerShellComponent],
   templateUrl: './reader.component.html',
   styleUrl: './reader.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

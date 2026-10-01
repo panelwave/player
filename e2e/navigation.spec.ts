@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openPlayer, expectPanel, currentPanelLayer } from './helpers/player';
+import { openPlayer, expectPanel, currentPanelLayer, dismissCover } from './helpers/player';
 
 /**
  * Checklist: "Load and navigate sample manifest".
@@ -55,11 +55,13 @@ test.describe('load and navigate the sample manifest', () => {
     await expectPanel(page, 'p1-1');
 
     await page.getByRole('button', { name: 'Infinite Canvas' }).click();
+    await dismissCover(page, true);
     // The canvas manifest opens in canvas view: panels carry data-panel-id
     // and the current one is marked.
     await expect(page.locator('.canvas-panel.current')).toBeVisible();
 
     await page.getByRole('button', { name: 'Sample Comic' }).click();
+    await dismissCover(page, true);
     await expectPanel(page, 'p1-1');
   });
 });

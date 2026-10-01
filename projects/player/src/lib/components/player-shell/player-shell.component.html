@@ -22,8 +22,19 @@
   <!-- Main player -->
   @if (!loading && !hasError && currentPanel) {
     <div class="player-content">
+      <!-- Cover (before the first panel / page) -->
+      @if (coverVisible) {
+        <button
+          class="pw-cover"
+          type="button"
+          [attr.aria-label]="'navigation.start_reading' | translate"
+          (click)="hideCover()">
+          <img class="pw-cover-image" [src]="coverUrl" [alt]="workTitle" fetchpriority="high" />
+        </button>
+      }
+
       <!-- Viewport (panel / page view) -->
-      @if (viewMode !== 'canvas') {
+      @if (!coverVisible && viewMode !== 'canvas') {
         <pw-viewport
           [transition]="viewportTransition"
           [panel]="effectivePanel || currentPanel"
@@ -38,6 +49,7 @@
           [showOverflowArrows]="true"
           [speechEnabled]="speechEnabled"
           [preload]="manifestPreloadSettings"
+          [preloadTargets]="preloadTargets"
           [variableContext]="variableContext"
           (viewportClick)="onViewportClick()"
           (swipe)="onSwipe($event)"
@@ -50,7 +62,7 @@
       }
 
       <!-- Canvas stage (infinite-canvas view, schema 1.4) -->
-      @if (viewMode === 'canvas') {
+      @if (!coverVisible && viewMode === 'canvas') {
         <pw-canvas-stage
           [canvas]="currentChapter?.canvas || null"
           [panels]="resolvedPanels"
@@ -86,7 +98,8 @@
         [sfxEnabled]="sfxEnabled"
         [autoplayEnabled]="autoplayEnabled"
         [autoplayProgress]="autoplayProgress"
-        [secondsPerPanel]="secondsPerPanel"
+        [secondsPerPanel]="autoplaySecondsDisplay"
+        [autoplayTiming]="autoplayTiming"
         [thumbnailsVisible]="thumbnailsVisible"
         [hasAlternatives]="!!(currentPanel && currentPanel.variants && currentPanel.variants.length)"
         [hasBranches]="hasBranchesAhead"
@@ -100,6 +113,7 @@
         (toggleSfx)="onToggleSfx()"
         (toggleAutoplay)="onToggleAutoplay()"
         (secondsPerPanelChange)="onSecondsPerPanelChange($event)"
+        (autoplayTimingChange)="onAutoplayTimingChange($event)"
         (toggleThumbnails)="onToggleThumbnails()"
         (openToc)="onOpenToc()"
         (openSettings)="onOpenSettings()"
@@ -120,7 +134,11 @@
         [visible]="thumbnailsVisible"
         [chapters]="loadedManifest?.chapters || []"
         [currentChapterId]="currentChapter?.id"
-        [currentPanelId]="getCurrentPanelId()"
+        [currentPanelId]="coverVisible ? undefined : getCurrentPanelId()"
+        [currentPanelIds]="currentPagePanelIds"
+        [coverThumbnail]="coverThumbUrl"
+        [coverCurrent]="coverVisible"
+        [locale]="locale"
         [lockedPanels]="[]"
         (navigate)="onThumbnailNavigate($event)"
         (close)="onThumbnailsClose()">
@@ -134,16 +152,15 @@
         </div>
       }
 
-      <!-- PanelWave floating icon -->
+      <!-- PanelWave icon: opens the toolbar -->
       @if (!toolbarVisible) {
-        <button 
+        <button
           class="floating-icon"
           type="button"
-          aria-label="Show toolbar"
+          [attr.aria-label]="'toolbar.show' | translate"
+          [attr.title]="'toolbar.show' | translate"
           (click)="toggleToolbar()">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-          </svg>
+          <img class="floating-icon-image" [src]="panelwaveIcon" alt="" />
         </button>
       }
 
@@ -186,7 +203,10 @@
           [visible]="tocVisible"
           [manifest]="loadedManifest"
           [currentChapterId]="currentChapter?.id"
-          [currentPanelId]="getCurrentPanelId()"
+          [currentPanelId]="coverVisible ? undefined : getCurrentPanelId()"
+          [pageFormat]="activePageFormat"
+          [coverThumbnail]="coverThumbUrl"
+          [coverCurrent]="coverVisible"
           [locale]="locale"
           (navigate)="onTocNavigate($event)"
           (close)="tocVisible = false">

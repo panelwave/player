@@ -57,12 +57,31 @@ export async function stubManifest(page: Page, manifest: unknown): Promise<void>
  * Open the demo app and wait until the player shell has rendered the
  * first panel (`.player-content` only exists once the shell is ready).
  */
-export async function openPlayer(page: Page, query = ''): Promise<void> {
+export async function openPlayer(page: Page, query = '', options: { keepCover?: boolean } = {}): Promise<void> {
   await stubExternalImages(page);
   await page.goto('/' + query);
   // Generous timeout: first loads against the ng dev server can be slow
   // when several browser workers start simultaneously.
   await expect(page.locator('pw-player-shell .player-content')).toBeVisible({ timeout: 30_000 });
+  if (!options.keepCover) {
+    await dismissCover(page);
+  }
+}
+
+/**
+ * Reading from the beginning opens on the work's cover; leave it for the
+ * entry panel (a no-op for works without a cover). `expectCover` waits for
+ * it first — after a manifest switch, which reloads asynchronously.
+ */
+export async function dismissCover(page: Page, expectCover = false): Promise<void> {
+  const cover = page.locator('pw-player-shell .pw-cover');
+  if (expectCover) {
+    await expect(cover).toBeVisible({ timeout: 30_000 });
+  }
+  if (await cover.isVisible()) {
+    await cover.click();
+    await expect(cover).toHaveCount(0);
+  }
 }
 
 /**

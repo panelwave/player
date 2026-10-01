@@ -348,10 +348,10 @@ describe('PlayerShellComponent auto-advance', () => {
         expect(nav).toHaveBeenCalledTimes(1);
       });
 
-      it('keeps the dwell time in page view (several panels share the page)', () => {
+      it('keeps the dwell time in page view (several panels share the page) and turns the page', () => {
         shell.currentPanel = animated({ durationMs: 3000, keyframes: fade });
         shell.viewMode = 'page';
-        const nav = spyOn(shell, 'navigateNext').and.resolveTo();
+        const nav = spyOn(shell, 'navigateToNextPage').and.resolveTo();
         priv().startAutoplay();
         jasmine.clock().tick(1001);
         expect(nav).toHaveBeenCalledTimes(1);

@@ -277,16 +277,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: auto;
+  overflow: hidden;
   padding: 16px;
   box-sizing: border-box;
+  /* The page box below fits this content box (container query units). */
+  container-type: size;
 }
 
 .page-canvas {
   position: relative;
   width: 100%;
-  max-width: 1400px;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--pw-page-aspect, 16 / 9);
   background: #1a1a1a;
   border-radius: 4px;
   overflow: hidden;
@@ -300,9 +301,11 @@
  */
 .page-stage {
   position: relative;
-  width: 100%;
-  max-width: 1400px;
-  aspect-ratio: 16 / 9;
+  /* Largest box of the page's own aspect (its output format) that fits the
+     screen: a big-screen page fills a 4K display, a mobile page stays tall. */
+  width: min(100cqw, 100cqh * var(--pw-page-aspect, 1.7778));
+  aspect-ratio: var(--pw-page-aspect, 16 / 9);
+  flex: none;
   overflow: hidden;
   border-radius: 4px;
 }
@@ -427,21 +430,9 @@
 }
 
 /* Responsive adjustments for page view */
-@media (max-width: 1024px) {
-  .page-canvas,
-  .page-stage {
-    max-width: 900px;
-  }
-}
-
 @media (max-width: 768px) {
   .viewport-page {
     padding: 8px;
-  }
-
-  .page-canvas,
-  .page-stage {
-    max-width: 100%;
   }
 }
 

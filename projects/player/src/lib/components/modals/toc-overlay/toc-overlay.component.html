@@ -29,6 +29,17 @@
       <div class="toc-content">
         <!-- Chapter list -->
         <div class="chapter-list" role="list">
+          @if (getCoverUrl()) {
+            <div class="chapter-item cover-entry" [class.current]="coverCurrent" role="listitem">
+              <button type="button" class="cover-card" (click)="navigateToCover()">
+                <img class="cover-thumb" [src]="getCoverUrl()" alt="" loading="lazy" />
+                <span class="cover-label">{{ 'navigation.cover' | translate }}</span>
+                @if (coverCurrent) {
+                  <span class="current-badge">{{ 'toc.current' | translate }}</span>
+                }
+              </button>
+            </div>
+          }
           @for (chapter of filteredChapters; track chapter.id; let i = $index) {
             <div
               class="chapter-item"
@@ -66,10 +77,10 @@
                               type="button"
                               (click)="navigateToPanel(chapter, panelItem.id)">
                               
-                              @if (getThumbnailUrl(panelItem.panel)) {
+                              @if (getThumbnailUrl(panelItem.panel, panelItem.id)) {
                                 <div class="panel-thumbnail">
                                   <img 
-                                    [src]="getThumbnailUrl(panelItem.panel)" 
+                                    [src]="getThumbnailUrl(panelItem.panel, panelItem.id)" 
                                     [alt]="getPanelTitle(panelItem.panel, panelItem.id)"
                                     loading="lazy" />
                                   @if (isCurrentPanel(panelItem.id)) {
@@ -102,10 +113,10 @@
                           type="button"
                           (click)="navigateToPanel(chapter, panelItem.id)">
                           
-                          @if (getThumbnailUrl(panelItem.panel)) {
+                          @if (getThumbnailUrl(panelItem.panel, panelItem.id)) {
                             <div class="panel-thumbnail">
                               <img 
-                                [src]="getThumbnailUrl(panelItem.panel)" 
+                                [src]="getThumbnailUrl(panelItem.panel, panelItem.id)" 
                                 [alt]="getPanelTitle(panelItem.panel, panelItem.id)"
                                 loading="lazy" />
                               @if (isCurrentPanel(panelItem.id)) {

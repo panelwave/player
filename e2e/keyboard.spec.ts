@@ -21,10 +21,12 @@ test.describe('keyboard navigation', () => {
     await expectPanel(page, 'p1-2');
   });
 
-  test('ArrowLeft on the entry panel stays put', async ({ page }) => {
+  test('ArrowLeft on the entry panel goes back to the cover, ArrowRight returns', async ({ page }) => {
     await openPlayer(page);
     await expectPanel(page, 'p1-1');
     await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('pw-player-shell .pw-cover')).toBeVisible();
+    await page.keyboard.press('ArrowRight');
     await expectPanel(page, 'p1-1');
   });
 

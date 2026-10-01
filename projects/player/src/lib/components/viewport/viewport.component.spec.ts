@@ -1675,6 +1675,39 @@ describe('ViewportComponent', () => {
       expect(item.url).toBe(selectImageVariantForWidth(variants, width)!.src);
     });
 
+    it('warms the host look-ahead (preloadTargets) at each target’s width share, in page view too', () => {
+      const preloadService = TestBed.inject(PreloadService);
+      const manifestService = TestBed.inject(ManifestService);
+      const addSpy = spyOn(preloadService, 'add');
+      const variants = [
+        { src: 'small.jpg', w: 512, h: 288 },
+        { src: 'large.jpg', w: 2048, h: 1152 },
+      ];
+      spyOn(manifestService, 'getAsset').and.returnValue({ id: 'img', category: 'image', variants } as never);
+      const art = { layers: [{ id: 'bg', kind: 'image', assetId: 'img' }] } as unknown as Panel;
+
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.detectChanges();
+      addSpy.calls.reset();
+      const canvas = fixture.nativeElement.querySelector('.page-canvas') as HTMLElement;
+      Object.defineProperty(canvas, 'clientWidth', { configurable: true, get: () => 2000 });
+
+      component.preloadTargets = [
+        { panelId: 'n1', panel: art, widthFraction: 0.1 },
+        { panelId: 'n2', panel: art, widthFraction: 0.9 },
+      ];
+      component.ngOnChanges({
+        preloadTargets: { currentValue: component.preloadTargets, previousValue: [], firstChange: false, isFirstChange: () => false },
+      });
+
+      const dpr = window.devicePixelRatio || 1;
+      const urls = addSpy.calls.allArgs().map(([item]) => [item.panelId, item.url]);
+      expect(urls).toContain(['n1', selectImageVariantForWidth(variants, quantizeTargetWidth(200 * dpr))!.src]);
+      expect(urls).toContain(['n2', selectImageVariantForWidth(variants, quantizeTargetWidth(1800 * dpr))!.src]);
+    });
+
     it('does not preload when settings.preload.strategy is none', () => {
       const addSpy = spyOn(TestBed.inject(PreloadService), 'add');
       component.viewMode = 'panel';

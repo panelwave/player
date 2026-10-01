@@ -104,6 +104,10 @@ export function extraFromBlock(
     thumbnail = catalogSrc(lookup, imageId, THUMB_WIDTH) || undefined;
   } else if (videoId) {
     thumbnail = lookup(videoId)?.poster?.src || undefined;
+  } else if (mediaType === 'image' && asset) {
+    // An image extra linked by `url` only (how the CMS exports them) is its
+    // own thumbnail.
+    thumbnail = asset;
   }
 
   // Character sheets: names of the characters shown (unknown ids are skipped).

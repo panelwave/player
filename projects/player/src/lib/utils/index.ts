@@ -144,3 +144,18 @@ export {
   panelAnimationPlayTime,
   type CameraTransform,
 } from './camera-move';
+
+// Page view format selection (one page sequence per output format)
+export {
+  screenClassFor,
+  pageFormatOf,
+  pageFormatsOf,
+  rankPageFormats,
+  pickPageFormat,
+  pagesForFormat,
+  pageAspectRatio,
+  type ScreenClass,
+} from './page-format-utils';
+
+// Navigation thumbnails and the work's cover
+export { THUMBNAIL_WIDTH, panelThumbnailSrc, coverImageSrc } from './thumbnail-utils';

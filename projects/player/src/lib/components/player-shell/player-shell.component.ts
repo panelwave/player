@@ -15,6 +15,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   HostListener,
+  ElementRef,
   inject,
 } from '@angular/core';
 
@@ -62,8 +63,13 @@ import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
 import { chapterReadingOrder, isChapterEndPanel } from '../../utils/reading-order';
+import { pageFormatsOf, pagesForFormat, pickPageFormat } from '../../utils/page-format-utils';
+import { coverImageSrc, THUMBNAIL_WIDTH } from '../../utils/thumbnail-utils';
+import { AssetUrlService } from '../../services/asset-url.service';
+import { PreloadService } from '../../services/preload.service';
+import { PANELWAVE_ICON_DATA_URI } from '../../utils/brand';
 
-import { ViewportComponent } from '../viewport/viewport.component';
+import { ViewportComponent, type ViewportPreloadTarget } from '../viewport/viewport.component';
 import { CanvasStageComponent } from '../canvas-stage/canvas-stage.component';
 import { CanvasCameraService, CameraState } from '../../services/canvas-camera.service';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
@@ -267,9 +273,26 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   @Input() autoplay = false;
 
   /**
-   * Seconds per panel in autoplay mode
+   * Seconds per panel in autoplay mode. With the default author timing this
+   * only applies to panels without an authored `durationMs` (and the cover);
+   * once the reader picks a speed in the toolbar it applies to every panel.
    */
   @Input() secondsPerPanel = 5;
+
+  /**
+   * Page view format: 'auto' (default) shows the page sequence of the
+   * authored output format that suits the screen (phone → mobile-portrait,
+   * 4K → bigscreen-landscape, …); a format id forces that sequence when the
+   * work has pages for it.
+   */
+  @Input() pageFormat = 'auto';
+
+  /**
+   * Show the work's cover (`meta.cover` / `extras.cover`) before the first
+   * panel when reading starts at the beginning. It also heads the thumbnail
+   * strip and the table of contents.
+   */
+  @Input() showCover = true;
 
   /**
    * Force reduced motion (host override). Reduced motion is also on when the
@@ -535,6 +558,37 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   autoplayEnabled = false;
 
   /**
+   * Autoplay dwell time source: 'author' plays each panel for its authored
+   * `durationMs` (the CMS timeline), 'manual' for the reader's chosen
+   * `secondsPerPanel`.
+   */
+  autoplayTiming: 'author' | 'manual' = 'author';
+
+  /** Page format of the page sequence page view shows (null: pages carry none). */
+  activePageFormat: string | null = null;
+
+  /** Cover image (screen-sized and thumbnail), empty when the work has none. */
+  coverUrl = '';
+  coverThumbUrl = '';
+
+  /** The cover is shown in place of the story (before the first panel). */
+  coverVisible = false;
+
+  /** Upcoming panels the viewport warms (reading-order look-ahead). */
+  preloadTargets: ViewportPreloadTarget[] = [];
+
+  /** PanelWave icon on the button that opens the toolbar. */
+  readonly panelwaveIcon = PANELWAVE_ICON_DATA_URI;
+
+  /** Panels on the current page (page view): all of them are "current" in the thumbnail strip. */
+  get currentPagePanelIds(): string[] {
+    if (this.viewMode !== 'page' || !this.currentPage || this.coverVisible) {
+      return [];
+    }
+    return (this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId);
+  }
+
+  /**
    * Speech-bubble toggle state. Every bubble is implicitly subject to this
    * (schema 1.3) — per-bubble visibleIf is reserved for story logic.
    * Initialized from the manifest's settings.ui.speechDefault.
@@ -645,6 +699,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private readonly translationService = inject(TranslationService);
   private readonly canvasCamera = inject(CanvasCameraService);
   private readonly paywallService = inject(PaywallService);
+  private readonly assetUrl = inject(AssetUrlService);
+  private readonly preloadService = inject(PreloadService);
+  private readonly host = inject(ElementRef<HTMLElement>);
 
   /** ngOnInit ran: later input changes are live updates, not initial values. */
   private initialized = false;
@@ -692,6 +749,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     if (changes['viewModeOverride']) {
       this.applyViewModeOverride();
     }
+    if (changes['pageFormat']) {
+      this.updatePageFormat();
+    }
     if (changes['showToolbar']) {
       this.toolbarVisible = this.showToolbar;
     }
@@ -732,6 +792,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     this.currentChapter = this.currentPanel = this.currentPage = this.effectivePanel = undefined;
     this.viewMode = 'panel';
     this.visitedPanelIds = [];
+    this.coverVisible = false;
+    this.activePageFormat = null;
+    this.preloadTargets = [];
     this.httpEntitlement = undefined;
     this.hasError = false;
     this.errorMessage = '';
@@ -848,7 +911,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     if (!this.autoplayEnabled || this.viewMode !== 'page') {
       return;
     }
-    this.navigateToNextPage();
+    void this.navigateToNextPage();
   }
 
   /**
@@ -902,6 +965,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           chapter.pages && chapter.pages.length > 0
         );
       }
+      this.updatePageFormat();
+      this.resolveCover(loadedManifest ?? null);
 
       // Initial speech / audio / SFX toggle state: the reader's stored
       // preference wins, else the work's settings.ui.*Default (default: on).
@@ -929,7 +994,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         await this.navigateToPanel(bookmark.chapterId, bookmark.panelId);
       } else {
         await this.navigateToStart();
+        // Reading from the beginning opens on the cover.
+        this.coverVisible = this.showCover && !!this.coverUrl;
+        this.syncPanelAudio();
+        this.warmBehindCover();
       }
+      this.updatePreloadTargets();
 
       // Subscribe to state changes
       this.subscribeToStateChanges();
@@ -1116,6 +1186,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           });
           this.lastPanelChangeId = panelId || undefined;
           this.trackPanelView(panel, this.currentChapter);
+          this.updatePreloadTargets();
         }
       });
 
@@ -1189,6 +1260,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           await this.raiseGateIfBlocked(chapterId, firstPanelId);
         }
       }
+      this.afterJump();
+      this.cdr.markForCheck();
     } catch (err) {
       this.handleError(err as Error);
     }
@@ -1259,6 +1332,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       if (this.viewMode === 'canvas') {
         this.flyCameraToPanel(chapter, panelId, cameraMove);
       }
+      this.afterJump();
+      // Moves also arrive outside template events (video pass complete,
+      // stall watchdog, autoplay timers): repaint the OnPush view.
+      this.cdr.markForCheck();
       // No panelChange.emit here: setCurrentPanel() above already emitted it
       // through the currentPanel$ subscription (with variants resolved) —
       // emitting again handed every host each panel change twice.
@@ -1367,7 +1444,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     const locked =
       panel !== undefined &&
       (isLockedPanel(panel) || (panelId !== undefined && this.paywallService.isPanelLocked(panelId)));
-    this.panelAudio.syncPanel(panelId, locked ? undefined : panel, this.variableContext);
+    // Under the cover the story has not started yet: no panel audio.
+    this.panelAudio.syncPanel(panelId, locked || this.coverVisible ? undefined : panel, this.variableContext);
   }
 
   /**
@@ -1500,6 +1578,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     if (!this.currentChapter || !this.currentPanel) {
       return;
     }
+    if (this.coverVisible) {
+      this.hideCover();
+      return;
+    }
 
     this.navigationAttempt.emit({ direction: 'next' });
 
@@ -1524,6 +1606,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           result.cameraMove,
           result.action
         );
+      } else if (isChapterEndPanel(this.currentChapter, currentPanelId)) {
+        // The chapter ends here: reading continues with the next chapter.
+        const next = this.adjacentChapter(1);
+        if (next) {
+          await this.navigateToChapter(next.id);
+        }
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -1534,7 +1622,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    * Navigate to previous panel
    */
   async navigatePrevious(): Promise<void> {
-    if (!this.currentChapter || !this.currentPanel) {
+    if (!this.currentChapter || !this.currentPanel || this.coverVisible) {
       return;
     }
 
@@ -1562,6 +1650,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
           this.flowEngine.getDefaultCameraMove(this.manifestService.getManifest()?.settings)
         );
         await this.navigateToPanel(this.currentChapter.id, previousPanels[0], transition, cameraMove);
+      } else if (this.isFirstChapter(this.currentChapter)) {
+        // Before the first panel comes the cover.
+        this.showCoverPage();
       }
     } catch (err) {
       this.handleError(err as Error);
@@ -1681,12 +1772,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       this.videoSequencer.reset();
     }
 
+    this.updatePreloadTargets();
+
     // Re-arm autoplay for the new view mode (video panels vs wall clock).
     if (this.autoplayEnabled) {
       this.startAutoplay();
     }
-
-    console.log('View mode:', this.viewMode);
   }
 
   /** Land the canvas camera on the current panel (entering canvas view). */
@@ -1890,12 +1981,33 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
 
   onSecondsPerPanelChange(seconds: number): void {
     this.secondsPerPanel = seconds;
+    // A speed the reader picks replaces the author's timing.
+    this.autoplayTiming = 'manual';
 
     // Restart autoplay if active to apply new timing
     if (this.autoplayEnabled) {
       this.stopAutoplay();
       this.startAutoplay();
     }
+  }
+
+  /** Toolbar: back to the author's timing ('author') or the reader's speed ('manual'). */
+  onAutoplayTimingChange(timing: 'author' | 'manual'): void {
+    this.autoplayTiming = timing;
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
+    }
+  }
+
+  /**
+   * Seconds shown next to the autoplay controls: the reader's speed, or with
+   * the author's timing the current panel's (page's) authored dwell time.
+   */
+  get autoplaySecondsDisplay(): number {
+    if (this.autoplayTiming === 'manual' || this.coverVisible) {
+      return this.secondsPerPanel;
+    }
+    return Math.round(this.currentDwellMs() / 100) / 10;
   }
 
   onToggleThumbnails(): void {
@@ -2116,8 +2228,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Handle ToC navigation
    */
-  onTocNavigate(target: { chapterId: string; panelId?: string }): void {
+  onTocNavigate(target: { chapterId: string; panelId?: string; cover?: boolean }): void {
     this.tocVisible = false;
+    if (target.cover) {
+      this.showCoverPage();
+      return;
+    }
     if (target.panelId) {
       this.navigateToPanel(target.chapterId, target.panelId);
     } else {
@@ -2128,8 +2244,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Handle thumbnail navigation
    */
-  onThumbnailNavigate(target: { chapterId: string; panelId: string }): void {
-    this.navigateToPanel(target.chapterId, target.panelId);
+  onThumbnailNavigate(target: { chapterId: string; panelId: string; cover?: boolean }): void {
+    if (target.cover) {
+      this.showCoverPage();
+      return;
+    }
+    // In page view the page showing the panel opens (see afterJump).
+    void this.navigateToPanel(target.chapterId, target.panelId);
   }
 
   /**
@@ -2172,7 +2293,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       case 'ArrowRight':
         event.preventDefault();
         if (this.viewMode === 'page') {
-          this.navigateToNextPage();
+          void this.navigateToNextPage();
         } else {
           this.navigateNext();
         }
@@ -2181,7 +2302,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       case 'ArrowLeft':
         event.preventDefault();
         if (this.viewMode === 'page') {
-          this.navigateToPreviousPage();
+          void this.navigateToPreviousPage();
         } else {
           this.navigatePrevious();
         }
@@ -2281,14 +2402,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     if (direction === 'left') {
       // Swipe left = navigate forward
       if (this.viewMode === 'page') {
-        this.navigateToNextPage();
+        void this.navigateToNextPage();
       } else {
         this.navigateNext();
       }
     } else if (direction === 'right') {
       // Swipe right = navigate backward
       if (this.viewMode === 'page') {
-        this.navigateToPreviousPage();
+        void this.navigateToPreviousPage();
       } else {
         this.navigatePrevious();
       }
@@ -2312,14 +2433,19 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private startAutoplay(): void {
     this.stopAutoplay(); // Clear any existing timer / pending media waits
 
+    if (this.coverVisible) {
+      // The cover stays for the reader's seconds-per-panel, then the story starts.
+      this.armAutoplayTimer(this.secondsPerPanel * 1000);
+      return;
+    }
+
     if (this.viewMode === 'panel') {
       const videoIds = this.onViewVideoLayerIds(this.effectivePanel ?? this.currentPanel);
       if (videoIds.length > 0) {
         // Media-event driven: wait for every on-view video's pass (the
         // longest pass wins). Progress display uses durationMs as estimate.
         this.pendingVideoPasses = new Set(videoIds);
-        this.autoplayDuration =
-          (this.effectivePanel ?? this.currentPanel)?.durationMs ?? this.secondsPerPanel * 1000;
+        this.autoplayDuration = this.panelDwellMs(this.effectivePanel ?? this.currentPanel);
         this.autoplayProgress = 0;
         this.autoplayStartTime = Date.now();
         this.startAutoplayProgress();
@@ -2332,8 +2458,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
 
-    // Use panel-specific durationMs if available, otherwise use global setting (in seconds)
-    let durationMs = (this.effectivePanel ?? this.currentPanel)?.durationMs ?? (this.secondsPerPanel * 1000);
+    // Author timing: the panel's durationMs from the CMS timeline (page view:
+    // the sum over the page's panels); the reader's speed when chosen.
+    let durationMs = this.currentDwellMs();
 
     // A panel animation (keyframes / camera move) is never cut short: the
     // panel stays at least until a non-looping animation has played. Page view
@@ -2342,6 +2469,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       durationMs = Math.max(durationMs, panelAnimationPlayTime((this.effectivePanel ?? this.currentPanel)?.animations));
     }
 
+    this.armAutoplayTimer(durationMs);
+  }
+
+  /** Run the wall-clock autoplay step: show progress, advance after `durationMs`. */
+  private armAutoplayTimer(durationMs: number): void {
     // Ensure we have a valid duration
     if (!durationMs || durationMs <= 0) {
       console.warn('Invalid autoplay duration, using default 5s');
@@ -2358,15 +2490,76 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     this.autoplayTimer = setTimeout(() => {
       // Continue autoplay if still enabled
       if (this.autoplayEnabled) {
-        this.navigateNext();
-        // Small delay to let panel change complete, then restart
-        setTimeout(() => {
-          if (this.autoplayEnabled) {
+        void this.autoplayAdvance().then(() => {
+          // Re-arm for whatever is shown now (also when nothing moved, e.g.
+          // a choice waits at a branch).
+          if (this.autoplayEnabled && !this.autoplayTimer && this.pendingVideoPasses.size === 0) {
             this.startAutoplay();
           }
-        }, 10);
+          this.cdr.markForCheck();
+        });
       }
     }, this.autoplayDuration);
+  }
+
+  /** One autoplay step: leave the cover, turn the page (page view) or go to the next panel. */
+  private async autoplayAdvance(): Promise<void> {
+    this.autoplayTimer = undefined;
+    if (this.coverVisible) {
+      this.hideCover();
+      return;
+    }
+    const panelBefore = this.currentPanel;
+    const pageBefore = this.currentPage;
+    if (this.viewMode === 'page') {
+      await this.navigateToNextPage();
+    } else {
+      await this.navigateNext();
+    }
+    // The last panel / page of the work: autoplay is done.
+    if (this.currentPanel === panelBefore && this.currentPage === pageBefore && this.atEndOfWork()) {
+      this.autoplayEnabled = false;
+      this.stopAutoplay();
+    }
+  }
+
+  /** The reader is on the work's last panel (page view: its last page). */
+  private atEndOfWork(): boolean {
+    const chapter = this.currentChapter;
+    const panelId = this.getCurrentPanelId();
+    if (!chapter || !panelId || this.adjacentChapter(1)) {
+      return false;
+    }
+    if (this.viewMode === 'page') {
+      const pages = this.chapterPages(chapter);
+      return !!this.currentPage && pages[pages.length - 1]?.id === this.currentPage.id;
+    }
+    return isChapterEndPanel(chapter, panelId);
+  }
+
+  /** Dwell time of one panel: authored `durationMs`, or the reader's seconds per panel. */
+  private panelDwellMs(panel: Panel | undefined): number {
+    const fallback = this.secondsPerPanel * 1000;
+    if (this.autoplayTiming === 'manual') {
+      return fallback;
+    }
+    const authored = panel?.durationMs;
+    return typeof authored === 'number' && authored > 0 ? authored : fallback;
+  }
+
+  /** Dwell time of what is on screen: the current panel, or every panel of the current page. */
+  private currentDwellMs(): number {
+    if (this.viewMode === 'page' && this.currentPage && this.currentChapter) {
+      const ids = this.currentPage.readingOrder?.length
+        ? this.currentPage.readingOrder
+        : (this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId);
+      const total = ids.reduce(
+        (sum, id) => sum + this.panelDwellMs(this.resolvedPanels[id] ?? this.currentChapter?.panels[id]),
+        0
+      );
+      return total > 0 ? total : this.secondsPerPanel * 1000;
+    }
+    return this.panelDwellMs(this.effectivePanel ?? this.currentPanel);
   }
 
   /**
@@ -2513,6 +2706,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       const elapsed = Date.now() - this.autoplayStartTime;
       const progress = Math.min(100, (elapsed / this.autoplayDuration) * 100);
       this.autoplayProgress = progress;
+      this.cdr.markForCheck();
     }, 50); // Update every 50ms for smooth animation
   }
 
@@ -2527,52 +2721,305 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
-   * Find the page that contains the current panel
+   * The page (of the active format's page sequence) that shows a panel —
+   * by default the current one. A panel the sequence leaves out lands on the
+   * page closest before it in reading order.
    */
-  private findPageContainingPanel(): Page | undefined {
-    if (!this.currentChapter) return undefined;
+  private findPageContainingPanel(
+    panelId: string | undefined = this.getCurrentPanelId(),
+    chapter: Chapter | undefined = this.currentChapter
+  ): Page | undefined {
+    if (!chapter || !panelId) return undefined;
 
-    const currentPanelId = this.getCurrentPanelId();
-    if (!currentPanelId) return undefined;
-
-    // Search through pages in the current chapter
-    const pages = this.currentChapter.pages || [];
-    for (const page of pages) {
-      // Check if this page's placements include the current panel
-      if (page.layout?.placements?.some(p => p.panelId === currentPanelId)) {
-        return page;
-      }
+    const pages = this.chapterPages(chapter);
+    const direct = pages.find((page) => page.layout?.placements?.some((p) => p.panelId === panelId));
+    if (direct || pages.length === 0) {
+      return direct;
     }
 
-    return undefined;
+    const order = chapterReadingOrder(chapter);
+    const target = order.indexOf(panelId);
+    let best: Page | undefined;
+    let bestIndex = -1;
+    for (const page of pages) {
+      const first = Math.min(
+        ...(page.layout?.placements ?? []).map((p) => order.indexOf(p.panelId)).filter((i) => i >= 0)
+      );
+      if (Number.isFinite(first) && first <= target && first > bestIndex) {
+        best = page;
+        bestIndex = first;
+      }
+    }
+    return best ?? pages[0];
+  }
+
+  /** The chapter's pages in the active page format (legacy pages without a format included). */
+  chapterPages(chapter: Chapter | undefined): Page[] {
+    return pagesForFormat(chapter?.pages, this.activePageFormat);
   }
 
   /**
-   * Navigate to next page (in page view mode)
+   * Pick the page sequence for the current screen (or the host's
+   * `pageFormat`). In page view a change of format re-opens the page that
+   * shows the current panel in the new sequence.
    */
-  navigateToNextPage(): void {
-    if (!this.currentChapter?.pages || !this.currentPage) return;
-
-    const pages = this.currentChapter.pages;
-    const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
-
-    if (currentIndex === -1 || currentIndex >= pages.length - 1) {
-      console.log('Already at last page');
+  private updatePageFormat(): void {
+    const chapters = this.manifestService.getManifest()?.chapters ?? [];
+    const formats = pageFormatsOf(chapters.flatMap((chapter) => chapter.pages ?? []));
+    // The player's own box when it has one (an inline host has none), else the window.
+    const element = this.host.nativeElement as HTMLElement;
+    const win = typeof window !== 'undefined' ? window : undefined;
+    const sized = element.clientWidth > 0 && element.clientHeight > 0;
+    const width = sized ? element.clientWidth : win?.innerWidth || 0;
+    const height = sized ? element.clientHeight : win?.innerHeight || 0;
+    const next = pickPageFormat(
+      formats,
+      width,
+      height,
+      win?.devicePixelRatio || 1,
+      this.pageFormat && this.pageFormat !== 'auto' ? this.pageFormat : null
+    );
+    if (next === this.activePageFormat) {
       return;
     }
+    this.activePageFormat = next;
+    if (this.viewMode === 'page') {
+      const page = this.findPageContainingPanel();
+      if (page && page.id !== this.currentPage?.id) {
+        this.currentPage = page;
+        this.onPageChanged();
+      }
+    }
+    this.updatePreloadTargets();
+    this.cdr.markForCheck();
+  }
 
-    // Move to next page
-    this.currentPage = pages[currentIndex + 1];
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updatePageFormat();
+  }
 
-    // Update current panel to first panel in reading order
-    if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
-      const firstPanelId = this.currentPage.readingOrder[0];
+  /**
+   * After a jump to a panel (TOC, thumbnails, chapter change, next/previous):
+   * the cover gives way, page view opens the page showing the panel, and the
+   * look-ahead follows.
+   */
+  private afterJump(): void {
+    if (this.coverVisible) {
+      this.coverVisible = false;
+      this.syncPanelAudio();
+    }
+    if (this.viewMode === 'page') {
+      const page = this.findPageContainingPanel();
+      if (page && page.id !== this.currentPage?.id) {
+        this.currentPage = page;
+        this.onPageChanged();
+      }
+    }
+    this.updatePreloadTargets();
+  }
+
+  /** The chapter before (-1) or after (+1) the current one. */
+  private adjacentChapter(direction: 1 | -1): Chapter | undefined {
+    const chapters = this.manifestService.getManifest()?.chapters ?? [];
+    const index = chapters.findIndex((chapter) => chapter.id === this.currentChapter?.id);
+    return index < 0 ? undefined : chapters[index + direction];
+  }
+
+  private isFirstChapter(chapter: Chapter): boolean {
+    return this.manifestService.getManifest()?.chapters?.[0]?.id === chapter.id;
+  }
+
+  /** The panel a page starts with: first in its reading order, else its first placement. */
+  private firstPanelIdOf(page: Page): string | undefined {
+    return page.readingOrder?.[0] ?? page.layout?.placements?.[0]?.panelId;
+  }
+
+  /** Show a page of the current chapter, its first panel becoming the current one. */
+  private showPage(page: Page): void {
+    this.currentPage = page;
+    const firstPanelId = this.firstPanelIdOf(page);
+    if (firstPanelId && this.currentChapter?.panels[firstPanelId]) {
       this.currentPanel = this.currentChapter.panels[firstPanelId];
       this.refreshResolvedPanels();
     }
-
     this.onPageChanged();
-    console.log('Navigated to next page:', this.currentPage.id);
+    this.updatePreloadTargets();
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Page view across a chapter boundary: the first (+1) or last (-1) page of
+   * the adjacent chapter. The move goes through the panel gates like any
+   * other; a blocked move stays put.
+   */
+  private async turnToAdjacentChapter(direction: 1 | -1): Promise<boolean> {
+    const chapter = this.adjacentChapter(direction);
+    const pages = this.chapterPages(chapter);
+    if (!chapter || pages.length === 0) {
+      return false;
+    }
+    const page = direction > 0 ? pages[0] : pages[pages.length - 1];
+    const panelId = this.firstPanelIdOf(page);
+    if (!panelId) {
+      return false;
+    }
+    await this.navigateToPanel(chapter.id, panelId);
+    if (this.currentChapter?.id !== chapter.id) {
+      return false;
+    }
+    this.chapterChange.emit(chapter);
+    if (this.currentPage?.id !== page.id) {
+      this.currentPage = page;
+      this.onPageChanged();
+    }
+    return true;
+  }
+
+  /**
+   * Navigate to next page (in page view mode); past the chapter's last page
+   * to the next chapter. From the cover, the story starts.
+   */
+  async navigateToNextPage(): Promise<void> {
+    if (this.coverVisible) {
+      this.hideCover();
+      return;
+    }
+    if (!this.currentChapter || !this.currentPage) return;
+
+    const pages = this.chapterPages(this.currentChapter);
+    const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
+
+    if (currentIndex >= 0 && currentIndex < pages.length - 1) {
+      this.showPage(pages[currentIndex + 1]);
+      return;
+    }
+    await this.turnToAdjacentChapter(1);
+  }
+
+  /** Make the cover visible (thumbnail strip, TOC, back from the first panel/page). */
+  showCoverPage(): void {
+    if (!this.coverUrl) {
+      return;
+    }
+    this.coverVisible = true;
+    this.videoSequencer.reset();
+    this.syncPanelAudio();
+    this.warmBehindCover();
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Leave the cover: the story starts at the current (first) panel or page. */
+  hideCover(): void {
+    if (!this.coverVisible) {
+      return;
+    }
+    this.coverVisible = false;
+    this.syncPanelAudio();
+    if (this.viewMode === 'page') {
+      this.videoSequencer.start();
+      this.promptAgeGateForPage();
+    }
+    if (this.autoplayEnabled) {
+      this.startAutoplay();
+    }
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * While the cover is up the viewport is not mounted, so its look-ahead
+   * cannot warm what comes first. Warm it here: the first panel (page view:
+   * the current page's panels) at the rendition a freshly mounted panel
+   * starts with (the catalog's primary variant, before layout knows its
+   * width) — the story then appears without a load gap.
+   */
+  private warmBehindCover(): void {
+    if (!this.coverVisible || !this.currentChapter) {
+      return;
+    }
+    const ids =
+      this.viewMode === 'page' && this.currentPage
+        ? (this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId)
+        : [this.getCurrentPanelId()].filter((id): id is string => !!id);
+    for (const panelId of ids) {
+      const panel = this.resolvedPanels[panelId] ?? this.currentChapter.panels[panelId];
+      for (const layer of panel?.layers ?? []) {
+        if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
+          continue;
+        }
+        const src = this.manifestService.getAsset(layer.assetId)?.variants?.[0]?.src;
+        if (src) {
+          this.preloadService.add({ id: src, type: 'image', url: this.assetUrl.resolve(src, 'image'), priority: 'high', panelId });
+        }
+      }
+    }
+  }
+
+  /** Resolve the cover image from `meta.cover` / `extras.cover` through the asset catalog. */
+  private resolveCover(manifest: PanelWaveManifest | null): void {
+    const lookup = (assetId: string): CatalogLike | null => this.manifestService.getAsset(assetId) as CatalogLike | null;
+    const win = typeof window !== 'undefined' ? window : undefined;
+    const screenWidth = (win?.innerWidth || 1280) * (win?.devicePixelRatio || 1);
+    this.coverUrl = this.assetUrl.resolve(coverImageSrc(manifest, lookup, screenWidth), 'image');
+    this.coverThumbUrl = this.assetUrl.resolve(coverImageSrc(manifest, lookup, THUMBNAIL_WIDTH), 'image');
+  }
+
+  /** The work's title in the current locale (cover alt text). */
+  get workTitle(): string {
+    return this.localizedText(this.loadedManifest?.meta?.title);
+  }
+
+  /**
+   * Reading-order look-ahead for the viewport's preloader: the next panels
+   * (panel view) or the next pages' panels (page view), crossing into the
+   * next chapter, so autoplay and paging never wait for artwork.
+   */
+  private updatePreloadTargets(): void {
+    const chapter = this.currentChapter;
+    if (!chapter || this.viewMode === 'canvas') {
+      this.preloadTargets = [];
+      return;
+    }
+    const ahead = Math.max(1, this.manifestService.getManifest()?.settings?.preload?.panelsAhead ?? 3);
+    const targets: ViewportPreloadTarget[] = [];
+    const panelOf = (ch: Chapter, id: string): Panel | undefined =>
+      ch === this.currentChapter ? this.resolvedPanels[id] ?? ch.panels[id] : ch.panels[id];
+
+    if (this.viewMode === 'page') {
+      const pages: { chapter: Chapter; page: Page }[] = [];
+      const own = this.chapterPages(chapter);
+      const index = this.currentPage ? own.findIndex((page) => page.id === this.currentPage!.id) : -1;
+      own.slice(index + 1, index + 3).forEach((page) => pages.push({ chapter, page }));
+      const next = this.adjacentChapter(1);
+      if (pages.length < 2 && next) {
+        this.chapterPages(next).slice(0, 2 - pages.length).forEach((page) => pages.push({ chapter: next, page }));
+      }
+      for (const { chapter: ch, page } of pages) {
+        for (const placement of page.layout?.placements ?? []) {
+          const panel = panelOf(ch, placement.panelId);
+          if (panel) targets.push({ panelId: placement.panelId, panel, widthFraction: placement.w });
+        }
+      }
+    } else {
+      const order = chapterReadingOrder(chapter);
+      const currentId = this.getCurrentPanelId();
+      const index = currentId ? order.indexOf(currentId) : -1;
+      order.slice(index + 1, index + 1 + ahead).forEach((id) => {
+        const panel = panelOf(chapter, id);
+        if (panel) targets.push({ panelId: id, panel });
+      });
+      const next = this.adjacentChapter(1);
+      if (targets.length < ahead && next) {
+        chapterReadingOrder(next).slice(0, ahead - targets.length).forEach((id) => {
+          const panel = next.panels[id];
+          if (panel) targets.push({ panelId: id, panel });
+        });
+      }
+    }
+    this.preloadTargets = targets;
   }
 
   /**
@@ -2653,31 +3100,25 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
-   * Navigate to previous page (in page view mode)
+   * Navigate to previous page (in page view mode); before the chapter's
+   * first page to the previous chapter's last page, before the work's first
+   * page to the cover.
    */
-  navigateToPreviousPage(): void {
-    if (!this.currentChapter?.pages || !this.currentPage) return;
+  async navigateToPreviousPage(): Promise<void> {
+    if (this.coverVisible || !this.currentChapter || !this.currentPage) return;
 
-    const pages = this.currentChapter.pages;
+    const pages = this.chapterPages(this.currentChapter);
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
 
-    if (currentIndex <= 0) {
-      console.log('Already at first page');
+    if (currentIndex > 0) {
+      this.showPage(pages[currentIndex - 1]);
       return;
     }
-
-    // Move to previous page
-    this.currentPage = pages[currentIndex - 1];
-
-    // Update current panel to first panel in reading order
-    if (this.currentPage.readingOrder && this.currentPage.readingOrder.length > 0) {
-      const firstPanelId = this.currentPage.readingOrder[0];
-      this.currentPanel = this.currentChapter.panels[firstPanelId];
-      this.refreshResolvedPanels();
+    if (this.isFirstChapter(this.currentChapter)) {
+      this.showCoverPage();
+      return;
     }
-
-    this.onPageChanged();
-    console.log('Navigated to previous page:', this.currentPage.id);
+    await this.turnToAdjacentChapter(-1);
   }
 
   // ============================================================================

@@ -68,9 +68,16 @@ export class ToolbarComponent {
   @Input() autoplayEnabled = false;
 
   /**
-   * Seconds per panel (autoplay)
+   * Seconds per panel (autoplay). With the author's timing this is the
+   * current panel's (page's) authored dwell time, shown for orientation.
    */
   @Input() secondsPerPanel = 5;
+
+  /**
+   * Autoplay timing source: 'author' (each panel's durationMs from the CMS
+   * timeline) or 'manual' (the reader's seconds per panel).
+   */
+  @Input() autoplayTiming: 'author' | 'manual' = 'manual';
 
   /**
    * Autoplay progress (0-100)
@@ -146,6 +153,12 @@ export class ToolbarComponent {
    * Seconds per panel changed
    */
   @Output() secondsPerPanelChange = new EventEmitter<number>();
+
+  /**
+   * Switch the autoplay timing source (the "Author" button restores the
+   * author's timing after the reader picked a speed).
+   */
+  @Output() autoplayTimingChange = new EventEmitter<'author' | 'manual'>();
 
   /**
    * Toggle thumbnails
@@ -225,8 +238,16 @@ export class ToolbarComponent {
    * Adjust seconds per panel
    */
   adjustSecondsPerPanel(delta: number): void {
-    const newValue = Math.max(0.5, Math.min(120, this.secondsPerPanel + delta));
+    // From the author's timing, the reader's speed starts at the current
+    // panel's authored time (whole seconds).
+    const base = this.autoplayTiming === 'author' ? Math.round(this.secondsPerPanel) : this.secondsPerPanel;
+    const newValue = Math.max(0.5, Math.min(120, base + delta));
     this.secondsPerPanelChange.emit(newValue);
+  }
+
+  /** Go back to the author's panel timing. */
+  useAuthorTiming(): void {
+    this.autoplayTimingChange.emit('author');
   }
 
   /**

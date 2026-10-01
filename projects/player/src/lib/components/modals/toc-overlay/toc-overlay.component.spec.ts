@@ -5,6 +5,7 @@ import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import type { Chapter, Page, Panel, PanelWaveManifest } from '../../../types';
 import { TocOverlayComponent, type TocNavigationTarget } from './toc-overlay.component';
 import { AssetUrlService } from '../../../services/asset-url.service';
+import { ManifestService } from '../../../services/manifest.service';
 
 function page(id: string, readingOrder: string[], title?: Record<string, string>): Page {
   return { id, title, readingOrder, layout: { format: 'mobile-portrait' } } as Page;
@@ -63,7 +64,11 @@ describe('TocOverlayComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TocOverlayComponent],
-      providers: [provideTranslateService(), { provide: AssetUrlService, useValue: assetUrlStub }],
+      providers: [
+        provideTranslateService(),
+        { provide: AssetUrlService, useValue: assetUrlStub },
+        { provide: ManifestService, useValue: { getAsset: () => null } },
+      ],
     }).compileComponents();
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', { toc: { title: 'Contents', current: 'Now reading', no_results: 'Nothing for "{{query}}"' } });

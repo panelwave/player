@@ -8,6 +8,26 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- Page view picks the page sequence by screen: a chapter carries one page
+  sequence per output format, and the player shows the authored format that
+  suits the screen (`bigscreen-landscape` on a 4K display, `mobile-portrait`
+  on a phone, …), re-picking on resize. New input `pageFormat` forces one.
+  The page box takes its format's aspect ratio and fills the screen (was a
+  fixed 16:9 box of at most 1400 px for every format). Paging continues into
+  the next / previous chapter.
+- Cover: reading from the beginning opens on the work's cover (`meta.cover`,
+  else `extras.cover`); next leaves it, previous on the first panel or page
+  returns to it. It heads the thumbnail strip and the table of contents. New
+  input `showCover` (default `true`).
+- Autoplay plays each panel for its authored `durationMs` (page view: the sum
+  over the page's panels). The toolbar marks the author's timing; picking a
+  speed switches to the reader's seconds per panel, an "Author" button goes
+  back. Autoplay stops at the end of the work.
+- Thumbnail strip and table of contents show each panel's artwork (a small
+  catalog rendition), in reading order; the strip separates chapters with a
+  title card. Utilities `panelThumbnailSrc`, `coverImageSrc`,
+  `pickPageFormat`, `pagesForFormat` and friends are exported.
+- The button that opens the toolbar shows the PanelWave icon.
 - Format 1.7 support: `x-` extension properties are typed on `Panel` and extras blocks (`ExtraItem`); empty graph edges follow reading order (see the reading-order entry below).
 - Locked-panel placeholder for manifests that mark panels `"x-locked": true` (server-side paywall views).
 - Page view: a locked panel's placeholder is a button (click, Enter, Space;
@@ -158,6 +178,25 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Autoplay no longer stalls on video panels: when a video's pass ended, the
+  next panel was selected but not painted (OnPush), so it showed late or not
+  at all. Every navigation now marks the view for check, also the autoplay
+  progress bar.
+- Preloading warms the art the reader sees next: the next panels in reading
+  order (also into the next chapter) or the next pages' panels, at the
+  rendition each will mount with, and the first panel while the cover is up.
+  Images are warmed through decoded `Image` elements (same request as the
+  `<img>`), not `fetch()` + `ImageBitmap`, which the `<img>` never reused
+  and which failed outright on storage without CORS headers.
+- Page view: a thumbnail or TOC entry opens the page that shows the panel
+  (nothing happened before).
+- The TOC lists only the pages of the format on screen (it listed every
+  format's pages).
+- Extras exported with a direct `url` only (as the CMS does) show that image
+  as their thumbnail.
+- Player chrome uses the UI font (Barlow, as in the CMS, overridable with
+  `--pw-font-ui`): form controls now inherit it instead of the system font.
+  Share buttons have a light text color (the 𝕏 glyph rendered black).
 - `PreloadService` no longer preloads the assets of a panel the paywall locks
   for the reader (neighbour warming in panel and canvas view fetched gated
   artwork ahead of the gate). Items of panel ids the paywall does not know,

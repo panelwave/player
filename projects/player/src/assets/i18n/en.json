@@ -42,7 +42,10 @@
     "share_panel": "Share this panel",
     "comments": "Comments",
     "comments_view": "View comments",
-    "close": "Close toolbar"
+    "close": "Close toolbar",
+    "author_timing": "Author",
+    "author_timing_use": "Use the author's panel timing",
+    "show": "Show toolbar"
   },
   "character_roster": {
     "title": "Characters",
@@ -223,5 +226,11 @@
       "message": "This panel is part of the full edition.",
       "unlock": "Unlock this panel"
     }
+  },
+  "navigation": {
+    "cover": "Cover",
+    "cover_open": "Show the cover",
+    "start_reading": "Cover – start reading",
+    "chapter_n": "Chapter {{n}}"
   }
 }

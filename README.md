@@ -290,7 +290,10 @@ families) ships with the package under `assets/fonts/balloon/`. Include the
 to the css file, so both work).
 
 **Ames Pro** (Blambot) is a **commercial** font and is *not* included in this
-MIT package. If your works use it, license it from [blambot.com](https://blambot.com)
+MIT package, nor in works exported from the PanelWave CMS. PanelWave's own
+players (the CMS preview and read.panelwave.org) load it under PanelWave's
+license, which covers PanelWave's domains only. If you host a work yourself
+and its balloons use Ames, license it from [blambot.com](https://blambot.com)
 and add your own `@font-face` for `'Ames Italic'` / `'Ames Bold Italic'` /
 `'Ames Regular'`. Without it, balloons fall back to Comic Neue (the default
 stack is `'Ames Italic', 'Comic Neue', sans-serif`). See
@@ -408,7 +411,7 @@ prettier --write .
 
 ### Reader app
 
-`projects/reader` is the full-window reader behind read.panelwave.org: a small Angular app that fetches a manifest and mounts `<pw-player-shell>` plus a "Made with PanelWave" badge. In production a server injects `window.__PW_READER__ = {manifestUrl, embed, locale, mode}` into `index.html` (and renders `<title>` itself). Gating is the shell's own: `paywall.rules` and `"x-locked": true` stubs are evaluated for an anonymous reader, so paywall and age gates work as in the player. `mode: 'review'` (review links) cuts every paywall rule down to its age part before handing the manifest to the shell: purchase and subscription gates disappear, age gates stay (the age is never pre-verified). For local development use the query fallback:
+`projects/reader` is the full-window reader behind read.panelwave.org: a small Angular app that fetches a manifest and mounts `<pw-player-shell>` (whose PanelWave icon, bottom right, opens the toolbar). In production a server injects `window.__PW_READER__ = {manifestUrl, embed, locale, mode}` into `index.html` (and renders `<title>` itself). Gating is the shell's own: `paywall.rules` and `"x-locked": true` stubs are evaluated for an anonymous reader, so paywall and age gates work as in the player. `mode: 'review'` (review links) cuts every paywall rule down to its age part before handing the manifest to the shell: purchase and subscription gates disappear, age gates stay (the age is never pre-verified). For local development use the query fallback:
 
 ```bash
 npx ng build player            # the reader imports the built library
@@ -660,7 +663,9 @@ constructor(private playerState: PlayerStateService) {
 | `initialChapterId` | `string` | — | Start at a specific chapter |
 | `initialPanelId` | `string` | — | Start at a specific panel |
 | `autoplay` | `boolean` | `false` | Start auto-advancing (the reader's toolbar toggle takes over afterwards) |
-| `secondsPerPanel` | `number` | `5` | Autoplay interval |
+| `secondsPerPanel` | `number` | `5` | Autoplay time for panels without an authored `durationMs` (and the cover). Autoplay plays each panel for its `durationMs` from the CMS timeline until the reader picks a speed in the toolbar; then this value applies to every panel |
+| `pageFormat` | `'auto' \| OutputFormat` | `'auto'` | Page view shows one page sequence per output format: `'auto'` picks the authored format that suits the screen (phone → `mobile-portrait`, 4K → `bigscreen-landscape`, …) and re-picks on resize; a format id forces that sequence when the work has pages for it |
+| `showCover` | `boolean` | `true` | Open on the work's cover (`meta.cover`, else `extras.cover`) when reading starts at the beginning; the cover also heads the thumbnail strip and the table of contents |
 | `reducedMotion` | `boolean` | `false` | Force reduced motion |
 | `showToolbar` | `boolean` | `false` | Show the bottom toolbar |
 | `viewModeOverride` | `'auto' \| 'panel' \| 'canvas'` | `'auto'` | Force panel or infinite-canvas view |

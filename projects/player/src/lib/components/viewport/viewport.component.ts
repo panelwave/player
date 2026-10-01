@@ -38,6 +38,7 @@ import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
+import { pageAspectRatio } from '../../utils/page-format-utils';
 
 /**
  * Performance metrics interface
@@ -56,6 +57,14 @@ export interface PerformanceMetrics {
  * (mirrors the canvas stage's camera-settle debounce) — never per frame.
  */
 const VARIANT_SETTLE_MS = 180;
+
+/** A panel the viewport should warm ahead of time (see `preloadTargets`). */
+export interface ViewportPreloadTarget {
+  panelId: string;
+  panel: Panel;
+  /** Share of the panel container (panel view) or page canvas (page view) width it renders at; default 1. */
+  widthFraction?: number;
+}
 
 /**
  * Viewport Component
@@ -94,6 +103,15 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Panels map for page view lookup
    */
   @Input() panels: Record<string, Panel> = {};
+
+  /**
+   * Panels the reader is about to see (the host's reading-order look-ahead:
+   * the next panels, or the next page's panels in page view — possibly in
+   * the next chapter). Their artwork is warmed at the width each will render
+   * at: `widthFraction` of the panel container (panel view) or of the page
+   * canvas (page view).
+   */
+  @Input() preloadTargets: readonly ViewportPreloadTarget[] = [];
 
   /**
    * View mode (panel or page)
@@ -431,6 +449,8 @@ export class ViewportComponent implements OnChanges, OnDestroy {
       this.scheduleVariantSettle();
     } else if (changes['zoom']) {
       this.scheduleVariantSettle();
+    } else if (changes['preloadTargets']) {
+      this.preloadOutEdgeTargets();
     }
   }
 
@@ -558,53 +578,70 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Warm the current panel's out-edge target panels' image variants at the
-   * current panel-view target width (same pattern as the canvas stage's
-   * preloadNeighbors, minus its spatial neighbors). Honors settings.preload:
+   * Warm the artwork the reader sees next: the current panel's out-edge
+   * targets (panel view) plus the host's `preloadTargets` look-ahead (both
+   * views), at the variant width each panel will render at, so the next
+   * panel or page paints the moment it mounts. Honors settings.preload:
    * strategy `none` disables, panelsAhead caps the edge count, maxConcurrent
    * is passed through to the preload service.
    */
   private preloadOutEdgeTargets(): void {
-    if (this.viewMode !== 'panel' || this.preload?.strategy === 'none') {
-      return;
-    }
-    const currentId = this.currentPanelId;
-    if (!currentId) {
+    if (this.preload?.strategy === 'none' || (this.viewMode !== 'panel' && this.viewMode !== 'page')) {
       return;
     }
     if (this.preload?.maxConcurrent) {
       this.preloadService.setMaxConcurrent(this.preload.maxConcurrent);
     }
-    const panelsAhead = this.preload?.panelsAhead ?? 2;
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    const targets: { panelId: string; panel: Panel; width: number }[] = [];
 
-    const edgeTargets = (this.graph?.edges ?? [])
-      .filter((edge) => edge.from === currentId)
-      .map((edge) => edge.to)
-      .slice(0, Math.max(panelsAhead, 1));
-
-    const width = this.targetWidthFor(currentId);
-    for (const panelId of edgeTargets) {
-      const panel = this.panels[panelId];
-      if (!panel) {
-        continue;
+    if (this.viewMode === 'panel') {
+      const currentId = this.currentPanelId;
+      const containerWidth = this.getContainerWidth();
+      const panelWidth = containerWidth > 0 ? quantizeTargetWidth(containerWidth * dpr) : this.targetWidthFor(currentId);
+      if (currentId) {
+        const panelsAhead = this.preload?.panelsAhead ?? 2;
+        (this.graph?.edges ?? [])
+          .filter((edge) => edge.from === currentId)
+          .slice(0, Math.max(panelsAhead, 1))
+          .forEach((edge) => {
+            const panel = this.panels[edge.to];
+            if (panel) targets.push({ panelId: edge.to, panel, width: panelWidth });
+          });
       }
-      for (const layer of panel.layers ?? []) {
+      for (const target of this.preloadTargets) {
+        const width = containerWidth > 0
+          ? quantizeTargetWidth(containerWidth * (target.widthFraction ?? 1) * dpr)
+          : panelWidth;
+        targets.push({ panelId: target.panelId, panel: target.panel, width });
+      }
+    } else {
+      const canvas = this.elementRef.nativeElement.querySelector('.page-canvas') as HTMLElement | null;
+      const canvasWidth = canvas?.clientWidth ?? 0;
+      for (const target of this.preloadTargets) {
+        const width = canvasWidth > 0 ? quantizeTargetWidth(canvasWidth * (target.widthFraction ?? 1) * dpr) : 0;
+        targets.push({ panelId: target.panelId, panel: target.panel, width });
+      }
+    }
+
+    targets.forEach((target, index) => {
+      for (const layer of target.panel.layers ?? []) {
         if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
           continue;
         }
         const asset = this.manifestService.getAsset(layer.assetId);
-        const variant = selectImageVariantForWidth(asset?.variants as never, width);
+        const variant = selectImageVariantForWidth(asset?.variants as never, target.width);
         if (variant?.src) {
           this.preloadService.add({
             id: variant.src,
             type: 'image',
             url: this.assetUrlService.resolve(variant.src, 'image'),
-            priority: 'high',
-            panelId,
+            priority: index < 2 ? 'high' : index < 6 ? 'medium' : 'low',
+            panelId: target.panelId,
           });
         }
       }
-    }
+    });
   }
 
   /**
@@ -870,6 +907,11 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   getContainerHeight(): number {
     const container = this.elementRef.nativeElement.querySelector('.panel-container');
     return container ? container.clientHeight : 0;
+  }
+
+  /** Width / height of the current page's frame (its output format). */
+  get pageAspect(): number {
+    return pageAspectRatio(this.page);
   }
 
   /**

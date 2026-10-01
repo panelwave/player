@@ -97,7 +97,12 @@
               (click)="adjustSecondsPerPanel(-1)">
               -
             </button>
-            <span class="control-value">{{ 'toolbar.seconds' | translate: {value: secondsPerPanel} }}</span>
+            <span class="control-value" [class.author-timing]="autoplayTiming === 'author'">
+              @if (autoplayTiming === 'author') {
+                <span class="control-tag">{{ 'toolbar.author_timing' | translate }}</span>
+              }
+              {{ 'toolbar.seconds' | translate: {value: secondsPerPanel} }}
+            </span>
             <button
               class="control-btn"
               type="button"
@@ -105,6 +110,16 @@
               (click)="adjustSecondsPerPanel(1)">
               +
             </button>
+            @if (autoplayTiming === 'manual') {
+              <button
+                class="control-btn control-btn-text"
+                type="button"
+                [attr.aria-label]="'toolbar.author_timing_use' | translate"
+                [attr.title]="'toolbar.author_timing_use' | translate"
+                (click)="useAuthorTiming()">
+                {{ 'toolbar.author_timing' | translate }}
+              </button>
+            }
           </div>
         }
       </div>

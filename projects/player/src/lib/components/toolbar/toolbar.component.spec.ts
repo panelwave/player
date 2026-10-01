@@ -200,6 +200,25 @@ describe('ToolbarComponent', () => {
       expect(values).toEqual([4, 6]);
     });
 
+    it('marks the author timing and starts a picked speed from the authored seconds', () => {
+      set({ autoplayEnabled: true, autoplayTiming: 'author', secondsPerPanel: 3.4 });
+      expect(fixture.nativeElement.querySelector('.control-value.author-timing .control-tag')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('.control-btn-text')).toBeNull();
+      const values: number[] = [];
+      component.secondsPerPanelChange.subscribe((v) => values.push(v));
+      btn('Faster')?.click();
+      expect(values).toEqual([4]);
+    });
+
+    it('offers the way back to the author timing once the reader picked a speed', () => {
+      set({ autoplayEnabled: true, autoplayTiming: 'manual', secondsPerPanel: 4 });
+      expect(fixture.nativeElement.querySelector('.control-tag')).toBeNull();
+      const timings: string[] = [];
+      component.autoplayTimingChange.subscribe((t) => timings.push(t));
+      (fixture.nativeElement.querySelector('.control-btn-text') as HTMLButtonElement).click();
+      expect(timings).toEqual(['author']);
+    });
+
     it('clamps seconds per panel to 0.5..120', () => {
       const values: number[] = [];
       component.secondsPerPanelChange.subscribe((v) => values.push(v));

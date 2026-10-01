@@ -48,7 +48,16 @@ export const TRANSLATIONS = {
       share_panel: 'Share this panel',
       comments: 'Comments',
       comments_view: 'View comments',
-      close: 'Close toolbar'
+      close: 'Close toolbar',
+      author_timing: 'Author',
+      author_timing_use: "Use the author's panel timing",
+      show: 'Show toolbar'
+    },
+    navigation: {
+      cover: 'Cover',
+      cover_open: 'Show the cover',
+      start_reading: 'Cover – start reading',
+      chapter_n: 'Chapter {{n}}'
     },
     character_roster: {
       title: 'Characters',
@@ -242,7 +251,16 @@ export const TRANSLATIONS = {
       share_panel: 'Panel teilen',
       comments: 'Kommentare',
       comments_view: 'Kommentare anzeigen',
-      close: 'Werkzeugleiste schließen'
+      close: 'Werkzeugleiste schließen',
+      author_timing: 'Autor',
+      author_timing_use: 'Timing des Autors verwenden',
+      show: 'Werkzeugleiste anzeigen'
+    },
+    navigation: {
+      cover: 'Cover',
+      cover_open: 'Cover anzeigen',
+      start_reading: 'Cover – Lesen beginnen',
+      chapter_n: 'Kapitel {{n}}'
     },
     character_roster: {
       title: 'Charaktere',

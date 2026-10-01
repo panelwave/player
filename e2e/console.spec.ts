@@ -1,5 +1,5 @@
 import { test, expect, Page, ConsoleMessage } from '@playwright/test';
-import { openPlayer, expectPanel } from './helpers/player';
+import { openPlayer, expectPanel, dismissCover } from './helpers/player';
 
 /**
  * Checklist (Final Verification): "No console errors or warnings".
@@ -50,6 +50,7 @@ test.describe('console hygiene', () => {
     await expect(page.locator('.viewport-container.viewport-panel')).toBeVisible();
 
     await page.getByRole('button', { name: 'Infinite Canvas' }).click();
+    await dismissCover(page, true);
     await expect(page.locator('.canvas-panel.current')).toBeVisible();
 
     expect(problems).toEqual([]);

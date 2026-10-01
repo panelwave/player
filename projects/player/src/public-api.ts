@@ -92,6 +92,17 @@ export {
   resolvePanels,
   type ResolvedPanel,
   type VariantContext,
+  screenClassFor,
+  pageFormatOf,
+  pageFormatsOf,
+  rankPageFormats,
+  pickPageFormat,
+  pagesForFormat,
+  pageAspectRatio,
+  type ScreenClass,
+  THUMBNAIL_WIDTH,
+  panelThumbnailSrc,
+  coverImageSrc,
 } from './lib/utils';
 
 // Components

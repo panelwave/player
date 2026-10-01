@@ -2,8 +2,9 @@ import { ChangeDetectorRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import type { Chapter, Panel } from '../../../types';
-import { ThumbnailStripComponent, type ThumbnailNavigationTarget } from './thumbnail-strip.component';
+import { ThumbnailStripComponent, type ThumbnailItem, type ThumbnailNavigationTarget } from './thumbnail-strip.component';
 import { AssetUrlService } from '../../../services/asset-url.service';
+import { ManifestService } from '../../../services/manifest.service';
 
 function chapter(id: string, panelIds: string[], title?: Record<string, string>): Chapter {
   const panels: Record<string, Panel> = {};
@@ -27,6 +28,14 @@ const assetUrlStub = {
     !src ? '' : /^[a-z][a-z0-9+.-]*:/i.test(src) ? src : 'https://cdn.example/' + src,
 };
 
+/** Catalog stub: one image asset with a thumbnail-sized rendition. */
+const manifestStub = {
+  getAsset: (id: string) =>
+    id === 'img-1'
+      ? { category: 'image', variants: [{ src: 'https://cdn/img-1-1920.webp', w: 1920 }, { src: 'https://cdn/img-1-320.webp', w: 320 }] }
+      : null,
+};
+
 describe('ThumbnailStripComponent', () => {
   let fixture: ComponentFixture<ThumbnailStripComponent>;
   let component: ThumbnailStripComponent;
@@ -36,7 +45,14 @@ describe('ThumbnailStripComponent', () => {
     chapter('ch2', ['p4', 'p5']),
   ];
 
-  function setup(inputs: Partial<Record<'chapters' | 'currentChapterId' | 'currentPanelId' | 'lockedPanels' | 'visible', unknown>>): void {
+  function setup(
+    inputs: Partial<
+      Record<
+        'chapters' | 'currentChapterId' | 'currentPanelId' | 'currentPanelIds' | 'lockedPanels' | 'visible' | 'coverThumbnail' | 'coverCurrent' | 'locale',
+        unknown
+      >
+    >
+  ): void {
     Object.entries(inputs).forEach(([k, v]) => fixture.componentRef.setInput(k, v));
     fixture.detectChanges();
   }
@@ -52,7 +68,10 @@ describe('ThumbnailStripComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ThumbnailStripComponent],
-      providers: [{ provide: AssetUrlService, useValue: assetUrlStub }],
+      providers: [
+        { provide: AssetUrlService, useValue: assetUrlStub },
+        { provide: ManifestService, useValue: manifestStub },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(ThumbnailStripComponent);
     component = fixture.componentInstance;
@@ -63,24 +82,62 @@ describe('ThumbnailStripComponent', () => {
     expect(el().querySelector('.thumbnail-strip')).toBeNull();
   });
 
-  it('flattens all chapter panels into thumbnail items with global indices', () => {
+  it('lists per chapter a separator, then its panels in reading order, with global indices', () => {
     setup({ chapters, currentChapterId: 'ch1', currentPanelId: 'p2', lockedPanels: ['p5'], visible: true });
 
-    expect(component.thumbnailItems.map((i) => i.panelId)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
-    expect(component.thumbnailItems.map((i) => i.index)).toEqual([0, 1, 2, 3, 4]);
-    expect(component.thumbnailItems[0].chapterStart).toBeTrue();
-    expect(component.thumbnailItems[1].chapterStart).toBeFalse();
-    expect(component.thumbnailItems[3].chapterStart).toBeTrue();
-    expect(component.thumbnailItems[0].isCurrentChapter).toBeTrue();
-    expect(component.thumbnailItems[3].isCurrentChapter).toBeFalse();
-    expect(component.thumbnailItems[4].isLocked).toBeTrue();
-    expect(component.getTotalWidth()).toBe(5 * (component.itemWidth + component.itemGap));
+    const panels = component.thumbnailItems.filter((i) => i.kind === 'panel');
+    expect(component.thumbnailItems.map((i) => i.kind)).toEqual([
+      'chapter', 'panel', 'panel', 'panel', 'chapter', 'panel', 'panel',
+    ]);
+    expect(panels.map((i) => i.panelId)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(component.thumbnailItems.map((i) => i.index)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(panels[0].chapterStart).toBeTrue();
+    expect(panels[1].chapterStart).toBeFalse();
+    expect(panels[3].chapterStart).toBeTrue();
+    expect(panels[0].isCurrentChapter).toBeTrue();
+    expect(panels[3].isCurrentChapter).toBeFalse();
+    expect(panels[4].isLocked).toBeTrue();
+    const step = component.itemWidth + component.itemGap;
+    const sep = component.separatorWidth + component.itemGap;
+    expect(component.getTotalWidth()).toBe(5 * step + 2 * sep);
   });
 
-  it('uses the first localized chapter title, falling back to the chapter id', () => {
+  it('orders panels by the chapter graph, not by key order', () => {
+    const ch = chapter('g', ['b', 'a', 'c']);
+    ch.graph = { entry: 'a', edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'c' }] };
+    setup({ chapters: [ch], visible: true });
+    expect(component.thumbnailItems.filter((i) => i.kind === 'panel').map((i) => i.panelId)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('shows each panel’s artwork as its thumbnail (smallest catalog rendition that fits)', () => {
+    const ch = chapter('art', ['p1', 'p2']);
+    ch.panels['p1'] = { layers: [{ id: 'l1', kind: 'image', z: 0, assetId: 'img-1' }] } as unknown as Panel;
+    setup({ chapters: [ch], visible: true });
+    const imgs = Array.from(el().querySelectorAll('.thumbnail-image')) as HTMLImageElement[];
+    expect(imgs.length).toBe(1);
+    expect(imgs[0].getAttribute('src')).toBe('https://cdn/img-1-320.webp');
+    expect(el().querySelectorAll('.thumbnail-placeholder').length).toBe(1); // p2 has no art
+  });
+
+  it('hides the artwork of locked panels', () => {
+    const ch = chapter('art', ['p1']);
+    ch.panels['p1'] = { layers: [{ id: 'l1', kind: 'image', z: 0, assetId: 'img-1' }] } as unknown as Panel;
+    setup({ chapters: [ch], lockedPanels: ['p1'], visible: true });
+    expect(el().querySelector('.thumbnail-image')).toBeNull();
+    expect(el().querySelector('.lock-overlay')).not.toBeNull();
+  });
+
+  it('renders chapter separators with number and localized title, falling back to the chapter id', () => {
     setup({ chapters, visible: true });
     const titles = Array.from(el().querySelectorAll('.separator-title')).map((n) => n.textContent?.trim());
+    const numbers = Array.from(el().querySelectorAll('.separator-number')).map((n) => n.textContent?.trim());
     expect(titles).toEqual(['Opening', 'ch2']);
+    expect(numbers).toEqual(['1', '2']);
+  });
+
+  it('picks the chapter title of the current locale', () => {
+    setup({ chapters: [chapter('l', ['a'], { 'en-US': 'Night', 'de-DE': 'Nacht' })], locale: 'de-DE', visible: true });
+    expect(component.thumbnailItems[0].chapterTitle).toBe('Nacht');
   });
 
   it('falls back to the chapter id when the title object is empty', () => {
@@ -111,6 +168,12 @@ describe('ThumbnailStripComponent', () => {
     expect(buttons[0].getAttribute('aria-label')).toBe('Panel p1');
   });
 
+  it('marks every panel of the current page as current (page view)', () => {
+    setup({ chapters, currentChapterId: 'ch1', currentPanelId: 'p1', currentPanelIds: ['p1', 'p2'], visible: true });
+    const current = component.thumbnailItems.filter((i) => i.isCurrentPanel).map((i) => i.panelId);
+    expect(current).toEqual(['p1', 'p2']);
+  });
+
   it('emits navigate for unlocked panels only', () => {
     setup({ chapters, lockedPanels: ['p2'], visible: true });
     const targets: ThumbnailNavigationTarget[] = [];
@@ -125,6 +188,38 @@ describe('ThumbnailStripComponent', () => {
     ]);
   });
 
+  it('a chapter separator opens the chapter’s first panel', () => {
+    setup({ chapters, visible: true });
+    const targets: ThumbnailNavigationTarget[] = [];
+    component.navigate.subscribe((t) => targets.push(t));
+    (el().querySelectorAll('.chapter-separator')[1] as HTMLButtonElement).click();
+    expect(targets).toEqual([{ chapterId: 'ch2', panelId: 'p4' }]);
+  });
+
+  describe('cover', () => {
+    it('heads the strip when the work has one and navigates to it', () => {
+      setup({ chapters, coverThumbnail: 'https://cdn/cover.jpg', visible: true });
+      expect(component.thumbnailItems[0].kind).toBe('cover');
+      const targets: ThumbnailNavigationTarget[] = [];
+      component.navigate.subscribe((t) => targets.push(t));
+      const first = el().querySelector('.thumbnail-item') as HTMLButtonElement;
+      expect(first.classList).toContain('cover-item');
+      expect(first.querySelector('img')?.getAttribute('src')).toBe('https://cdn/cover.jpg');
+      first.click();
+      expect(targets).toEqual([{ chapterId: '', panelId: '', cover: true }]);
+    });
+
+    it('is current while the cover is shown, and then no panel is', () => {
+      setup({ chapters, coverThumbnail: 'https://cdn/cover.jpg', coverCurrent: true, currentChapterId: 'ch1', currentPanelId: 'p1', visible: true });
+      expect(component.thumbnailItems.filter((i) => i.isCurrentPanel).map((i) => i.kind)).toEqual(['cover']);
+    });
+
+    it('is absent without a cover', () => {
+      setup({ chapters, visible: true });
+      expect(component.thumbnailItems.some((i) => i.kind === 'cover')).toBeFalse();
+    });
+  });
+
   it('emits close from the close button', () => {
     setup({ chapters, visible: true });
     let closed = 0;
@@ -134,7 +229,10 @@ describe('ThumbnailStripComponent', () => {
   });
 
   describe('getThumbnailUrl', () => {
-    const base = { chapterId: 'c', panelId: 'p', isLocked: false, isCurrentChapter: false, isCurrentPanel: false, chapterStart: false, index: 0 };
+    const base: ThumbnailItem = {
+      kind: 'panel', key: 'k', chapterId: 'c', panelId: 'p', isLocked: false, isCurrentChapter: false,
+      isCurrentPanel: false, chapterStart: false, index: 0, left: 0, width: 120,
+    };
 
     it('returns empty string without a thumbnail', () => {
       expect(component.getThumbnailUrl(base)).toBe('');
@@ -152,8 +250,10 @@ describe('ThumbnailStripComponent', () => {
     it('only renders items inside the viewport window', () => {
       const many = chapter('big', Array.from({ length: 80 }, (_, i) => `p${i}`));
       setup({ chapters: [many], visible: true });
-      // default viewport 0..50 inclusive
-      expect(el().querySelectorAll('.thumbnail-item').length).toBe(51);
+      // default window 0..6400 px: the separator (0..96) plus panels starting at 104 + n*128
+      const rendered = el().querySelectorAll('.thumbnail-item').length;
+      expect(rendered).toBe(50);
+      expect(rendered).toBeLessThan(80);
     });
 
     it('recomputes the viewport range from scroll position with a buffer', () => {
@@ -162,8 +262,8 @@ describe('ThumbnailStripComponent', () => {
       Object.defineProperty(target, 'scrollLeft', { configurable: true, get: () => step * 30 });
       stubNumber(target, 'offsetWidth', step * 5);
       component.onScroll({ target } as unknown as Event);
-      expect(component.viewportStart).toBe(20);
-      expect(component.viewportEnd).toBe(45);
+      expect(component.viewportStart).toBe(step * 20);
+      expect(component.viewportEnd).toBe(step * 45);
 
       Object.defineProperty(target, 'scrollLeft', { configurable: true, get: () => 0 });
       component.onScroll({ target } as unknown as Event);
@@ -171,13 +271,16 @@ describe('ThumbnailStripComponent', () => {
     });
 
     it('isInViewport respects both bounds', () => {
-      component.viewportStart = 5;
-      component.viewportEnd = 10;
-      const item = { chapterId: 'c', panelId: 'p', isLocked: false, isCurrentChapter: false, isCurrentPanel: false, chapterStart: false };
-      expect(component.isInViewport({ ...item, index: 4 })).toBeFalse();
-      expect(component.isInViewport({ ...item, index: 5 })).toBeTrue();
-      expect(component.isInViewport({ ...item, index: 10 })).toBeTrue();
-      expect(component.isInViewport({ ...item, index: 11 })).toBeFalse();
+      component.viewportStart = 500;
+      component.viewportEnd = 1000;
+      const item: ThumbnailItem = {
+        kind: 'panel', key: 'k', chapterId: 'c', panelId: 'p', isLocked: false, isCurrentChapter: false,
+        isCurrentPanel: false, chapterStart: false, index: 0, left: 0, width: 120,
+      };
+      expect(component.isInViewport({ ...item, left: 370 })).toBeFalse(); // ends at 490
+      expect(component.isInViewport({ ...item, left: 380 })).toBeTrue(); // ends at 500
+      expect(component.isInViewport({ ...item, left: 1000 })).toBeTrue();
+      expect(component.isInViewport({ ...item, left: 1001 })).toBeFalse();
     });
   });
 
@@ -191,8 +294,8 @@ describe('ThumbnailStripComponent', () => {
       stubNumber(c, 'offsetWidth', 200);
       const spy = scrollSpy(c);
       component.scrollToCurrentPanel();
-      // index 3 * 128 = 384; 384 - 100 + 60 = 344
-      expect(spy).toHaveBeenCalledWith({ left: 344, behavior: 'smooth' });
+      // p4 sits after ch1's separator (104) + 3 panels (3 * 128) + ch2's separator (104) = 592; 592 - 100 + 60
+      expect(spy).toHaveBeenCalledWith({ left: 552, behavior: 'smooth' });
     });
 
     it('clamps the centered position at zero', () => {
@@ -323,8 +426,8 @@ describe('ThumbnailStripComponent', () => {
 
       fixture.componentRef.setInput('currentPanelId', 'p4');
       fixture.detectChanges();
-      // index 3 * 128 = 384; 384 - 100 + 60 = 344
-      expect(spy).toHaveBeenCalledOnceWith({ left: 344, behavior: 'smooth' });
+      // p4 at 592 (see 'centers the current panel'); 592 - 100 + 60 = 552
+      expect(spy).toHaveBeenCalledOnceWith({ left: 552, behavior: 'smooth' });
     });
 
     it('does not scroll on changes while hidden', () => {

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openPlayer } from './helpers/player';
+import { openPlayer, dismissCover } from './helpers/player';
 
 /**
  * Hotspots in the infinite-canvas view.
@@ -15,6 +15,7 @@ const currentPanel = (page: Page) => page.locator('.canvas-panel.current');
 async function openCanvasDemo(page: Page): Promise<void> {
   await openPlayer(page);
   await page.getByRole('button', { name: 'Infinite Canvas' }).click();
+  await dismissCover(page, true);
   await expect(currentPanel(page)).toHaveAttribute('data-panel-id', 'p-top');
 }
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { openPlayer, expectPanel, stubExternalImages } from './helpers/player';
+import { openPlayer, expectPanel, stubExternalImages, dismissCover } from './helpers/player';
 
 /**
  * Demo app tooling (OPEN_TASKS "Player — Demo app"): manifest selector
@@ -79,6 +79,7 @@ test.describe('demo app tooling', () => {
     await openPlayer(page);
     await page.getByLabel('Manifest URL').fill('assets/canvas-manifest.json');
     await page.getByRole('button', { name: 'Load', exact: true }).click();
+    await dismissCover(page, true);
     await expect(page.locator('.canvas-panel.current')).toBeVisible();
   });
 
@@ -89,6 +90,7 @@ test.describe('demo app tooling', () => {
 
     const json = readFileSync(join(__dirname, '..', 'projects', 'demo', 'src', 'assets', 'canvas-manifest.json'));
     await page.getByLabel('Open manifest file').setInputFiles({ name: 'my-work.json', mimeType: 'application/json', buffer: json });
+    await dismissCover(page, true);
     await expect(page.locator('.canvas-panel.current')).toBeVisible();
   });
 

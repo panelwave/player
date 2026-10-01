@@ -46,54 +46,69 @@
         class="strip-content"
         [style.width.px]="getTotalWidth()">
         
-        @for (item of getVisibleItems(); track item.panelId) {
+        @for (item of getVisibleItems(); track item.key) {
           <div
             class="thumbnail-wrapper"
-            [style.left.px]="item.index * (itemWidth + itemGap)"
-            [class.chapter-start]="item.chapterStart">
-            
-            <!-- Chapter separator -->
-            @if (item.chapterStart && item.chapterTitle) {
-              <div class="chapter-separator">
+            [class.chapter-start]="item.chapterStart"
+            [class.separator-wrapper]="item.kind === 'chapter'"
+            [style.left.px]="item.left"
+            [style.width.px]="item.width">
+
+            @if (item.kind === 'chapter') {
+              <!-- Chapter separator -->
+              <button
+                class="chapter-separator"
+                [class.current-chapter]="item.isCurrentChapter"
+                type="button"
+                [attr.aria-label]="getItemLabel(item)"
+                [attr.title]="item.chapterTitle"
+                (click)="onNavigate(item)">
+                <span class="separator-number">{{ item.chapterNumber }}</span>
                 <span class="separator-title">{{ item.chapterTitle }}</span>
-              </div>
+              </button>
+            } @else {
+              <!-- Thumbnail (cover or panel) -->
+              <button
+                class="thumbnail-item"
+                [class.cover-item]="item.kind === 'cover'"
+                [class.current]="item.isCurrentPanel"
+                [class.current-chapter]="item.isCurrentChapter"
+                [class.locked]="item.isLocked"
+                type="button"
+                [attr.aria-label]="getItemLabel(item)"
+                [attr.aria-current]="item.isCurrentPanel ? 'true' : null"
+                (click)="onNavigate(item)">
+
+                @if (getThumbnailUrl(item)) {
+                  <img
+                    [src]="getThumbnailUrl(item)"
+                    [alt]="getItemLabel(item)"
+                    class="thumbnail-image"
+                    draggable="false"
+                    loading="lazy" />
+                } @else {
+                  <div class="thumbnail-placeholder">
+                    <span class="placeholder-text">{{ item.panelId }}</span>
+                  </div>
+                }
+
+                @if (item.kind === 'cover') {
+                  <span class="cover-badge">Cover</span>
+                }
+
+                <!-- Lock overlay -->
+                @if (item.isLocked) {
+                  <div class="lock-overlay">
+                    <span class="lock-icon"><pw-icon name="lucideLock" /></span>
+                  </div>
+                }
+
+                <!-- Current indicator -->
+                @if (item.isCurrentPanel) {
+                  <div class="current-indicator"></div>
+                }
+              </button>
             }
-
-            <!-- Thumbnail -->
-            <button
-              class="thumbnail-item"
-              [class.current]="item.isCurrentPanel"
-              [class.current-chapter]="item.isCurrentChapter"
-              [class.locked]="item.isLocked"
-              type="button"
-              [attr.aria-label]="'Panel ' + item.panelId"
-              [attr.aria-current]="item.isCurrentPanel ? 'true' : null"
-              (click)="onNavigate(item)">
-              
-              @if (getThumbnailUrl(item)) {
-                <img
-                  [src]="getThumbnailUrl(item)"
-                  [alt]="'Panel ' + item.panelId"
-                  class="thumbnail-image"
-                  loading="lazy" />
-              } @else {
-                <div class="thumbnail-placeholder">
-                  <span class="placeholder-text">{{ item.panelId }}</span>
-                </div>
-              }
-
-              <!-- Lock overlay -->
-              @if (item.isLocked) {
-                <div class="lock-overlay">
-                  <span class="lock-icon"><pw-icon name="lucideLock" /></span>
-                </div>
-              }
-
-              <!-- Current indicator -->
-              @if (item.isCurrentPanel) {
-                <div class="current-indicator"></div>
-              }
-            </button>
           </div>
         }
       </div>

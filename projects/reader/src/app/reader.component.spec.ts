@@ -81,7 +81,7 @@ describe('ReaderComponent', () => {
     expect(shell).toBeTruthy();
     expect(shell.classList).toContain('pw-reader-shell');
     expect(fixture.nativeElement.querySelector('.pwr-spinner')).toBeNull();
-    expect(fixture.nativeElement.querySelector('a.pw-badge')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('a.pw-badge')).toBeNull(); // the shell's PanelWave icon replaced the badge
 
     const inst = shellOf(fixture);
     expect(inst.locale).toBe('de-DE'); // boot locale wins over manifest default
