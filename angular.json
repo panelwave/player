@@ -74,7 +74,7 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "projects/demo/src/favicon.ico",
-              "projects/demo/src/assets",
+              { "glob": "**/*", "input": "projects/demo/src/assets", "output": "assets", "ignore": ["fonts/**/*.woff2"] },
               {
                 "glob": "*.json",
                 "input": "projects/player/src/assets/i18n",
@@ -100,7 +100,12 @@
                   "maximumError": "10kb"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": { "minify": true, "inlineCritical": false },
+                "fonts": true
+              }
             },
             "development": {
               "optimization": false,
@@ -139,7 +144,7 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "projects/demo/src/favicon.ico",
-              "projects/demo/src/assets",
+              { "glob": "**/*", "input": "projects/demo/src/assets", "output": "assets", "ignore": ["fonts/**/*.woff2"] },
               {
                 "glob": "*.json",
                 "input": "projects/player/src/assets/i18n",
