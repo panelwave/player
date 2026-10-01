@@ -13,15 +13,26 @@ describe('readBootConfig', () => {
   });
 
   it('falls back to ?manifest= and ?embed=1', () => {
-    expect(readBootConfig(fakeWin('?manifest=http%3A%2F%2Fx%2Fm.json&embed=1'))).toEqual({
+    expect(readBootConfig(fakeWin('?manifest=http%3A%2F%2Fx%2Fm.json&embed=1'), { allowQuery: true })).toEqual({
       manifestUrl: 'http://x/m.json',
       embed: true,
     });
-    expect(readBootConfig(fakeWin('?manifest=a.json')).embed).toBeFalse();
+    expect(readBootConfig(fakeWin('?manifest=a.json'), { allowQuery: true }).embed).toBeFalse();
   });
 
   it('prefers the injected config over the query', () => {
     expect(readBootConfig(fakeWin('?manifest=q.json', { manifestUrl: 'i.json', embed: false })).manifestUrl).toBe('i.json');
+  });
+
+  it('ignores the query string when query fallback is disallowed (production)', () => {
+    expect(readBootConfig(fakeWin('?manifest=q.json&embed=1&locale=de-DE'), { allowQuery: false })).toEqual({
+      manifestUrl: '',
+      embed: false,
+    });
+  });
+
+  it('defaults the query fallback to dev mode (specs run in dev mode)', () => {
+    expect(readBootConfig(fakeWin('?manifest=q.json')).manifestUrl).toBe('q.json');
   });
 
   it('returns an empty manifestUrl when nothing is configured', () => {

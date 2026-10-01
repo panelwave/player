@@ -1,3 +1,5 @@
+import { isDevMode } from '@angular/core';
+
 export interface ReaderBootConfig {
   manifestUrl: string;
   embed: boolean;
@@ -13,10 +15,12 @@ declare global {
 
 /**
  * Boot config injected by the reader server as `window.__PW_READER__`.
- * Dev fallback (no server): `?manifest=<url>&embed=1`. Without either the
+ * Dev-mode-only fallback (no server): `?manifest=<url>&embed=1&locale=`;
+ * production builds ignore the query string. Without either the
  * result has an empty `manifestUrl`.
  */
-export function readBootConfig(win: Window): ReaderBootConfig {
+export function readBootConfig(win: Window, opts: { allowQuery?: boolean } = {}): ReaderBootConfig {
+  const allowQuery = opts.allowQuery ?? isDevMode();
   const injected = win.__PW_READER__;
   if (injected && typeof injected.manifestUrl === 'string' && injected.manifestUrl) {
     return {
@@ -25,6 +29,9 @@ export function readBootConfig(win: Window): ReaderBootConfig {
       ...(injected.locale ? { locale: injected.locale } : {}),
       ...(injected.title ? { title: injected.title } : {}),
     };
+  }
+  if (!allowQuery) {
+    return { manifestUrl: '', embed: false };
   }
   const params = new URLSearchParams(win.location.search);
   const manifestUrl = params.get('manifest') ?? '';

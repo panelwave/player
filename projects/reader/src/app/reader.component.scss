@@ -34,7 +34,7 @@
   animation: pwr-spin 0.9s linear infinite;
 
   @media (prefers-reduced-motion: reduce) {
-    animation-duration: 3s;
+    animation: none;
   }
 }
 

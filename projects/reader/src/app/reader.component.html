@@ -3,7 +3,7 @@
     <pw-player-shell
       class="pw-reader-shell"
       [manifest]="manifest() ?? undefined"
-      [locale]="config.locale ?? 'en-US'"
+      [locale]="locale()"
       [entitlementAdapter]="adapter()"
       [showToolbar]="false" />
   }

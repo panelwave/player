@@ -5,6 +5,18 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { PlayerShellComponent } from 'player';
 import { ReaderComponent } from './reader.component';
 
+const validManifest = (defaultLocale = 'en-US', extraPanel = {}) => ({
+  panelwave: { version: '1.0.0' },
+  meta: { id: 'w', title: { 'en-US': 'W' }, locales: ['en-US', 'de-DE'], default_locale: defaultLocale },
+  chapters: [
+    {
+      id: 'c',
+      panels: { a: { id: 'a' }, ...extraPanel },
+      graph: { entry: 'a', edges: [] },
+    },
+  ],
+});
+
 describe('ReaderComponent', () => {
   let http: HttpTestingController;
 
@@ -30,11 +42,7 @@ describe('ReaderComponent', () => {
     expect(fixture.nativeElement.querySelector('pw-player-shell')).toBeNull();
     expect(document.title).toBe('My Work');
 
-    const manifest = {
-      panelwave: { version: '1.0.0' },
-      meta: { id: 'w', locales: ['en-US'], default_locale: 'en-US', title: { 'en-US': 'W' } },
-      chapters: [{ id: 'c', panels: { a: { id: 'a' }, b: { id: 'b', 'x-locked': true } } }],
-    };
+    const manifest = validManifest('en-US', { b: { id: 'b', 'x-locked': true } });
     http.expectOne('https://x/m.json').flush(manifest);
     fixture.detectChanges();
 
@@ -46,7 +54,7 @@ describe('ReaderComponent', () => {
 
     const dbg = fixture.debugElement.children.find((d) => d.componentInstance instanceof PlayerShellComponent);
     const inst = dbg?.componentInstance as PlayerShellComponent;
-    expect(inst.locale).toBe('de-DE');
+    expect(inst.locale).toBe('de-DE'); // boot locale wins over manifest default
     expect(inst.showToolbar).toBeFalse();
     expect(await inst.entitlementAdapter?.hasAccess('b')).toBeFalse();
     expect(await inst.entitlementAdapter?.hasAccess('a')).toBeTrue();
@@ -62,7 +70,16 @@ describe('ReaderComponent', () => {
     (el.querySelector('.pwr-retry') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el.querySelector('.pwr-spinner')).toBeTruthy();
-    http.expectOne('https://x/m.json').flush({ chapters: [] });
+    http.expectOne('https://x/m.json').flush(validManifest());
+  });
+
+  it('falls back to the manifest default_locale, then ignores concurrent retries', () => {
+    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false });
+    fixture.componentInstance.load();
+    fixture.componentInstance.load();
+    http.expectOne('https://x/m.json').flush(validManifest('de-DE'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.locale()).toBe('de-DE');
   });
 
   it('shows "Nothing to read here." without a manifest URL', () => {

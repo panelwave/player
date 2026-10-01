@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick, discardPeriodicTasks } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { BadgeComponent } from './badge.component';
 
 describe('BadgeComponent', () => {
@@ -27,10 +27,13 @@ describe('BadgeComponent', () => {
     tick(1);
     fixture.detectChanges();
     expect(hidden()).toBeTrue();
+    expect(getComputedStyle(link()).pointerEvents).toBe('none');
+    expect(getComputedStyle(link()).opacity).toBe('0');
 
     document.dispatchEvent(new Event('pointermove'));
     fixture.detectChanges();
     expect(hidden()).toBeFalse();
+    expect(getComputedStyle(link()).pointerEvents).not.toBe('none');
     fixture.destroy();
   }));
 
@@ -48,11 +51,19 @@ describe('BadgeComponent', () => {
     fixture.destroy();
   }));
 
-  it('stops listening after destroy', fakeAsync(() => {
+  it('stops listening and clears its timer after destroy', fakeAsync(() => {
+    const removed: string[] = [];
+    const orig = document.removeEventListener.bind(document);
+    spyOn(document, 'removeEventListener').and.callFake((type: string, ...rest: unknown[]) => {
+      removed.push(type);
+      return (orig as (...a: unknown[]) => void)(type, ...rest);
+    });
     fixture = TestBed.createComponent(BadgeComponent);
     fixture.detectChanges();
     fixture.destroy();
+    expect(removed).toEqual(jasmine.arrayContaining(['pointermove', 'pointerdown', 'keydown']));
     document.dispatchEvent(new Event('pointermove'));
-    discardPeriodicTasks();
+    // no timer left running: nothing pending to flush
+    expect(() => flush()).not.toThrow();
   }));
 });
