@@ -152,6 +152,13 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Age requirements combine across every paywall rule that applies to a
+  panel (its panel rules, its chapter's rules, every work rule, each outside
+  its own free preview). The first matching rule decided everything, so a
+  chapter rule's free preview or a panel-scoped `free` rule unlocked panels
+  of a work behind a work-wide age gate without asking for the age. The
+  commercial part keeps its precedence (panel > chapter > work). When several
+  age rules are unmet, the gate names the highest minimum age.
 - The entry panel is gated on the initial load and on chapter jumps. Only
   panel-to-panel moves checked the paywall, so a work or chapter whose first
   panel was gated (e.g. a work-wide age gate without a preview) was shown

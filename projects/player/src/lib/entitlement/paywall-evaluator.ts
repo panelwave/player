@@ -29,6 +29,10 @@
  *   by `refId` (see `isExtraLocked`).
  * - A gated panel unlocks when the gating rule's requirement is satisfied by
  *   the reader's entitlement snapshot.
+ * - Age requirements are NOT subject to that precedence: every rule that
+ *   applies to a panel (its panel rules, its chapter's rules, every work
+ *   rule; each outside its own preview) and carries an age must be met first.
+ *   A chapter preview or a free panel rule never bypasses a work age gate.
  */
 
 import type { PanelWaveManifest, PaywallRule as ManifestPaywallRule } from '../types/manifest.types';
@@ -178,6 +182,21 @@ export function evaluatePanelAccess(
 ): AccessDecision {
   const active = rules.filter((r) => r.isActive);
 
+  // 0. Age requirements combine: every rule that applies to the panel and
+  // carries an age must be met, whichever rule decides the commercial part.
+  // Otherwise a more specific rule (a chapter preview, a free panel) would
+  // hide a work-level age gate.
+  const ageGate = unmetAgeRule(active, entitlement, panel);
+  if (ageGate) {
+    return {
+      panelId: panel.id,
+      locked: true,
+      reason: 'age_verification_required',
+      appliedRuleId: ageGate.id,
+      preview: false,
+    };
+  }
+
   // 1. Explicit panel gates take precedence (preview never overrides them).
   const panelRule = active.find(
     (r) => r.scope === 'panel' && (r.targetPanelIds ?? []).includes(panel.id),
@@ -211,6 +230,48 @@ export function evaluatePanelAccess(
 
   // 4. No gate at all — free content.
   return { panelId: panel.id, locked: false, reason: null, appliedRuleId: null, preview: false };
+}
+
+/**
+ * The applicable rule whose age requirement the reader has not met, or null.
+ * Applicable: the panel's panel rules, its chapter's chapter rules and every
+ * work/global rule — each outside its own free preview (a work or chapter
+ * age gate with a preview still gives that preview away). When several are
+ * unmet, the one with the highest minimum age is named, so a single
+ * confirmation clears them all.
+ */
+function unmetAgeRule(
+  active: EvaluatorRule[],
+  entitlement: EntitlementSnapshot,
+  panel: PanelRef,
+): EvaluatorRule | null {
+  let worst: EvaluatorRule | null = null;
+  for (const r of active) {
+    if (!ageMissing(r, entitlement) || !appliesOutsidePreview(r, panel)) continue;
+    if (!worst || (r.minimumAge ?? DEFAULT_MINIMUM_AGE) > (worst.minimumAge ?? DEFAULT_MINIMUM_AGE)) {
+      worst = r;
+    }
+  }
+  return worst;
+}
+
+/** Does the rule gate this panel (outside its free preview)? Extras rules never do. */
+function appliesOutsidePreview(rule: EvaluatorRule, panel: PanelRef): boolean {
+  switch (rule.scope) {
+    case 'panel':
+      return (rule.targetPanelIds ?? []).includes(panel.id);
+    case 'chapter':
+      return (
+        panel.chapterId !== undefined &&
+        (rule.targetIds ?? []).includes(panel.chapterId) &&
+        (panel.chapterIndex ?? Number.MAX_SAFE_INTEGER) >= (rule.previewPanelCount ?? 0)
+      );
+    case 'work':
+    case 'global':
+      return panel.index >= (rule.previewPanelCount ?? 0);
+    default:
+      return false;
+  }
 }
 
 /** A work/chapter gate: panels before `previewPanelCount` (by `index`) are free. */

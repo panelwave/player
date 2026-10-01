@@ -215,6 +215,106 @@ describe('paywall-evaluator', () => {
     });
   });
 
+  describe('age requirements across applicable rules', () => {
+    const adult = { ageVerified: true, age: 30 };
+    const inChapter = (chapterIndex: number) => ({
+      id: `c2-${chapterIndex}`,
+      index: 20 + chapterIndex,
+      chapterId: 'c2',
+      chapterIndex,
+    });
+
+    it('a work age gate still locks a chapter rule preview panel until the age is verified', () => {
+      const rules = [
+        rule({ id: 'work-age', entitlementType: 'age_gate', minimumAge: 18 }),
+        rule({ id: 'ch', scope: 'chapter', targetIds: ['c2'], previewPanelCount: 2 }),
+      ];
+      const before = evaluatePanelAccess(rules, ANONYMOUS_READER, inChapter(0));
+      expect(before.locked).toBe(true);
+      expect(before.reason).toBe('age_verification_required');
+      expect(before.appliedRuleId).toBe('work-age');
+
+      const after = evaluatePanelAccess(rules, reader(adult), inChapter(0));
+      expect(after.locked).toBe(false);
+      expect(after.preview).toBe(true);
+      expect(after.appliedRuleId).toBe('ch');
+      // Past the chapter preview the purchase part still applies.
+      expect(evaluatePanelAccess(rules, reader(adult), inChapter(2)).reason).toBe('purchase_required');
+    });
+
+    it('a work age gate still locks a panel the panel rule makes free', () => {
+      const rules = [
+        rule({ id: 'work-age', entitlementType: 'age_gate', minimumAge: 18 }),
+        rule({ id: 'free-panel', scope: 'panel', entitlementType: 'free', targetPanelIds: ['p5'] }),
+      ];
+      const before = evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'p5', index: 4 });
+      expect(before.locked).toBe(true);
+      expect(before.reason).toBe('age_verification_required');
+      expect(before.appliedRuleId).toBe('work-age');
+
+      const after = evaluatePanelAccess(rules, reader(adult), { id: 'p5', index: 4 });
+      expect(after.locked).toBe(false);
+      expect(after.appliedRuleId).toBe('free-panel');
+    });
+
+    it('a chapter rule age requirement reaches a panel the panel rule decides', () => {
+      const rules = [
+        rule({ id: 'ch', scope: 'chapter', targetIds: ['c2'], entitlementType: 'purchase', minimumAge: 16 }),
+        rule({ id: 'free-panel', scope: 'panel', entitlementType: 'free', targetPanelIds: ['c2-0'] }),
+      ];
+      const d = evaluatePanelAccess(rules, ANONYMOUS_READER, inChapter(0));
+      expect(d.reason).toBe('age_verification_required');
+      expect(d.appliedRuleId).toBe('ch');
+      expect(evaluatePanelAccess(rules, reader({ ageVerified: true, age: 16 }), inChapter(0)).locked).toBe(false);
+    });
+
+    it('keeps the age rule own free preview', () => {
+      const rules = [
+        rule({ id: 'work-age', entitlementType: 'age_gate', previewPanelCount: 3 }),
+        rule({ id: 'free-panel', scope: 'panel', entitlementType: 'free', targetPanelIds: ['p1', 'p9'] }),
+      ];
+      expect(evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'p1', index: 1 }).locked).toBe(false);
+      expect(evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'p9', index: 9 }).reason).toBe(
+        'age_verification_required',
+      );
+    });
+
+    it('names the unmet rule with the highest minimum age', () => {
+      const rules = [
+        rule({ id: 'work-16', entitlementType: 'age_gate', minimumAge: 16 }),
+        rule({ id: 'ch-18', scope: 'chapter', targetIds: ['c2'], entitlementType: 'age_gate', minimumAge: 18 }),
+      ];
+      expect(evaluatePanelAccess(rules, ANONYMOUS_READER, inChapter(0)).appliedRuleId).toBe('ch-18');
+      // A verified 17-year-old passes the work rule but not the chapter rule.
+      const teen = evaluatePanelAccess(rules, reader({ ageVerified: true, age: 17 }), inChapter(0));
+      expect(teen.reason).toBe('age_verification_required');
+      expect(teen.appliedRuleId).toBe('ch-18');
+    });
+
+    it('checks every work rule that carries an age, not only the first work rule', () => {
+      const rules = [
+        rule({ id: 'work-buy', previewPanelCount: 5 }),
+        rule({ id: 'work-age', entitlementType: 'age_gate' }),
+      ];
+      const d = evaluatePanelAccess(rules, ANONYMOUS_READER, { id: 'p1', index: 0 });
+      expect(d.reason).toBe('age_verification_required');
+      expect(d.appliedRuleId).toBe('work-age');
+      const ok = evaluatePanelAccess(rules, reader(adult), { id: 'p1', index: 0 });
+      expect(ok.locked).toBe(false);
+      expect(ok.appliedRuleId).toBe('work-buy');
+      expect(ok.preview).toBe(true);
+    });
+
+    it('ignores extras-scoped age rules and rules of other chapters or panels', () => {
+      const rules = [
+        rule({ id: 'ex', scope: 'extras', targetIds: ['ex-1'], entitlementType: 'age_gate' }),
+        rule({ id: 'ch1', scope: 'chapter', targetIds: ['c1'], entitlementType: 'age_gate' }),
+        rule({ id: 'px', scope: 'panel', targetPanelIds: ['other'], entitlementType: 'age_gate' }),
+      ];
+      expect(evaluatePanelAccess(rules, ANONYMOUS_READER, inChapter(0)).locked).toBe(false);
+    });
+  });
+
   it('evaluateWorkAccess maps every panel in order', () => {
     const rules = [rule({ previewPanelCount: 1 })];
     const decisions = evaluateWorkAccess(rules, ANONYMOUS_READER, [
