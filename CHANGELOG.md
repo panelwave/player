@@ -8,6 +8,7 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- Format 1.7 support: `x-` extension properties are typed on `Panel` and extras blocks (`ExtraItem`); empty graph edges follow reading order (see the reading-order entry below).
 - Locked-panel placeholder for manifests that mark panels `"x-locked": true` (server-side paywall views).
 - Page view: a locked panel's placeholder is a button (click, Enter, Space;
   label `player.locked.unlock`). Activating it raises the gate for that panel

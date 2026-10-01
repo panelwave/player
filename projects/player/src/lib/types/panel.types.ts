@@ -70,6 +70,9 @@ export interface Panel {
    * of layers, bubbles and hotspots (see `isLockedPanel`).
    */
   'x-locked'?: boolean;
+
+  /** Custom extension properties starting with x- (format 1.7+) */
+  [key: `x-${string}`]: unknown;
 }
 
 /**

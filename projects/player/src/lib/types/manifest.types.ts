@@ -539,6 +539,9 @@ export interface ExtraItem {
 
   /** Character sheets: all characters shown on an ensemble sheet (schema 1.6+) */
   characterIds?: string[];
+
+  /** Custom extension properties starting with x- (format 1.7+) */
+  [key: `x-${string}`]: unknown;
 }
 
 /**

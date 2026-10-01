@@ -336,7 +336,7 @@ component completion reports under `docs/archive/player/repo-history/`.
 
 ### 📐 Format Support
 
-The player renders **PanelWave manifest format 1.6** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
+The player renders **PanelWave manifest format 1.7** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
 
 | Format | Feature | Player support |
 |--------|---------|----------------|
@@ -349,6 +349,7 @@ The player renders **PanelWave manifest format 1.6** (the schema lives at `schem
 | 1.6 | Paywall product lists (`requiredProductIds` on purchase rules) and product display info (`paywall.products`) | ✅ |
 | 1.6 | Layer keyframe animations (`animations.keyframes` / `loop`) | ✅ |
 | 1.6 | Several alternative covers (`extras.alt_cover` as an array) and ensemble character sheets (`characterIds`) | ✅ |
+| 1.7 | Chapter graphs may have no edges (the chapter then follows its reading order); `x-` extension properties on panels and extras blocks | ✅ |
 | 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ✅ |
 
 ---
@@ -771,13 +772,13 @@ Built with:
 - **Specifications:** internal docs repo (`docs/technical/player/`)
 - **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
 - **Live demo:** https://panelwave.github.io/player/
-- **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.6.0)
+- **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.7.0)
 - **Issues:** https://github.com/panelwave/player/issues
 - **Source:** https://github.com/panelwave/player (moved from Bitbucket 2026-09-27)
 
 ---
 
-**Version:** 1.0.1 on npm (Phase 6 complete + format 1.1–1.5 features; 1.6 on master, unreleased)  
+**Version:** 1.0.1 on npm (Phase 6 complete + format 1.1–1.5 features; 1.6–1.7 on master, unreleased)  
 **Last Updated:** 2026-09-27  
 **Status:** Released (1.x); Testing & QA ongoing
 

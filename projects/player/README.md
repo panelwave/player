@@ -53,7 +53,7 @@ it into a complete reading experience:
 
 Stories are authored in the PanelWave CMS or written by hand against the
 [open JSON Schema](https://github.com/panelwave/schema). The player supports
-manifests up to format 1.6 (video panels, edge-transition inheritance,
+manifests up to format 1.7 (video panels, edge-transition inheritance,
 typography style presets, the infinite canvas, paywall rules unlocked by any
 of several products, each Buy option named and priced from `paywall.products`; 1.5's asset folders and localization blocks are
 authoring metadata the player doesn't need).
