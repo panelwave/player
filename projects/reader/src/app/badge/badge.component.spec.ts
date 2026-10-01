@@ -17,13 +17,15 @@ describe('BadgeComponent', () => {
     fixture.destroy();
   }));
 
-  it('sits bottom-left so it never covers the player toolbar toggle', fakeAsync(() => {
+  it('sits top-left so it never covers the bottom toolbar or its toggle', fakeAsync(() => {
     fixture = TestBed.createComponent(BadgeComponent);
     fixture.detectChanges();
     const style = getComputedStyle(link());
+    expect(style.position).toBe('fixed');
+    expect(style.top).toBe('12px');
     expect(style.left).toBe('12px');
-    expect(style.bottom).toBe('12px');
-    expect(style.right).not.toBe('12px');
+    // the toolbar is anchored to the bottom edge, so the badge must stay in the top half
+    expect(link().getBoundingClientRect().bottom).toBeLessThan(window.innerHeight / 2);
     fixture.destroy();
   }));
 

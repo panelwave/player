@@ -1,7 +1,8 @@
+/* Top-left: the player toolbar spans the full bottom edge, the show-toolbar button sits bottom-right and the variant tag bottom-left. */
 .pw-badge {
   position: fixed;
-  left: 12px;
-  bottom: 12px;
+  left: max(12px, env(safe-area-inset-left));
+  top: max(12px, env(safe-area-inset-top));
   z-index: 2147483000;
   padding: 4px 10px;
   border-radius: 999px;
