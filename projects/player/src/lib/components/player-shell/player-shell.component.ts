@@ -103,6 +103,15 @@ export function createTranslateLoader(http: HttpClient): TranslateLoader {
 /**
  * Entitlement adapter interface
  * Provides entitlement and paywall functionality
+ *
+ * An adapter decides NAVIGATION only. It wins over the manifest's paywall
+ * rules, so with an adapter the rules no longer lock rendering: a panel the
+ * adapter refuses is still rendered. A move to it is stopped at the gate,
+ * but a refused entry panel (initial load, bookmark resume) gets the paywall
+ * raised OVER its rendered content, and page / canvas view show it in full.
+ * Hosts must not rely on an adapter to hide content: strip it on the server
+ * (`"x-locked": true` stubs stay locked regardless) or pass an
+ * `entitlementSnapshot`, which locks rendering as well.
  */
 export interface EntitlementAdapter {
   /**
@@ -163,7 +172,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   @Input() manifestUrl?: string;
 
   /**
-   * Entitlement adapter for paywall integration
+   * Entitlement adapter for paywall integration. Gates navigation only: a
+   * refused entry panel gets the paywall over its rendered content (see
+   * {@link EntitlementAdapter}); don't rely on it to hide content.
    */
   @Input() entitlementAdapter?: EntitlementAdapter;
 

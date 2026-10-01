@@ -225,7 +225,9 @@ navigation stops at the gate. Works without paywall rules aren't affected.
   `extras` rules lock an extras block, never panels.
 - **Age:** `ageGate` / `minimumAge` is checked on top of the rule's
   entitlement. The reader answers the age gate first, then gets the paywall
-  if the purchase or subscription is still missing.
+  if the purchase or subscription is still missing. Age requirements combine
+  across every rule that applies to a panel, so a chapter preview or a free
+  panel rule never skips a work-wide age gate.
 - **Buy / Subscribe:** the overlay offers a Buy option per product of a
   purchase rule and a Subscribe option per tier of a subscription rule (name,
   description and price from the rule), next to Sign in and Maybe later.
@@ -235,6 +237,10 @@ navigation stops at the gate. Works without paywall rules aren't affected.
   pass a new `entitlementSnapshot`; the overlay closes once the reader is
   through. Story keys and swipes do nothing while the paywall or the age
   gate is open.
+- **Custom `entitlementAdapter`:** it decides navigation, not rendering. A
+  panel the adapter refuses still renders (on the initial load the paywall
+  opens over it), so don't rely on an adapter to hide content: strip it on
+  the server (`"x-locked": true`) or pass an `entitlementSnapshot`.
 
 ### Going further
 
