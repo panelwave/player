@@ -4,7 +4,7 @@
       class="pw-reader-shell"
       [manifest]="manifest() ?? undefined"
       [locale]="locale()"
-      [entitlementAdapter]="adapter()"
+      [entitlementSnapshot]="snapshot()"
       [showToolbar]="false" />
   }
   @case ('loading') {

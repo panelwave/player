@@ -2,12 +2,17 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideTranslateService } from '@ngx-translate/core';
-import { PlayerShellComponent } from 'player';
+import { PaywallService, PlayerShellComponent } from 'player';
 import { ReaderComponent } from './reader.component';
 
-const validManifest = (defaultLocale = 'en-US', extraPanel = {}) => ({
+const validManifest = (defaultLocale = 'en-US', extraPanel = {}, rules?: unknown[]) => ({
   panelwave: { version: '1.0.0' },
-  meta: { id: 'w', title: { 'en-US': 'W' }, locales: ['en-US', 'de-DE'], default_locale: defaultLocale },
+  meta: {
+    id: 'w',
+    title: { 'en-US': 'W' },
+    locales: ['en-US', 'de-DE'],
+    default_locale: defaultLocale,
+  },
   chapters: [
     {
       id: 'c',
@@ -15,7 +20,28 @@ const validManifest = (defaultLocale = 'en-US', extraPanel = {}) => ({
       graph: { entry: 'a', edges: [] },
     },
   ],
+  ...(rules ? { paywall: { rules } } : {}),
 });
+
+/** A public manifest: b is sold (stripped), c is age-gated (kept). */
+const gatedRules = [
+  {
+    id: 'sale',
+    scope: 'panel',
+    refId: 'b',
+    entitlementType: 'purchase',
+    requiredProductIds: ['b-product'],
+  },
+  { id: 'adult', scope: 'panel', refId: 'c', entitlementType: 'age_gate', minimumAge: 18 },
+  {
+    id: 'club',
+    scope: 'extras',
+    refId: 'bonus',
+    entitlementType: 'subscription',
+    subscriptionTiers: ['gold'],
+  },
+];
+const gatedPanels = { b: { id: 'b', 'x-locked': true }, c: { id: 'c' } };
 
 describe('ReaderComponent', () => {
   let http: HttpTestingController;
@@ -36,14 +62,19 @@ describe('ReaderComponent', () => {
     delete (window as unknown as { __PW_READER__?: unknown }).__PW_READER__;
   });
 
-  it('shows a spinner, then mounts the shell with the locked adapter', async () => {
-    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false, locale: 'de-DE', title: 'My Work' });
+  function shellOf(fixture: ReturnType<typeof setup>): PlayerShellComponent {
+    const dbg = fixture.debugElement.children.find(
+      (d) => d.componentInstance instanceof PlayerShellComponent
+    );
+    return dbg?.componentInstance as PlayerShellComponent;
+  }
+
+  it('shows a spinner, then mounts the shell', () => {
+    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false, locale: 'de-DE' });
     expect(fixture.nativeElement.querySelector('.pwr-spinner')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('pw-player-shell')).toBeNull();
-    expect(document.title).toBe('My Work');
 
-    const manifest = validManifest('en-US', { b: { id: 'b', 'x-locked': true } });
-    http.expectOne('https://x/m.json').flush(manifest);
+    http.expectOne('https://x/m.json').flush(validManifest());
     fixture.detectChanges();
 
     const shell = fixture.nativeElement.querySelector('pw-player-shell');
@@ -52,12 +83,52 @@ describe('ReaderComponent', () => {
     expect(fixture.nativeElement.querySelector('.pwr-spinner')).toBeNull();
     expect(fixture.nativeElement.querySelector('a.pw-badge')).toBeTruthy();
 
-    const dbg = fixture.debugElement.children.find((d) => d.componentInstance instanceof PlayerShellComponent);
-    const inst = dbg?.componentInstance as PlayerShellComponent;
+    const inst = shellOf(fixture);
     expect(inst.locale).toBe('de-DE'); // boot locale wins over manifest default
     expect(inst.showToolbar).toBeFalse();
-    expect(await inst.entitlementAdapter?.hasAccess('b')).toBeFalse();
-    expect(await inst.entitlementAdapter?.hasAccess('a')).toBeTrue();
+  });
+
+  it('leaves document.title to the server', () => {
+    document.title = 'Server Title';
+    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false, title: 'Boot Title' });
+    http.expectOne('https://x/m.json').flush(validManifest());
+    fixture.detectChanges();
+    expect(document.title).toBe('Server Title');
+  });
+
+  it('read mode: no adapter and no snapshot override, so the shell evaluates paywall and age gates', async () => {
+    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false });
+    http.expectOne('https://x/m.json').flush(validManifest('en-US', gatedPanels, gatedRules));
+    fixture.detectChanges();
+    // The shell initialises asynchronously (manifest, paywall, first panel).
+    await new Promise((resolve) => setTimeout(resolve));
+    await new Promise((resolve) => setTimeout(resolve));
+
+    const inst = shellOf(fixture);
+    expect(inst.entitlementAdapter).toBeUndefined();
+    expect(inst.entitlementSnapshot).toBeUndefined();
+    // Nothing bypasses the shell's PaywallService, which loaded the rules:
+    // the age gate is reachable.
+    const paywall = TestBed.inject(PaywallService);
+    expect(paywall.evaluate('c').reason).toBe('age_verification_required');
+    expect(paywall.canAccess('b')).toBeFalse();
+    expect(paywall.canAccess('a')).toBeTrue();
+  });
+
+  it("review mode: owns the rules' products and tiers, but the age stays unverified", () => {
+    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false, mode: 'review' });
+    http
+      .expectOne('https://x/m.json')
+      .flush(validManifest('en-US', { c: { id: 'c' } }, gatedRules));
+    fixture.detectChanges();
+
+    const inst = shellOf(fixture);
+    expect(inst.entitlementAdapter).toBeUndefined();
+    expect(inst.entitlementSnapshot).toEqual({
+      subscriptionTier: 'gold',
+      purchasedProductIds: ['b-product'],
+      ageVerified: false,
+    });
   });
 
   it('shows an error with retry when the fetch fails', () => {
@@ -73,13 +144,20 @@ describe('ReaderComponent', () => {
     http.expectOne('https://x/m.json').flush(validManifest());
   });
 
-  it('falls back to the manifest default_locale, then ignores concurrent retries', () => {
+  it('falls back to the manifest default_locale', () => {
     const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false });
-    fixture.componentInstance.load();
-    fixture.componentInstance.load();
     http.expectOne('https://x/m.json').flush(validManifest('de-DE'));
     fixture.detectChanges();
     expect(fixture.componentInstance.locale()).toBe('de-DE');
+  });
+
+  it('ignores retries while a load is in flight', () => {
+    const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false });
+    fixture.componentInstance.load();
+    fixture.componentInstance.load();
+    http.expectOne('https://x/m.json').flush(validManifest());
+    fixture.detectChanges();
+    expect(fixture.componentInstance.state()).toBe('ready');
   });
 
   it('shows "Nothing to read here." without a manifest URL', () => {

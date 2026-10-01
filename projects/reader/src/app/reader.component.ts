@@ -1,14 +1,26 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { PlayerShellComponent, type PanelWaveManifest } from 'player';
+import { PlayerShellComponent, type EntitlementSnapshot, type PanelWaveManifest } from 'player';
 import { BadgeComponent } from './badge/badge.component';
 import { readBootConfig, type ReaderBootConfig } from './boot-config';
-import { lockedAdapterFor } from './locked-adapter';
+import { reviewSnapshotFor } from './review-snapshot';
 
-type Adapter = ReturnType<typeof lockedAdapterFor>;
 type State = 'empty' | 'loading' | 'error' | 'ready';
 
+/**
+ * The public reader. Gating is left to the shell's PaywallService (manifest
+ * `paywall.rules` + `x-locked` stubs, anonymous snapshot), so paywall and age
+ * gates behave as in the player. A review link only swaps in a snapshot that
+ * owns the paid parts; the age is never pre-verified.
+ */
 @Component({
   selector: 'pwr-root',
   imports: [PlayerShellComponent, BadgeComponent],
@@ -25,12 +37,10 @@ export class ReaderComponent implements OnInit {
   readonly state = signal<State>('loading');
   readonly manifest = signal<PanelWaveManifest | null>(null);
   readonly locale = signal('en-US');
-  readonly adapter = signal<Adapter | undefined>(undefined);
+  /** Review mode only; undefined = the shell's anonymous snapshot. */
+  readonly snapshot = signal<EntitlementSnapshot | undefined>(undefined);
 
   ngOnInit(): void {
-    if (this.config.title) {
-      document.title = this.config.title;
-    }
     this.load();
   }
 
@@ -48,17 +58,19 @@ export class ReaderComponent implements OnInit {
       .get<PanelWaveManifest>(this.config.manifestUrl)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-      next: (manifest) => {
-        this.inFlight = false;
-        this.locale.set(this.config.locale ?? manifest.meta?.default_locale ?? 'en-US');
-        this.adapter.set(lockedAdapterFor(manifest));
-        this.manifest.set(manifest);
-        this.state.set('ready');
-      },
-      error: () => {
-        this.inFlight = false;
-        this.state.set('error');
-      },
-    });
+        next: (manifest) => {
+          this.inFlight = false;
+          this.locale.set(this.config.locale ?? manifest.meta?.default_locale ?? 'en-US');
+          this.snapshot.set(
+            this.config.mode === 'review' ? reviewSnapshotFor(manifest) : undefined
+          );
+          this.manifest.set(manifest);
+          this.state.set('ready');
+        },
+        error: () => {
+          this.inFlight = false;
+          this.state.set('error');
+        },
+      });
   }
 }
