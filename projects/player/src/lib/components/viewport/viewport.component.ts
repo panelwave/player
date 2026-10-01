@@ -789,14 +789,14 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     return [...placements].sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
   }
 
-  /**
-   * Panel lookup for the leaving page's placements.
-   */
   /** True for a server-side paywall stub (`"x-locked": true`). */
   isLocked(panel: Panel | null | undefined): boolean {
     return isLockedPanel(panel);
   }
 
+  /**
+   * Panel lookup for the leaving page's placements.
+   */
   getLeavingPanel(panelId: string): Panel | undefined {
     return this.leavingPagePanels[panelId];
   }
