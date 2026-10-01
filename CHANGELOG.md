@@ -152,6 +152,12 @@ semver. The reader-facing product changelog lives on the docs site
 - Toolbar, comments and paywall texts are translated (were English-only).
 
 ### Fixed
+- Panel audio of a gated panel no longer plays under the gate. The shell
+  synced the current panel's `audio` tracks whatever its lock state, so an
+  age-gated or paid entry panel played its music behind the age gate /
+  paywall. A panel the renderers lock (rules, or an `x-locked` stub) now
+  syncs with no panel; the audio starts once the lock lifts (age confirmed,
+  purchase completed).
 - Age requirements combine across every paywall rule that applies to a
   panel (its panel rules, its chapter's rules, every work rule, each outside
   its own free preview). The first matching rule decided everything, so a

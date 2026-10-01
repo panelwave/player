@@ -10,6 +10,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideTranslateService } from '@ngx-translate/core';
 import { PlayerShellComponent } from './player-shell.component';
+import { PanelAudioService } from '../../services/panel-audio.service';
 import type { PanelWaveManifest } from '../../types';
 
 /** A panel whose only content is a text layer carrying `secret`. */
@@ -188,6 +189,51 @@ describe('PlayerShellComponent gating (real template)', () => {
       expect(shell.ageGateVisible).toBeFalse();
       expect(locks()).toBe(0);
       expect(text()).toContain('Bravo');
+    });
+  });
+
+  describe('panel audio', () => {
+    const audioPanel = { ...textPanel('Alpha'), audio: [{ id: 'theme', src: 'theme.mp3', loop: true }] };
+    const withAudio = (paywall?: unknown) =>
+      manifestWith({
+        chapters: [
+          {
+            id: 'c1',
+            panels: { p1: audioPanel },
+            graph: { entry: 'p1', edges: [] },
+          },
+        ],
+        ...(paywall ? { paywall } : {}),
+      });
+    let syncPanel: jasmine.Spy;
+
+    beforeEach(() => {
+      syncPanel = spyOn(TestBed.inject(PanelAudioService), 'syncPanel').and.stub();
+    });
+
+    it('keeps an age-gated entry panel silent until the age is verified', async () => {
+      await start(
+        withAudio({ rules: [{ id: 'adult', scope: 'work', entitlementType: 'age_gate', minimumAge: 18 }] }),
+      );
+      expect(shell.ageGateVisible).toBeTrue();
+      expect(syncPanel).toHaveBeenCalled();
+      for (const call of syncPanel.calls.allArgs()) {
+        expect(call[1]).withContext('no panel audio under the gate').toBeUndefined();
+      }
+
+      syncPanel.calls.reset();
+      await shell.onAgeGateVerify(verified);
+      await settle();
+      const last = syncPanel.calls.mostRecent().args;
+      expect(last[0]).toBe('p1');
+      expect(last[1]).toEqual(jasmine.objectContaining({ audio: audioPanel.audio }));
+    });
+
+    it('plays the panel audio of an ungated panel as before', async () => {
+      await start(withAudio());
+      const last = syncPanel.calls.mostRecent().args;
+      expect(last[0]).toBe('p1');
+      expect(last[1]).toEqual(jasmine.objectContaining({ audio: audioPanel.audio }));
     });
   });
 });

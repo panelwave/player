@@ -81,6 +81,7 @@ import type { PaywallGate } from '../../types/entitlement.types';
 import { SettingsModalComponent, type Preferences } from '../modals/settings-modal/settings-modal.component';
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
+import { isLockedPanel } from '../../utils/panel-lock';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
 import { ExtrasViewerComponent, type Extra } from '../modals/extras-viewer/extras-viewer.component';
 import { ActionModalComponent } from '../modals/action-modal/action-modal.component';
@@ -1107,6 +1108,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         }
       });
 
+    // A lock flipped (age confirmed, purchase, new snapshot): the current
+    // panel's audio follows what the renderers show.
+    this.paywallService.changes$.pipe(takeUntil(this.destroy$)).subscribe(() => this.syncPanelAudio());
+
     // Listen to locale changes
     this.playerState.locale$
       .pipe(takeUntil(this.destroy$))
@@ -1339,13 +1344,19 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    * Keep the audio engine's playing set in step with the effective panel
    * (variant-resolved, so a variant's `audio` override wins) and the
    * variable context its tracks' `visibleIf` conditions read.
+   *
+   * A panel the renderers lock (age gate, paywall, `x-locked` stub) stays
+   * silent: it syncs with no panel, which stops its tracks. The shell
+   * re-syncs on `PaywallService.changes$`, so the audio starts once the age
+   * is confirmed or the purchase lands.
    */
   private syncPanelAudio(): void {
-    this.panelAudio.syncPanel(
-      this.getCurrentPanelId(),
-      this.effectivePanel ?? this.currentPanel,
-      this.variableContext
-    );
+    const panelId = this.getCurrentPanelId();
+    const panel = this.effectivePanel ?? this.currentPanel;
+    const locked =
+      panel !== undefined &&
+      (isLockedPanel(panel) || (panelId !== undefined && this.paywallService.isPanelLocked(panelId)));
+    this.panelAudio.syncPanel(panelId, locked ? undefined : panel, this.variableContext);
   }
 
   /**
