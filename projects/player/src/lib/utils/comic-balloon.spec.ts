@@ -128,24 +128,42 @@ describe('ComicBalloon', () => {
       expect(res.svg.style.overflow).toBe('visible');
     });
 
-    it('centres the text foreignObject inside the balloon and cleans up the measuring div', () => {
+    it('centres the text inside the balloon by layout and cleans up the measuring div', () => {
       const before = document.body.children.length;
       const res = make({ fontSize: 14, textAlign: 'left' }).render('Some <b>bold</b> words');
       expect(document.body.children.length).toBe(before);
 
+      // The foreignObject spans the balloon body; a flex box centres the text.
       const fo = res.svg.querySelector('foreignObject')!;
-      const w = +fo.getAttribute('width')!;
-      const h = +fo.getAttribute('height')!;
-      expect(w).toBeGreaterThan(0);
-      expect(w).toBeLessThanOrEqual(W - 28);
-      expect(+fo.getAttribute('x')!).toBeCloseTo((W - w) / 2, 5);
-      expect(+fo.getAttribute('y')!).toBeCloseTo((H - h) / 2, 5);
+      expect(+fo.getAttribute('x')!).toBe(0);
+      expect(+fo.getAttribute('y')!).toBe(0);
+      expect(+fo.getAttribute('width')!).toBe(W);
+      expect(+fo.getAttribute('height')!).toBe(H);
+      expect(fo.style.overflow).toBe('visible');
 
-      const div = fo.firstElementChild as HTMLElement;
+      const center = fo.firstElementChild as HTMLElement;
+      expect(center.style.display).toBe('flex');
+      expect(center.style.alignItems).toBe('center');
+      expect(center.style.justifyContent).toBe('center');
+
+      const div = center.firstElementChild as HTMLElement;
+      expect(parseFloat(div.style.width)).toBeGreaterThan(0);
+      expect(parseFloat(div.style.width)).toBeLessThanOrEqual(W - 28);
       expect(div.innerHTML).toBe('Some <b>bold</b> words');
       expect(div.style.fontSize).toBe('14px');
       expect(div.style.textAlign).toBe('left');
       expect(div.style.textTransform).toBe('uppercase');
+      // wraps exactly like the measuring element
+      expect(div.style.whiteSpace).toBe('pre-wrap');
+    });
+
+    it('renders the text vertically centred in a fixed-height balloon', () => {
+      const res = make({ maxHeight: 200 }).render('Hi');
+      const fo = res.svg.querySelector('foreignObject')!;
+      const box = fo.getBoundingClientRect();
+      const text = (fo.firstElementChild!.firstElementChild as HTMLElement).getBoundingClientRect();
+      expect(text.top - box.top).toBeCloseTo(box.bottom - text.bottom, 0);
+      expect(text.left - box.left).toBeCloseTo(box.right - text.right, 0);
     });
 
     it('derives natural width/height from text + padding when no max size is set', () => {
@@ -154,10 +172,12 @@ describe('ComicBalloon', () => {
       for (const maxWidth of [-1, 0]) {
         const res = new ComicBalloon(container, { maxWidth, padding }).render('Hi');
         const fo = res.svg.querySelector('foreignObject')!;
-        expect(+fo.getAttribute('width')!).toBeLessThanOrEqual(112);
-        expect(res.width).toBe(+fo.getAttribute('width')! + padding.left + padding.right);
-        expect(res.height).toBe(+fo.getAttribute('height')! + padding.top + padding.bottom);
-        expect(+fo.getAttribute('x')!).toBe((padding.left + padding.right) / 2);
+        const textDiv = fo.querySelector('div > div') as HTMLElement;
+        const textWidth = parseFloat(textDiv.style.width);
+        expect(textWidth).toBeLessThanOrEqual(112);
+        expect(res.width).toBe(textWidth + padding.left + padding.right);
+        expect(+fo.getAttribute('width')!).toBe(res.width);
+        expect(+fo.getAttribute('height')!).toBe(res.height);
       }
     });
 
@@ -170,8 +190,8 @@ describe('ComicBalloon', () => {
       const natural = new ComicBalloon(container, { maxWidth: -1 }).render('Hi');
       expect(zero.width).toBe(natural.width);
       expect(zero.height).toBe(natural.height);
-      const fo = zero.svg.querySelector('foreignObject')!;
-      expect(zero.width).toBe(+fo.getAttribute('width')! + 18 + 18);
+      const textDiv = zero.svg.querySelector('foreignObject div > div') as HTMLElement;
+      expect(zero.width).toBe(parseFloat(textDiv.style.width) + 18 + 18);
       expect(zero.width).not.toBe(140);
     });
 
@@ -187,7 +207,7 @@ describe('ComicBalloon', () => {
       b.render('One');
       b.render('Two');
       expect(container.querySelectorAll('svg').length).toBe(1);
-      expect(container.querySelector('foreignObject div')!.innerHTML).toBe('Two');
+      expect(container.querySelector('foreignObject div > div')!.innerHTML).toBe('Two');
     });
   });
 
@@ -347,7 +367,7 @@ describe('ComicBalloon', () => {
 
     it('update helpers re-render with new text and/or tail', () => {
       const res = make().render('First', { x: 70, y: 150 });
-      const textOf = (): string => container.querySelector('foreignObject div')!.innerHTML;
+      const textOf = (): string => container.querySelector('foreignObject div > div')!.innerHTML;
       const d = (): string => paths()[0].getAttribute('d')!;
 
       res.update();

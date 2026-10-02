@@ -283,6 +283,29 @@ export interface Page {
     /** Transition effect when leaving this page */
     out?: Transition;
   };
+
+  /** Visual properties of the page (optional) */
+  visual?: PageVisual;
+}
+
+/**
+ * Visual properties of a page (schema Page.visual)
+ */
+export interface PageVisual {
+  /**
+   * Page background color (CSS hex) — the space between and around the
+   * panels. Falls back to settings.typography.default_page_bg_color.
+   */
+  background_color?: string;
+
+  /** Background image asset ID or URI */
+  background_image?: string;
+
+  /** Background texture asset ID or URI */
+  background_texture?: string;
+
+  /** Page margins in pixels */
+  margins?: { top?: number; right?: number; bottom?: number; left?: number };
 }
 
 /**

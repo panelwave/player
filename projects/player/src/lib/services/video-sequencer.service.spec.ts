@@ -399,6 +399,118 @@ describe('VideoSequencerService', () => {
     });
   });
 
+  describe('image holds between videos (page timeline)', () => {
+    beforeEach(() => {
+      jasmine.clock().install();
+    });
+
+    afterEach(() => {
+      jasmine.clock().uninstall();
+    });
+
+    // Video A 3 s, image B 2 s, image C 4 s, video D 6 s.
+    const timeline = [
+      { panelId: 'A', holdMs: 3000 },
+      { panelId: 'B', holdMs: 2000 },
+      { panelId: 'C', holdMs: 4000 },
+      { panelId: 'D', holdMs: 6000 },
+    ];
+
+    it('waits for the image panels between two videos before the next one plays', () => {
+      service.start(timeline);
+      const a = makeVideo('a', 'A', { readingOrderIndex: 0 });
+      const d = makeVideo('d', 'D', { readingOrderIndex: 3 });
+      service.register(a);
+      service.register(d);
+      expect(a.activate).toHaveBeenCalledTimes(1);
+
+      service.notifyPassComplete('a');
+      expect(service.getActivePanelId()).toBeNull();
+      jasmine.clock().tick(5999);
+      expect(d.activate).not.toHaveBeenCalled();
+      jasmine.clock().tick(1);
+      expect(d.activate).toHaveBeenCalledTimes(1);
+      expect(service.getActivePanelId()).toBe('D');
+
+      service.notifyPassComplete('d');
+      expect(queueCompletions).toBe(1);
+    });
+
+    it('holds for image panels before the first video and after the last one', () => {
+      service.start([{ panelId: 'I1', holdMs: 1500 }, { panelId: 'V', holdMs: 0 }, { panelId: 'I2', holdMs: 2500 }]);
+      const v = makeVideo('v', 'V', { readingOrderIndex: 1 });
+      service.register(v);
+      expect(v.activate).not.toHaveBeenCalled();
+      jasmine.clock().tick(1500);
+      expect(v.activate).toHaveBeenCalledTimes(1);
+
+      service.notifyPassComplete('v');
+      expect(queueCompletions).toBe(0);
+      jasmine.clock().tick(2500);
+      expect(queueCompletions).toBe(1);
+    });
+
+    it('plays back to back without a timeline', () => {
+      service.start();
+      const a = makeVideo('a', 'A', { readingOrderIndex: 0 });
+      const d = makeVideo('d', 'D', { readingOrderIndex: 3 });
+      service.register(a);
+      service.register(d);
+      service.notifyPassComplete('a');
+      expect(d.activate).toHaveBeenCalledTimes(1);
+    });
+
+    it('never holds for video panels that are not playing (not visible)', () => {
+      supported = true;
+      visibleIds = new Set(['A', 'D']);
+      service.start([
+        { panelId: 'A', holdMs: 3000 },
+        { panelId: 'X', holdMs: 9000 }, // a video panel scrolled out of view
+        { panelId: 'D', holdMs: 6000 },
+      ]);
+      const a = makeVideo('a', 'A', { readingOrderIndex: 0 });
+      const x = makeVideo('x', 'X', { readingOrderIndex: 1 });
+      const d = makeVideo('d', 'D', { readingOrderIndex: 2 });
+      service.register(a);
+      service.register(x);
+      service.register(d);
+      service.notifyPassComplete('a');
+      expect(d.activate).toHaveBeenCalledTimes(1);
+      expect(x.activate).not.toHaveBeenCalled();
+    });
+
+    it('a pause cancels a running hold; resume holds again in full', () => {
+      service.start(timeline);
+      const a = makeVideo('a', 'A', { readingOrderIndex: 0 });
+      const d = makeVideo('d', 'D', { readingOrderIndex: 3 });
+      service.register(a);
+      service.register(d);
+      service.notifyPassComplete('a');
+      jasmine.clock().tick(3000);
+      service.pause();
+      jasmine.clock().tick(10000);
+      expect(d.activate).not.toHaveBeenCalled();
+      service.resume();
+      jasmine.clock().tick(5999);
+      expect(d.activate).not.toHaveBeenCalled();
+      jasmine.clock().tick(1);
+      expect(d.activate).toHaveBeenCalledTimes(1);
+    });
+
+    it('reset clears a pending hold', () => {
+      service.start(timeline);
+      const a = makeVideo('a', 'A', { readingOrderIndex: 0 });
+      const d = makeVideo('d', 'D', { readingOrderIndex: 3 });
+      service.register(a);
+      service.register(d);
+      service.notifyPassComplete('a');
+      service.reset();
+      jasmine.clock().tick(10000);
+      expect(d.activate).not.toHaveBeenCalled();
+      expect(queueCompletions).toBe(0);
+    });
+  });
+
   describe('lifecycle', () => {
     it('unregistering the last pending video of the active slot advances the queue', () => {
       service.start();

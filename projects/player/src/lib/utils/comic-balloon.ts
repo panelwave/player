@@ -139,20 +139,31 @@ export class ComicBalloon {
       ? this.options.maxWidth - textPadding * 2
       : 140 - textPadding * 2;
 
+    // Text styles shared by the measuring element and the rendered text, so
+    // both wrap identically. Everything that inherits is pinned: the rendered
+    // text inherits from the host page (player shell, editor), the measuring
+    // element from <body>.
+    const textStyle = `
+      font-family: ${this.options.fontFamily};
+      font-size: ${this.options.fontSize}px;
+      font-weight: normal;
+      font-style: normal;
+      letter-spacing: normal;
+      word-spacing: normal;
+      line-height: ${this.options.lineHeight};
+      text-align: ${this.options.textAlign};
+      text-transform: uppercase;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    `;
+
     // Create a temporary text element to measure
     const tempDiv = document.createElement('div');
     tempDiv.style.cssText = `
       position: absolute;
       visibility: hidden;
       width: ${availableTextWidth}px;
-      font-family: ${this.options.fontFamily};
-      font-size: ${this.options.fontSize}px;
-      line-height: ${this.options.lineHeight};
-      text-align: ${this.options.textAlign};
-      font-style: normal;
-      text-transform: uppercase;
-      white-space: pre-wrap;
-      word-wrap: break-word;
+      ${textStyle}
     `;
     tempDiv.innerHTML = text;
     document.body.appendChild(tempDiv);
@@ -336,28 +347,37 @@ export class ComicBalloon {
     // Create text element using foreignObject
     const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
 
-    // Center text within the balloon (matching canvas drawBalloonText behavior)
-    const foX = (balloonWidth - textWidth) / 2;
-    const foY = (balloonHeight - textHeight) / 2;
-    foreignObject.setAttribute('x', String(foX));
-    foreignObject.setAttribute('y', String(foY));
-    foreignObject.setAttribute('width', String(textWidth));
-    foreignObject.setAttribute('height', String(textHeight));
+    // The text box spans the whole balloon body and centers the text block
+    // by layout, horizontally and vertically — not by the measured height,
+    // which drifts when the font finishes loading after measuring. Overflow
+    // (text taller than a fixed maxHeight) spills evenly, never clipped.
+    foreignObject.setAttribute('x', '0');
+    foreignObject.setAttribute('y', '0');
+    foreignObject.setAttribute('width', String(balloonWidth));
+    foreignObject.setAttribute('height', String(balloonHeight));
+    foreignObject.style.overflow = 'visible';
+
+    const centerDiv = document.createElement('div');
+    centerDiv.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    centerDiv.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    `;
 
     const textDiv = document.createElement('div');
-    textDiv.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
     textDiv.style.cssText = `
-      font-family: ${this.options.fontFamily};
-      font-size: ${this.options.fontSize}px;
-      line-height: ${this.options.lineHeight};
-      text-align: ${this.options.textAlign};
-      font-style: normal;
-      text-transform: uppercase;
+      flex: none;
+      width: ${textWidth}px;
+      ${textStyle}
       color: #000;
     `;
     textDiv.innerHTML = text;
 
-    foreignObject.appendChild(textDiv);
+    centerDiv.appendChild(textDiv);
+    foreignObject.appendChild(centerDiv);
     this.svg.appendChild(foreignObject);
 
     this.container.appendChild(this.svg);

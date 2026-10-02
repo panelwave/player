@@ -452,6 +452,110 @@ describe('PlayerShellComponent auto-advance', () => {
       expect(shell.viewMode).toBe('panel');
       expect(sequencerMock.reset).toHaveBeenCalled();
     });
+
+    it('passes the page timeline with each panel dwell time to the sequencer', () => {
+      shell.viewMode = 'panel';
+      const video = videoPanel('on-view');
+      const image = { ...imagePanel(), durationMs: 4000 };
+      shell.currentChapter = {
+        id: 'ch',
+        panels: { v: video, i: image },
+        pages: [
+          {
+            id: 'pg',
+            layout: {
+              format: 'x',
+              placements: [
+                { panelId: 'v', x: 0, y: 0, w: 0.5, h: 1 },
+                { panelId: 'i', x: 0.5, y: 0, w: 0.5, h: 1 },
+              ],
+            },
+            readingOrder: ['v', 'i'],
+          },
+        ],
+        graph: { entry: 'v', edges: [] },
+      } as never;
+      shell.currentPanel = video;
+      shell.onToggleView();
+      const timeline = sequencerMock.start.calls.mostRecent().args[0] as { panelId: string; holdMs: number }[];
+      expect(timeline.map((entry) => entry.panelId)).toEqual(['v', 'i']);
+      expect(timeline[1].holdMs).toBe(4000);
+    });
+  });
+
+  describe('double-click switches between page and panel view', () => {
+    const page = {
+      id: 'pg',
+      layout: {
+        format: 'x',
+        placements: [
+          { panelId: 'p1', x: 0, y: 0, w: 0.5, h: 1 },
+          { panelId: 'p2', x: 0.5, y: 0, w: 0.5, h: 1 },
+        ],
+      },
+      readingOrder: ['p1', 'p2'],
+    };
+
+    beforeEach(() => {
+      const p1 = imagePanel();
+      shell.currentChapter = {
+        id: 'ch',
+        panels: { p1, p2: imagePanel() },
+        pages: [page],
+        graph: { entry: 'p1', edges: [] },
+      } as never;
+      shell.currentPanel = p1;
+    });
+
+    it('opens the double-clicked panel large in panel view', () => {
+      shell.viewMode = 'page';
+      shell.currentPage = page as never;
+      const nav = spyOn(shell, 'navigateToPanel').and.resolveTo();
+      shell.onPanelDoubleClick('p2');
+      expect(shell.viewMode).toBe('panel');
+      expect(nav).toHaveBeenCalledWith('ch', 'p2');
+    });
+
+    it('does not navigate when the double-clicked panel is already current', () => {
+      shell.viewMode = 'page';
+      shell.currentPage = page as never;
+      const nav = spyOn(shell, 'navigateToPanel').and.resolveTo();
+      shell.onPanelDoubleClick('p1');
+      expect(shell.viewMode).toBe('panel');
+      expect(nav).not.toHaveBeenCalled();
+    });
+
+    it('ignores a double-click on empty page space', () => {
+      shell.viewMode = 'page';
+      shell.onPanelDoubleClick(null);
+      expect(shell.viewMode).toBe('page');
+    });
+
+    it('goes back to the page from panel view', () => {
+      shell.viewMode = 'panel';
+      shell.onPanelDoubleClick('p1');
+      expect(shell.viewMode).toBe('page');
+      expect(shell.currentPage?.id).toBe('pg');
+    });
+  });
+
+  describe('viewport arrows', () => {
+    it('turn pages in page view and move panels in panel view', () => {
+      const nextPage = spyOn(shell, 'navigateToNextPage').and.resolveTo();
+      const prevPage = spyOn(shell, 'navigateToPreviousPage').and.resolveTo();
+      const next = spyOn(shell, 'navigateNext').and.resolveTo();
+      const prev = spyOn(shell, 'navigatePrevious').and.resolveTo();
+      shell.viewMode = 'page';
+      shell.onViewportNext();
+      shell.onViewportPrevious();
+      expect(nextPage).toHaveBeenCalledTimes(1);
+      expect(prevPage).toHaveBeenCalledTimes(1);
+      shell.viewMode = 'panel';
+      shell.onViewportNext();
+      shell.onViewportPrevious();
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(prev).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('keyboard while a dialog is open', () => {

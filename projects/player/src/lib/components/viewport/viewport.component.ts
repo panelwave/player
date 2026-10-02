@@ -39,6 +39,7 @@ import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { pageAspectRatio } from '../../utils/page-format-utils';
+import { resolvePageBackground } from '../../utils/page-background';
 
 /**
  * Performance metrics interface
@@ -98,6 +99,14 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Page to render (page view)
    */
   @Input() page: Page | null = null;
+
+  /**
+   * Background color of the page the current panel belongs to — the frame
+   * around the panel in panel view and around the page in page view. The
+   * host resolves it per panel (the page input is not tracked in panel
+   * view); null resolves from `page`.
+   */
+  @Input() pageBackground: string | null = null;
 
   /**
    * Panels map for page view lookup
@@ -243,6 +252,13 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Navigate to next panel
    */
   @Output() navigateNext = new EventEmitter<void>();
+
+  /**
+   * Double-click: the panel under the pointer in page view (null on empty
+   * space), the current panel in panel view. The host opens the panel large
+   * from page view and returns to the page from panel view.
+   */
+  @Output() panelDoubleClick = new EventEmitter<string | null>();
 
   /**
    * Panel focus changed
@@ -879,6 +895,16 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    */
   getViewModeClass(): string {
     return `viewport-${this.viewMode}`;
+  }
+
+  /** Background color of a page (page canvas), resolved against the work default. */
+  pageBackgroundOf(page: Page | null | undefined): string {
+    return resolvePageBackground(page, this.manifestService.getManifest()?.settings);
+  }
+
+  /** Background of the whole viewport: the current panel's page color. */
+  getViewportBackground(): string {
+    return this.pageBackground ?? this.pageBackgroundOf(this.page);
   }
 
   /**
@@ -1585,8 +1611,8 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * Handle viewport mouse move for navigation arrows
    */
   onViewportMouseMove(event: MouseEvent): void {
-    // Only show arrows in panel view
-    if (this.viewMode !== 'panel') {
+    // Arrows in panel view (previous / next panel) and page view (pages)
+    if (this.viewMode !== 'panel' && this.viewMode !== 'page') {
       this.showLeftArrow = false;
       this.showRightArrow = false;
       return;
@@ -1604,6 +1630,19 @@ export class ViewportComponent implements OnChanges, OnDestroy {
 
     this.showLeftArrow = x <= leftZoneWidth;
     this.showRightArrow = x >= rightZoneStart;
+  }
+
+  /** Double-click: open the panel under the pointer (page view) / go back to the page (panel view). */
+  onViewportDoubleClick(event: MouseEvent): void {
+    if ((event.target as Element | null)?.closest?.('button, a, input, select, textarea')) {
+      return;
+    }
+    if (this.viewMode === 'page') {
+      const host = (event.target as Element | null)?.closest?.('[data-panel-id]');
+      this.panelDoubleClick.emit(host?.getAttribute('data-panel-id') ?? null);
+    } else if (this.viewMode === 'panel') {
+      this.panelDoubleClick.emit(this.currentPanelId);
+    }
   }
 
   /**

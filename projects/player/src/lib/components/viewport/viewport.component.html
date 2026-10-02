@@ -3,6 +3,7 @@
   [class]="getViewModeClass()"
   [class.reduced-motion]="reducedMotion"
   [class.interactive]="interactive"
+  [style.background-color]="getViewportBackground()"
   role="region"
   [attr.aria-label]="viewMode === 'page' ? 'Page viewport' : 'Panel viewport'"
   tabindex="0"
@@ -10,6 +11,7 @@
   (keydown.enter)="onKeyboardActivate($event)"
   (keydown.space)="onKeyboardActivate($event)"
   (mousemove)="onViewportMouseMove($event)"
+  (dblclick)="onViewportDoubleClick($event)"
   (mouseleave)="onViewportMouseLeave()">
   
   <!-- Panel View -->
@@ -135,7 +137,7 @@
             [style.--pw-t-duration]="pageLeaveDuration"
             [style.--pw-t-easing]="pageLeaveEasing"
             aria-hidden="true">
-            <div class="page-canvas">
+            <div class="page-canvas" [style.background-color]="pageBackgroundOf(leavingPage)">
               @for (placement of getLeavingPagePlacements(); track placement.panelId) {
                 <div
                   class="panel-container"
@@ -198,6 +200,7 @@
           [style.--pw-t-easing]="pageEnterEasing">
       <div
         class="page-canvas"
+        [style.background-color]="pageBackgroundOf(page)"
         [attr.tabindex]="-1"
         (click)="onPanelClickWithFocus($event)"
         (keydown.enter)="onCanvasKeyboardActivate($event)"
@@ -351,12 +354,12 @@
   }
 
   <!-- Navigation arrows (hover zones) -->
-  @if (viewMode === 'panel') {
+  @if (viewMode === 'panel' || (viewMode === 'page' && page)) {
     @if (showLeftArrow) {
       <button 
         class="nav-arrow nav-arrow-left"
         type="button"
-        aria-label="Previous panel"
+        [attr.aria-label]="viewMode === 'page' ? 'Previous page' : 'Previous panel'"
         (click)="onNavigatePrevious(); $event.stopPropagation()">
         <span class="arrow-icon"><pw-icon name="lucideChevronLeft" /></span>
       </button>
@@ -366,7 +369,7 @@
       <button 
         class="nav-arrow nav-arrow-right"
         type="button"
-        aria-label="Next panel"
+        [attr.aria-label]="viewMode === 'page' ? 'Next page' : 'Next panel'"
         (click)="onNavigateNext(); $event.stopPropagation()">
         <span class="arrow-icon"><pw-icon name="lucideChevronRight" /></span>
       </button>

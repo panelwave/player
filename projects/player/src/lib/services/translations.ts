@@ -51,6 +51,12 @@ export const TRANSLATIONS = {
       close: 'Close toolbar',
       author_timing: 'Author',
       author_timing_use: "Use the author's panel timing",
+      fullscreen_enter: 'Fullscreen',
+      fullscreen_exit: 'Exit fullscreen',
+      made_with: 'Made with',
+      panelwave_link: 'PanelWave website',
+      help: 'Help',
+      help_open: 'Open the player help',
       show: 'Show toolbar'
     },
     navigation: {
@@ -254,6 +260,12 @@ export const TRANSLATIONS = {
       close: 'Werkzeugleiste schließen',
       author_timing: 'Autor',
       author_timing_use: 'Timing des Autors verwenden',
+      fullscreen_enter: 'Vollbild',
+      fullscreen_exit: 'Vollbild beenden',
+      made_with: 'Erstellt mit',
+      panelwave_link: 'PanelWave-Website',
+      help: 'Hilfe',
+      help_open: 'Hilfe zum Player öffnen',
       show: 'Werkzeugleiste anzeigen'
     },
     navigation: {

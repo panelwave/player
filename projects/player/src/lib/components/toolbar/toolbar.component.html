@@ -26,6 +26,19 @@
           <span class="btn-label">{{ locale }}</span>
         </button>
       }
+
+      <!-- Fullscreen / back to the browser view -->
+      @if (fullscreenAvailable) {
+        <button
+          class="toolbar-btn icon-only fullscreen-btn"
+          type="button"
+          [attr.aria-label]="(fullscreen ? 'toolbar.fullscreen_exit' : 'toolbar.fullscreen_enter') | translate"
+          [attr.title]="(fullscreen ? 'toolbar.fullscreen_exit' : 'toolbar.fullscreen_enter') | translate"
+          [attr.aria-pressed]="fullscreen"
+          (click)="toggleFullscreen.emit()">
+          <span class="btn-icon"><pw-icon [name]="fullscreen ? 'lucideMinimize' : 'lucideMaximize'" /></span>
+        </button>
+      }
     </div>
 
     <!-- Center section: Content controls -->
@@ -255,6 +268,28 @@
         </button>
       </div>
     }
+
+    <!-- Made with PanelWave + player help -->
+    <div class="toolbar-section toolbar-brand">
+      <span class="brand-credit">
+        {{ 'toolbar.made_with' | translate }}
+        <a
+          class="brand-link"
+          href="https://panelwave.org"
+          target="_blank"
+          rel="noopener"
+          [attr.title]="'toolbar.panelwave_link' | translate">PanelWave</a>
+      </span>
+      <a
+        class="toolbar-btn icon-only help-link"
+        href="https://docs.panelwave.org/player/overview"
+        target="_blank"
+        rel="noopener"
+        [attr.aria-label]="'toolbar.help_open' | translate"
+        [attr.title]="'toolbar.help_open' | translate">
+        <span class="btn-icon"><pw-icon name="lucideCircleHelp" /></span>
+      </a>
+    </div>
 
     <!-- Close button -->
     <button

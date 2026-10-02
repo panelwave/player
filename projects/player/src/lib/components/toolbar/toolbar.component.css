@@ -8,8 +8,11 @@
   left: 0;
   right: 0;
   z-index: 100;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7) 70%, transparent);
-  padding: 24px 16px 16px;
+  /* Solid bar with a clear top edge (no fade into the artwork). */
+  background: rgba(14, 14, 16, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+  padding: 8px 16px;
   transform: translateY(100%);
   opacity: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -41,7 +44,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 1400px;
+  max-width: 1800px;
   margin: 0 auto;
   overflow-x: auto;
   overflow-y: visible;
@@ -155,6 +158,41 @@
 
 .toolbar-btn.icon-only .btn-label {
   display: none;
+}
+
+/* Links styled as toolbar buttons (help) */
+a.toolbar-btn {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+/* Made with PanelWave + help */
+.toolbar-brand {
+  margin-left: 16px;
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Two short lines ("Made with" / "PanelWave") keep the credit narrow. */
+.brand-credit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+}
+
+.brand-link {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.brand-link:hover,
+.brand-link:focus-visible {
+  text-decoration: underline;
 }
 
 /* Close button */
@@ -325,7 +363,12 @@
 /* Responsive mobile layout */
 @media (max-width: 768px) {
   .toolbar-container {
-    padding: 16px 8px 8px;
+    padding: 6px 8px;
+  }
+
+  .toolbar-brand {
+    margin-left: 8px;
+    padding-left: 8px;
   }
 
   .toolbar {

@@ -16,6 +16,7 @@ export type {
   Chapter,
   Page,
   PageLayout,
+  PageVisual,
   PanelPlacement,
   Settings,
   UIDefaults,

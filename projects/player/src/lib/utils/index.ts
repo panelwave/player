@@ -157,5 +157,8 @@ export {
   type ScreenClass,
 } from './page-format-utils';
 
+// Page background color (page view gutters, panel view frame)
+export { DEFAULT_PAGE_BACKGROUND, resolvePageBackground } from './page-background';
+
 // Navigation thumbnails and the work's cover
 export { THUMBNAIL_WIDTH, panelThumbnailSrc, coverImageSrc } from './thumbnail-utils';

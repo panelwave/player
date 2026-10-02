@@ -45,6 +45,12 @@
     "close": "Close toolbar",
     "author_timing": "Author",
     "author_timing_use": "Use the author's panel timing",
+    "fullscreen_enter": "Fullscreen",
+    "fullscreen_exit": "Exit fullscreen",
+    "made_with": "Made with",
+    "panelwave_link": "PanelWave website",
+    "help": "Help",
+    "help_open": "Open the player help",
     "show": "Show toolbar"
   },
   "character_roster": {

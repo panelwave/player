@@ -28,6 +28,12 @@
  * Auto-advance coupling (§4.3.6): when the last queue slot completes its pass
  * the sequencer emits {@link queueComplete}; the host advances the page/panel
  * only when autoplay is on.
+ *
+ * Image holds: with a page timeline (see {@link start}) the panels without a
+ * sequenced video hold the sequence for their dwell time, in reading order —
+ * video A, image B (2 s), image C (4 s), video D plays A, waits 6 s, plays D,
+ * so the reader has time for the art between the videos. Images before the
+ * first video delay it; images after the last one delay `queueComplete`.
  */
 
 import { Injectable, OnDestroy, inject } from '@angular/core';
@@ -82,6 +88,16 @@ export interface SequencedVideo extends SequencedVideoInfo {
   onStallSkip?(): void;
 }
 
+/**
+ * One panel of the page in reading order, with the time a panel without a
+ * sequenced video holds the sequence (its autoplay dwell time).
+ */
+export interface PageTimelineEntry {
+  panelId: string;
+  /** Dwell time in ms; ignored for panels whose videos play in the sequence. */
+  holdMs: number;
+}
+
 /** Default stall-skip timeout: 10 s (§7). */
 export const DEFAULT_STALL_TIMEOUT_MS = 10_000;
 
@@ -112,6 +128,15 @@ export class VideoSequencerService implements OnDestroy {
 
   /** Stall-skip timer for the active slot. */
   private stallTimer?: ReturnType<typeof setTimeout>;
+
+  /** The page in reading order, with each panel's hold time. */
+  private timeline: PageTimelineEntry[] = [];
+
+  /** Timeline index of the last slot that played (-1: none yet). */
+  private timelinePosition = -1;
+
+  /** Pending image hold before the next slot (or before `queueComplete`). */
+  private holdTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * Stall-skip timeout (ms). If the active slot makes no progress for this
@@ -152,9 +177,17 @@ export class VideoSequencerService implements OnDestroy {
    * visibility changes so newly-visible videos append and leaving ones drop.
    * Already-registered sequenced videos (components reused across a page
    * change) are re-observed and re-queued.
+   *
+   * @param timeline The page's panels in reading order with their hold times.
+   *   Panels without a sequenced video hold the sequence for that long
+   *   between the videos. Omitted: the videos play back to back.
    */
-  start(): void {
+  start(timeline: readonly PageTimelineEntry[] = []): void {
     this.reset();
+    this.timeline = timeline.map((entry) => ({
+      panelId: entry.panelId,
+      holdMs: Number.isFinite(entry.holdMs) && entry.holdMs > 0 ? entry.holdMs : 0,
+    }));
     this.running = true;
     this.visibilitySub = this.visibility.changes.subscribe((change) =>
       this.onVisibilityChange(change.id, change.visible)
@@ -183,7 +216,10 @@ export class VideoSequencerService implements OnDestroy {
     this.activePanelId = null;
     this.pendingPass.clear();
     this.queue = [];
+    this.timeline = [];
+    this.timelinePosition = -1;
     this.clearStallTimer();
+    this.clearHoldTimer();
     this.visibilitySub?.unsubscribe();
     this.visibilitySub = undefined;
     this.visibility.clear();
@@ -222,8 +258,9 @@ export class VideoSequencerService implements OnDestroy {
     if (!this.visibility.isSupported() || this.visibility.isVisible(video.placementId)) {
       this.appendSlot(video.panelId);
     }
-    // A late-arriving video for the already-active slot must start too.
-    if (video.panelId === this.activePanelId) {
+    // A late-arriving video for the already-active slot must start too
+    // (the slot that just started with this video already activated it).
+    if (video.panelId === this.activePanelId && !this.pendingPass.has(video.id)) {
       this.pendingPass.add(video.id);
       if (!this.paused) {
         video.activate();
@@ -267,6 +304,8 @@ export class VideoSequencerService implements OnDestroy {
     if (this.paused) return;
     this.paused = true;
     this.clearStallTimer();
+    // A running image hold restarts in full on resume.
+    this.clearHoldTimer();
     if (this.activePanelId) {
       // Re-queue the paused slot at the front so resume replays it.
       const panelId = this.activePanelId;
@@ -284,7 +323,7 @@ export class VideoSequencerService implements OnDestroy {
     if (!this.paused) return;
     this.paused = false;
     if (!this.activePanelId) {
-      this.playNext();
+      this.advance();
     }
   }
 
@@ -377,7 +416,9 @@ export class VideoSequencerService implements OnDestroy {
     this.queue.push(panelId);
     this.sortQueue();
     if (!this.paused && this.activePanelId === null) {
-      this.playNext();
+      // Idle, or holding: re-plan the hold towards the new queue head.
+      this.clearHoldTimer();
+      this.advance();
     }
   }
 
@@ -434,10 +475,22 @@ export class VideoSequencerService implements OnDestroy {
 
   /**
    * Advance to the next queue slot, or emit `queueComplete` when the queue is
-   * exhausted.
+   * exhausted — each after holding for the image panels in between.
    */
   private advance(): void {
     if (this.paused || !this.running) {
+      return;
+    }
+    const target = this.queue.length > 0 ? this.timelineIndex(this.queue[0]) : this.timeline.length;
+    const holdMs = this.holdBefore(target);
+    if (holdMs > 0) {
+      this.clearHoldTimer();
+      this.holdTimer = setTimeout(() => {
+        this.holdTimer = undefined;
+        // Holding is done up to the target: don't hold for it again.
+        this.timelinePosition = Math.max(this.timelinePosition, target - 1);
+        this.advance();
+      }, holdMs);
       return;
     }
     if (this.queue.length === 0) {
@@ -445,6 +498,37 @@ export class VideoSequencerService implements OnDestroy {
       return;
     }
     this.playNext();
+  }
+
+  /**
+   * Total hold of the image panels between the last played slot and the
+   * timeline index `target` (exclusive). Panels whose videos are sequenced
+   * never hold: they play, or were skipped as not visible.
+   */
+  private holdBefore(target: number): number {
+    if (target < 0) {
+      return 0;
+    }
+    let total = 0;
+    for (let i = this.timelinePosition + 1; i < target && i < this.timeline.length; i++) {
+      const entry = this.timeline[i];
+      if (!this.panelHasSequencedVideos(entry.panelId)) {
+        total += entry.holdMs;
+      }
+    }
+    return total;
+  }
+
+  /** Index of a panel in the page timeline, or -1. */
+  private timelineIndex(panelId: string): number {
+    return this.timeline.findIndex((entry) => entry.panelId === panelId);
+  }
+
+  private clearHoldTimer(): void {
+    if (this.holdTimer !== undefined) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = undefined;
+    }
   }
 
   /** Activate the head slot of the queue (all its sequenced videos). */
@@ -467,6 +551,10 @@ export class VideoSequencerService implements OnDestroy {
       return;
     }
     this.activePanelId = nextPanelId;
+    const position = this.timelineIndex(nextPanelId);
+    if (position >= 0) {
+      this.timelinePosition = Math.max(this.timelinePosition, position);
+    }
     this.pendingPass = new Set(videos.map((v) => v.id));
     this.armStallTimer();
     for (const video of videos) {

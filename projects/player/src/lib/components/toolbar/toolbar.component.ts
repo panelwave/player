@@ -120,6 +120,18 @@ export class ToolbarComponent {
   @Input() visible = false;
 
   /**
+   * Whether the player is in fullscreen (the button then returns to the
+   * browser view).
+   */
+  @Input() fullscreen = false;
+
+  /** Whether the browser can show the player in fullscreen (hides the button when not). */
+  @Input() fullscreenAvailable = false;
+
+  /** Fullscreen button clicked: enter fullscreen, or leave it. */
+  @Output() toggleFullscreen = new EventEmitter<void>();
+
+  /**
    * Toggle page/panel view
    */
   @Output() toggleView = new EventEmitter<void>();

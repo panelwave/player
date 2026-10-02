@@ -375,6 +375,59 @@ describe('VideoLayerComponent', () => {
       expect(videoEl.pause).toHaveBeenCalled();
       expect(videoEl.currentTime).toBe(1); // reset to startAtMs
     });
+
+    describe('hover and click (not playing)', () => {
+      beforeEach(() => {
+        component.startMode = 'on-view';
+        component.reducedMotion = false;
+        component.viewMode = 'page';
+        spyOn(component as unknown as { isTouchDevice(): boolean }, 'isTouchDevice').and.returnValue(false);
+        component.onLoadedMetadata();
+        setupVideoElement(10);
+      });
+
+      it('plays while hovered in page view and pauses on leave', () => {
+        const playSpy = spyOn(component, 'play').and.returnValue(Promise.resolve());
+        Object.defineProperty(videoEl, 'paused', { value: true, configurable: true });
+        videoEl.currentTime = 3;
+
+        component.onMouseEnter();
+        expect(playSpy).toHaveBeenCalledTimes(1);
+
+        component.onMouseLeave();
+        expect(videoEl.pause).toHaveBeenCalled();
+        expect(videoEl.currentTime).toBe(3); // position kept
+      });
+
+      it('leaves a video that already plays alone on hover', () => {
+        const playSpy = spyOn(component, 'play').and.returnValue(Promise.resolve());
+        Object.defineProperty(videoEl, 'paused', { value: false, configurable: true });
+        component.onMouseEnter();
+        component.onMouseLeave();
+        expect(playSpy).not.toHaveBeenCalled();
+        expect(videoEl.pause).not.toHaveBeenCalled();
+      });
+
+      it('does not start on hover in panel view', () => {
+        component.viewMode = 'panel';
+        const playSpy = spyOn(component, 'play').and.returnValue(Promise.resolve());
+        Object.defineProperty(videoEl, 'paused', { value: true, configurable: true });
+        component.onMouseEnter();
+        expect(playSpy).not.toHaveBeenCalled();
+      });
+
+      it('plays on click when not playing, and a click never pauses it', () => {
+        const playSpy = spyOn(component, 'play').and.returnValue(Promise.resolve());
+        Object.defineProperty(videoEl, 'paused', { value: true, configurable: true });
+        component.onClick();
+        expect(playSpy).toHaveBeenCalledTimes(1);
+
+        Object.defineProperty(videoEl, 'paused', { value: false, configurable: true });
+        component.onClick();
+        expect(playSpy).toHaveBeenCalledTimes(1);
+        expect(videoEl.pause).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('start mode: on-click', () => {

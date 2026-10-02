@@ -8,6 +8,29 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- Toolbar: fullscreen button (Lucide maximize / minimize, the CMS icons)
+  that shows the player in fullscreen and returns to the browser view; hidden
+  where the browser has no fullscreen (iPhone Safari). "Made with PanelWave"
+  credit linking to https://panelwave.org and a help icon linking to
+  https://docs.panelwave.org/player/overview. New toolbar inputs
+  `fullscreen` / `fullscreenAvailable`, output `toggleFullscreen`.
+- Page view shows the previous / next arrows at the screen edges on hover,
+  like panel view; they turn the page.
+- Double-click a panel in page view to open it large in panel view; double-
+  click in panel view to return to the page. New viewport output
+  `panelDoubleClick`.
+- Page-view video sequence holds for image panels: an image panel between
+  two `on-view` videos pauses the sequence for its dwell time (`durationMs`
+  from the CMS timeline, else the reader's seconds per panel). Video A 3 s,
+  image B 2 s, image C 4 s, video D 6 s plays A, waits 6 s, plays D. Images
+  before the first video delay it, images after the last one delay the
+  autoplay page turn. `VideoSequencerService.start()` takes the page
+  timeline (`PageTimelineEntry[]`).
+- Hovering an `on-view` video in page view plays it while it is not playing
+  (waiting for its turn, finished); leaving pauses it unless the sequence
+  took it over. A click plays any video that is not playing.
+- Demo and reader show the PanelWave icon in the browser tab (was Angular's)
+  plus an Apple touch icon.
 - Page view picks the page sequence by screen: a chapter carries one page
   sequence per output format, and the player shows the authored format that
   suits the screen (`bigscreen-landscape` on a 4K display, `mobile-portrait`
@@ -37,6 +60,24 @@ semver. The reader-facing product changelog lives on the docs site
   `lockedPanelActivate` (panel id).
 
 ### Changed
+- Toolbar: a solid bar with a clear top line (was a gradient fading into
+  the artwork); the button row may use up to 1800 px (was 1400 px).
+- Page background color: `page.visual.background_color` (else
+  `settings.typography.default_page_bg_color`, else the previous `#1a1a1a`)
+  fills the space between the panels in page view and the frame around the
+  panel in panel view. Panel view takes the color of the page holding the
+  current panel, so it switches when the first panel of the next page
+  appears. The page box has no inset or rounded corners any more and the
+  letterbox around it is painted in the page color, so the page runs edge to
+  edge (was a 16 px light-grey `#f5f5f5` border plus grey letterbox). The
+  panel-view panel box is transparent (was white with a shadow). New
+  viewport input `pageBackground`, exported `resolvePageBackground` and type
+  `PageVisual`.
+- Balloon text is centered horizontally and vertically by layout (the text
+  box spans the balloon body), not by the measured text height, which put
+  the text off-center when the lettering font loaded after measuring. The
+  measuring and rendered text share all styles (white-space, weight,
+  letter-spacing pinned), so they wrap alike.
 - Peer dependencies accept Angular 21 and 22: `@angular/core` and
   `@angular/common` are `^20.0.0 || ^21.0.0 || ^22.0.0` (was `^20.0.0`, which
   made npm refuse the install on newer apps). Verified with fresh Angular

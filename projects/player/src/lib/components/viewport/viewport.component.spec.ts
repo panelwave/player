@@ -310,6 +310,91 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('Double-click and page-view arrows', () => {
+    it('emits the double-clicked panel in page view', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      const emitted: (string | null)[] = [];
+      component.panelDoubleClick.subscribe((id) => emitted.push(id));
+
+      const panel = fixture.nativeElement.querySelector('[data-panel-id="p2"]') as HTMLElement;
+      panel.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      expect(emitted).toEqual(['p2']);
+    });
+
+    it('emits the current panel in panel view', () => {
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.componentRef.setInput('currentPanelId', 'p1');
+      fixture.detectChanges();
+      const emitted: (string | null)[] = [];
+      component.panelDoubleClick.subscribe((id) => emitted.push(id));
+
+      (fixture.nativeElement.querySelector('.viewport-container') as HTMLElement)
+        .dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      expect(emitted).toEqual(['p1']);
+    });
+
+    it('shows the previous / next arrows at the edges in page view', () => {
+      const host = fixture.nativeElement as HTMLElement;
+      host.style.display = 'block';
+      host.style.width = '800px';
+      host.style.height = '600px';
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.detectChanges();
+      const container = fixture.nativeElement.querySelector('.viewport-container') as HTMLElement;
+      const rect = container.getBoundingClientRect();
+
+      container.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + 2, clientY: rect.top + 10 }));
+      fixture.detectChanges();
+      const left = fixture.nativeElement.querySelector('.nav-arrow-left') as HTMLElement;
+      expect(left).toBeTruthy();
+      expect(left.getAttribute('aria-label')).toBe('Previous page');
+
+      const next = jasmine.createSpy('next');
+      component.navigateNext.subscribe(next);
+      container.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.right - 2, clientY: rect.top + 10 }));
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('.nav-arrow-right') as HTMLElement).click();
+      expect(next).toHaveBeenCalled();
+    });
+  });
+
+  describe('Page background color', () => {
+    const container = (): HTMLElement =>
+      fixture.nativeElement.querySelector('.viewport-container') as HTMLElement;
+
+    it('paints the page canvas and the frame around it in the page color (page view)', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', { ...mockPage, visual: { background_color: '#ffffff' } });
+      fixture.detectChanges();
+
+      const canvas = fixture.nativeElement.querySelector('.page-canvas') as HTMLElement;
+      expect(canvas.style.backgroundColor).toBe('rgb(255, 255, 255)');
+      expect(container().style.backgroundColor).toBe('rgb(255, 255, 255)');
+    });
+
+    it('frames the panel in the color the host resolved for its page (panel view)', () => {
+      fixture.componentRef.setInput('panel', mockPanel);
+      fixture.componentRef.setInput('pageBackground', '#000000');
+      fixture.detectChanges();
+      expect(container().style.backgroundColor).toBe('rgb(0, 0, 0)');
+    });
+
+    it('falls back to the work default page color', () => {
+      const manifestService = TestBed.inject(ManifestService);
+      spyOn(manifestService, 'getManifest').and.returnValue({
+        settings: { typography: { default_page_bg_color: '#FFF8E1' } },
+      } as unknown as PanelWaveManifest);
+      expect(component.pageBackgroundOf(mockPage)).toBe('#FFF8E1');
+      expect(component.pageBackgroundOf({ ...mockPage, visual: { background_color: '#123456' } })).toBe('#123456');
+    });
+  });
+
   describe('Mouse Interactions - Pan', () => {
     it('should start dragging on mouse down', () => {
       const event = new MouseEvent('mousedown', { button: 0, clientX: 100, clientY: 50 });

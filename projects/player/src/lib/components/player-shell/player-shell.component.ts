@@ -64,6 +64,7 @@ import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
 import { chapterReadingOrder, isChapterEndPanel } from '../../utils/reading-order';
 import { pageFormatsOf, pagesForFormat, pickPageFormat } from '../../utils/page-format-utils';
+import { resolvePageBackground } from '../../utils/page-background';
 import { coverImageSrc, THUMBNAIL_WIDTH } from '../../utils/thumbnail-utils';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
@@ -410,6 +411,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   currentPage?: Page;
 
+  /** Cache for {@link pageBackground}: the page lookup runs once per panel. */
+  private pageBackgroundCache: { key: unknown[]; color: string } | null = null;
+
   /**
    * Current chapter
    */
@@ -702,6 +706,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   private readonly assetUrl = inject(AssetUrlService);
   private readonly preloadService = inject(PreloadService);
   private readonly host = inject(ElementRef<HTMLElement>);
+
+  /** The player is shown in fullscreen (kept in sync with the browser, Esc included). */
+  isFullscreen = false;
+
+  /** The browser can show the player in fullscreen (not e.g. on iPhone Safari). */
+  readonly fullscreenAvailable =
+    typeof document !== 'undefined' && !!document.fullscreenEnabled;
 
   /** ngOnInit ran: later input changes are live updates, not initial values. */
   private initialized = false;
@@ -1748,8 +1759,72 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     if (this.canvasViewAvailable) {
       modes.push('canvas');
     }
-    const newMode = modes[(modes.indexOf(this.viewMode) + 1) % modes.length];
+    this.setViewMode(modes[(modes.indexOf(this.viewMode) + 1) % modes.length]);
+  }
 
+  /** Toolbar fullscreen button: show the player in fullscreen, or go back to the browser view. */
+  toggleFullscreen(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.().catch(() => undefined);
+    } else {
+      const element = this.host.nativeElement as HTMLElement;
+      void element.requestFullscreen?.().catch(() => undefined);
+    }
+  }
+
+  /** Follow fullscreen changes from any source (button, Esc, F11-less browser UI). */
+  @HostListener('document:fullscreenchange')
+  onFullscreenChange(): void {
+    this.isFullscreen = !!document.fullscreenElement;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Double-click on the viewport: a panel in page view opens large in panel
+   * view; in panel view the reader goes back to the page.
+   */
+  onPanelDoubleClick(panelId: string | null): void {
+    if (this.coverVisible || this.paywallVisible || this.ageGateVisible) {
+      return;
+    }
+    if (this.viewMode === 'page') {
+      if (!panelId || !this.currentChapter) {
+        return;
+      }
+      const chapterId = this.currentChapter.id;
+      this.setViewMode('panel');
+      if (panelId !== this.getCurrentPanelId()) {
+        void this.navigateToPanel(chapterId, panelId).then(() => this.cdr.markForCheck());
+      }
+    } else if (this.viewMode === 'panel' && (this.pageViewAvailable || this.findPageContainingPanel())) {
+      this.setViewMode('page');
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Viewport previous arrow: the previous page in page view, else the previous panel. */
+  onViewportPrevious(): void {
+    if (this.viewMode === 'page') {
+      void this.navigateToPreviousPage();
+    } else {
+      void this.navigatePrevious();
+    }
+  }
+
+  /** Viewport next arrow: the next page in page view, else the next panel. */
+  onViewportNext(): void {
+    if (this.viewMode === 'page') {
+      void this.navigateToNextPage();
+    } else {
+      void this.navigateNext();
+    }
+  }
+
+  /** Switch to a view mode, setting up the page / video sequence / camera it needs. */
+  private setViewMode(newMode: ViewMode): void {
     if (newMode === 'page') {
       // Switch to page view - find page containing current panel
       this.currentPage = this.findPageContainingPanel();
@@ -1757,7 +1832,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
         this.viewMode = 'page';
         // Start the page-view video sequence; video components register as
         // they render and visibility drives the queue.
-        this.videoSequencer.start();
+        this.startPageSequence();
         this.promptAgeGateForPage();
       } else {
         console.warn('No page found for current panel');
@@ -2547,12 +2622,33 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     return typeof authored === 'number' && authored > 0 ? authored : fallback;
   }
 
+  /** The current page's panel ids in reading order (placement order without one). */
+  private pageReadingOrderIds(): string[] {
+    if (!this.currentPage) {
+      return [];
+    }
+    return this.currentPage.readingOrder?.length
+      ? this.currentPage.readingOrder
+      : (this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId);
+  }
+
+  /**
+   * Start the page-view video sequence. Image panels between the videos hold
+   * it for their dwell time (authored `durationMs`, else the reader's seconds
+   * per panel), so the art gets read before the next video starts.
+   */
+  private startPageSequence(): void {
+    const timeline = this.pageReadingOrderIds().map((panelId) => ({
+      panelId,
+      holdMs: this.panelDwellMs(this.resolvedPanels[panelId] ?? this.currentChapter?.panels[panelId]),
+    }));
+    this.videoSequencer.start(timeline);
+  }
+
   /** Dwell time of what is on screen: the current panel, or every panel of the current page. */
   private currentDwellMs(): number {
     if (this.viewMode === 'page' && this.currentPage && this.currentChapter) {
-      const ids = this.currentPage.readingOrder?.length
-        ? this.currentPage.readingOrder
-        : (this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId);
+      const ids = this.pageReadingOrderIds();
       const total = ids.reduce(
         (sum, id) => sum + this.panelDwellMs(this.resolvedPanels[id] ?? this.currentChapter?.panels[id]),
         0
@@ -2753,6 +2849,25 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     return best ?? pages[0];
   }
 
+  /**
+   * Background color of the page the reader is on — the open page in page
+   * view, the page holding the current panel in panel view — so the frame
+   * switches color exactly when the first panel of the next page appears.
+   */
+  get pageBackground(): string {
+    const settings = this.manifestService.getManifest()?.settings;
+    const panelId = this.getCurrentPanelId();
+    const key = [this.viewMode, this.currentPage, this.currentChapter, panelId, this.activePageFormat, settings];
+    const cached = this.pageBackgroundCache;
+    if (cached && cached.key.length === key.length && cached.key.every((value, i) => value === key[i])) {
+      return cached.color;
+    }
+    const page = this.viewMode === 'page' ? this.currentPage : this.findPageContainingPanel(panelId);
+    const color = resolvePageBackground(page, settings);
+    this.pageBackgroundCache = { key, color };
+    return color;
+  }
+
   /** The chapter's pages in the active page format (legacy pages without a format included). */
   chapterPages(chapter: Chapter | undefined): Page[] {
     return pagesForFormat(chapter?.pages, this.activePageFormat);
@@ -2920,7 +3035,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     this.coverVisible = false;
     this.syncPanelAudio();
     if (this.viewMode === 'page') {
-      this.videoSequencer.start();
+      this.startPageSequence();
       this.promptAgeGateForPage();
     }
     if (this.autoplayEnabled) {
@@ -3028,7 +3143,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
    */
   private onPageChanged(): void {
     if (this.viewMode === 'page') {
-      this.videoSequencer.start();
+      this.startPageSequence();
       this.promptAgeGateForPage();
     }
     if (this.autoplayEnabled) {

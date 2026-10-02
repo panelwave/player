@@ -63,6 +63,11 @@ describe('ToolbarComponent', () => {
         comments: 'Comments',
         comments_view: 'View comments',
         close: 'Close toolbar',
+        fullscreen_enter: 'Fullscreen',
+        fullscreen_exit: 'Exit fullscreen',
+        made_with: 'Made with',
+        panelwave_link: 'PanelWave website',
+        help_open: 'Open the player help',
       },
     });
     translate.use('en');
@@ -81,6 +86,43 @@ describe('ToolbarComponent', () => {
   it('renders translated labels', () => {
     expect(btn('Toggle view')?.title).toBe('Toggle view');
     expect(btn('Toggle view')?.querySelector('.btn-label')?.textContent?.trim()).toBe('View');
+  });
+
+  describe('fullscreen', () => {
+    it('is hidden when the browser cannot go fullscreen', () => {
+      set({ fullscreenAvailable: false });
+      expect(btn('Fullscreen')).toBeNull();
+    });
+
+    it('enters fullscreen, then offers the way back to the browser view', () => {
+      const toggle = jasmine.createSpy('toggleFullscreen');
+      component.toggleFullscreen.subscribe(toggle);
+      set({ fullscreenAvailable: true, fullscreen: false });
+      expect(iconName('Fullscreen')).toBe('lucideMaximize');
+      btn('Fullscreen')?.click();
+      expect(toggle).toHaveBeenCalledTimes(1);
+
+      set({ fullscreen: true });
+      expect(btn('Fullscreen')).toBeNull();
+      expect(iconName('Exit fullscreen')).toBe('lucideMinimize');
+      expect(btn('Exit fullscreen')?.getAttribute('aria-pressed')).toBe('true');
+    });
+  });
+
+  describe('made with PanelWave + help', () => {
+    it('links PanelWave to panelwave.org and the help icon to the player docs', () => {
+      const credit = fixture.nativeElement.querySelector('.brand-credit') as HTMLElement;
+      expect(credit.textContent?.replace(/\s+/g, ' ').trim()).toBe('Made with PanelWave');
+      const link = credit.querySelector('a') as HTMLAnchorElement;
+      expect(link.textContent?.trim()).toBe('PanelWave');
+      expect(link.getAttribute('href')).toBe('https://panelwave.org');
+      expect(link.target).toBe('_blank');
+
+      const help = fixture.nativeElement.querySelector('a[aria-label="Open the player help"]') as HTMLAnchorElement;
+      expect(help.getAttribute('href')).toBe('https://docs.panelwave.org/player/overview');
+      expect(help.target).toBe('_blank');
+      expect(help.rel).toContain('noopener');
+    });
   });
 
   describe('view toggle', () => {

@@ -212,6 +212,9 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
   /** Whether this video is currently the sequencer's active slot member. */
   private activatedBySequencer = false;
 
+  /** An `on-view` video started by hovering it (page view), not by the sequence. */
+  private hoverPlaying = false;
+
   /**
    * What triggered the most recent playback, for tracking payloads. Set when
    * playback starts (sequencer / view / hover / click).
@@ -424,12 +427,20 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  /** Click / tap handler (on-click toggle). */
+  /**
+   * Click / tap handler: on-click layers toggle; any other video that is
+   * not playing (waiting for its turn in the page sequence, finished, or
+   * paused) starts on a click.
+   */
   onClick(): void {
-    if (this.effectiveStartMode() !== 'on-click') {
+    if (this.effectiveStartMode() === 'on-click') {
+      this.togglePlayback();
       return;
     }
-    this.togglePlayback();
+    if (this.isIdle()) {
+      this.currentTrigger = 'click';
+      void this.play();
+    }
   }
 
   /** Keyboard handler (Enter / Space) for on-click layers. */
@@ -443,21 +454,46 @@ export class VideoLayerComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  /** Mouse enter — on-hover start (page view only). */
+  /**
+   * Mouse enter — on-hover start (page view only). An `on-view` video in page
+   * view that is not playing (still waiting for its turn in the sequence, or
+   * finished) plays while the pointer rests on it too.
+   */
   onMouseEnter(): void {
-    if (this.effectiveStartMode() !== 'on-hover') {
+    const mode = this.effectiveStartMode();
+    if (mode === 'on-hover') {
+      this.currentTrigger = 'hover';
+      void this.play();
       return;
     }
-    this.currentTrigger = 'hover';
-    void this.play();
+    if (mode === 'on-view' && this.viewMode === 'page' && !this.isTouchDevice() && this.isIdle()) {
+      this.hoverPlaying = true;
+      this.currentTrigger = 'hover';
+      void this.play();
+    }
   }
 
-  /** Mouse leave — on-hover pause keeping position. */
+  /**
+   * Mouse leave — on-hover pause keeping position; an `on-view` video the
+   * hover started pauses too, unless the sequence took it over meanwhile.
+   */
   onMouseLeave(): void {
-    if (this.effectiveStartMode() !== 'on-hover') {
+    if (this.effectiveStartMode() === 'on-hover') {
+      this.pause();
       return;
     }
-    this.pause();
+    if (this.hoverPlaying) {
+      this.hoverPlaying = false;
+      if (!this.activatedBySequencer) {
+        this.pause();
+      }
+    }
+  }
+
+  /** The video is not playing: never started, paused or finished. */
+  private isIdle(): boolean {
+    const video = this.video;
+    return !!video && (video.paused || video.ended);
   }
 
   private togglePlayback(): void {
