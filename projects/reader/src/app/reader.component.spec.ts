@@ -199,6 +199,44 @@ describe('ReaderComponent', () => {
     expect(fixture.componentInstance.state()).toBe('ready');
   });
 
+  describe('reading position in the URL', () => {
+    let originalUrl: string;
+
+    beforeEach(() => {
+      originalUrl = window.location.href;
+    });
+
+    afterEach(() => {
+      window.history.replaceState(window.history.state, '', originalUrl);
+    });
+
+    it('opens the page or panel the URL links to', () => {
+      window.history.replaceState(null, '', '/team/work?page=pg-D3');
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false });
+      expect(fixture.componentInstance.start).toEqual({ pageId: 'pg-D3' });
+      http.expectOne('https://x/m.json').flush(validManifest());
+      fixture.detectChanges();
+      expect(shellOf(fixture).initialPageId).toBe('pg-D3');
+      expect(shellOf(fixture).initialPanelId).toBeUndefined();
+    });
+
+    it('writes the position into the address bar without adding history entries', () => {
+      window.history.replaceState(null, '', '/team/work?embed=1');
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: true });
+      const push = spyOn(window.history, 'pushState');
+
+      fixture.componentInstance.onLocationChange({ view: 'panel', chapterId: 'c', panelId: 'ch1-p022' });
+      expect(window.location.pathname + window.location.search).toBe('/team/work?embed=1&panel=ch1-p022');
+
+      fixture.componentInstance.onLocationChange({ view: 'page', chapterId: 'c', panelId: 'a', pageId: 'pg-D1' });
+      expect(window.location.search).toBe('?embed=1&page=pg-D1');
+
+      fixture.componentInstance.onLocationChange({ view: 'cover', chapterId: 'c', panelId: 'a' });
+      expect(window.location.search).toBe('?embed=1');
+      expect(push).not.toHaveBeenCalled();
+    });
+  });
+
   it('shows "Nothing to read here." without a manifest URL', () => {
     const fixture = setup(undefined);
     expect(fixture.nativeElement.textContent).toContain('Nothing to read here.');

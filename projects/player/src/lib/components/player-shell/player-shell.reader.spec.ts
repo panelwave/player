@@ -128,6 +128,9 @@ describe('PlayerShellComponent reading features (real services)', () => {
     TestBed.overrideComponent(PlayerShellComponent, { set: { template: '', imports: [] } });
     shell = TestBed.createComponent(PlayerShellComponent).componentInstance;
     shell.manifest = buildManifest();
+    // Most cases start in panel view and switch on purpose; the default
+    // start (cover, then page view) has its own describe below.
+    shell.initialViewMode = 'panel';
   });
 
   afterEach(() => {
@@ -283,6 +286,87 @@ describe('PlayerShellComponent reading features (real services)', () => {
       shell.manifest = buildManifest();
       await shell.reload();
       expect(shell.coverVisible).toBeFalse();
+    });
+  });
+
+  describe('start: cover, then page view', () => {
+    beforeEach(() => {
+      shell.initialViewMode = undefined;
+    });
+
+    it('opens on the cover with the first page behind it', async () => {
+      await init();
+      expect(shell.coverVisible).toBeTrue();
+      expect(shell.viewMode).toBe('page');
+      expect(shell.currentPage?.id).toBe('D1');
+      expect(shell.currentLocation.view).toBe('cover');
+      shell.hideCover();
+      expect(shell.currentLocation).toEqual({ view: 'page', chapterId: 'c1', panelId: 'p1', pageId: 'D1' });
+    });
+
+    it('resumes a bookmark behind the cover, on its page', async () => {
+      localStorage.setItem('pw-social', JSON.stringify({ 'work-reader': { bookmark: { chapterId: 'c2', panelId: 'q2' } } }));
+      await init();
+      expect(shell.coverVisible).toBeTrue();
+      expect(shell.currentPage?.id).toBe('D3');
+    });
+
+    it('a page link opens that page, without the cover', async () => {
+      shell.initialPageId = 'D2';
+      await init();
+      expect(shell.coverVisible).toBeFalse();
+      expect(shell.viewMode).toBe('page');
+      expect(shell.currentPage?.id).toBe('D2');
+    });
+
+    it('a page link of another format opens the page showing the same panels', async () => {
+      shell.initialPageId = 'B2'; // a big-screen page, read on a desktop screen
+      await init();
+      expect(shell.currentPage?.id).toBe('D3');
+    });
+
+    it('a panel link opens the panel in panel view (chapter looked up)', async () => {
+      shell.initialPanelId = 'q2';
+      await init();
+      expect(shell.coverVisible).toBeFalse();
+      expect(shell.viewMode).toBe('panel');
+      expect(shell.currentChapter?.id).toBe('c2');
+      expect(shell.currentLocation).toEqual({ view: 'panel', chapterId: 'c2', panelId: 'q2' });
+    });
+
+    it('an unknown link falls back to the cover', async () => {
+      shell.initialPageId = 'nope';
+      await init();
+      expect(shell.coverVisible).toBeTrue();
+      expect(shell.viewMode).toBe('page');
+    });
+  });
+
+  describe('share link', () => {
+    beforeEach(() => {
+      shell.initialViewMode = undefined;
+    });
+
+    it('links the current page in page view and the panel in panel view', async () => {
+      await init();
+      shell.hideCover();
+      shell.onShare();
+      const pageLink = new URL(shell.shareLink);
+      expect(pageLink.searchParams.get('page')).toBe('D1');
+      expect(pageLink.searchParams.get('panel')).toBeNull();
+
+      shell.onToggleView(); // page -> panel
+      shell.onShare();
+      const panelLink = new URL(shell.shareLink);
+      expect(panelLink.searchParams.get('panel')).toBe('p1');
+      expect(panelLink.searchParams.get('page')).toBeNull();
+    });
+
+    it('uses the host share URL when given', async () => {
+      shell.shareUrl = 'https://example.org/work';
+      await init();
+      shell.onShare();
+      expect(shell.shareLink).toBe('https://example.org/work');
     });
   });
 

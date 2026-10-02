@@ -1,9 +1,9 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { PlayerShellComponent } from 'player';
+import { PlayerShellComponent, locationUrl, parseLocationSearch } from 'player';
 import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
-import type { EntitlementSnapshot, PanelWaveManifest, PlayerPanelChangeEvent } from 'player';
+import type { EntitlementSnapshot, PanelWaveManifest, PlayerLocation, PlayerPanelChangeEvent } from 'player';
 import { snapshotFromEntitlements } from './entitlements';
 
 /**
@@ -51,6 +51,12 @@ export class AppComponent implements OnInit, OnDestroy {
   locale = 'en-US';
   autoplay = false;
   viewModeOverride: 'auto' | 'panel' | 'canvas' = 'auto';
+
+  /** View to open in (`?view=panel|page`); default: the shell's (cover, then page view). */
+  initialViewMode?: 'page' | 'panel';
+
+  /** Position a shared link opens (`?page=` / `?panel=`), as in the reader. */
+  readonly start = parseLocationSearch(window.location.search);
 
   /**
    * Dev/testing hook: `?deny=<panelId>[,<panelId>…]` installs an
@@ -166,6 +172,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
     const params = new URLSearchParams(window.location.search);
     this.devToolsOpen = params.get('devtools') === '1';
+    const view = params.get('view');
+    if (view === 'panel' || view === 'page') {
+      this.initialViewMode = view;
+    }
     const device = params.get('device');
     if (device && this.devices.some((d) => d.id === device)) {
       this.device = device;
@@ -336,6 +346,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   onPlayerReady() {
     this.log('ready', '');
+  }
+
+  /** The address bar follows the reading position, as in the reader. */
+  onLocationChange(location: PlayerLocation): void {
+    if (this.embedMode) {
+      return;
+    }
+    const next = locationUrl(window.location.href, location);
+    if (next !== window.location.href) {
+      window.history.replaceState(window.history.state, '', next);
+    }
   }
 
   onPanelChange(event: PlayerPanelChangeEvent) {

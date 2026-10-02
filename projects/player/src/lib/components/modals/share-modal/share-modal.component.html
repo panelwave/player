@@ -110,11 +110,16 @@
 
             @if (showQrCode) {
               <div class="qr-code-container">
-                @if (qrCodeDataUrl) {
-                  <img
-                    [src]="qrCodeDataUrl"
-                    [alt]="'share.qr_code' | translate"
-                    class="qr-code-image" />
+                @if (qrPath) {
+                  <svg
+                    class="qr-code-image"
+                    role="img"
+                    [attr.aria-label]="'share.qr_code' | translate"
+                    [attr.viewBox]="'0 0 ' + qrSize + ' ' + qrSize"
+                    shape-rendering="crispEdges">
+                    <rect [attr.width]="qrSize" [attr.height]="qrSize" fill="#fff" />
+                    <path [attr.d]="qrPath" fill="#000" />
+                  </svg>
                   <p class="qr-hint">{{ 'share.scan_mobile' | translate }}</p>
                 } @else {
                   <div class="qr-loading">{{ 'share.generating_qr' | translate }}</div>

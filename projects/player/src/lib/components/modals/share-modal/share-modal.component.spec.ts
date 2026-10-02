@@ -230,34 +230,58 @@ describe('ShareModalComponent', () => {
   describe('QR code', () => {
     beforeEach(() => create());
 
-    it('toggles the QR code, generating the image URL once and emitting qr on show', () => {
+    /** Whether module (x, y) of the rendered code is dark. */
+    function dark(x: number, y: number): boolean {
+      return component.qrPath.includes(`M${x} ${y}h1v1h-1z`);
+    }
+
+    it('draws the share URL as a QR code on the device, once, emitting qr on show', () => {
       const toggle = el().querySelector('.qr-toggle-btn') as HTMLButtonElement;
       toggle.click();
       fixture.detectChanges();
       expect(component.showQrCode).toBeTrue();
-      expect(component.qrCodeDataUrl).toBe(
-        'https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=https%3A%2F%2Fread.example%2Fw%2F1%3Fp%3Da%20b',
-      );
-      expect(el().querySelector('.qr-code-image')?.getAttribute('src')).toBe(component.qrCodeDataUrl);
+      // A real QR symbol: 21 + 4k modules plus the 4-module quiet zone on each side.
+      expect((component.qrSize - 8 - 21) % 4).toBe(0);
+      // Top-left finder pattern: dark outer ring, light ring, dark 3x3 core.
+      expect(dark(4, 4)).toBeTrue();
+      expect(dark(10, 4)).toBeTrue();
+      expect(dark(5, 5)).toBeFalse();
+      expect(dark(7, 7)).toBeTrue();
+      expect(dark(3, 3)).toBeFalse(); // quiet zone
+      const svg = el().querySelector('svg.qr-code-image') as SVGElement;
+      expect(svg.getAttribute('viewBox')).toBe(`0 0 ${component.qrSize} ${component.qrSize}`);
+      expect(svg.querySelector('path')?.getAttribute('d')).toBe(component.qrPath);
+      expect(el().querySelector('img')).toBeNull(); // no third-party image
       expect(shared).toEqual(['qr']);
 
       toggle.click();
       fixture.detectChanges();
       expect(component.showQrCode).toBeFalse();
       expect(el().querySelector('.qr-code-container')).toBeNull();
-      expect(shared).toEqual(['qr']);
 
-      const before = component.qrCodeDataUrl;
-      component.shareUrl = 'https://other.example';
+      const before = component.qrPath;
       toggle.click();
-      expect(component.qrCodeDataUrl).toBe(before);
+      expect(component.qrPath).toBe(before);
       expect(shared).toEqual(['qr', 'qr']);
     });
 
-    it('shows a loading state when the QR URL is empty', () => {
-      component.showQrCode = true;
-      component.qrCodeDataUrl = '';
+    it('redraws the code for a new link', () => {
+      fixture.componentRef.setInput('shareUrl', 'https://read.example/w/1');
+      fixture.detectChanges();
+      component.toggleQrCode();
+      const first = component.qrPath;
+      fixture.componentRef.setInput('shareUrl', 'https://read.example/w/1?panel=ch1-p022');
+      fixture.detectChanges();
+      expect(component.qrPath).not.toBe('');
+      expect(component.qrPath).not.toBe(first);
+    });
+
+    it('shows a waiting state without a link', () => {
+      fixture.componentRef.setInput('shareUrl', '');
+      fixture.detectChanges();
+      component.toggleQrCode();
       render();
+      expect(component.qrPath).toBe('');
       expect(el().querySelector('.qr-loading')).not.toBeNull();
     });
   });

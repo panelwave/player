@@ -11,6 +11,7 @@ import {
   OnInit,
   OnChanges,
   OnDestroy,
+  AfterViewChecked,
   SimpleChanges,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -65,6 +66,8 @@ import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
 import { chapterReadingOrder, isChapterEndPanel } from '../../utils/reading-order';
 import { pageFormatsOf, pagesForFormat, pickPageFormat } from '../../utils/page-format-utils';
 import { resolvePageBackground } from '../../utils/page-background';
+import { locationUrl, type PlayerLocation } from '../../utils/player-location';
+import { workLocales } from '../../utils/work-locales';
 import { coverImageSrc, THUMBNAIL_WIDTH } from '../../utils/thumbnail-utils';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
@@ -167,7 +170,7 @@ export interface EntitlementAdapter {
     styleUrls: ['./player-shell.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
+export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked, OnDestroy {
   /**
    * Manifest to load
    */
@@ -264,9 +267,36 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   @Input() initialChapterId?: string;
 
   /**
-   * Initial panel ID
+   * Initial panel ID. Without `initialChapterId` the chapter holding the
+   * panel is looked up. A panel link opens in panel view.
    */
   @Input() initialPanelId?: string;
+
+  /**
+   * Initial page (manifest page id, e.g. from a `?page=` link): opens that
+   * page in page view. On a screen whose page format differs, the page
+   * showing the same panels opens. Wins over `initialPanelId`.
+   */
+  @Input() initialPageId?: string;
+
+  /**
+   * View to open in. Default: page view when the work has pages (after the
+   * cover), panel view for a panel link.
+   */
+  @Input() initialViewMode?: 'page' | 'panel';
+
+  /**
+   * Link the share dialog offers. Default: the current address with the
+   * reading position (`?page=` / `?panel=`, see `locationUrl`).
+   */
+  @Input() shareUrl?: string;
+
+  /**
+   * The reading position changed: cover, page, panel or canvas — for hosts
+   * that keep it in the address bar (`locationUrl`) so pages and panels
+   * can be bookmarked and shared.
+   */
+  @Output() locationChange = new EventEmitter<PlayerLocation>();
 
   /**
    * Enable autoplay
@@ -994,22 +1024,35 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
       // Like / bookmark state for this work, from the device.
       this.restoreSocialState();
 
-      // Navigate to initial position. Without an explicit host position, a
-      // bookmark the reader left in this work is resumed.
-      const bookmark = !this.initialChapterId && !this.initialPanelId ? this.readBookmark() : null;
-      if (this.initialChapterId && this.initialPanelId) {
-        await this.navigateToPanel(this.initialChapterId, this.initialPanelId);
+      // Navigate to the initial position. A link (page / panel / chapter)
+      // opens right there; otherwise reading starts on the cover — then the
+      // first page, or the page the reader's bookmark is on.
+      const linkedPage = this.initialPageId ? this.findPageById(this.initialPageId) : undefined;
+      const linkedPageStart = linkedPage ? this.firstPanelOf(linkedPage.page) : undefined;
+      const panelChapterId = this.initialPanelId
+        ? this.initialChapterId ?? this.findChapterOfPanel(this.initialPanelId)?.id
+        : undefined;
+      let linked = true;
+      if (linkedPage && linkedPageStart) {
+        await this.navigateToPanel(linkedPage.chapter.id, linkedPageStart);
+      } else if (panelChapterId && this.initialPanelId) {
+        await this.navigateToPanel(panelChapterId, this.initialPanelId);
       } else if (this.initialChapterId) {
         await this.navigateToChapter(this.initialChapterId);
-      } else if (bookmark && this.manifestService.getChapter(bookmark.chapterId)?.panels?.[bookmark.panelId]) {
-        await this.navigateToPanel(bookmark.chapterId, bookmark.panelId);
       } else {
-        await this.navigateToStart();
-        // Reading from the beginning opens on the cover.
+        linked = false;
+        const bookmark = this.readBookmark();
+        if (bookmark && this.manifestService.getChapter(bookmark.chapterId)?.panels?.[bookmark.panelId]) {
+          await this.navigateToPanel(bookmark.chapterId, bookmark.panelId);
+        } else {
+          await this.navigateToStart();
+        }
         this.coverVisible = this.showCover && !!this.coverUrl;
         this.syncPanelAudio();
         this.warmBehindCover();
       }
+      const panelLink = linked && !linkedPage && !!panelChapterId;
+      this.enterInitialView(panelLink ? 'panel' : 'page', linkedPage?.page);
       this.updatePreloadTargets();
 
       // Subscribe to state changes
@@ -2262,7 +2305,65 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   onShare(): void {
+    this.shareLink = this.buildShareLink();
     this.shareVisible = true;
+  }
+
+  /** Link in the open share dialog. */
+  shareLink = '';
+
+  /**
+   * What to share: the host's `shareUrl`, else the current address with the
+   * reading position — the page in page view, the panel in panel view, the
+   * work itself on the cover. `embed` is dropped: the link opens the full
+   * reader.
+   */
+  private buildShareLink(): string {
+    if (this.shareUrl) {
+      return this.shareUrl;
+    }
+    const href = typeof window !== 'undefined' ? window.location?.href ?? '' : '';
+    if (!/^https?:/i.test(href)) {
+      return '';
+    }
+    return locationUrl(href, this.currentLocation, ['embed']);
+  }
+
+  /** The reading position: cover, page (with its id), panel or canvas. */
+  get currentLocation(): PlayerLocation {
+    const chapterId = this.currentChapter?.id;
+    const panelId = this.getCurrentPanelId();
+    if (this.coverVisible) {
+      return { view: 'cover', chapterId, panelId };
+    }
+    if (this.viewMode === 'page') {
+      return { view: 'page', chapterId, panelId, pageId: this.currentPage?.id };
+    }
+    return { view: this.viewMode, chapterId, panelId };
+  }
+
+  /** Last position reported through `locationChange`. */
+  private lastLocationKey = '';
+
+  /**
+   * Report a changed reading position. Checked after every render: the
+   * position changes in many places (navigation, view toggle, cover, page
+   * format). Page view reports the page, not each panel the reader focuses.
+   */
+  ngAfterViewChecked(): void {
+    if (this.loading || this.hasError) {
+      return;
+    }
+    const location = this.currentLocation;
+    const key = location.view === 'page'
+      ? `page|${location.pageId ?? ''}`
+      : `${location.view}|${location.panelId ?? ''}`;
+    if (key === this.lastLocationKey) {
+      return;
+    }
+    this.lastLocationKey = key;
+    // After the check: a host reacting to it never changes this render.
+    queueMicrotask(() => this.locationChange.emit(location));
   }
 
   onOpenComments(): void {
@@ -2868,6 +2969,52 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
     return color;
   }
 
+  /**
+   * Open the initial view: page view (default; `initialViewMode` overrides)
+   * on `page` — or, when that page is not in the screen's page format, the
+   * page showing the current panel. Canvas chapters and hosts that force a
+   * view mode keep theirs. Behind the cover the page sequence waits until
+   * the cover is left.
+   */
+  private enterInitialView(fallback: 'page' | 'panel', page?: Page): void {
+    const wanted = this.initialViewMode ?? fallback;
+    if (wanted !== 'page' || this.viewModeOverride !== 'auto' || this.viewMode !== 'panel') {
+      return;
+    }
+    const pages = this.chapterPages(this.currentChapter);
+    const target = page && pages.includes(page) ? page : this.findPageContainingPanel();
+    if (!target) {
+      return;
+    }
+    this.currentPage = target;
+    this.viewMode = 'page';
+    if (!this.coverVisible) {
+      this.startPageSequence();
+      this.promptAgeGateForPage();
+    }
+  }
+
+  /** A page by its manifest id, in any chapter and format. */
+  private findPageById(pageId: string): { chapter: Chapter; page: Page } | undefined {
+    for (const chapter of this.manifestService.getManifest()?.chapters ?? []) {
+      const page = chapter.pages?.find((candidate) => candidate.id === pageId);
+      if (page) {
+        return { chapter, page };
+      }
+    }
+    return undefined;
+  }
+
+  /** The chapter that holds a panel. */
+  private findChapterOfPanel(panelId: string): Chapter | undefined {
+    return (this.manifestService.getManifest()?.chapters ?? []).find((chapter) => !!chapter.panels?.[panelId]);
+  }
+
+  /** First panel of a page in reading order (placement order without one). */
+  private firstPanelOf(page: Page): string | undefined {
+    return page.readingOrder?.[0] ?? page.layout?.placements?.[0]?.panelId;
+  }
+
   /** The chapter's pages in the active page format (legacy pages without a format included). */
   chapterPages(chapter: Chapter | undefined): Page[] {
     return pagesForFormat(chapter?.pages, this.activePageFormat);
@@ -3241,15 +3388,19 @@ export class PlayerShellComponent implements OnInit, OnChanges, OnDestroy {
   // ============================================================================
 
   /**
-   * Get available locales from manifest
+   * Languages the work can be read in (the toolbar shows the language switch
+   * when there are several): `meta.locales` plus the languages the content
+   * is translated into. Computed once per manifest.
    */
   get availableLocales(): LocaleCode[] {
-    const manifest = this.manifestService.getManifest();
-    if (!manifest?.meta?.locales) {
-      return ['en-US'];
+    const manifest = this.manifestService.getManifest() ?? null;
+    if (this.localeCache?.manifest !== manifest) {
+      this.localeCache = { manifest, locales: workLocales(manifest) };
     }
-    return manifest.meta.locales;
+    return this.localeCache.locales;
   }
+
+  private localeCache?: { manifest: PanelWaveManifest | null; locales: LocaleCode[] };
 
   /**
    * Get characters from manifest mapped to roster format

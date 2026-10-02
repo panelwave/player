@@ -24,6 +24,42 @@ test.describe('reader features', () => {
     await expect(cover).toBeVisible();
   });
 
+  test('by default the cover comes first, then page view', async ({ page }) => {
+    await openPlayer(page, '', { keepCover: true, view: 'default' });
+    const cover = page.locator('pw-player-shell .pw-cover');
+    await expect(cover).toBeVisible();
+    await cover.click();
+    await expect(cover).toHaveCount(0);
+    await expect(page.locator('.page-stage .pt-frame [data-panel-id="p1-1"]')).toBeVisible();
+  });
+
+  test('the share dialog offers the link of the current page and draws its QR code', async ({ page }) => {
+    await openPlayer(page, '', { view: 'default' });
+    await toolbarButton(page, 'Share').click();
+    const link = page.locator('pw-share-modal .link-input');
+    await expect(link).toHaveValue(/[?&]page=pg-1(&|$)/);
+    await page.getByRole('button', { name: /Show QR Code/i }).click();
+    const qr = page.locator('pw-share-modal svg.qr-code-image');
+    await expect(qr).toBeVisible();
+    await expect(qr.locator('path')).toHaveAttribute('d', /^M\d+ \d+h1v1h-1z/);
+    await expect(page.locator('pw-share-modal img')).toHaveCount(0);
+  });
+
+  test('pages and panels have their own URLs; a shared link opens there', async ({ page }) => {
+    await openPlayer(page, '?page=pg-2', { view: 'default' });
+    await expect(page.locator('.page-stage .pt-frame [data-panel-id="p2-1"]')).toBeVisible();
+    await expect(page).toHaveURL(/[?&]page=pg-2(&|$)/);
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page).toHaveURL(/[?&]page=pg-3(&|$)/);
+
+    await toolbarButton(page, 'Toggle between page and panel view').click();
+    await expect(page).toHaveURL(/[?&]panel=p3-1(&|$)/);
+
+    await openPlayer(page, '?panel=p1-3', { view: 'default' });
+    await expectPanel(page, 'p1-3');
+  });
+
   test('the PanelWave icon opens the toolbar', async ({ page }) => {
     await openPlayer(page);
     // The demo starts with the toolbar shown; the icon replaces it when hidden.

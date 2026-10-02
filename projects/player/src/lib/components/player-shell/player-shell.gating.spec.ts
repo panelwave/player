@@ -80,6 +80,8 @@ describe('PlayerShellComponent gating (real template)', () => {
     });
     fixture = TestBed.createComponent(PlayerShellComponent);
     shell = fixture.componentInstance;
+    // These cases start in panel view and switch to page view on purpose.
+    shell.initialViewMode = 'panel';
   });
 
   afterEach(() => {

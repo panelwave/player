@@ -56,10 +56,18 @@ export async function stubManifest(page: Page, manifest: unknown): Promise<void>
 /**
  * Open the demo app and wait until the player shell has rendered the
  * first panel (`.player-content` only exists once the shell is ready).
+ * Opens in panel view (`?view=panel`) unless `view: 'default'` keeps the
+ * player's own start (cover, then page view).
  */
-export async function openPlayer(page: Page, query = '', options: { keepCover?: boolean } = {}): Promise<void> {
+export async function openPlayer(
+  page: Page,
+  query = '',
+  options: { keepCover?: boolean; view?: 'panel' | 'default' } = {}
+): Promise<void> {
   await stubExternalImages(page);
-  await page.goto('/' + query);
+  const view = options.view ?? 'panel';
+  const search = view === 'panel' ? `${query}${query ? '&' : '?'}view=panel` : query;
+  await page.goto('/' + search);
   // Generous timeout: first loads against the ng dev server can be slow
   // when several browser workers start simultaneously.
   await expect(page.locator('pw-player-shell .player-content')).toBeVisible({ timeout: 30_000 });

@@ -103,6 +103,13 @@ export {
   THUMBNAIL_WIDTH,
   panelThumbnailSrc,
   coverImageSrc,
+  DEFAULT_PAGE_BACKGROUND,
+  resolvePageBackground,
+  LOCATION_PARAMS,
+  parseLocationSearch,
+  locationUrl,
+  type PlayerLocation,
+  type PlayerView,
 } from './lib/utils';
 
 // Components

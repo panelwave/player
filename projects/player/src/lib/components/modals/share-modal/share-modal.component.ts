@@ -11,11 +11,14 @@ import {
   ChangeDetectionStrategy,
   HostListener,
   ChangeDetectorRef,
+  OnChanges,
   OnDestroy,
+  SimpleChanges,
   inject,
 } from '@angular/core';
 
 import { TranslatePipe } from '@ngx-translate/core';
+import { encode } from 'uqr';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
@@ -34,7 +37,7 @@ export type SharePlatform = 'twitter' | 'facebook' | 'reddit' | 'email' | 'copy'
     styleUrls: ['./share-modal.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ShareModalComponent implements OnDestroy {
+export class ShareModalComponent implements OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
 
   /** Pending timer that clears the copy-success state */
@@ -86,9 +89,24 @@ export class ShareModalComponent implements OnDestroy {
   showQrCode = false;
 
   /**
-   * QR code data URL
+   * QR code of the share URL as one SVG path (dark modules, 1 unit each),
+   * generated on the device — the link never goes to a third-party service.
    */
-  qrCodeDataUrl = '';
+  qrPath = '';
+
+  /** Side length of the QR code in modules (incl. the quiet zone): the SVG viewBox. */
+  qrSize = 0;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // A new link needs a new code.
+    if (changes['shareUrl'] && !changes['shareUrl'].firstChange) {
+      this.qrPath = '';
+      this.qrSize = 0;
+      if (this.showQrCode) {
+        this.generateQrCode();
+      }
+    }
+  }
 
   /**
    * Copy link to clipboard
@@ -213,7 +231,7 @@ export class ShareModalComponent implements OnDestroy {
   toggleQrCode(): void {
     this.showQrCode = !this.showQrCode;
     
-    if (this.showQrCode && !this.qrCodeDataUrl) {
+    if (this.showQrCode && !this.qrPath) {
       this.generateQrCode();
     }
     
@@ -222,15 +240,30 @@ export class ShareModalComponent implements OnDestroy {
     }
   }
 
-  /**
-   * Generate QR code
-   * Uses a simple QR code API service
-   */
+  /** Encode the share URL as a QR code (medium error correction, 4-module quiet zone). */
   private generateQrCode(): void {
-    // Using a public QR code API
-    const size = 256;
-    const url = encodeURIComponent(this.shareUrl);
-    this.qrCodeDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${url}`;
+    if (!this.shareUrl) {
+      this.qrPath = '';
+      this.qrSize = 0;
+      return;
+    }
+    try {
+      const qr = encode(this.shareUrl, { ecc: 'M', border: 4 });
+      let path = '';
+      qr.data.forEach((row, y) => {
+        row.forEach((dark, x) => {
+          if (dark) {
+            path += `M${x} ${y}h1v1h-1z`;
+          }
+        });
+      });
+      this.qrPath = path;
+      this.qrSize = qr.size;
+    } catch {
+      // Too long to encode: no code rather than a broken one.
+      this.qrPath = '';
+      this.qrSize = 0;
+    }
   }
 
   /**

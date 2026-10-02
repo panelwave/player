@@ -4,7 +4,10 @@
       class="pw-reader-shell"
       [manifest]="manifest() ?? undefined"
       [locale]="locale()"
-      [showToolbar]="false" />
+      [initialPageId]="start.pageId"
+      [initialPanelId]="start.panelId"
+      [showToolbar]="false"
+      (locationChange)="onLocationChange($event)" />
   }
   @case ('loading') {
     <div class="pwr-state" role="status" aria-live="polite">

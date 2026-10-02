@@ -157,6 +157,15 @@ export {
   type ScreenClass,
 } from './page-format-utils';
 
+// Reading position as a URL (?page= / ?panel=)
+export {
+  LOCATION_PARAMS,
+  parseLocationSearch,
+  locationUrl,
+  type PlayerLocation,
+  type PlayerView,
+} from './player-location';
+
 // Page background color (page view gutters, panel view frame)
 export { DEFAULT_PAGE_BACKGROUND, resolvePageBackground } from './page-background';
 

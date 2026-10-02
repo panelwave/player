@@ -8,7 +8,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { PlayerShellComponent, type PanelWaveManifest } from 'player';
+import {
+  PlayerShellComponent,
+  locationUrl,
+  parseLocationSearch,
+  type PanelWaveManifest,
+  type PlayerLocation,
+} from 'player';
 import { readBootConfig, type ReaderBootConfig } from './boot-config';
 import { forReview } from './review-rules';
 
@@ -19,6 +25,10 @@ type State = 'empty' | 'loading' | 'error' | 'ready';
  * `paywall.rules` + `x-locked` stubs, anonymous snapshot), so paywall and age
  * gates behave as in the player. A review link cuts every rule down to its
  * age part (`forReview`): paid parts open, age gates still ask.
+ *
+ * The address bar follows the reading position (`?page=` in page view,
+ * `?panel=` in panel view, nothing on the cover), so every page and panel
+ * has its own URL to bookmark and share; opening such a URL starts there.
  */
 @Component({
   selector: 'pwr-root',
@@ -36,6 +46,8 @@ export class ReaderComponent implements OnInit {
   readonly state = signal<State>('loading');
   readonly manifest = signal<PanelWaveManifest | null>(null);
   readonly locale = signal('en-US');
+  /** Position the URL links to (`?page=` / `?panel=`), read once at start. */
+  readonly start = parseLocationSearch(window.location.search);
 
   ngOnInit(): void {
     this.load();
@@ -66,5 +78,13 @@ export class ReaderComponent implements OnInit {
           this.state.set('error');
         },
       });
+  }
+
+  /** Keep the address bar on the reading position (no history entry per panel). */
+  onLocationChange(location: PlayerLocation): void {
+    const next = locationUrl(window.location.href, location);
+    if (next !== window.location.href) {
+      window.history.replaceState(window.history.state, '', next);
+    }
   }
 }

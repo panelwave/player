@@ -8,6 +8,24 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- Reading position as a URL: page view and panel view get their own
+  addresses (`?page=<pageId>`, `?panel=<panelId>`; none on the cover). New
+  shell output `locationChange` (`PlayerLocation`), inputs `initialPageId`
+  (a page of another format opens the page with the same panels) and
+  `initialViewMode`; `initialPanelId` no longer needs `initialChapterId`.
+  Exported helpers `parseLocationSearch` / `locationUrl`. The reader and the
+  demo keep the address bar on the position (`history.replaceState`) and
+  open a shared link there. The demo takes `?view=panel|page`.
+- Share dialog: the link is the current address with the reading position
+  (new input `shareUrl` overrides it; `embed` is dropped) and the work title.
+  The QR code is drawn on the device as inline SVG (`uqr`, MIT, no
+  dependencies) instead of an image from api.qrserver.com; nothing is sent
+  to a third party.
+- Language switch for translated works: the toolbar's languages are
+  `meta.locales` plus every language the speech bubbles / text layers carry
+  and the active `localization.locales` (works were often translated
+  without `meta.locales` being updated, which hid the switch). A bare code
+  (`en`) is not listed next to a regioned locale of its language (`en-US`).
 - Toolbar: fullscreen button (Lucide maximize / minimize, the CMS icons)
   that shows the player in fullscreen and returns to the browser view; hidden
   where the browser has no fullscreen (iPhone Safari). "Made with PanelWave"
@@ -60,6 +78,10 @@ semver. The reader-facing product changelog lives on the docs site
   `lockedPanelActivate` (panel id).
 
 ### Changed
+- Start: a work opens on the cover, then in page view (when it has
+  pages); a resumed bookmark opens on the cover too, with its page behind
+  it (was: panel view, and no cover on a bookmark). Links open where they
+  point, without the cover. `initialViewMode: 'panel'` keeps panel view.
 - Toolbar: a solid bar with a clear top line (was a gradient fading into
   the artwork); the button row may use up to 1800 px (was 1400 px).
 - Page background color: `page.visual.background_color` (else
@@ -71,8 +93,8 @@ semver. The reader-facing product changelog lives on the docs site
   letterbox around it is painted in the page color, so the page runs edge to
   edge (was a 16 px light-grey `#f5f5f5` border plus grey letterbox). The
   panel-view panel box is transparent (was white with a shadow). New
-  viewport input `pageBackground`, exported `resolvePageBackground` and type
-  `PageVisual`.
+  viewport input `pageBackground`, exported `resolvePageBackground` /
+  `DEFAULT_PAGE_BACKGROUND` and type `PageVisual`.
 - Balloon text is centered horizontally and vertically by layout (the text
   box spans the balloon body), not by the measured text height, which put
   the text off-center when the lettering font loaded after measuring. The
