@@ -16,7 +16,8 @@
  *
  * The app is set up exactly as the package README describes (providers via
  * provideTranslateService, which ngx-translate 17 and 18 both have, i18n
- * assets, balloon fonts, allowedCommonJsDependencies), with zoneless
+ * assets, balloon fonts, allowedCommonJsDependencies), opens in panel view
+ * (like the E2E suite; the default start is cover, then page view), with zoneless
  * change detection (the default for new Angular 21+ apps) unless --zone is
  * passed.
  *
@@ -186,6 +187,7 @@ import { PlayerShellComponent, type PlayerPanelChangeEvent } from '@panelwave/pl
     <pw-player-shell
       [manifestUrl]="manifestUrl"
       locale="en-US"
+      initialViewMode="panel"
       [showToolbar]="true"
       (ready)="flag('pwReady', 'true')"
       (panelChange)="onPanel($event)"
@@ -297,6 +299,12 @@ async function renderCheck(root) {
     const ready = async () => {
       await page.locator('pw-player-shell .player-content').waitFor({ state: 'visible', timeout: 30_000 });
       await page.waitForFunction(() => document.documentElement.dataset['pwReady'] === 'true', null, { timeout: 15_000 });
+      // Reading from the beginning opens on the work's cover; leave it for the entry panel.
+      const cover = page.locator('pw-player-shell .pw-cover');
+      if (await cover.isVisible()) {
+        await cover.click();
+        await cover.waitFor({ state: 'detached', timeout: 5_000 });
+      }
     };
     const settle = () => page.waitForTimeout(1_000); // let transitions finish before a screenshot
     const failIfProblems = async () => {
