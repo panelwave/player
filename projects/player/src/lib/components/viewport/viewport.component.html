@@ -149,7 +149,9 @@
                   [style.transform]="getPanelTransform(placement)"
                   [style.transform-origin]="getTransformOrigin(placement)">
 
-                  @if (getLeavingPanel(placement.panelId); as panelData) {
+                  @if (isBranchHidden(placement.panelId)) {
+                    <div class="branch-placeholder" aria-hidden="true"></div>
+                  } @else if (getLeavingPanel(placement.panelId); as panelData) {
                     <div class="panel-content"
                          [style.clip-path]="getPanelContentClipPath(placement)"
                          [style.transform]="getPanelContentTransform(placement)"
@@ -219,15 +221,20 @@
               [style.transform]="getPanelTransform(placement)"
               [style.transform-origin]="getTransformOrigin(placement)"
               [attr.data-panel-id]="placement.panelId"
-              [attr.tabindex]="panelHasHotspots(placement.panelId) ? null : 0"
-              [attr.role]="panelHasHotspots(placement.panelId) ? null : 'button'"
-              [attr.aria-label]="panelHasHotspots(placement.panelId) ? null : 'Panel ' + placement.panelId"
+              [class.panel-branch-hidden]="isBranchHidden(placement.panelId)"
+              [attr.aria-hidden]="isBranchHidden(placement.panelId) ? 'true' : null"
+              [attr.tabindex]="isBranchHidden(placement.panelId) || panelHasHotspots(placement.panelId) ? null : 0"
+              [attr.role]="isBranchHidden(placement.panelId) || panelHasHotspots(placement.panelId) ? null : 'button'"
+              [attr.aria-label]="isBranchHidden(placement.panelId) || panelHasHotspots(placement.panelId) ? null : 'Panel ' + placement.panelId"
               [attr.loading]="getImageLoadingStrategy()"
               (click)="onPanelClick($event, placement.panelId)"
               (keydown.enter)="onPanelKeyboardActivate($event, placement.panelId)"
               (keydown.space)="onPanelKeyboardActivate($event, placement.panelId)">
               
-              @if (getPanel(placement.panelId); as panelData) {
+              @if (isBranchHidden(placement.panelId)) {
+                <!-- Not on the reader's path (yet): a grey box keeps the page's shape. -->
+                <div class="branch-placeholder"></div>
+              } @else if (getPanel(placement.panelId); as panelData) {
                 <div class="panel-content"
                      [style.clip-path]="getPanelContentClipPath(placement)"
                      [style.transform]="getPanelContentTransform(placement)"

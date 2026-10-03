@@ -366,6 +366,18 @@
 }
 
 /* Panel container for page view - absolute positioning */
+/* Page view: a panel off the reader's path (or behind a choice not made yet). */
+.branch-placeholder {
+  position: absolute;
+  inset: 0;
+  background: #c9ccd1;
+  border-radius: inherit;
+}
+
+.viewport-page .panel-container.panel-branch-hidden {
+  pointer-events: none;
+}
+
 .viewport-page .panel-container {
   position: absolute;
   overflow: hidden;

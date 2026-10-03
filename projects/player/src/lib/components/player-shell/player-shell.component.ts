@@ -98,6 +98,7 @@ import { ActionModalComponent } from '../modals/action-modal/action-modal.compon
 import { AgeGateComponent, type AgeVerificationResult } from '../overlays/age-gate/age-gate.component';
 import { BranchChooserComponent, type BranchChoice } from '../modals/branch-chooser/branch-chooser.component';
 import { HotspotActionService, type HotspotUiEffect } from '../../services/hotspot-action.service';
+import { branchVisibility, buildBranchGraph, type BranchGraph } from '../../utils/branch-visibility';
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
@@ -582,6 +583,39 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   visitedPanelIds: string[] = [];
 
   /**
+   * Page view and choices: the reader's choices so far (choice panel →
+   * the panel the chosen hotspot jumped to). Panels off the chosen path —
+   * and the branches of choices still ahead — show as placeholders in page
+   * view; pages made up of off-path panels only are skipped.
+   */
+  private madeChoices = new Map<string, string>();
+  private branchGraph: { manifest: unknown; graph: BranchGraph } | null = null;
+  /** Placeholders in page view (off the path, or behind a choice not made yet). */
+  hiddenPanelIds: ReadonlySet<string> = new Set();
+  /** Off the chosen path for good (pages of these only are skipped). */
+  private unchosenPanelIds: ReadonlySet<string> = new Set();
+
+  private refreshBranchVisibility(): void {
+    const manifest = this.manifestService.getManifest();
+    if (!manifest?.chapters?.length) {
+      this.hiddenPanelIds = this.unchosenPanelIds = new Set();
+      return;
+    }
+    if (this.branchGraph?.manifest !== manifest) {
+      this.branchGraph = { manifest, graph: buildBranchGraph(manifest.chapters) };
+    }
+    const { hidden, unchosen } = branchVisibility(this.branchGraph.graph, this.madeChoices);
+    this.hiddenPanelIds = hidden;
+    this.unchosenPanelIds = unchosen;
+  }
+
+  /** A page whose panels are all off the chosen path: page navigation skips it. */
+  private isPageOffPath(page: Page): boolean {
+    const ids = (page.layout?.placements ?? []).map((placement) => placement.panelId);
+    return ids.length > 0 && ids.every((id) => this.unchosenPanelIds.has(id));
+  }
+
+  /**
    * Autoplay timer
    */
   private autoplayTimer?: ReturnType<typeof setTimeout>;
@@ -833,6 +867,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.currentChapter = this.currentPanel = this.currentPage = this.effectivePanel = undefined;
     this.viewMode = 'panel';
     this.visitedPanelIds = [];
+    this.madeChoices.clear();
+    this.branchGraph = null;
+    this.hiddenPanelIds = this.unchosenPanelIds = new Set();
     this.coverVisible = false;
     this.activePageFormat = null;
     this.preloadTargets = [];
@@ -1298,6 +1335,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       this.currentChapter = chapter;
       this.chapterChange.emit(chapter);
       this.visitedPanelIds = [];
+      this.refreshBranchVisibility();
       this.updateCanvasAvailability();
 
       if (firstPanelId) {
@@ -1516,6 +1554,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     const effect = this.hotspotAction.execute(evt.hotspot.action, {
       chapterId: this.currentChapter?.id,
     });
+    if (effect.kind === 'navigate' && evt.panelId) {
+      // A choice: its path appears in page view, the other options' panels stay placeholders.
+      this.madeChoices.set(evt.panelId, effect.to);
+      this.refreshBranchVisibility();
+    }
     this.applyHotspotEffect(effect);
     this.refreshVariableContext();
   }
@@ -2711,7 +2754,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       return false;
     }
     if (this.viewMode === 'page') {
-      const pages = this.chapterPages(chapter);
+      // Last page on the reader's path (later pages are off it).
+      const pages = this.chapterPages(chapter).filter((page) => !this.isPageOffPath(page));
       return !!this.currentPage && pages[pages.length - 1]?.id === this.currentPage.id;
     }
     return isChapterEndPanel(chapter, panelId);
@@ -2732,9 +2776,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (!this.currentPage) {
       return [];
     }
-    return this.currentPage.readingOrder?.length
+    const ids = this.currentPage.readingOrder?.length
       ? this.currentPage.readingOrder
       : (this.currentPage.layout?.placements ?? []).map((placement) => placement.panelId);
+    // Placeholders (panels off the reader's path) take no reading time.
+    return ids.filter((id) => !this.hiddenPanelIds.has(id));
   }
 
   /**
@@ -3125,7 +3171,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (!chapter || pages.length === 0) {
       return false;
     }
-    const page = direction > 0 ? pages[0] : pages[pages.length - 1];
+    const onPath = pages.filter((candidate) => !this.isPageOffPath(candidate));
+    const page = direction > 0 ? onPath[0] : onPath[onPath.length - 1];
+    if (!page) {
+      return false;
+    }
     const panelId = this.firstPanelIdOf(page);
     if (!panelId) {
       return false;
@@ -3156,8 +3206,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     const pages = this.chapterPages(this.currentChapter);
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
 
-    if (currentIndex >= 0 && currentIndex < pages.length - 1) {
-      this.showPage(pages[currentIndex + 1]);
+    const next = currentIndex >= 0 ? pages.slice(currentIndex + 1).find((page) => !this.isPageOffPath(page)) : undefined;
+    if (next) {
+      this.showPage(next);
       return;
     }
     await this.turnToAdjacentChapter(1);
@@ -3376,8 +3427,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     const pages = this.chapterPages(this.currentChapter);
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
 
-    if (currentIndex > 0) {
-      this.showPage(pages[currentIndex - 1]);
+    const previous = currentIndex > 0
+      ? pages.slice(0, currentIndex).reverse().find((page) => !this.isPageOffPath(page))
+      : undefined;
+    if (previous) {
+      this.showPage(previous);
       return;
     }
     if (this.isFirstChapter(this.currentChapter)) {

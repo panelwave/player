@@ -310,6 +310,26 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('page view placeholders (choices)', () => {
+    it('shows a hidden panel as a grey placeholder, without its content and out of the tab order', () => {
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', mockPage);
+      fixture.componentRef.setInput('hiddenPanelIds', new Set(['p2']));
+      fixture.detectChanges();
+
+      const hidden = fixture.nativeElement.querySelector('[data-panel-id="p2"]') as HTMLElement;
+      expect(hidden.querySelector('.branch-placeholder')).not.toBeNull();
+      expect(hidden.querySelector('.panel-content')).toBeNull();
+      expect(hidden.getAttribute('aria-hidden')).toBe('true');
+      expect(hidden.getAttribute('tabindex')).toBeNull();
+
+      const shown = fixture.nativeElement.querySelector('[data-panel-id="p1"]') as HTMLElement;
+      expect(shown.querySelector('.branch-placeholder')).toBeNull();
+      expect(shown.querySelector('.panel-content')).not.toBeNull();
+    });
+  });
+
   describe('Double-click and page-view arrows', () => {
     it('emits the double-clicked panel in page view', () => {
       fixture.componentRef.setInput('viewMode', 'page');

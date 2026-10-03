@@ -114,6 +114,12 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   @Input() panels: Record<string, Panel> = {};
 
   /**
+   * Page view: panels shown as grey placeholders — off the reader's chosen
+   * path, or behind a choice not made yet (see utils/branch-visibility).
+   */
+  @Input() hiddenPanelIds: ReadonlySet<string> = new Set();
+
+  /**
    * Panels the reader is about to see (the host's reading-order look-ahead:
    * the next panels, or the next page's panels in page view — possibly in
    * the next chapter). Their artwork is warmed at the width each will render
@@ -860,6 +866,11 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * stub (`"x-locked": true`), or a panel the paywall rules lock for the
    * reader's current snapshot (age gate not yet answered, not purchased).
    */
+  /** Page view: this panel is a placeholder (not on the reader's path). */
+  isBranchHidden(panelId: string): boolean {
+    return this.hiddenPanelIds.has(panelId);
+  }
+
   isLocked(panel: Panel | null | undefined, panelId?: string | null): boolean {
     return isLockedPanel(panel) || (!!panelId && this.paywall.isPanelLocked(panelId));
   }

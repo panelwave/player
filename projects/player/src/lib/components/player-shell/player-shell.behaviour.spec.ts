@@ -166,6 +166,76 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     });
   });
 
+  describe('page view and choices', () => {
+    /**
+     * a → D (choice: b1 or c1); b1 → b2 → r; c1 → r.
+     * Pages: [a, D] [b1, b2] [c1] [r].
+     */
+    const page = (id: string, ...panelIds: string[]) => ({
+      id,
+      layout: { placements: panelIds.map((panelId, i) => ({ panelId, x: 0, y: i / panelIds.length, w: 1, h: 1 / panelIds.length })) },
+      readingOrder: panelIds,
+    });
+    const goTo = (to: string) => ({ id: `to-${to}`, shape: { type: 'rect', x: 0, y: 0, w: 1, h: 1 }, label: { 'en-US': to }, action: { type: 'goTo', to } });
+    const branching = (): PanelWaveManifest =>
+      buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            title: { 'en-US': 'One' },
+            panels: { a: { layers: [] }, D: { layers: [], hotspots: [goTo('b1'), goTo('c1')] }, b1: { layers: [] }, b2: { layers: [] }, c1: { layers: [] }, r: { layers: [] } },
+            graph: { entry: 'a', edges: [{ from: 'a', to: 'D' }, { from: 'b1', to: 'b2' }, { from: 'b2', to: 'r' }, { from: 'c1', to: 'r' }] },
+            pages: [page('pg1', 'a', 'D'), page('pg2', 'b1', 'b2'), page('pg3', 'c1'), page('pg4', 'r')],
+          },
+        ],
+      });
+    const choose = async (to: string) => {
+      shell.onHotspotActivate({ hotspot: goTo(to), x: 0.5, y: 0.5, panelId: 'D' } as never);
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+
+    beforeEach(async () => {
+      shell.manifest = branching();
+      await init();
+      await change('viewModeOverride', 'page');
+    });
+
+    it('shows the branches of a choice not made yet as placeholders', () => {
+      expect(shell.currentPage?.id).toBe('pg1');
+      expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
+    });
+
+    it('reveals the chosen path; the other branch stays a placeholder', async () => {
+      await choose('c1');
+      expect(shell.currentPage?.id).toBe('pg3');
+      expect(shell.hiddenPanelIds.has('c1')).toBeFalse();
+      expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2']);
+    });
+
+    it('skips pages that are off the chosen path, both ways', async () => {
+      await choose('c1');
+      await shell.navigateToPreviousPage();
+      expect(shell.currentPage?.id).toBe('pg1'); // pg2 (b1, b2) skipped
+      await shell.navigateToNextPage();
+      expect(shell.currentPage?.id).toBe('pg3');
+      await shell.navigateToNextPage();
+      expect(shell.currentPage?.id).toBe('pg4');
+    });
+
+    it('does not skip the pages of a choice still open (they show placeholders)', async () => {
+      await shell.navigateToNextPage();
+      expect(shell.currentPage?.id).toBe('pg2');
+    });
+
+    it('starts over after a reload', async () => {
+      await choose('b1');
+      expect(shell.hiddenPanelIds.has('c1')).toBeTrue();
+      await change('manifest', branching());
+      expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
+    });
+  });
+
   describe('edge mutations vs. the paywall', () => {
     it('does not apply edge mutations when the paywall blocks the move', async () => {
       await init();
