@@ -1338,6 +1338,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     mutations?: Mutation[]
   ): Promise<void> {
     try {
+      // The target may live in another chapter (a cross-chapter graph edge, a
+      // hotspot goTo): the panel's own chapter wins over the caller's, so the
+      // flow continues in that chapter's graph instead of re-entering it.
+      chapterId = this.manifestService.getPanel(panelId)?.chapterId ?? chapterId;
       this.viewportTransition = transition ?? null;
       // Navigation stops at a gate: the reader stays on the last panel they
       // were entitled to see. Without a position yet (initial load, resumed

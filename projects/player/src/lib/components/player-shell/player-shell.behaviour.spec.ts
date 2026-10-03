@@ -115,6 +115,57 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     shell.ngOnDestroy();
   });
 
+  describe('cross-chapter navigation', () => {
+    /** c1: a1 → a2 → b1 (edge into c2); c2: b1 → b2 → b3, entry b1. */
+    const twoChapters = (): PanelWaveManifest =>
+      buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            title: { 'en-US': 'One' },
+            panels: { a1: { layers: [] }, a2: { layers: [] } },
+            graph: { entry: 'a1', edges: [{ from: 'a1', to: 'a2' }, { from: 'a2', to: 'b1' }] },
+          },
+          {
+            id: 'c2',
+            title: { 'en-US': 'Two' },
+            panels: { b1: { layers: [] }, b2: { layers: [] }, b3: { layers: [] } },
+            graph: { entry: 'b1', edges: [{ from: 'b1', to: 'b2' }, { from: 'b2', to: 'b3' }] },
+          },
+        ],
+      });
+
+    it('continues in the target chapter after a cross-chapter edge (no second visit of its entry)', async () => {
+      shell.manifest = twoChapters();
+      await init();
+      await shell.navigateNext(); // a2
+      await shell.navigateNext(); // b1 via the cross-chapter edge
+      expect(shell.getCurrentPanelId()).toBe('b1');
+      expect(shell.currentChapter?.id).toBe('c2');
+
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('b2');
+    });
+
+    it('a hotspot goTo into another chapter switches the chapter too', async () => {
+      shell.manifest = twoChapters();
+      await init();
+      shell.onHotspotActivate({
+        hotspot: { id: 'h1', shape: { type: 'rect', x: 0, y: 0, w: 1, h: 1 }, action: { type: 'goTo', to: 'b2' } },
+        x: 0.5,
+        y: 0.5,
+        panelId: 'a1',
+      } as never);
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(shell.getCurrentPanelId()).toBe('b2');
+      expect(shell.currentChapter?.id).toBe('c2');
+      await shell.navigateNext();
+      expect(shell.getCurrentPanelId()).toBe('b3');
+    });
+  });
+
   describe('edge mutations vs. the paywall', () => {
     it('does not apply edge mutations when the paywall blocks the move', async () => {
       await init();
