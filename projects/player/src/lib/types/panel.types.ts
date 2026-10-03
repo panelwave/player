@@ -646,7 +646,7 @@ export type HotspotAction =
 export interface HotspotGoToAction {
   type: 'goTo';
 
-  /** Target panel ID */
+  /** Target panel ID: any panel of the work, including one in another chapter */
   to: string;
 
   /** Variable mutations applied before navigating (optional) */

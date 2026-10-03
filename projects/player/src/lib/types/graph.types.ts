@@ -25,10 +25,10 @@ export interface Graph {
  * Edge connecting two panels with optional conditions
  */
 export interface Edge {
-  /** Source panel ID */
+  /** Source panel ID (a panel of the chapter that holds this graph) */
   from: string;
-  
-  /** Target panel ID */
+
+  /** Target panel ID: any panel of the work; one in another chapter switches the reader to that chapter */
   to: string;
   
   /** Condition that must be true for this edge to be traversable (optional) */
