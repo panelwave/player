@@ -282,12 +282,11 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
       const tailOpts = balloonConfigToTailOptions(config);
 
       try {
-        const balloonInstance = new ComicBalloon(balloonContainer, renderOpts);
-        const result = balloonInstance.render(text, tailOpts as TailOptions | null);
+        let result = new ComicBalloon(balloonContainer, renderOpts).render(text, tailOpts as TailOptions | null);
 
         // The SVG is self-sized (natural, text-fitting balloon size)
-        const svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : config.maxWidth;
-        const svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : config.maxHeight;
+        let svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : config.maxWidth;
+        let svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : config.maxHeight;
 
         // Per-screen lettering: the natural-size balloon is scaled by the
         // reading scale — the same comfortable text size on every screen —
@@ -299,6 +298,19 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         // grows just enough (still anchored and kept inside the panel below).
         if (config.fontSize > 0) {
           scale = Math.max(scale, MIN_LETTERING_PX / config.fontSize);
+        }
+        // Too wide for its panel at that size: re-wrap the text to the panel
+        // width (more lines, natural height) rather than shrink the lettering.
+        // The SVG can run a little wider than maxWidth (stroke, tail), so narrow
+        // by the remaining overshoot for up to three passes.
+        let maxWidth = Number(renderOpts['maxWidth']) || svgWidth;
+        for (let pass = 0; pass < 3 && svgWidth > 0 && this.containerWidth > 0 && svgWidth * scale > this.containerWidth + 0.5; pass++) {
+          const narrower = Math.max(40, Math.floor(maxWidth * (this.containerWidth / (svgWidth * scale)) * 0.99));
+          if (narrower >= maxWidth) break;
+          maxWidth = narrower;
+          result = new ComicBalloon(balloonContainer, { ...renderOpts, maxWidth, maxHeight: 0 }).render(text, tailOpts as TailOptions | null);
+          svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : maxWidth;
+          svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : svgHeight;
         }
         if (svgWidth > 0 && svgHeight > 0) {
           scale = Math.max(0.25, Math.min(scale, this.containerWidth / svgWidth, this.containerHeight / svgHeight));

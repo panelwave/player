@@ -74,6 +74,26 @@ describe('SpeechBubblesComponent', () => {
       expect(wrapper.style.transformOrigin).toBe('center center');
     });
 
+    it('re-wraps a balloon too wide for a narrow panel instead of shrinking its text below 9 px', () => {
+      component.containerWidth = 135; // a tall, narrow panel
+      component.containerHeight = 240;
+      component.readingScale = 0.45;
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'St. Aurelian General Hospital, Harbor City. 18:52.' },
+        shape: { x: 0.04, y: 0.02, w: 0.9, h: 0.1 },
+        balloonConfig: { fontSize: 15, maxWidth: 293, maxHeight: 100 },
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      const scale = parseFloat(/scale\(([\d.]+)\)/.exec(wrapper.style.transform)![1]);
+      expect(15 * scale).toBeGreaterThanOrEqual(MIN_LETTERING_PX - 0.01);
+      const svg = wrapper.querySelector('svg') as SVGSVGElement;
+      expect(parseFloat(svg.style.width) * scale).toBeLessThanOrEqual(135 + 0.5);
+    });
+
     it('never letters below 9 px: small lettering on a small page grows to the floor', () => {
       component.readingScale = 0.5; // 12 px × 0.5 = 6 px would be unreadable
       component.bubbles = [asBubble({
