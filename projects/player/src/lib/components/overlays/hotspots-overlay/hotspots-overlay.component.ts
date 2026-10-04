@@ -86,9 +86,10 @@ export class HotspotsOverlayComponent implements OnChanges {
   visibleHotspots: Hotspot[] = [];
 
   /**
-   * Hotspots shown as labelled choice buttons: the goTo hotspots of a panel
-   * whose hotspots lead to two or more panels (a decision). A single goTo or
-   * other hotspot stays an invisible area over the artwork (a door, a phone).
+   * Hotspots shown as labelled buttons: `display: "button"`, and with `auto`
+   * (the default) the goTo hotspots of a panel whose hotspots lead to two or
+   * more panels (a decision). `area` — and any other auto hotspot — stays an
+   * invisible area over the artwork (a door, a phone, a painted button).
    */
   choiceIds: ReadonlySet<string> = new Set();
 
@@ -97,9 +98,15 @@ export class HotspotsOverlayComponent implements OnChanges {
     this.visibleHotspots = (this.hotspots ?? []).filter(
       (h) => !h.visibleIf || !ctx || evaluateJsonLogic(h.visibleIf, ctx)
     );
+    // Hotspot.display (schema 1.7.0): button / area as authored; auto = button for a choice.
     const goTos = (this.hotspots ?? []).filter((h) => h.action?.type === 'goTo');
     const targets = new Set(goTos.map((h) => (h.action as { to?: string }).to));
-    this.choiceIds = new Set(targets.size > 1 ? goTos.map((h) => h.id) : []);
+    const isChoice = new Set(targets.size > 1 ? goTos.map((h) => h.id) : []);
+    this.choiceIds = new Set(
+      (this.hotspots ?? [])
+        .filter((h) => h.display === 'button' || ((h.display ?? 'auto') === 'auto' && isChoice.has(h.id)))
+        .map((h) => h.id)
+    );
   }
 
   /** The visible button text of a choice hotspot (its label), or '' for plain areas. */

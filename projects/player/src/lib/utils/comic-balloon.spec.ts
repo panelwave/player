@@ -51,6 +51,7 @@ describe('ComicBalloon', () => {
         strokeWidth: 2,
         strokeColor: '#000',
         fillColor: '#fff',
+        textColor: '#000',
         tailWidth: 18,
         cornerRadius: 0.45,
         fontFamily: "'Ames Italic', 'Comic Neue', sans-serif",

@@ -109,6 +109,24 @@ describe('HotspotsOverlayComponent', () => {
       expect(component.choiceText(component.hotspots[0])).toBe('');
     });
 
+    it('Hotspot.display wins over the automatic rule (schema 1.7.0)', () => {
+      // A choice whose artwork paints its own buttons, and a labelled single hotspot.
+      fixture.componentRef.setInput('hotspots', [
+        { ...choice('a', 'p8', 0.78), display: 'area' },
+        choice('b', 'p9', 0.88),
+        { ...choice('c', 'p8', 0.1), id: 'c', display: 'button' },
+      ]);
+      fixture.detectChanges();
+      expect([...component.choiceIds].sort()).toEqual(['b', 'c']);
+    });
+
+    it('a lone hotspot shows its label only with display: button', () => {
+      fixture.componentRef.setInput('hotspots', [{ ...choice('door', 'p2', 0.4), display: 'button' }]);
+      fixture.detectChanges();
+      const labels = Array.from(fixture.nativeElement.querySelectorAll('.hotspot-label')).map((e) => (e as HTMLElement).textContent?.trim());
+      expect(labels).toEqual(['Go p2']);
+    });
+
     it('sizes the label to the button height within readable bounds', () => {
       expect(component.choiceFontSize(choice('a', 'p8', 0.78))).toBeCloseTo(Math.max(9, Math.min(18, 0.08 * 500 * 0.42)), 5);
       expect(component.boundsOf({ type: 'circle', cx: 0.5, cy: 0.5, r: 0.1 })).toEqual({ x: 400, y: 150, width: 200, height: 200 });
