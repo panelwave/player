@@ -32,6 +32,12 @@ import type { TailOptions } from '../../../utils/comic-balloon';
 import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig, balloonConfigToRenderOptions, balloonConfigToTailOptions } from '../../../utils/balloon-config';
 import { ManifestService } from '../../../services/manifest.service';
 
+/** Centre coordinate that keeps a `size`-long balloon inside [0, extent] (centred when it cannot fit). */
+export function clampCenter(center: number, size: number, extent: number): number {
+  if (size >= extent) return extent / 2;
+  return Math.min(extent - size / 2, Math.max(size / 2, center));
+}
+
 /**
  * Speech Bubbles Component
  * Renders speech bubbles with SVG balloon shapes, tails, and localized text.
@@ -307,6 +313,10 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         else if (boxRight >= this.containerWidth - eps) centerX = this.containerWidth - visualW / 2;
         if (boxTop <= eps) centerY = visualH / 2;
         else if (boxBottom >= this.containerHeight - eps) centerY = this.containerHeight - visualH / 2;
+        // A balloon bigger than its authored box (small screens) must not be
+        // pushed across the panel border and clipped: keep it inside the panel.
+        centerX = clampCenter(centerX, visualW, this.containerWidth);
+        centerY = clampCenter(centerY, visualH, this.containerHeight);
 
         // The wrapper is scaled about its center, so its visual center lands
         // exactly on (centerX, centerY).

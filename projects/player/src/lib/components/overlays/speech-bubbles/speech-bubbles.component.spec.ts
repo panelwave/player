@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { SpeechBubblesComponent } from './speech-bubbles.component';
+import { SpeechBubblesComponent, clampCenter } from './speech-bubbles.component';
 import { ManifestService } from '../../../services/manifest.service';
 import type { SpeechBubble } from '../../../types';
 
@@ -141,6 +141,36 @@ describe('SpeechBubblesComponent', () => {
       // top style = centerY - svgH/2 with centerY = visualH/2; at scale 1
       // that is exactly 0px.
       expect(parseFloat(wrapper.style.top)).toBeCloseTo(0, 0);
+    });
+
+    it('keeps a balloon bigger than its box inside the panel when the box sits near the border', () => {
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'St. Aurelian General Hospital, Harbor City. 18:52.' },
+        shape: { x: 0.05, y: 0.04, w: 0.2, h: 0.04 }, // small box close to (not on) the top-left border
+        balloonConfig: {},
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      const svg = wrapper.querySelector('svg') as SVGSVGElement;
+      const w = parseFloat(svg.style.width);
+      const h = parseFloat(svg.style.height);
+      // At scale 1 the wrapper box is the visual box: fully inside 400 × 300.
+      expect(parseFloat(wrapper.style.left)).toBeGreaterThanOrEqual(-0.5);
+      expect(parseFloat(wrapper.style.top)).toBeGreaterThanOrEqual(-0.5);
+      expect(parseFloat(wrapper.style.left) + w).toBeLessThanOrEqual(400.5);
+      expect(parseFloat(wrapper.style.top) + h).toBeLessThanOrEqual(300.5);
+    });
+  });
+
+  describe('clampCenter', () => {
+    it('keeps the span inside the extent and centres what cannot fit', () => {
+      expect(clampCenter(10, 40, 100)).toBe(20);
+      expect(clampCenter(95, 40, 100)).toBe(80);
+      expect(clampCenter(50, 40, 100)).toBe(50);
+      expect(clampCenter(5, 120, 100)).toBe(50);
     });
   });
 
