@@ -32,6 +32,9 @@ import type { TailOptions } from '../../../utils/comic-balloon';
 import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig, balloonConfigToRenderOptions, balloonConfigToTailOptions } from '../../../utils/balloon-config';
 import { ManifestService } from '../../../services/manifest.service';
 
+/** Smallest rendered lettering size in CSS px (balloons grow to keep text readable on small pages). */
+export const MIN_LETTERING_PX = 9;
+
 /** Centre coordinate that keeps a `size`-long balloon inside [0, extent] (centred when it cannot fit). */
 export function clampCenter(center: number, size: number, extent: number): number {
   if (size >= extent) return extent / 2;
@@ -292,6 +295,11 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         // text up on large screens). Capped so a balloon never exceeds its
         // panel container, and clamped against broken measurements.
         let scale = Math.min(4, Math.max(0.25, this.readingScale || 1));
+        // Never letter below MIN_LETTERING_PX: on a page shown small the balloon
+        // grows just enough (still anchored and kept inside the panel below).
+        if (config.fontSize > 0) {
+          scale = Math.max(scale, MIN_LETTERING_PX / config.fontSize);
+        }
         if (svgWidth > 0 && svgHeight > 0) {
           scale = Math.max(0.25, Math.min(scale, this.containerWidth / svgWidth, this.containerHeight / svgHeight));
         }

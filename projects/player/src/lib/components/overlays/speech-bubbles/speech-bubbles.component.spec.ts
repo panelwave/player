@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { SpeechBubblesComponent, clampCenter } from './speech-bubbles.component';
+import { SpeechBubblesComponent, clampCenter, MIN_LETTERING_PX } from './speech-bubbles.component';
 import { ManifestService } from '../../../services/manifest.service';
 import type { SpeechBubble } from '../../../types';
 
@@ -63,7 +63,7 @@ describe('SpeechBubblesComponent', () => {
         id: 'b1',
         text: { 'en-US': 'Hello!' },
         shape: { x: 0.4, y: 0.4, w: 0.9, h: 0.9 }, // huge authored box must NOT blow up the text
-        balloonConfig: {},
+        balloonConfig: { fontSize: 24 }, // 24 px × 0.5 = 12 px: above the legibility floor
       })];
 
       component.renderAllBalloons();
@@ -72,6 +72,21 @@ describe('SpeechBubblesComponent', () => {
       expect(wrapper).toBeTruthy();
       expect(wrapper.style.transform).toBe('scale(0.5)');
       expect(wrapper.style.transformOrigin).toBe('center center');
+    });
+
+    it('never letters below 9 px: small lettering on a small page grows to the floor', () => {
+      component.readingScale = 0.5; // 12 px × 0.5 = 6 px would be unreadable
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Hi' },
+        shape: { x: 0.4, y: 0.4, w: 0.2, h: 0.15 },
+        balloonConfig: {},
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      expect(wrapper.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
     });
 
     it('applies no transform at reading scale 1', () => {
