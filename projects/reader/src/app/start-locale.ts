@@ -1,10 +1,10 @@
 /**
  * The language a reader starts in. First match wins:
  * 1. `?lang=` in the URL (share links),
- * 2. the boot config's locale (injected by the reader server),
- * 3. the language the reader picked last time on this device,
- * 4. the browser's languages (`navigator.languages`),
- * 5. the work's default locale.
+ * 2. the language the reader picked last time on this device,
+ * 3. the browser's languages (`navigator.languages`),
+ * 4. the boot config's locale (the work's default locale, injected by the reader server),
+ * 5. the manifest's default locale.
  * Every candidate must be — or match by language — one of the work's locales.
  */
 export const LOCALE_STORAGE_KEY = 'pw-reader-locale';
@@ -30,7 +30,7 @@ export interface StartLocaleInput {
 
 export function startLocale(input: StartLocaleInput): string {
   const available = input.available.length ? input.available : [input.defaultLocale];
-  for (const candidate of [input.urlLang, input.configLocale, input.remembered, ...(input.browser ?? [])]) {
+  for (const candidate of [input.urlLang, input.remembered, ...(input.browser ?? []), input.configLocale]) {
     const hit = matchLocale(candidate, available);
     if (hit) return hit;
   }

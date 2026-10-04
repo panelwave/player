@@ -17,10 +17,14 @@ describe('start locale', () => {
     expect(startLocale({ ...work, browser: ['fr-FR'] })).toBe('en-US');
   });
 
-  it('a remembered choice beats the browser; config beats both; ?lang= beats everything', () => {
+  it('a remembered choice beats the browser; ?lang= beats everything', () => {
     expect(startLocale({ ...work, browser: ['de-DE'], remembered: 'en-US' })).toBe('en-US');
-    expect(startLocale({ ...work, browser: ['en-US'], remembered: 'en-US', configLocale: 'de-DE' })).toBe('de-DE');
-    expect(startLocale({ ...work, browser: ['en-US'], configLocale: 'en-US', urlLang: 'de' })).toBe('de-DE');
+    expect(startLocale({ ...work, browser: ['en-US'], remembered: 'en-US', urlLang: 'de' })).toBe('de-DE');
+  });
+
+  it("the server's locale (the work default) only applies when nothing else matches", () => {
+    expect(startLocale({ ...work, browser: ['de-AT'], configLocale: 'en-US' })).toBe('de-DE');
+    expect(startLocale({ ...work, defaultLocale: 'en-US', browser: ['fr-FR'], configLocale: 'de-DE' })).toBe('de-DE');
   });
 
   it('ignores candidates the work does not have', () => {
