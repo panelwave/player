@@ -21,7 +21,7 @@ import {
 } from '@angular/core';
 
 import { HttpClient } from '@angular/common/http';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, distinctUntilChanged, skip, takeUntil } from 'rxjs';
 import { TranslatePipe, TranslateLoader } from '@ngx-translate/core';
 import { CustomTranslateLoader } from '../../utils/translation-loader';
 
@@ -1285,9 +1285,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     // panel's audio follows what the renderers show.
     this.paywallService.changes$.pipe(takeUntil(this.destroy$)).subscribe(() => this.syncPanelAudio());
 
-    // Listen to locale changes
+    // Report locale changes — not the stream's current value at subscription
+    // time (its 'en-US' default would overwrite a host's start locale).
     this.playerState.locale$
-      .pipe(takeUntil(this.destroy$))
+      .pipe(skip(1), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((locale) => {
         this.localeChange.emit(locale);
       });

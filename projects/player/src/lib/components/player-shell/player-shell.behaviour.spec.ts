@@ -405,6 +405,20 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     });
   });
 
+  describe('localeChange output', () => {
+    it("reports the reader's language changes, not the start locale it was given", async () => {
+      const emitted: string[] = [];
+      shell.localeChange.subscribe((l) => emitted.push(l));
+      shell.locale = 'de-DE';
+      await init();
+      expect(emitted).not.toContain('en-US'); // the internal default never leaks out
+
+      emitted.length = 0;
+      shell.onLocaleChange('en-US'); // the toolbar's language menu
+      expect(emitted).toEqual(['en-US']);
+    });
+  });
+
   describe('manifestUrl loading', () => {
     it('exposes the fetched manifest to the ToC and thumbnail strip', async () => {
       shell.manifest = undefined;

@@ -93,6 +93,9 @@ export class ReaderComponent implements OnInit {
 
   /** A language the reader picked is remembered on this device for the next visit. */
   onLocaleChange(locale: string): void {
+    if (locale === this.locale()) {
+      return; // the shell echoing the locale it was given
+    }
     this.locale.set(locale);
     rememberLocale(this.storage(), locale);
   }
