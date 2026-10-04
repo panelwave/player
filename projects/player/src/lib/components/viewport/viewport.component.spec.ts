@@ -347,6 +347,21 @@ describe('ViewportComponent', () => {
       expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
     });
 
+    it('page-view panels letter at their share of the page, like the editor', () => {
+      hostWidth(2560, 1300);
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', onePanelPage);
+      fixture.detectChanges();
+      const canvas = fixture.nativeElement.querySelector('.pt-frame .page-canvas') as HTMLElement;
+      spyOnProperty(canvas, 'clientHeight', 'get').and.returnValue(1123);
+      // A quarter-width, third-height panel letters at max(w, h) = 1/3 of the
+      // full-frame scale (its artwork shown full-frame is 3× larger).
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(1 / 3, 5);
+      // A full-page panel keeps the full-frame scale.
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(1, 5);
+    });
+
     it('panel view keeps the screen-height scale (the host box, not its clientHeight)', () => {
       hostWidth(390, 844);
       component.viewMode = 'panel';

@@ -933,9 +933,9 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     const h = host.getBoundingClientRect().height;
     const screen = h > 0 ? h / 1123 : 1;
     if (this.viewMode === 'page') {
-      // The editor letters each page format at page height / 1123, so balloons
-      // keep their share of the panel; a page smaller than the screen (a
-      // letterboxed phone page) letters smaller instead of covering the panel.
+      // The editor letters each page format at page height / 1123 (the panel
+      // shown full-frame); a page smaller than the screen (a letterboxed
+      // phone page) letters smaller instead of covering the panel.
       const canvas = host.querySelector('.pt-frame .page-canvas') as HTMLElement | null;
       const pageHeight = canvas?.clientHeight ?? 0;
       if (pageHeight > 0) {
@@ -943,6 +943,19 @@ export class ViewportComponent implements OnChanges, OnDestroy {
       }
     }
     return screen;
+  }
+
+  /**
+   * Lettering scale for one page-view panel. Mirrors the editor's page view:
+   * a balloon is lettered for the panel shown full-frame (getReadingScale)
+   * and then shrinks with the panel's share of the page — the frame→page
+   * content scale, max(w, h) of the placement — so it keeps the same share of
+   * its panel as in the editor. pw-speech-bubbles raises it to the
+   * MIN_LETTERING_PX floor so small panels stay readable.
+   */
+  getPageReadingScale(placement: PanelPlacement): number {
+    const contentScale = Math.max(placement.w || 0, placement.h || 0);
+    return this.getReadingScale() * (contentScale > 0 ? Math.min(1, contentScale) : 1);
   }
 
   /**
