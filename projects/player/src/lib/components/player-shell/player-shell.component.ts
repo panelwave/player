@@ -2300,9 +2300,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.refreshResolvedPanels();
   }
 
-  /** Open the branch chooser with the paths currently open from this panel. */
-  onShowBranches(): void {
-    this.branchChoices = this.computeBranchChoices();
+  /** Open the branch chooser with the paths currently open from this panel (or `panelId`). */
+  onShowBranches(panelId?: string): void {
+    this.branchChoices = this.computeBranchChoices(panelId);
     if (this.branchChoices.length === 0) {
       return;
     }
@@ -3210,6 +3210,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     if (!this.currentChapter || !this.currentPage) return;
 
+    const decision = this.pendingDecisionOnPage();
+    if (decision) {
+      this.onShowBranches(decision);
+      return;
+    }
+
     const pages = this.chapterPages(this.currentChapter);
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
 
@@ -3751,10 +3757,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     return this.openEdges().length > 1;
   }
 
-  /** Outgoing edges of the current panel whose conditions pass right now. */
-  private openEdges(): Edge[] {
+  /** Outgoing edges of the current panel (or `fromPanelId`) whose conditions pass right now. */
+  private openEdges(fromPanelId?: string): Edge[] {
     const chapter = this.currentChapter;
-    const panelId = this.getCurrentPanelId();
+    const panelId = fromPanelId ?? this.getCurrentPanelId();
     if (!chapter || !panelId) {
       return [];
     }
@@ -3771,15 +3777,29 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    * The current panel is a decision: two or more open paths carry an authored
    * choice label. "Next" then asks the reader instead of following one of them.
    */
-  private isDecisionAhead(): boolean {
-    return this.openEdges().filter((edge) => !!this.localizedText(authoredEdgeLabel(edge))).length > 1;
+  private isDecisionAhead(panelId?: string): boolean {
+    return this.openEdges(panelId).filter((edge) => !!this.localizedText(authoredEdgeLabel(edge))).length > 1;
+  }
+
+  /**
+   * Page view: a decision on the current page the reader has not taken yet
+   * (the last one in reading order). Turning the page would only show the
+   * placeholders of its branches, so "next" asks instead.
+   */
+  private pendingDecisionOnPage(): string | undefined {
+    const page = this.currentPage;
+    if (!page) {
+      return undefined;
+    }
+    const ids = page.readingOrder?.length ? page.readingOrder : (page.layout?.placements ?? []).map((p) => p.panelId);
+    return [...ids].reverse().find((id) => !this.madeChoices.has(id) && this.isDecisionAhead(id));
   }
 
   /** Open outgoing edges with reader-facing labels. */
-  private computeBranchChoices(): BranchChoice[] {
+  private computeBranchChoices(panelId?: string): BranchChoice[] {
     const chapter = this.currentChapter;
     return chapter
-      ? this.openEdges().map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter) }))
+      ? this.openEdges(panelId).map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter) }))
       : [];
   }
 
@@ -3816,6 +3836,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       to: choice.edge.to,
       index: choice.index,
     });
+    // Like a hotspot choice: page view reveals the chosen path.
+    this.madeChoices.set(choice.edge.from, choice.edge.to);
+    this.refreshBranchVisibility();
     await this.navigateToPanel(
       chapter.id,
       choice.edge.to,

@@ -234,6 +234,34 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       await change('manifest', branching());
       expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
     });
+
+    describe('with the labelled edges the CMS exports for the choice', () => {
+      beforeEach(() => {
+        // The loaded chapter (page view, on pg1) gains D's two labelled edges.
+        shell.currentChapter!.graph.edges.push(
+          { from: 'D', to: 'b1', action: [{ op: 'increment', var: 'tries', value: 1 }], mutations: [{ op: 'meta', edgeType: { label: { 'en-US': 'Path B' } } }] },
+          { from: 'D', to: 'c1', mutations: [{ op: 'meta', edgeType: { label: { 'en-US': 'Path C' } } }] },
+        );
+      });
+
+      it('"next page" on the choice page asks instead of turning to placeholders', async () => {
+        expect(shell.currentPage?.id).toBe('pg1');
+        await shell.navigateToNextPage();
+        expect(shell.currentPage?.id).toBe('pg1');
+        expect(shell.branchChooserVisible).toBeTrue();
+        expect(shell.branchChoices.map((c) => c.label)).toEqual(['Path B', 'Path C']);
+      });
+
+      it('a choice from the chooser reveals its path like a hotspot does', async () => {
+        await shell.navigateToNextPage();
+        await shell.onBranchChosen(shell.branchChoices[1]);
+        expect(shell.currentPage?.id).toBe('pg3');
+        expect(shell.hiddenPanelIds.has('c1')).toBeFalse();
+        expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2']);
+        await shell.navigateToNextPage();
+        expect(shell.currentPage?.id).toBe('pg4'); // no second question once chosen
+      });
+    });
   });
 
   describe('edge mutations vs. the paywall', () => {
