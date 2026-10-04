@@ -542,6 +542,8 @@ export interface BalloonConfig {
   strokeColor: string;
   /** Hex color */
   fillColor: string;
+  /** Hex color of the lettering (default #000000; schema 1.7.0) */
+  textColor?: string;
   tail: TailConfig;
   hideBorder: HideBorderConfig;
 }
@@ -569,6 +571,13 @@ export interface Hotspot {
 
   /** Localized accessibility label (optional, overrides label for screen readers) */
   ariaLabel?: LocalizedString;
+
+  /**
+   * How readers see it (schema 1.7.0): `area` = invisible click area, `button` = the
+   * label shown as a button, `auto` (default) = button when the panel's goTo hotspots
+   * lead to two or more panels (a choice), else area.
+   */
+  display?: 'auto' | 'button' | 'area';
 
   /** Action to perform when activated */
   action: HotspotAction;

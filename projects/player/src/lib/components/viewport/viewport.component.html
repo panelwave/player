@@ -128,7 +128,14 @@
   
   <!-- Page View -->
   @if (viewMode === 'page' && page) {
-    <div class="viewport-page" [style.--pw-page-aspect]="pageAspect">
+    <div
+      class="viewport-page"
+      [style.--pw-page-aspect]="pageAspect"
+      [style.--pw-stage-aspect]="stageAspect"
+      [style.--pw-fit-x]="pageFit.x"
+      [style.--pw-fit-y]="pageFit.y"
+      [style.--pw-fit-w]="pageFit.w"
+      [style.--pw-fit-h]="pageFit.h">
       <div class="page-stage">
         <!-- Outgoing page during a Page.transitions in/out change -->
         @if (leavingPage) {

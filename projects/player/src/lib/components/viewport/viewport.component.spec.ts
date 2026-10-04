@@ -310,6 +310,50 @@ describe('ViewportComponent', () => {
     });
   });
 
+  describe('page fit and lettering scale', () => {
+    const hostWidth = (w: number, h = 844) =>
+      spyOn(fixture.nativeElement as HTMLElement, 'getBoundingClientRect').and.returnValue({ width: w, height: h } as DOMRect);
+    const onePanelPage: Page = {
+      id: 'm1',
+      layout: { format: 'mobile-portrait', placements: [{ panelId: 'p1', x: 0.04, y: 0.3, w: 0.92, h: 0.35, z: 0 }] },
+      readingOrder: ['p1'],
+    } as Page;
+
+    it('phones: fits the box of the page panels (no page margins, no letterbox)', () => {
+      hostWidth(390);
+      component.page = onePanelPage;
+      const fit = component.pageFit;
+      expect([fit.x, fit.y, fit.w, fit.h].map((v) => Math.round(v * 1000) / 1000)).toEqual([0.04, 0.3, 0.92, 0.35]);
+      expect(component.stageAspect).toBeCloseTo(component.pageAspect * 0.92 / 0.35, 5);
+    });
+
+    it('wider screens: the whole page, as designed', () => {
+      hostWidth(1440, 900);
+      component.page = onePanelPage;
+      expect(component.pageFit).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+      expect(component.stageAspect).toBeCloseTo(component.pageAspect, 5);
+    });
+
+    it('page view letters at page height / 1123, never above the screen-height scale', () => {
+      hostWidth(390, 844);
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', mockPanels);
+      fixture.componentRef.setInput('page', onePanelPage);
+      fixture.detectChanges();
+      const canvas = fixture.nativeElement.querySelector('.pt-frame .page-canvas') as HTMLElement;
+      const pageHeight = spyOnProperty(canvas, 'clientHeight', 'get').and.returnValue(600);
+      expect(component.getReadingScale()).toBeCloseTo(600 / 1123, 5);
+      pageHeight.and.returnValue(2000); // a page taller than the screen: capped at the screen scale
+      expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
+    });
+
+    it('panel view keeps the screen-height scale (the host box, not its clientHeight)', () => {
+      hostWidth(390, 844);
+      component.viewMode = 'panel';
+      expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
+    });
+  });
+
   describe('page view placeholders (choices)', () => {
     it('shows a hidden panel as a grey placeholder, without its content and out of the tab order', () => {
       fixture.componentRef.setInput('viewMode', 'page');

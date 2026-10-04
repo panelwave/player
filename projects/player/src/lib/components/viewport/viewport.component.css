@@ -305,16 +305,23 @@
 .page-stage {
   position: relative;
   /* Largest box of the page's own aspect (its output format) that fits the
-     screen: a big-screen page fills a 4K display, a mobile page stays tall. */
-  width: min(100cqw, 100cqh * var(--pw-page-aspect, 1.7778));
-  aspect-ratio: var(--pw-page-aspect, 16 / 9);
+     screen: a big-screen page fills a 4K display, a mobile page stays tall.
+     On phones the box is the page's panels (--pw-fit-*, see pageFit). */
+  width: min(100cqw, 100cqh * var(--pw-stage-aspect, var(--pw-page-aspect, 1.7778)));
+  aspect-ratio: var(--pw-stage-aspect, var(--pw-page-aspect, 16 / 9));
   flex: none;
   overflow: hidden;
 }
 
+/* The page, scaled and shifted so its fit box fills the stage (the whole
+   page by default: left/top 0, 100 % × 100 %). */
 .page-stage .page-canvas {
+  position: absolute;
+  left: calc(-100% * var(--pw-fit-x, 0) / var(--pw-fit-w, 1));
+  top: calc(-100% * var(--pw-fit-y, 0) / var(--pw-fit-h, 1));
+  width: calc(100% / var(--pw-fit-w, 1));
+  height: calc(100% / var(--pw-fit-h, 1));
   max-width: none;
-  height: 100%;
   aspect-ratio: auto;
 }
 
@@ -441,13 +448,6 @@
   position: relative;
   width: 100%;
   height: 100%;
-}
-
-/* Responsive adjustments for page view */
-@media (max-width: 768px) {
-  .viewport-page {
-    padding: 8px;
-  }
 }
 
 /* Navigation Arrows (Hover Zones) */

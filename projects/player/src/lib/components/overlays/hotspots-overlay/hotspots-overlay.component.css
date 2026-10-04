@@ -52,6 +52,49 @@
   outline: none;
 }
 
+/* Choice hotspots (2+ goTo targets on the panel) read as labelled buttons. */
+.hotspot-shape.choice rect,
+.hotspot-shape.choice circle,
+.hotspot-shape.choice polygon {
+  fill: rgba(10, 17, 20, 0.72);
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.5;
+}
+
+.hotspot-shape.choice:hover rect,
+.hotspot-shape.choice:focus-visible rect,
+.hotspot-shape.choice:hover circle,
+.hotspot-shape.choice:focus-visible circle,
+.hotspot-shape.choice:hover polygon,
+.hotspot-shape.choice:focus-visible polygon {
+  fill: rgba(10, 17, 20, 0.88);
+  stroke: #ffffff;
+  stroke-width: 2.5;
+}
+
+.hotspot-label-box {
+  /* Clicks go to the shape underneath (the label is text only). */
+  pointer-events: none;
+  overflow: visible;
+}
+
+.hotspot-label {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.6em;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
 .hotspot-shape.indicator rect,
 .hotspot-shape.indicator circle,
 .hotspot-shape.indicator polygon {

@@ -85,11 +85,58 @@ export class HotspotsOverlayComponent implements OnChanges {
    */
   visibleHotspots: Hotspot[] = [];
 
+  /**
+   * Hotspots shown as labelled buttons: `display: "button"`, and with `auto`
+   * (the default) the goTo hotspots of a panel whose hotspots lead to two or
+   * more panels (a decision). `area` — and any other auto hotspot — stays an
+   * invisible area over the artwork (a door, a phone, a painted button).
+   */
+  choiceIds: ReadonlySet<string> = new Set();
+
   ngOnChanges(): void {
     const ctx = this.context;
     this.visibleHotspots = (this.hotspots ?? []).filter(
       (h) => !h.visibleIf || !ctx || evaluateJsonLogic(h.visibleIf, ctx)
     );
+    // Hotspot.display (schema 1.7.0): button / area as authored; auto = button for a choice.
+    const goTos = (this.hotspots ?? []).filter((h) => h.action?.type === 'goTo');
+    const targets = new Set(goTos.map((h) => (h.action as { to?: string }).to));
+    const isChoice = new Set(targets.size > 1 ? goTos.map((h) => h.id) : []);
+    this.choiceIds = new Set(
+      (this.hotspots ?? [])
+        .filter((h) => h.display === 'button' || ((h.display ?? 'auto') === 'auto' && isChoice.has(h.id)))
+        .map((h) => h.id)
+    );
+  }
+
+  /** The visible button text of a choice hotspot (its label), or '' for plain areas. */
+  choiceText(h: Hotspot): string {
+    return this.choiceIds.has(h.id) ? this.resolveLocalized(h.label) : '';
+  }
+
+  /** Bounding box (container units) of a hotspot shape — where its button label sits. */
+  boundsOf(s: HotspotShape): { x: number; y: number; width: number; height: number } {
+    switch (s.type) {
+      case 'rect':
+        return this.rectAttrs(s);
+      case 'circle': {
+        const c = this.circleAttrs(s);
+        return { x: c.cx - c.r, y: c.cy - c.r, width: 2 * c.r, height: 2 * c.r };
+      }
+      case 'polygon': {
+        const xs = s.points.map((p) => p[0] * this.containerWidth);
+        const ys = s.points.map((p) => p[1] * this.containerHeight);
+        const x = Math.min(...xs);
+        const y = Math.min(...ys);
+        return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+      }
+    }
+  }
+
+  /** Label font size: fits the button height, readable but never huge. */
+  choiceFontSize(h: Hotspot): number {
+    const b = this.boundsOf(h.shape);
+    return Math.max(9, Math.min(18, b.height * 0.42));
   }
 
   /**

@@ -27,6 +27,8 @@ export interface BalloonOptions {
   strokeWidth: number;
   strokeColor: string;
   fillColor: string;
+  /** Lettering colour (CSS colour; BalloonConfig.textColor, schema 1.7.0). */
+  textColor: string;
   tailWidth: number;
   cornerRadius: number;
   fontFamily: string;
@@ -104,6 +106,7 @@ export class ComicBalloon {
       strokeWidth: options.strokeWidth || 2,
       strokeColor: options.strokeColor || '#000',
       fillColor: options.fillColor || '#fff',
+      textColor: options.textColor || '#000',
       tailWidth: options.tailWidth || 18,
       cornerRadius: options.cornerRadius ?? 0.45,
       fontFamily: options.fontFamily || "'Ames Italic', 'Comic Neue', sans-serif",
@@ -372,7 +375,7 @@ export class ComicBalloon {
       flex: none;
       width: ${textWidth}px;
       ${textStyle}
-      color: #000;
+      color: ${this.options.textColor};
     `;
     textDiv.innerHTML = text;
 

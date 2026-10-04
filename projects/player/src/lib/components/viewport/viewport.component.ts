@@ -59,6 +59,9 @@ export interface PerformanceMetrics {
  */
 const VARIANT_SETTLE_MS = 180;
 
+/** Below this host width (phones) page view fits the page's panels, not the whole page, to the screen. */
+export const COMPACT_PAGE_WIDTH = 768;
+
 /** A panel the viewport should warm ahead of time (see `preloadTargets`). */
 export interface ViewportPreloadTarget {
   panelId: string;
@@ -925,8 +928,21 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * phones get smaller — instead of growing proportionally with the panel.
    */
   getReadingScale(): number {
-    const h = this.elementRef.nativeElement.clientHeight || 0;
-    return h > 0 ? h / 1123 : 1;
+    const host = this.elementRef.nativeElement as HTMLElement;
+    // The host is an inline custom element: clientHeight is always 0, the box is not.
+    const h = host.getBoundingClientRect().height;
+    const screen = h > 0 ? h / 1123 : 1;
+    if (this.viewMode === 'page') {
+      // The editor letters each page format at page height / 1123, so balloons
+      // keep their share of the panel; a page smaller than the screen (a
+      // letterboxed phone page) letters smaller instead of covering the panel.
+      const canvas = host.querySelector('.pt-frame .page-canvas') as HTMLElement | null;
+      const pageHeight = canvas?.clientHeight ?? 0;
+      if (pageHeight > 0) {
+        return Math.min(screen, pageHeight / 1123);
+      }
+    }
+    return screen;
   }
 
   /**
@@ -949,6 +965,34 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   /** Width / height of the current page's frame (its output format). */
   get pageAspect(): number {
     return pageAspectRatio(this.page);
+  }
+
+  /**
+   * Part of the page page view shows (normalized to the page). On phones
+   * (host narrower than COMPACT_PAGE_WIDTH) it is the bounding box of the
+   * page's panels: the page margins and the letterbox around the page's own
+   * aspect give way, so the panels run edge to edge — fitted, never cropped.
+   * Elsewhere the whole page, as designed.
+   */
+  get pageFit(): { x: number; y: number; w: number; h: number } {
+    const whole = { x: 0, y: 0, w: 1, h: 1 };
+    const width = (this.elementRef.nativeElement as HTMLElement).getBoundingClientRect().width;
+    const placements = this.page?.layout?.placements ?? [];
+    if (!width || width >= COMPACT_PAGE_WIDTH || !placements.length) {
+      return whole;
+    }
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    const x0 = clamp(Math.min(...placements.map((p) => p.x)));
+    const y0 = clamp(Math.min(...placements.map((p) => p.y)));
+    const x1 = clamp(Math.max(...placements.map((p) => p.x + p.w)));
+    const y1 = clamp(Math.max(...placements.map((p) => p.y + p.h)));
+    return x1 - x0 > 0.01 && y1 - y0 > 0.01 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : whole;
+  }
+
+  /** Aspect of the box page view fits to the screen (the page, or its panels on phones). */
+  get stageAspect(): number {
+    const fit = this.pageFit;
+    return (this.pageAspect * fit.w) / fit.h;
   }
 
   /**

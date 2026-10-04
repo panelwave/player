@@ -234,6 +234,34 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       await change('manifest', branching());
       expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
     });
+
+    describe('with the labelled edges the CMS exports for the choice', () => {
+      beforeEach(() => {
+        // The loaded chapter (page view, on pg1) gains D's two labelled edges.
+        shell.currentChapter!.graph.edges.push(
+          { from: 'D', to: 'b1', action: [{ op: 'increment', var: 'tries', value: 1 }], mutations: [{ op: 'meta', edgeType: { label: { 'en-US': 'Path B' } } }] },
+          { from: 'D', to: 'c1', mutations: [{ op: 'meta', edgeType: { label: { 'en-US': 'Path C' } } }] },
+        );
+      });
+
+      it('"next page" on the choice page asks instead of turning to placeholders', async () => {
+        expect(shell.currentPage?.id).toBe('pg1');
+        await shell.navigateToNextPage();
+        expect(shell.currentPage?.id).toBe('pg1');
+        expect(shell.branchChooserVisible).toBeTrue();
+        expect(shell.branchChoices.map((c) => c.label)).toEqual(['Path B', 'Path C']);
+      });
+
+      it('a choice from the chooser reveals its path like a hotspot does', async () => {
+        await shell.navigateToNextPage();
+        await shell.onBranchChosen(shell.branchChoices[1]);
+        expect(shell.currentPage?.id).toBe('pg3');
+        expect(shell.hiddenPanelIds.has('c1')).toBeFalse();
+        expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2']);
+        await shell.navigateToNextPage();
+        expect(shell.currentPage?.id).toBe('pg4'); // no second question once chosen
+      });
+    });
   });
 
   describe('edge mutations vs. the paywall', () => {
@@ -324,6 +352,70 @@ describe('PlayerShellComponent behaviour (real services)', () => {
     it('hides on a panel with a single path', async () => {
       await init();
       expect(shell.hasBranchesAhead).toBeFalse();
+    });
+
+    /** p1 is a decision as the CMS exports it: labels in the meta descriptor, writes in action. */
+    const decision = () =>
+      buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            title: { 'en-US': 'One' },
+            panels: { p1: { layers: [] }, p2: { layers: [], title: { 'en-US': 'P2 title' } }, p3: { layers: [] } },
+            graph: {
+              entry: 'p1',
+              edges: [
+                {
+                  from: 'p1',
+                  to: 'p2',
+                  action: [{ op: 'increment', var: 'tries', value: 1 }],
+                  mutations: [{ op: 'meta', edgeType: { label: { 'en-US': 'Call', 'de-DE': 'Anrufen' }, conditional: true } }],
+                },
+                { from: 'p1', to: 'p3', mutations: [{ op: 'meta', edgeType: { label: 'Swipe it away' } }] },
+              ],
+            },
+          },
+        ],
+      });
+
+    it('"next" on a decision opens the chooser with the authored labels instead of picking a path', async () => {
+      shell.manifest = decision();
+      await init();
+
+      await shell.navigateNext();
+
+      expect(shell.getCurrentPanelId()).toBe('p1');
+      expect(shell.branchChooserVisible).toBeTrue();
+      expect(shell.branchChoices.map((c) => c.label)).toEqual(['Call', 'Swipe it away']);
+
+      await shell.onBranchChosen(shell.branchChoices[0]);
+      expect(shell.getCurrentPanelId()).toBe('p2');
+      expect(tries()).toBe(1); // the edge's action ran
+    });
+
+    it('"next" still follows unlabelled paths without asking', async () => {
+      shell.manifest = branching();
+      await init();
+
+      await shell.navigateNext();
+
+      expect(shell.branchChooserVisible).toBeFalse();
+      expect(shell.getCurrentPanelId()).not.toBe('p1');
+    });
+  });
+
+  describe('localeChange output', () => {
+    it("reports the reader's language changes, not the start locale it was given", async () => {
+      const emitted: string[] = [];
+      shell.localeChange.subscribe((l) => emitted.push(l));
+      shell.locale = 'de-DE';
+      await init();
+      expect(emitted).not.toContain('en-US'); // the internal default never leaks out
+
+      emitted.length = 0;
+      shell.onLocaleChange('en-US'); // the toolbar's language menu
+      expect(emitted).toEqual(['en-US']);
     });
   });
 

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { SpeechBubblesComponent } from './speech-bubbles.component';
+import { SpeechBubblesComponent, clampCenter, MIN_LETTERING_PX } from './speech-bubbles.component';
 import { ManifestService } from '../../../services/manifest.service';
 import type { SpeechBubble } from '../../../types';
 
@@ -63,7 +63,7 @@ describe('SpeechBubblesComponent', () => {
         id: 'b1',
         text: { 'en-US': 'Hello!' },
         shape: { x: 0.4, y: 0.4, w: 0.9, h: 0.9 }, // huge authored box must NOT blow up the text
-        balloonConfig: {},
+        balloonConfig: { fontSize: 24 }, // 24 px × 0.5 = 12 px: above the legibility floor
       })];
 
       component.renderAllBalloons();
@@ -72,6 +72,41 @@ describe('SpeechBubblesComponent', () => {
       expect(wrapper).toBeTruthy();
       expect(wrapper.style.transform).toBe('scale(0.5)');
       expect(wrapper.style.transformOrigin).toBe('center center');
+    });
+
+    it('re-wraps a balloon too wide for a narrow panel instead of shrinking its text below 9 px', () => {
+      component.containerWidth = 135; // a tall, narrow panel
+      component.containerHeight = 240;
+      component.readingScale = 0.45;
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'St. Aurelian General Hospital, Harbor City. 18:52.' },
+        shape: { x: 0.04, y: 0.02, w: 0.9, h: 0.1 },
+        balloonConfig: { fontSize: 15, maxWidth: 293, maxHeight: 100 },
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      const scale = parseFloat(/scale\(([\d.]+)\)/.exec(wrapper.style.transform)![1]);
+      expect(15 * scale).toBeGreaterThanOrEqual(MIN_LETTERING_PX - 0.01);
+      const svg = wrapper.querySelector('svg') as SVGSVGElement;
+      expect(parseFloat(svg.style.width) * scale).toBeLessThanOrEqual(135 + 0.5);
+    });
+
+    it('never letters below 9 px: small lettering on a small page grows to the floor', () => {
+      component.readingScale = 0.5; // 12 px × 0.5 = 6 px would be unreadable
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Hi' },
+        shape: { x: 0.4, y: 0.4, w: 0.2, h: 0.15 },
+        balloonConfig: {},
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      expect(wrapper.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
     });
 
     it('applies no transform at reading scale 1', () => {
@@ -141,6 +176,36 @@ describe('SpeechBubblesComponent', () => {
       // top style = centerY - svgH/2 with centerY = visualH/2; at scale 1
       // that is exactly 0px.
       expect(parseFloat(wrapper.style.top)).toBeCloseTo(0, 0);
+    });
+
+    it('keeps a balloon bigger than its box inside the panel when the box sits near the border', () => {
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'St. Aurelian General Hospital, Harbor City. 18:52.' },
+        shape: { x: 0.05, y: 0.04, w: 0.2, h: 0.04 }, // small box close to (not on) the top-left border
+        balloonConfig: {},
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      const svg = wrapper.querySelector('svg') as SVGSVGElement;
+      const w = parseFloat(svg.style.width);
+      const h = parseFloat(svg.style.height);
+      // At scale 1 the wrapper box is the visual box: fully inside 400 × 300.
+      expect(parseFloat(wrapper.style.left)).toBeGreaterThanOrEqual(-0.5);
+      expect(parseFloat(wrapper.style.top)).toBeGreaterThanOrEqual(-0.5);
+      expect(parseFloat(wrapper.style.left) + w).toBeLessThanOrEqual(400.5);
+      expect(parseFloat(wrapper.style.top) + h).toBeLessThanOrEqual(300.5);
+    });
+  });
+
+  describe('clampCenter', () => {
+    it('keeps the span inside the extent and centres what cannot fit', () => {
+      expect(clampCenter(10, 40, 100)).toBe(20);
+      expect(clampCenter(95, 40, 100)).toBe(80);
+      expect(clampCenter(50, 40, 100)).toBe(50);
+      expect(clampCenter(5, 120, 100)).toBe(50);
     });
   });
 

@@ -52,6 +52,12 @@ export interface Edge {
   
   /** Localized label for this edge (optional, for UI) */
   label?: Record<string, string>;
+
+  /**
+   * Editor edge metadata (schema `Edge.mutations`): the CMS keeps the choice
+   * label in an `{ op: 'meta', edgeType: { label } }` descriptor here.
+   */
+  mutations?: Record<string, unknown>[];
 }
 
 /**

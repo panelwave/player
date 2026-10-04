@@ -21,7 +21,7 @@ import {
 } from '@angular/core';
 
 import { HttpClient } from '@angular/common/http';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, distinctUntilChanged, skip, takeUntil } from 'rxjs';
 import { TranslatePipe, TranslateLoader } from '@ngx-translate/core';
 import { CustomTranslateLoader } from '../../utils/translation-loader';
 
@@ -1285,9 +1285,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     // panel's audio follows what the renderers show.
     this.paywallService.changes$.pipe(takeUntil(this.destroy$)).subscribe(() => this.syncPanelAudio());
 
-    // Listen to locale changes
+    // Report locale changes — not the stream's current value at subscription
+    // time (its 'en-US' default would overwrite a host's start locale).
     this.playerState.locale$
-      .pipe(takeUntil(this.destroy$))
+      .pipe(skip(1), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((locale) => {
         this.localeChange.emit(locale);
       });
@@ -1685,6 +1686,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
 
     this.navigationAttempt.emit({ direction: 'next' });
+
+    // At a choice, "next" opens the branch chooser instead of silently taking
+    // the highest-priority path.
+    if (this.isDecisionAhead()) {
+      this.onShowBranches();
+      return;
+    }
 
     try {
       const context = this.variableStore.createContext(this.currentChapter.id);
@@ -2293,9 +2301,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.refreshResolvedPanels();
   }
 
-  /** Open the branch chooser with the paths currently open from this panel. */
-  onShowBranches(): void {
-    this.branchChoices = this.computeBranchChoices();
+  /** Open the branch chooser with the paths currently open from this panel (or `panelId`). */
+  onShowBranches(panelId?: string): void {
+    this.branchChoices = this.computeBranchChoices(panelId);
     if (this.branchChoices.length === 0) {
       return;
     }
@@ -3203,6 +3211,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     if (!this.currentChapter || !this.currentPage) return;
 
+    const decision = this.pendingDecisionOnPage();
+    if (decision) {
+      this.onShowBranches(decision);
+      return;
+    }
+
     const pages = this.chapterPages(this.currentChapter);
     const currentIndex = pages.findIndex(p => p.id === this.currentPage!.id);
 
@@ -3744,10 +3758,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     return this.openEdges().length > 1;
   }
 
-  /** Outgoing edges of the current panel whose conditions pass right now. */
-  private openEdges(): Edge[] {
+  /** Outgoing edges of the current panel (or `fromPanelId`) whose conditions pass right now. */
+  private openEdges(fromPanelId?: string): Edge[] {
     const chapter = this.currentChapter;
-    const panelId = this.getCurrentPanelId();
+    const panelId = fromPanelId ?? this.getCurrentPanelId();
     if (!chapter || !panelId) {
       return [];
     }
@@ -3760,16 +3774,38 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     return outgoing.filter((edge) => !edge.condition || evaluateJsonLogic(edge.condition, context));
   }
 
+  /**
+   * The current panel is a decision: two or more open paths carry an authored
+   * choice label. "Next" then asks the reader instead of following one of them.
+   */
+  private isDecisionAhead(panelId?: string): boolean {
+    return this.openEdges(panelId).filter((edge) => !!this.localizedText(authoredEdgeLabel(edge))).length > 1;
+  }
+
+  /**
+   * Page view: a decision on the current page the reader has not taken yet
+   * (the last one in reading order). Turning the page would only show the
+   * placeholders of its branches, so "next" asks instead.
+   */
+  private pendingDecisionOnPage(): string | undefined {
+    const page = this.currentPage;
+    if (!page) {
+      return undefined;
+    }
+    const ids = page.readingOrder?.length ? page.readingOrder : (page.layout?.placements ?? []).map((p) => p.panelId);
+    return [...ids].reverse().find((id) => !this.madeChoices.has(id) && this.isDecisionAhead(id));
+  }
+
   /** Open outgoing edges with reader-facing labels. */
-  private computeBranchChoices(): BranchChoice[] {
+  private computeBranchChoices(panelId?: string): BranchChoice[] {
     const chapter = this.currentChapter;
     return chapter
-      ? this.openEdges().map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter) }))
+      ? this.openEdges(panelId).map((edge, index) => ({ edge, index, label: this.branchLabel(edge, chapter) }))
       : [];
   }
 
-  private branchLabel(edge: { label?: Record<string, string>; to: string }, chapter: Chapter): string {
-    const fromEdge = this.localizedText(edge.label);
+  private branchLabel(edge: Edge, chapter: Chapter): string {
+    const fromEdge = this.localizedText(authoredEdgeLabel(edge));
     if (fromEdge) {
       return fromEdge;
     }
@@ -3801,6 +3837,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       to: choice.edge.to,
       index: choice.index,
     });
+    // Like a hotspot choice: page view reveals the chosen path.
+    this.madeChoices.set(choice.edge.from, choice.edge.to);
+    this.refreshBranchVisibility();
     await this.navigateToPanel(
       chapter.id,
       choice.edge.to,
@@ -3809,6 +3848,27 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       choice.edge.action
     );
   }
+}
+
+/**
+ * The authored choice label of an edge: `label`, else the label the CMS keeps
+ * in its `{ op: 'meta', edgeType: { label } }` editor descriptor (schema
+ * Edge.mutations). A plain string counts as an en-US label.
+ */
+export function authoredEdgeLabel(edge: Edge): Record<string, string> | undefined {
+  if (edge.label && Object.keys(edge.label).length) {
+    return edge.label;
+  }
+  for (const m of edge.mutations ?? []) {
+    const label = m?.['op'] === 'meta' ? (m['edgeType'] as { label?: unknown } | undefined)?.label : undefined;
+    if (typeof label === 'string' && label.trim()) {
+      return { 'en-US': label };
+    }
+    if (label && typeof label === 'object' && Object.keys(label).length) {
+      return label as Record<string, string>;
+    }
+  }
+  return undefined;
 }
 
 /** Per-work like / bookmark record kept in device storage. */

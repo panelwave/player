@@ -19,6 +19,7 @@ export const DEFAULT_BALLOON_CONFIG: BalloonConfig = {
   strokeWidth: 2,
   strokeColor: '#000000',
   fillColor: '#ffffff',
+  textColor: '#000000',
   tail: {
     enabled: true,
     position: 180,
@@ -76,6 +77,7 @@ export function balloonConfigToRenderOptions(config: BalloonConfig): Record<stri
     strokeWidth: config.strokeWidth,
     strokeColor: config.strokeColor,
     fillColor: config.fillColor,
+    textColor: config.textColor,
     hideBorder: config.hideBorder.enabled
       ? { angle: config.hideBorder.angle, arc: config.hideBorder.arc }
       : null,
