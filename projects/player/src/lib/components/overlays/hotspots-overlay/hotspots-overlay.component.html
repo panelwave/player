@@ -8,7 +8,8 @@
   @for (h of visibleHotspots; track h.id) {
     <g
       class="hotspot-shape"
-      [class.indicator]="showIndicators"
+      [class.choice]="choiceIds.has(h.id)"
+      [class.indicator]="showIndicators && !choiceIds.has(h.id)"
       [attr.role]="interactive ? 'button' : null"
       [attr.tabindex]="interactive ? 0 : null"
       [attr.aria-label]="resolveLabel(h)"
@@ -35,6 +36,18 @@
         @case ('polygon') {
           <polygon [attr.points]="polygonPoints($any(h.shape))" />
         }
+      }
+      @if (choiceText(h); as text) {
+        <!-- A choice: its label is the button text (decorative; the g carries the accessible name). -->
+        <foreignObject
+          class="hotspot-label-box"
+          [attr.x]="boundsOf(h.shape).x"
+          [attr.y]="boundsOf(h.shape).y"
+          [attr.width]="boundsOf(h.shape).width"
+          [attr.height]="boundsOf(h.shape).height"
+          aria-hidden="true">
+          <xhtml:div class="hotspot-label" [style.font-size.px]="choiceFontSize(h)">{{ text }}</xhtml:div>
+        </foreignObject>
       }
     </g>
   }

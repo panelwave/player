@@ -84,4 +84,34 @@ describe('HotspotsOverlayComponent', () => {
     component.activateByKeyboard(HS[0]);
     expect(spy).not.toHaveBeenCalled();
   });
+
+  describe('choice buttons', () => {
+    const choice = (id: string, to: string, y: number): Hotspot => ({
+      id,
+      shape: { type: 'rect', x: 0.2, y, w: 0.6, h: 0.08 },
+      label: { 'en-US': `Go ${to}`, 'de-DE': `Nach ${to}` },
+      action: { type: 'goTo', to },
+    });
+
+    it('shows the labels of a decision (goTo hotspots to 2+ panels) as button text', () => {
+      fixture.componentRef.setInput('hotspots', [choice('a', 'p8', 0.78), choice('b', 'p9', 0.88)]);
+      fixture.componentRef.setInput('locale', 'de-DE');
+      fixture.detectChanges();
+      const labels = Array.from(fixture.nativeElement.querySelectorAll('.hotspot-label')).map((e) => (e as HTMLElement).textContent?.trim());
+      expect(labels).toEqual(['Nach p8', 'Nach p9']);
+      expect(fixture.nativeElement.querySelectorAll('.hotspot-shape.choice').length).toBe(2);
+    });
+
+    it('keeps goTo hotspots to a single panel (a detour) invisible areas', () => {
+      fixture.componentRef.setInput('hotspots', [choice('a', 'p8', 0.78), choice('b', 'p8', 0.88)]);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.hotspot-label').length).toBe(0);
+      expect(component.choiceText(component.hotspots[0])).toBe('');
+    });
+
+    it('sizes the label to the button height within readable bounds', () => {
+      expect(component.choiceFontSize(choice('a', 'p8', 0.78))).toBeCloseTo(Math.max(9, Math.min(18, 0.08 * 500 * 0.42)), 5);
+      expect(component.boundsOf({ type: 'circle', cx: 0.5, cy: 0.5, r: 0.1 })).toEqual({ x: 400, y: 150, width: 200, height: 200 });
+    });
+  });
 });

@@ -85,11 +85,51 @@ export class HotspotsOverlayComponent implements OnChanges {
    */
   visibleHotspots: Hotspot[] = [];
 
+  /**
+   * Hotspots shown as labelled choice buttons: the goTo hotspots of a panel
+   * whose hotspots lead to two or more panels (a decision). A single goTo or
+   * other hotspot stays an invisible area over the artwork (a door, a phone).
+   */
+  choiceIds: ReadonlySet<string> = new Set();
+
   ngOnChanges(): void {
     const ctx = this.context;
     this.visibleHotspots = (this.hotspots ?? []).filter(
       (h) => !h.visibleIf || !ctx || evaluateJsonLogic(h.visibleIf, ctx)
     );
+    const goTos = (this.hotspots ?? []).filter((h) => h.action?.type === 'goTo');
+    const targets = new Set(goTos.map((h) => (h.action as { to?: string }).to));
+    this.choiceIds = new Set(targets.size > 1 ? goTos.map((h) => h.id) : []);
+  }
+
+  /** The visible button text of a choice hotspot (its label), or '' for plain areas. */
+  choiceText(h: Hotspot): string {
+    return this.choiceIds.has(h.id) ? this.resolveLocalized(h.label) : '';
+  }
+
+  /** Bounding box (container units) of a hotspot shape — where its button label sits. */
+  boundsOf(s: HotspotShape): { x: number; y: number; width: number; height: number } {
+    switch (s.type) {
+      case 'rect':
+        return this.rectAttrs(s);
+      case 'circle': {
+        const c = this.circleAttrs(s);
+        return { x: c.cx - c.r, y: c.cy - c.r, width: 2 * c.r, height: 2 * c.r };
+      }
+      case 'polygon': {
+        const xs = s.points.map((p) => p[0] * this.containerWidth);
+        const ys = s.points.map((p) => p[1] * this.containerHeight);
+        const x = Math.min(...xs);
+        const y = Math.min(...ys);
+        return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+      }
+    }
+  }
+
+  /** Label font size: fits the button height, readable but never huge. */
+  choiceFontSize(h: Hotspot): number {
+    const b = this.boundsOf(h.shape);
+    return Math.max(9, Math.min(18, b.height * 0.42));
   }
 
   /**
