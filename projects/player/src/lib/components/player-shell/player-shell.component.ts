@@ -1686,6 +1686,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
     this.navigationAttempt.emit({ direction: 'next' });
 
+    // At a choice, "next" opens the branch chooser instead of silently taking
+    // the highest-priority path.
+    if (this.isDecisionAhead()) {
+      this.onShowBranches();
+      return;
+    }
+
     try {
       const context = this.variableStore.createContext(this.currentChapter.id);
       const currentPanelId = this.getCurrentPanelId();
@@ -3760,6 +3767,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     return outgoing.filter((edge) => !edge.condition || evaluateJsonLogic(edge.condition, context));
   }
 
+  /**
+   * The current panel is a decision: two or more open paths carry an authored
+   * choice label. "Next" then asks the reader instead of following one of them.
+   */
+  private isDecisionAhead(): boolean {
+    return this.openEdges().filter((edge) => !!this.localizedText(authoredEdgeLabel(edge))).length > 1;
+  }
+
   /** Open outgoing edges with reader-facing labels. */
   private computeBranchChoices(): BranchChoice[] {
     const chapter = this.currentChapter;
@@ -3768,8 +3783,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       : [];
   }
 
-  private branchLabel(edge: { label?: Record<string, string>; to: string }, chapter: Chapter): string {
-    const fromEdge = this.localizedText(edge.label);
+  private branchLabel(edge: Edge, chapter: Chapter): string {
+    const fromEdge = this.localizedText(authoredEdgeLabel(edge));
     if (fromEdge) {
       return fromEdge;
     }
@@ -3809,6 +3824,27 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       choice.edge.action
     );
   }
+}
+
+/**
+ * The authored choice label of an edge: `label`, else the label the CMS keeps
+ * in its `{ op: 'meta', edgeType: { label } }` editor descriptor (schema
+ * Edge.mutations). A plain string counts as an en-US label.
+ */
+export function authoredEdgeLabel(edge: Edge): Record<string, string> | undefined {
+  if (edge.label && Object.keys(edge.label).length) {
+    return edge.label;
+  }
+  for (const m of edge.mutations ?? []) {
+    const label = m?.['op'] === 'meta' ? (m['edgeType'] as { label?: unknown } | undefined)?.label : undefined;
+    if (typeof label === 'string' && label.trim()) {
+      return { 'en-US': label };
+    }
+    if (label && typeof label === 'object' && Object.keys(label).length) {
+      return label as Record<string, string>;
+    }
+  }
+  return undefined;
 }
 
 /** Per-work like / bookmark record kept in device storage. */

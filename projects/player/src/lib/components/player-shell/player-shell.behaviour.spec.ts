@@ -325,6 +325,56 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       await init();
       expect(shell.hasBranchesAhead).toBeFalse();
     });
+
+    /** p1 is a decision as the CMS exports it: labels in the meta descriptor, writes in action. */
+    const decision = () =>
+      buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            title: { 'en-US': 'One' },
+            panels: { p1: { layers: [] }, p2: { layers: [], title: { 'en-US': 'P2 title' } }, p3: { layers: [] } },
+            graph: {
+              entry: 'p1',
+              edges: [
+                {
+                  from: 'p1',
+                  to: 'p2',
+                  action: [{ op: 'increment', var: 'tries', value: 1 }],
+                  mutations: [{ op: 'meta', edgeType: { label: { 'en-US': 'Call', 'de-DE': 'Anrufen' }, conditional: true } }],
+                },
+                { from: 'p1', to: 'p3', mutations: [{ op: 'meta', edgeType: { label: 'Swipe it away' } }] },
+              ],
+            },
+          },
+        ],
+      });
+
+    it('"next" on a decision opens the chooser with the authored labels instead of picking a path', async () => {
+      shell.manifest = decision();
+      await init();
+
+      await shell.navigateNext();
+
+      expect(shell.getCurrentPanelId()).toBe('p1');
+      expect(shell.branchChooserVisible).toBeTrue();
+      expect(shell.branchChoices.map((c) => c.label)).toEqual(['Call', 'Swipe it away']);
+
+      await shell.onBranchChosen(shell.branchChoices[0]);
+      expect(shell.getCurrentPanelId()).toBe('p2');
+      expect(tries()).toBe(1); // the edge's action ran
+    });
+
+    it('"next" still follows unlabelled paths without asking', async () => {
+      shell.manifest = branching();
+      await init();
+
+      await shell.navigateNext();
+
+      expect(shell.branchChooserVisible).toBeFalse();
+      expect(shell.getCurrentPanelId()).not.toBe('p1');
+    });
   });
 
   describe('manifestUrl loading', () => {
