@@ -58,6 +58,13 @@ describe('ReaderComponent', () => {
     return fixture;
   }
 
+  // The browser's languages beat the boot/manifest locale (start-locale.ts):
+  // pin them to one the test works don't have, so the result doesn't depend
+  // on the machine's language (CI runs en-US, dev machines may run de-DE).
+  beforeEach(() => {
+    spyOnProperty(Object.getPrototypeOf(navigator), 'languages', 'get').and.returnValue(['fr-FR']);
+  });
+
   afterEach(() => {
     delete (window as unknown as { __PW_READER__?: unknown }).__PW_READER__;
   });
