@@ -7,7 +7,8 @@
       [initialPageId]="start.pageId"
       [initialPanelId]="start.panelId"
       [showToolbar]="false"
-      (locationChange)="onLocationChange($event)" />
+      (locationChange)="onLocationChange($event)"
+      (localeChange)="onLocaleChange($event)" />
   }
   @case ('loading') {
     <div class="pwr-state" role="status" aria-live="polite">

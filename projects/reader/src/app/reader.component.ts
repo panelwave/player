@@ -17,6 +17,7 @@ import {
 } from 'player';
 import { readBootConfig, type ReaderBootConfig } from './boot-config';
 import { forReview } from './review-rules';
+import { readRememberedLocale, rememberLocale, startLocale } from './start-locale';
 
 type State = 'empty' | 'loading' | 'error' | 'ready';
 
@@ -69,7 +70,17 @@ export class ReaderComponent implements OnInit {
       .subscribe({
         next: (manifest) => {
           this.inFlight = false;
-          this.locale.set(this.config.locale ?? manifest.meta?.default_locale ?? 'en-US');
+          const defaultLocale = manifest.meta?.default_locale ?? 'en-US';
+          this.locale.set(
+            startLocale({
+              available: manifest.meta?.locales ?? [defaultLocale],
+              defaultLocale,
+              urlLang: new URLSearchParams(window.location.search).get('lang'),
+              configLocale: this.config.locale,
+              remembered: readRememberedLocale(this.storage()),
+              browser: navigator.languages ?? [navigator.language],
+            })
+          );
           this.manifest.set(this.config.mode === 'review' ? forReview(manifest) : manifest);
           this.state.set('ready');
         },
@@ -78,6 +89,20 @@ export class ReaderComponent implements OnInit {
           this.state.set('error');
         },
       });
+  }
+
+  /** A language the reader picked is remembered on this device for the next visit. */
+  onLocaleChange(locale: string): void {
+    this.locale.set(locale);
+    rememberLocale(this.storage(), locale);
+  }
+
+  private storage(): Storage | undefined {
+    try {
+      return window.localStorage;
+    } catch {
+      return undefined;
+    }
   }
 
   /** Keep the address bar on the reading position (no history entry per panel). */
