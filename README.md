@@ -304,8 +304,20 @@ balloons are measured with the real fonts even when they load late.
 
 ---
 
+## 📦 Standalone package (self-hosting)
+
+`npm run build:standalone` builds a ready-to-host player page into
+`dist/standalone-package/` (`index.html` + `player/`). Put a work next to it
+(`panelwave.js` / `panelwave.json` with relative asset paths, plus `assets/`)
+and the folder opens by double-click (`file://`) or from any static web space.
+The PanelWave CMS export "Package with player (.zip)" produces exactly this.
+Details: [docs/STANDALONE.md](docs/STANDALONE.md).
+
+---
+
 ## 📚 Documentation
 
+- [Standalone package](docs/STANDALONE.md) - Self-hosting a work: package layout, boot rules, build guards
 - [Library README](projects/player/README.md) - Public API, components, and usage
 - [Library Structure](projects/player/STRUCTURE.md) - Directory organization
 - [Balloon Renderer Sync](docs/BALLOON_RENDERER_SYNC.md) - Keeping ComicBalloon in sync with the CMS

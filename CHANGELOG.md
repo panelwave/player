@@ -8,6 +8,15 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- Standalone player app (`projects/standalone`, `npm run build:standalone` →
+  `dist/standalone-package/`): one work packaged next to an `index.html` that
+  opens from disk (`file://`) and from any static host. The work comes from
+  `panelwave.js` (`window.PANELWAVE_MANIFEST` + `PANELWAVE_CONFIG`), falling
+  back to `panelwave.json` + `panelwave.config.json` over http. UI
+  translations are bundled (no request), the bundles run as classic deferred
+  scripts in a strict IIFE, and the build fails if they ever need module
+  semantics. Basis of the PanelWave CMS export "Package with player (.zip)".
+  See docs/STANDALONE.md.
 - Reading position as a URL: page view and panel view get their own
   addresses (`?page=<pageId>`, `?panel=<panelId>`; none on the cover). New
   shell output `locationChange` (`PlayerLocation`), inputs `initialPageId`

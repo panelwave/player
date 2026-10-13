@@ -46,6 +46,17 @@ jobs:
       - name: Build reader
         run: npx ng build reader
 
+      - name: Lint standalone
+        run: npx ng lint standalone
+
+      - name: Standalone unit tests
+        run: npx ng test standalone --watch=false --browsers=ChromeHeadless
+
+      - name: Build standalone package (classic-script guards)
+        run: |
+          npm run test:standalone-build
+          npm run build:standalone -- --skip-lib
+
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -65,6 +76,9 @@ jobs:
 
       - name: Build library (the demo resolves @panelwave/player from dist/)
         run: npx ng build player
+
+      - name: Build standalone package (for e2e/standalone-package.spec.ts)
+        run: npm run build:standalone -- --skip-lib
 
       - name: E2E (chromium + mobile)
         run: npm run e2e

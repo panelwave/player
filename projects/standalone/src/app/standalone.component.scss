@@ -1,0 +1,59 @@
+:host {
+  display: block;
+}
+
+.pws-shell {
+  position: fixed;
+  inset: 0;
+}
+
+.pws-state {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: #eee;
+  font: 16px/1.5 Barlow, system-ui, sans-serif;
+
+  p {
+    margin: 0;
+    max-width: 36em;
+  }
+
+  code {
+    font-size: 0.95em;
+    color: #fff;
+  }
+}
+
+.pws-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pws-spin 0.9s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.pws-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+@keyframes pws-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,7 @@
+/*
+ * Same global styles as the public reader: the open-licensed balloon fonts
+ * (SIL OFL, shipped with the player), the self-hosted Barlow UI font and the
+ * dark page background. Nothing here loads from a CDN, so a package works
+ * offline from file://.
+ */
+@use '../../reader/src/styles';
