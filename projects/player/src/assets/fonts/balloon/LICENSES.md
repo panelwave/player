@@ -25,9 +25,9 @@ License text: https://openfontlicense.org/open-font-license-official-text/
 
 ## Deliberately NOT included
 
-**Ames Pro** (`amespro-*`, by Blambot Comic Fonts) is a **commercial** font and
+**Ames Pro** (`amespro-*`, by Purastik Graphics) is a **commercial** font and
 is not part of this MIT-licensed package (the files are gitignored). Host
-applications that use it must license it from https://blambot.com and provide
+applications that use it must license it (web-font license) from https://www.fontspring.com/fonts/purastik-graphics/ames-pro and provide
 their own `@font-face` declarations for `'Ames Italic'`, `'Ames Bold Italic'`
 and `'Ames Regular'`. The player's default font stack falls back to Comic Neue
 when Ames is unavailable.

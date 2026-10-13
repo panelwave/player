@@ -289,11 +289,11 @@ families) ships with the package under `assets/fonts/balloon/`. Include the
 (or `@import` the file from your global stylesheet — the font URLs are relative
 to the css file, so both work).
 
-**Ames Pro** (Blambot) is a **commercial** font and is *not* included in this
+**Ames Pro** (Purastik Graphics) is a **commercial** font and is *not* included in this
 MIT package, nor in works exported from the PanelWave CMS. PanelWave's own
 players (the CMS preview and read.panelwave.org) load it under PanelWave's
 license, which covers PanelWave's domains only. If you host a work yourself
-and its balloons use Ames, license it from [blambot.com](https://blambot.com)
+and its balloons use Ames, license it (web-font license) from [Fontspring](https://www.fontspring.com/fonts/purastik-graphics/ames-pro)
 and add your own `@font-face` for `'Ames Italic'` / `'Ames Bold Italic'` /
 `'Ames Regular'`. Without it, balloons fall back to Comic Neue (the default
 stack is `'Ames Italic', 'Comic Neue', sans-serif`). See
@@ -304,8 +304,20 @@ balloons are measured with the real fonts even when they load late.
 
 ---
 
+## 📦 Standalone package (self-hosting)
+
+`npm run build:standalone` builds a ready-to-host player page into
+`dist/standalone-package/` (`index.html` + `player/`). Put a work next to it
+(`panelwave.js` / `panelwave.json` with relative asset paths, plus `assets/`)
+and the folder opens by double-click (`file://`) or from any static web space.
+The PanelWave CMS export "Package with player (.zip)" produces exactly this.
+Details: [docs/STANDALONE.md](docs/STANDALONE.md).
+
+---
+
 ## 📚 Documentation
 
+- [Standalone package](docs/STANDALONE.md) - Self-hosting a work: package layout, boot rules, build guards
 - [Library README](projects/player/README.md) - Public API, components, and usage
 - [Library Structure](projects/player/STRUCTURE.md) - Directory organization
 - [Balloon Renderer Sync](docs/BALLOON_RENDERER_SYNC.md) - Keeping ComicBalloon in sync with the CMS

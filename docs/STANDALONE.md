@@ -1,0 +1,93 @@
+# Standalone package — self-hosting one work
+
+The standalone app (`projects/standalone`) is the player as a finished web
+page for **one** work. A folder with this page and a work opens
+
+- **from disk** — double-click `index.html` (a `file://` URL), and
+- **from any static web space** — upload the folder by FTP/SFTP, into any
+  sub-directory, and open its URL.
+
+No server code, no build step and no PanelWave account are needed to read it.
+The PanelWave CMS export **"Package with player (.zip)"** produces such a
+folder; you can also assemble one by hand.
+
+## Package layout
+
+```
+my-comic/
+├── index.html            from the standalone build
+├── player/               from the standalone build (main.js, polyfills.js, styles.css, media/, LICENSE, VERSION.json)
+├── panelwave.js          the work: window.PANELWAVE_MANIFEST = {…}; window.PANELWAVE_CONFIG = {…};
+├── panelwave.json        the same manifest as plain JSON (optional; used over http when panelwave.js is absent)
+├── panelwave.config.json the same config as plain JSON (optional)
+├── assets/…              images, video, audio — referenced by RELATIVE paths in the manifest
+└── fonts/custom-fonts.css  optional: @font-face rules for fonts you licensed yourself
+```
+
+The manifest must reference media by **relative** paths (`assets/img-a/w1280.webp`)
+and must not set `assets.base`; the player then resolves every path against
+the page. Absolute URLs (`https://…`) keep working but need a connection.
+
+## Boot rules
+
+1. `window.PANELWAVE_MANIFEST` (set by the classic script `panelwave.js`)
+   wins. This is the only source that works from `file://`, where browsers
+   block `fetch()` and module scripts.
+2. Without it, on `http(s)`, the page fetches `./panelwave.json` and
+   `./panelwave.config.json` (a missing config means defaults).
+3. Without it on `file://`, the page explains that `panelwave.js` is missing.
+
+Config (`PANELWAVE_CONFIG` / `panelwave.config.json`), all optional:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `locale` | `meta.default_locale` | Start language; used only when it is one of `meta.locales` |
+| `showCover` | `true` | Open on the work's cover |
+| `showToolbar` | `true` | Show the reader toolbar |
+
+Start language, first match wins: `?locale=` (or `?lang=`) in the URL, the
+config's `locale`, `meta.default_locale`. Matching accepts the language alone
+(`?lang=de` → `de-DE`).
+
+The page title is whatever `index.html` says; if it still carries the
+placeholder `PanelWave`, the tab is named after `meta.title`.
+
+## What a package does not do
+
+- **No paywall, no analytics.** Everything in the package is readable; there
+  is no server to check entitlements or receive events. The CMS export
+  removes `paywall` and `tracking` from the manifest.
+- **No commercial fonts.** The 14 open-licensed balloon font families (SIL
+  OFL) are included. Ames Pro (Purastik Graphics) is not: it falls back to Comic Neue
+  unless you license it and add `@font-face` rules in `fonts/custom-fonts.css`.
+
+## Building
+
+```bash
+npm run build:standalone              # builds the library, then the app → dist/standalone-package/
+npm run build:standalone -- --skip-lib
+npm run test:standalone-build         # unit tests of the build script's rules
+```
+
+The Angular build emits `<script type="module">` although the bundles contain
+no `import`/`export`. Browsers refuse module scripts from `file://`, so
+`scripts/build-standalone.mjs`:
+
+- rewrites the tags to classic `defer` scripts under `player/`,
+- wraps `main.js` and `polyfills.js` in a strict-mode IIFE — as classic
+  scripts their top-level `var`s would otherwise become `window` properties
+  and collide with built-ins such as `window.name` (which coerces to a string),
+- **fails the build** if a bundle ever needs real module semantics (top-level
+  `import`/`export`, `import.meta`, dynamic `import()`) or the build emits lazy
+  chunks.
+
+UI translations are bundled into `main.js` (`BundledTranslateLoader`), so the
+page makes no request besides the work and its media.
+
+## Tests
+
+- Unit (Karma): `npx ng test standalone --watch=false --browsers=ChromeHeadless`
+- E2E (Playwright): `e2e/standalone-package.spec.ts` builds packages into a
+  temp folder and opens them from `file://` and from a static server
+  sub-directory (needs `npm run build:standalone` first; skipped otherwise).
+  Runs in chromium, firefox and webkit.

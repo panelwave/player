@@ -1,0 +1,31 @@
+@switch (state()) {
+  @case ('ready') {
+    <pw-player-shell
+      class="pws-shell"
+      [manifest]="manifest() ?? undefined"
+      [locale]="locale()"
+      [showCover]="config().showCover"
+      [showToolbar]="config().showToolbar"
+      (localeChange)="onLocaleChange($event)" />
+  }
+  @case ('loading') {
+    <div class="pws-state" role="status" aria-live="polite">
+      <span class="pws-spinner" aria-hidden="true"></span>
+      <span class="pws-sr">Loading…</span>
+    </div>
+  }
+  @case ('missing') {
+    <div class="pws-state" role="alert">
+      <p><strong>The work could not be loaded.</strong></p>
+      <p>Keep <code>panelwave.js</code> in the same folder as this <code>index.html</code>,
+        or open the folder through a web server.</p>
+    </div>
+  }
+  @case ('error') {
+    <div class="pws-state" role="alert">
+      <p><strong>The work could not be loaded.</strong></p>
+      <p>Upload the whole folder, including <code>panelwave.js</code> or <code>panelwave.json</code>
+        and the <code>assets</code> folder.</p>
+    </div>
+  }
+}
