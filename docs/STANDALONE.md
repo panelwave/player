@@ -58,7 +58,7 @@ placeholder `PanelWave`, the tab is named after `meta.title`.
   is no server to check entitlements or receive events. The CMS export
   removes `paywall` and `tracking` from the manifest.
 - **No commercial fonts.** The 14 open-licensed balloon font families (SIL
-  OFL) are included. Ames Pro (Blambot) is not: it falls back to Comic Neue
+  OFL) are included. Ames Pro (Purastik Graphics) is not: it falls back to Comic Neue
   unless you license it and add `@font-face` rules in `fonts/custom-fonts.css`.
 
 ## Building

@@ -127,8 +127,8 @@ and include the balloon lettering fonts:
 ```
 
 The bundled fonts are open-licensed (SIL OFL 1.1: Bangers, Comic Neue,
-Caveat, Anton and 10 more). The commercial Blambot font **Ames Pro** is not
-included. If your works use it, license it from [blambot.com](https://blambot.com)
+Caveat, Anton and 10 more). The commercial font **Ames Pro** (Purastik Graphics) is not
+included. If your works use it, license it (web-font license) from [Fontspring](https://www.fontspring.com/fonts/purastik-graphics/ames-pro)
 and add your own `@font-face`. Otherwise balloons fall back to Comic Neue.
 
 The player depends on `json-logic-js`, a CommonJS module. To silence the
