@@ -420,4 +420,75 @@ describe('SpeechBubblesComponent body anchoring', () => {
       expect(c.y).toBeCloseTo(385, 0);
     });
   }
+
+  describe('page view: anchored on the authored tail tip (anchorTailTip)', () => {
+    /** A point of the SVG (viewBox coords) in container px, through the wrapper's centre scale. */
+    function toContainer(p: { x: number; y: number }): { x: number; y: number } {
+      const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+      const svg = w.querySelector('svg') as SVGSVGElement;
+      const vb = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      const m = /scale\(([\d.]+)\)/.exec(w.style.transform);
+      const s = m ? parseFloat(m[1]) : 1;
+      const sw = parseFloat(svg.style.width);
+      const sh = parseFloat(svg.style.height);
+      const lx = p.x - vb[0];
+      const ly = p.y - vb[1];
+      return {
+        x: parseFloat(w.style.left) + sw / 2 + (lx - sw / 2) * s,
+        y: parseFloat(w.style.top) + sh / 2 + (ly - sh / 2) * s,
+      };
+    }
+
+    /** Bottom tail (180°): tip = viewBox bottom minus the 20px tail padding, at the body's centre x. */
+    function bottomTip(): { x: number; y: number } {
+      const svg = fixture.nativeElement.querySelector('.speech-bubble-wrapper svg') as SVGSVGElement;
+      const vb = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      const fo = svg.querySelector('foreignObject') as SVGForeignObjectElement;
+      const bw = parseFloat(fo.getAttribute('width') || '0');
+      return toContainer({ x: bw / 2, y: vb[1] + vb[3] - 20 });
+    }
+
+    function bodyBottom(): number {
+      const fo = fixture.nativeElement.querySelector('.speech-bubble-wrapper foreignObject') as SVGForeignObjectElement;
+      return toContainer({ x: 0, y: parseFloat(fo.getAttribute('height') || '0') }).y;
+    }
+
+    const bubble = () => asBubble({
+      id: 'b1',
+      text: { 'en-US': 'Lean on me.' },
+      shape: { x: 0.3, y: 0.3, w: 0.2, h: 0.1 }, // box 240..400 × 330..440
+      balloonConfig: { fontFamily: 'Arial, sans-serif', fontSize: 12, tail: { position: 180, length: 60 } },
+    });
+
+    it('puts the tail tip on the authored tip (box edge + tail length)', () => {
+      component.anchorTailTip = true;
+      component.bubbles = [bubble()];
+      component.renderAllBalloons();
+      const tip = bottomTip();
+      expect(tip.x).toBeCloseTo(320, 0);
+      expect(tip.y).toBeCloseTo(440 + 60, 0);
+    });
+
+    it('a readability boost grows the body, not the tail, and the tip stays put', () => {
+      component.anchorTailTip = true;
+      component.readingScale = 0.5; // 12 px × 0.5 = 6 px → boosted to the 9 px floor (scale 0.75)
+      component.bubbles = [bubble()];
+      component.renderAllBalloons();
+      const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+      expect(w.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
+      const tip = bottomTip();
+      expect(tip.x).toBeCloseTo(320, 0);
+      expect(tip.y).toBeCloseTo(440 + 60 * 0.5, 0);
+      // Visible tail = authored length at the base scale (60 × 0.5), not × 0.75.
+      expect(tip.y - bodyBottom()).toBeCloseTo(30, 0);
+    });
+
+    it('without anchorTailTip (panel view) the body stays centred on the box', () => {
+      component.bubbles = [bubble()];
+      component.renderAllBalloons();
+      const c = bodyCenter();
+      expect(c.x).toBeCloseTo(320, 0);
+      expect(c.y).toBeCloseTo(385, 0);
+    });
+  });
 });
