@@ -237,47 +237,23 @@ export class ComicBalloon {
     let balloonHeight = authoredHeight;
     let growth = 1;
 
-    // Does a text block fit a body? The block is centred in the body rect,
-    // but an oval is narrower at the top and bottom lines than at the
-    // middle, so the test is geometric: the block's corner (plus `clearance`
-    // to the outline) must lie inside the superellipse |x/a|^n + |y/b|^n <= 1
-    // that createSquirclePath draws. Rectangles (cornerRadius 0) use the
-    // plain rect test; thought and shout bodies are treated as ellipses.
-    const shapeExponent = this.options.isThought || this.options.isShout
-      ? 2
-      : this.options.cornerRadius > 0 ? 2 + (1 - this.options.cornerRadius) * 3 : 0;
-    const blockFits = (tw: number, th: number, bodyW: number, bodyH: number, clearance: number): boolean => {
-      const w = tw + 2 * (clearance + extraPad);
-      const h = th * GROWTH_SLACK + 2 * (clearance + extraPad);
-      if (shapeExponent === 0) return w <= bodyW + 0.5 && h <= bodyH + 0.5;
-      return Math.pow(w / bodyW, shapeExponent) + Math.pow(h / bodyH, shapeExponent) <= 1;
-    };
-    /** Body height that fits the block at `bodyW` with `clearance` (inverse of blockFits for the height). */
-    const heightFor = (tw: number, th: number, bodyW: number, clearance: number): number => {
-      const w = tw + 2 * (clearance + extraPad);
-      const h = th * GROWTH_SLACK + 2 * (clearance + extraPad);
-      if (shapeExponent === 0) return h;
-      const wx = Math.pow(w / bodyW, shapeExponent);
-      return wx < 0.999 ? h / Math.pow(1 - wx, 1 / shapeExponent) : h * 2;
-    };
-    // Clearance between the text block and the outline of a GROWN body.
-    const growClearance = Math.max(6, this.options.strokeWidth + 4);
-
     // Auto-grow: the authored size is the floor. When the text needs more
-    // room — taller than the authored box, or its corners poke out of the
-    // oval — grow proportionally (the shape keeps its aspect ratio; a wider
+    // room, grow proportionally (the shape keeps its aspect ratio; a wider
     // body takes fewer lines) up to BALLOON_GROWTH_MAX, else keep that width
-    // and take the height the block needs — the text always ends up inside.
+    // and take the natural height — the text always ends up inside the body.
     if (
       this.options.textFit !== 'fixed'
       && this.options.maxWidth > 0 && this.options.maxHeight > 0
-      && (naturalHeight * GROWTH_SLACK > authoredHeight + 0.5
-        || !blockFits(textWidth, textHeight, authoredWidth, authoredHeight, 0))
+      && naturalHeight * GROWTH_SLACK > authoredHeight + 0.5
     ) {
-      const fits = (s: number) => {
-        const m = measureAt(authoredWidth * s);
-        return blockFits(m.textWidth, m.textHeight, authoredWidth * s, authoredHeight * s, growClearance);
-      };
+      // Ovals are narrower at the top and bottom lines than at the middle,
+      // so a grown oval gets one extra line height of vertical room (half a
+      // line above and below the block); rectangles need none. Growth is
+      // proportional, so this also widens the body a little.
+      const isOval = this.options.isThought || this.options.isShout || this.options.cornerRadius > 0;
+      const ovalRoom = isOval ? this.options.fontSize * this.options.lineHeight : 0;
+      const fits = (s: number) =>
+        naturalHeightAt(authoredWidth * s) * GROWTH_SLACK + ovalRoom <= authoredHeight * s + 0.5;
       if (fits(BALLOON_GROWTH_MAX)) {
         // Binary search for the smallest factor that fits (monotone: wider = fewer lines).
         let lo = 1;
@@ -292,11 +268,7 @@ export class ComicBalloon {
       } else {
         growth = BALLOON_GROWTH_MAX;
         balloonWidth = Math.ceil(authoredWidth * growth);
-        const m = measureAt(balloonWidth);
-        balloonHeight = Math.ceil(Math.max(
-          naturalHeightAt(balloonWidth) * GROWTH_SLACK,
-          heightFor(m.textWidth, m.textHeight, balloonWidth, growClearance),
-        ));
+        balloonHeight = Math.ceil(naturalHeightAt(balloonWidth) * GROWTH_SLACK + ovalRoom);
       }
       ({ textWidth, textHeight } = measureAt(balloonWidth));
       naturalHeight = textHeight + padH;
