@@ -377,3 +377,47 @@ describe('SpeechBubblesComponent auto-grow (schema 1.8 textFit)', () => {
     expect(parseFloat(w.style.top)).toBeCloseTo(0, 0);
   });
 });
+
+describe('SpeechBubblesComponent body anchoring', () => {
+  let fixture: ComponentFixture<SpeechBubblesComponent>;
+  let component: SpeechBubblesComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [SpeechBubblesComponent],
+      providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(SpeechBubblesComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.containerWidth = 800;
+    component.containerHeight = 1100;
+    (component as unknown as { initialized: boolean }).initialized = true;
+  });
+
+  /** Centre of the balloon BODY in container px (scale 1): wrapper offset + body centre inside the SVG. */
+  function bodyCenter(): { x: number; y: number } {
+    const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+    const svg = w.querySelector('svg') as SVGSVGElement;
+    const vb = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+    const fo = svg.querySelector('foreignObject') as SVGForeignObjectElement;
+    const bw = parseFloat(fo.getAttribute('width') || '0');
+    const bh = parseFloat(fo.getAttribute('height') || '0');
+    return { x: parseFloat(w.style.left) - vb[0] + bw / 2, y: parseFloat(w.style.top) - vb[1] + bh / 2 };
+  }
+
+  for (const position of [180, 0, 90]) {
+    it(`puts the balloon body (not the SVG with its tail) on the stored box centre — tail at ${position}°`, () => {
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Lean on me.' },
+        shape: { x: 0.3, y: 0.3, w: 0.2, h: 0.1 }, // centre (320, 385)
+        balloonConfig: { fontFamily: 'Arial, sans-serif', tail: { position, length: 60 } },
+      })];
+      component.renderAllBalloons();
+      const c = bodyCenter();
+      expect(c.x).toBeCloseTo(320, 0);
+      expect(c.y).toBeCloseTo(385, 0);
+    });
+  }
+});

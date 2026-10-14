@@ -19,6 +19,11 @@ semver. The reader-facing product changelog lives on the docs site
   visible area (`vx`/`vy`/`vw`/`vh`) only crops on compact screens, as in
   the CMS editor's page view, which draws the full panel and marks the
   visible area.
+- **Balloon bodies sit where the editor put them.** `pw-speech-bubbles`
+  centred the balloon's SVG — which also holds the tail and the stroke
+  padding — on the stored box, so a balloon with a downward tail rendered
+  half a tail length too high (upward tail: too low). The body itself is
+  now anchored at the box centre, as in the CMS editor.
 - **Balloons re-measure once their web font arrives.** Fonts load lazily on
   first use, so the first render could measure with a fallback face after
   `document.fonts.ready` had already resolved (wrong line breaks in the

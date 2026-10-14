@@ -354,17 +354,27 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           wrapper.setAttribute('data-grown', 'true');
         }
 
-        // Anchor at the shape box's center (shifted for a grown body) — but
-        // edges the authored box touches stay glued to the panel border
-        // (narrator / Panel-Top caption boxes keep sitting exactly on the
-        // border even though the visual size no longer equals the stored box).
+        // The stored box is the balloon BODY (the editor stores the body, not
+        // the tail). The SVG's viewBox also holds the tail and the stroke
+        // padding, so its centre is not the body's: offset of the body centre
+        // from the SVG centre, in balloon px (the body starts at viewBox 0,0).
+        const vb = (result.svg?.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
+        const hasViewBox = vb.length === 4 && vb.every((v) => Number.isFinite(v));
+        const bodyOffsetX = hasViewBox ? (-vb[0] + result.width / 2) - svgWidth / 2 : 0;
+        const bodyOffsetY = hasViewBox ? (-vb[1] + result.height / 2) - svgHeight / 2 : 0;
+
+        // Anchor the body at the shape box's center (shifted for a grown
+        // body) — but edges the authored box touches stay glued to the panel
+        // border (narrator / Panel-Top caption boxes keep sitting exactly on
+        // the border even though the visual size no longer equals the stored
+        // box). centerX/centerY are where the SVG's centre goes.
         const boxLeft = (bubble.shape?.x ?? 0) * this.containerWidth;
         const boxTop = (bubble.shape?.y ?? 0) * this.containerHeight;
         const boxRight = boxLeft + (bubble.shape?.w ?? 0) * this.containerWidth;
         const boxBottom = boxTop + (bubble.shape?.h ?? 0) * this.containerHeight;
         const eps = Math.max(4, 0.02 * Math.min(this.containerWidth, this.containerHeight));
-        let centerX = pos.left + grownOffsetX;
-        let centerY = pos.top + grownOffsetY;
+        let centerX = pos.left + grownOffsetX - bodyOffsetX * scale;
+        let centerY = pos.top + grownOffsetY - bodyOffsetY * scale;
         if (boxLeft <= eps) centerX = visualW / 2;
         else if (boxRight >= this.containerWidth - eps) centerX = this.containerWidth - visualW / 2;
         if (boxTop <= eps) centerY = visualH / 2;
