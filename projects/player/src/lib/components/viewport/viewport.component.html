@@ -98,6 +98,7 @@
                 @if (interactive && panel.hotspots && panel.hotspots.length > 0) {
                   <pw-hotspots-overlay
                     [hotspots]="panel.hotspots"
+                    [bubbles]="panel.speechBubbles ?? []"
                     [locale]="locale"
                     [containerWidth]="getContainerWidth()"
                     [containerHeight]="getContainerHeight()"
@@ -284,6 +285,7 @@
                       @if (interactive && panelData.hotspots && panelData.hotspots.length > 0) {
                         <pw-hotspots-overlay
                           [hotspots]="panelData.hotspots"
+                          [bubbles]="panelData.speechBubbles ?? []"
                           [locale]="locale"
                           [containerWidth]="getPagePanelWidth(placement)"
                           [containerHeight]="getPagePanelHeight(placement)"

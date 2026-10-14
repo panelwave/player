@@ -22,6 +22,7 @@ import type {
   HotspotCircle,
   HotspotPolygon,
   LocalizedString,
+  SpeechBubble,
 } from '../../../types';
 import type { VariableContext } from '../../../types';
 import { evaluateJsonLogic, resolveLocalizedString } from '../../../utils';
@@ -42,6 +43,12 @@ export class HotspotsOverlayComponent implements OnChanges {
    * Hotspots of the current panel (manifest shape)
    */
   @Input() hotspots: Hotspot[] = [];
+
+  /**
+   * The panel's speech bubbles: a choice hotspot whose label is already
+   * lettered as a bubble keeps its invisible area under `display: auto`.
+   */
+  @Input() bubbles: SpeechBubble[] = [];
 
   /**
    * Current locale for label resolution
@@ -102,9 +109,21 @@ export class HotspotsOverlayComponent implements OnChanges {
     const goTos = (this.hotspots ?? []).filter((h) => h.action?.type === 'goTo');
     const targets = new Set(goTos.map((h) => (h.action as { to?: string }).to));
     const isChoice = new Set(targets.size > 1 ? goTos.map((h) => h.id) : []);
+    // A choice whose label is already lettered as a speech bubble of the panel
+    // (an authored "choice" caption sitting on the hotspot) stays an invisible
+    // area under auto — the balloon IS the button; drawing the label again
+    // would show the text twice.
+    const bubbleTexts = new Set(
+      (this.bubbles ?? [])
+        .map((b) => this.resolveLocalized(b.text as LocalizedString).trim().toLowerCase())
+        .filter((t) => t.length > 0)
+    );
+    const letteredAsBubble = (h: Hotspot) =>
+      bubbleTexts.has(this.resolveLocalized(h.label).trim().toLowerCase());
     this.choiceIds = new Set(
       (this.hotspots ?? [])
-        .filter((h) => h.display === 'button' || ((h.display ?? 'auto') === 'auto' && isChoice.has(h.id)))
+        .filter((h) => h.display === 'button'
+          || ((h.display ?? 'auto') === 'auto' && isChoice.has(h.id) && !letteredAsBubble(h)))
         .map((h) => h.id)
     );
   }

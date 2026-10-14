@@ -19,6 +19,11 @@ semver. The reader-facing product changelog lives on the docs site
   visible area (`vx`/`vy`/`vw`/`vh`) only crops on compact screens, as in
   the CMS editor's page view, which draws the full panel and marks the
   visible area.
+- **No double choice labels.** A choice hotspot (`display: auto`) whose label
+  is already lettered as a speech bubble of the panel — an authored "choice"
+  caption sitting on the hotspot — stays an invisible area instead of drawing
+  the label a second time. `pw-hotspots-overlay` takes the panel's `bubbles`
+  for that.
 - **Balloon bodies sit where the editor put them.** `pw-speech-bubbles`
   centred the balloon's SVG — which also holds the tail and the stroke
   padding — on the stored box, so a balloon with a downward tail rendered

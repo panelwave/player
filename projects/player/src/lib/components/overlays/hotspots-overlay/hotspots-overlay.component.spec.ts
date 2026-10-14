@@ -133,3 +133,41 @@ describe('HotspotsOverlayComponent', () => {
     });
   });
 });
+
+describe('HotspotsOverlayComponent choice labels lettered as bubbles', () => {
+  let fixture: ComponentFixture<HotspotsOverlayComponent>;
+
+  const choice = (id: string, to: string, y: number, label: string): Hotspot => ({
+    id,
+    shape: { type: 'rect', x: 0.2, y, w: 0.6, h: 0.08 },
+    label: { 'en-US': label },
+    action: { type: 'goTo', to },
+  });
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [HotspotsOverlayComponent] }).compileComponents();
+    fixture = TestBed.createComponent(HotspotsOverlayComponent);
+    fixture.componentRef.setInput('containerWidth', 1000);
+    fixture.componentRef.setInput('containerHeight', 500);
+    fixture.componentRef.setInput('interactive', true);
+  });
+
+  it('keeps a choice whose label is already a speech bubble an invisible area (no second label)', () => {
+    fixture.componentRef.setInput('hotspots', [choice('a', 'p8', 0.78, 'Sit down for two minutes'), choice('b', 'p9', 0.88, 'Push through')]);
+    fixture.componentRef.setInput('bubbles', [
+      { id: 'c1', text: { 'en-US': 'Sit down for two minutes' }, shape: { x: 0.2, y: 0.78, w: 0.3, h: 0.05 }, styleRef: 'choice' },
+    ]);
+    fixture.detectChanges();
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.hotspot-label')).map((e) => (e as HTMLElement).textContent?.trim());
+    expect(labels).toEqual(['Push through']);
+    expect(fixture.nativeElement.querySelectorAll('.hotspot-shape.choice').length).toBe(1);
+  });
+
+  it('an explicit display: button still draws its label next to a bubble', () => {
+    fixture.componentRef.setInput('hotspots', [{ ...choice('a', 'p8', 0.78, 'Push through'), display: 'button' }, choice('b', 'p9', 0.88, 'Wait')]);
+    fixture.componentRef.setInput('bubbles', [{ id: 'c1', text: { 'en-US': 'push through' }, shape: { x: 0, y: 0, w: 0.1, h: 0.1 } }]);
+    fixture.detectChanges();
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.hotspot-label')).map((e) => (e as HTMLElement).textContent?.trim());
+    expect(labels).toEqual(['Push through', 'Wait']);
+  });
+});
