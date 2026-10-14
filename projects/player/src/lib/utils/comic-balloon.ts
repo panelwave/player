@@ -247,11 +247,11 @@ export class ComicBalloon {
       && naturalHeight * GROWTH_SLACK > authoredHeight + 0.5
     ) {
       // Ovals are narrower at the top and bottom lines than at the middle,
-      // so a grown oval gets one extra line height of vertical room (half a
+      // so a grown oval gets half a line height of vertical room (a quarter
       // line above and below the block); rectangles need none. Growth is
       // proportional, so this also widens the body a little.
       const isOval = this.options.isThought || this.options.isShout || this.options.cornerRadius > 0;
-      const ovalRoom = isOval ? this.options.fontSize * this.options.lineHeight : 0;
+      const ovalRoom = isOval ? 0.5 * this.options.fontSize * this.options.lineHeight : 0;
       const fits = (s: number) =>
         naturalHeightAt(authoredWidth * s) * GROWTH_SLACK + ovalRoom <= authoredHeight * s + 0.5;
       if (fits(BALLOON_GROWTH_MAX)) {
