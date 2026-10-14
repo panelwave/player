@@ -103,6 +103,25 @@ describe('StandaloneComponent', () => {
     // forkJoin drops the sibling request once the manifest fails.
     expect(config.cancelled).toBeTrue();
   });
+
+  it('a print config marks <html> with pw-print and forces the static page view', () => {
+    globals.PANELWAVE_MANIFEST = manifest;
+    globals.PANELWAVE_CONFIG = { print: true, pageFormat: 'a4-portrait' };
+    const fixture = TestBed.createComponent(StandaloneComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    expect(document.documentElement.classList.contains('pw-print')).toBeTrue();
+    expect(c.config()).toEqual(jasmine.objectContaining({
+      showCover: false, showToolbar: false, viewMode: 'page', reducedMotion: true, pageFormat: 'a4-portrait',
+    }));
+    document.documentElement.classList.remove('pw-print');
+  });
+
+  it('leaves <html> alone without print', () => {
+    globals.PANELWAVE_MANIFEST = manifest;
+    TestBed.createComponent(StandaloneComponent).detectChanges();
+    expect(document.documentElement.classList.contains('pw-print')).toBeFalse();
+  });
 });
 
 describe('BundledTranslateLoader', () => {

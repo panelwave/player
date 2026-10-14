@@ -11,6 +11,7 @@ import {
   isManifestLike,
   localizedText,
   normalizeConfig,
+  pageIdFromSearch,
   planBoot,
   type StandaloneConfig,
   type StandaloneWindow,
@@ -39,6 +40,8 @@ export class StandaloneComponent implements OnInit {
   readonly manifest = signal<PanelWaveManifest | null>(null);
   readonly config = signal<StandaloneConfig>({ ...DEFAULT_CONFIG });
   readonly locale = signal('en-US');
+  /** Page from `?page=` (a manifest page id); undefined = the start of the work. */
+  readonly pageId = signal<string | undefined>(undefined);
 
   ngOnInit(): void {
     const plan = planBoot(window as unknown as StandaloneWindow, window.location.protocol);
@@ -78,6 +81,9 @@ export class StandaloneComponent implements OnInit {
     const locale = chooseLocale(manifest, window.location.search, config);
     this.config.set(config);
     this.locale.set(locale);
+    this.pageId.set(pageIdFromSearch(window.location.search));
+    // Print renders (CMS PDF export) get a hook for their print stylesheet.
+    document.documentElement.classList.toggle('pw-print', !!config.print);
     this.manifest.set(manifest);
     // The CMS export writes the title into index.html; a hand-built package
     // keeps the placeholder, so name the tab after the work instead.

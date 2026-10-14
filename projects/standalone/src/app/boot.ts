@@ -17,6 +17,18 @@ export interface StandaloneConfig {
   locale?: string;
   showCover: boolean;
   showToolbar: boolean;
+  /** Page format id to show (e.g. `a4-portrait`); absent = chosen by screen size. */
+  pageFormat?: string;
+  /** Start view; absent = page view when the work has pages. */
+  viewMode?: 'page' | 'panel';
+  /** Hold animations at their end state, no autoplay (also on when the OS asks for it). */
+  reducedMotion?: boolean;
+  /**
+   * Static print render (the CMS PDF export prints each page through this):
+   * no cover, no toolbar, page view, reduced motion. Adds `pw-print` to
+   * `<html>` so a print stylesheet can target it.
+   */
+  print?: boolean;
 }
 
 export const DEFAULT_CONFIG: StandaloneConfig = { showCover: true, showToolbar: true };
@@ -51,11 +63,29 @@ export function isManifestLike(value: unknown): value is PanelWaveManifest {
 export function normalizeConfig(raw: unknown): StandaloneConfig {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_CONFIG };
   const r = raw as Record<string, unknown>;
-  return {
+  const config: StandaloneConfig = {
     locale: typeof r['locale'] === 'string' && r['locale'] ? r['locale'] : undefined,
     showCover: typeof r['showCover'] === 'boolean' ? r['showCover'] : DEFAULT_CONFIG.showCover,
     showToolbar: typeof r['showToolbar'] === 'boolean' ? r['showToolbar'] : DEFAULT_CONFIG.showToolbar,
   };
+  if (typeof r['pageFormat'] === 'string' && /^[a-z0-9-]+$/.test(r['pageFormat'])) config.pageFormat = r['pageFormat'];
+  if (r['viewMode'] === 'page' || r['viewMode'] === 'panel') config.viewMode = r['viewMode'];
+  if (typeof r['reducedMotion'] === 'boolean') config.reducedMotion = r['reducedMotion'];
+  if (r['print'] === true) {
+    // A print render is static: no cover or toolbar, the page view, no motion.
+    config.print = true;
+    config.showCover = false;
+    config.showToolbar = false;
+    config.viewMode = 'page';
+    config.reducedMotion = true;
+  }
+  return config;
+}
+
+/** The page to open from `?page=<manifest page id>`; undefined when absent or malformed. */
+export function pageIdFromSearch(search: string): string | undefined {
+  const value = new URLSearchParams(search).get('page');
+  return value && /^[A-Za-z0-9_.:-]{1,200}$/.test(value) ? value : undefined;
 }
 
 /** The work locale for `wanted`: the exact tag, else the first with the same language (de-AT → de-DE). */

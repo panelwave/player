@@ -6,6 +6,10 @@
       [locale]="locale()"
       [showCover]="config().showCover"
       [showToolbar]="config().showToolbar"
+      [pageFormat]="config().pageFormat ?? 'auto'"
+      [initialViewMode]="config().viewMode"
+      [initialPageId]="pageId()"
+      [reducedMotion]="config().reducedMotion ?? false"
       (localeChange)="onLocaleChange($event)" />
   }
   @case ('loading') {

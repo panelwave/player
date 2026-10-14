@@ -44,10 +44,17 @@ Config (`PANELWAVE_CONFIG` / `panelwave.config.json`), all optional:
 | `locale` | `meta.default_locale` | Start language; used only when it is one of `meta.locales` |
 | `showCover` | `true` | Open on the work's cover |
 | `showToolbar` | `true` | Show the reader toolbar |
+| `pageFormat` | chosen by screen size | Page format to show, e.g. `a4-portrait` (used when the work has pages in it) |
+| `viewMode` | page view when the work has pages | Start in `page` or `panel` view |
+| `reducedMotion` | `false` (or the OS setting) | Hold animations at their end state, no autoplay |
+| `print` | `false` | Static print render: implies no cover, no toolbar, page view and reduced motion, and adds the class `pw-print` to `<html>` for a print stylesheet. The CMS PDF export prints every page this way. |
 
 Start language, first match wins: `?locale=` (or `?lang=`) in the URL, the
 config's `locale`, `meta.default_locale`. Matching accepts the language alone
 (`?lang=de` → `de-DE`).
+
+Start page: `?page=<page id>` (a manifest page id such as `pg-A3`) opens that
+page in page view, without the cover.
 
 The page title is whatever `index.html` says; if it still carries the
 placeholder `PanelWave`, the tab is named after `meta.title`.

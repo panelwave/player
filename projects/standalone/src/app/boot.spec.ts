@@ -6,6 +6,7 @@ import {
   localizedText,
   matchLocale,
   normalizeConfig,
+  pageIdFromSearch,
   planBoot,
 } from './boot';
 
@@ -59,6 +60,30 @@ describe('standalone boot', () => {
         showToolbar: false,
       });
     });
+
+    it('keeps the view options and drops malformed ones', () => {
+      expect(normalizeConfig({ pageFormat: 'a4-portrait', viewMode: 'page', reducedMotion: true })).toEqual({
+        locale: undefined, showCover: true, showToolbar: true,
+        pageFormat: 'a4-portrait', viewMode: 'page', reducedMotion: true,
+      });
+      expect(normalizeConfig({ pageFormat: 'A4 <x>', viewMode: 'grid', reducedMotion: 'yes' })).toEqual({ locale: undefined, showCover: true, showToolbar: true });
+    });
+
+    it('print implies a static page view without cover or toolbar', () => {
+      expect(normalizeConfig({ print: true, showCover: true, showToolbar: true, viewMode: 'panel', pageFormat: 'a4-portrait' })).toEqual({
+        locale: undefined, showCover: false, showToolbar: false,
+        pageFormat: 'a4-portrait', viewMode: 'page', reducedMotion: true, print: true,
+      });
+      expect(normalizeConfig({ print: 'yes' }).print).toBeUndefined();
+    });
+  });
+
+  it('pageIdFromSearch reads ?page= and rejects malformed ids', () => {
+    expect(pageIdFromSearch('?page=pg-A3')).toBe('pg-A3');
+    expect(pageIdFromSearch('?locale=de&page=pg-A12')).toBe('pg-A12');
+    expect(pageIdFromSearch('')).toBeUndefined();
+    expect(pageIdFromSearch('?page=')).toBeUndefined();
+    expect(pageIdFromSearch('?page=%3Cscript%3E')).toBeUndefined();
   });
 
   it('matchLocale matches exactly, then by language', () => {
