@@ -430,6 +430,19 @@ describe('ThumbnailStripComponent', () => {
       expect(spy).toHaveBeenCalledOnceWith({ left: 552, behavior: 'smooth' });
     });
 
+    it('does not snap back when the host passes an equal but new currentPanelIds array', () => {
+      setup({ chapters, currentPanelId: 'p1', currentPanelIds: ['p1', 'p2'], visible: true });
+      const spy = scrollSpy(container());
+
+      fixture.componentRef.setInput('currentPanelIds', ['p1', 'p2']);
+      fixture.detectChanges();
+      expect(spy).not.toHaveBeenCalled();
+
+      fixture.componentRef.setInput('currentPanelIds', ['p4', 'p5']);
+      fixture.detectChanges();
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
     it('does not scroll on changes while hidden', () => {
       setup({ chapters, currentPanelId: 'p1', visible: false });
       const spy = spyOn(Element.prototype, 'scrollTo');

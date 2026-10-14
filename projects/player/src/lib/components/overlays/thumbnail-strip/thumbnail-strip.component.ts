@@ -41,6 +41,13 @@ export interface ThumbnailNavigationTarget {
   cover?: boolean;
 }
 
+/** Two id lists hold the same ids in the same order. */
+function sameIds(a?: string[] | null, b?: string[] | null): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((id, i) => id === b[i]);
+}
+
 /** Kinds of tiles in the strip: the cover, a chapter separator, a panel. */
 export type ThumbnailItemKind = 'cover' | 'chapter' | 'panel';
 
@@ -178,7 +185,15 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
    * Handle changes
    */
   ngOnChanges(changes: SimpleChanges): void {
-    const rebuild = ['chapters', 'currentChapterId', 'currentPanelId', 'currentPanelIds', 'lockedPanels', 'coverThumbnail', 'coverCurrent', 'locale'];
+    // Hosts may hand over a fresh but equal array on every change detection
+    // (e.g. a getter). Treating that as a change would rebuild the strip and
+    // snap it back to the current panel while the reader scrolls it.
+    const ids = changes['currentPanelIds'];
+    if (ids && !ids.firstChange && sameIds(ids.previousValue, ids.currentValue)) {
+      delete changes['currentPanelIds'];
+    }
+
+    const rebuild =['chapters', 'currentChapterId', 'currentPanelId', 'currentPanelIds', 'lockedPanels', 'coverThumbnail', 'coverCurrent', 'locale'];
     if (rebuild.some((key) => changes[key])) {
       this.buildThumbnailItems();
     }
