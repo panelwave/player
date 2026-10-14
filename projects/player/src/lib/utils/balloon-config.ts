@@ -14,6 +14,7 @@ export const DEFAULT_BALLOON_CONFIG: BalloonConfig = {
   cornerRadius: 0.5,
   maxWidth: 120,
   maxHeight: 80,
+  textFit: 'grow',
   fontFamily: "'Ames Italic', sans-serif",
   fontSize: 12,
   strokeWidth: 2,
@@ -63,6 +64,7 @@ export function balloonConfigToRenderOptions(config: BalloonConfig): Record<stri
   return {
     maxWidth: config.maxWidth,
     maxHeight: config.maxHeight,
+    textFit: config.textFit === 'fixed' ? 'fixed' : 'grow',
     cornerRadius: type === 'rectangle' || type === 'narrator' ? 0 : config.cornerRadius,
     sharpCorners: type === 'narrator',
     isThought: type === 'thought',

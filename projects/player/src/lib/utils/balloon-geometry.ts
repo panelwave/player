@@ -126,3 +126,100 @@ export function tailTipToTailConfig(
   const length = Math.round(Math.max(0, tipDist - edgeDist));
   return { position, length };
 }
+
+// ---------------------------------------------------------------------------
+// Auto-grow placement (schema 1.8 textFit): where a body that grew beyond its
+// authored size goes. Shared by the player overlay, the editor panel view and
+// the editor page view so all three move a grown balloon the same way.
+// ---------------------------------------------------------------------------
+
+export interface BalloonRectLike {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Edges of the authored box that must stay where they are when the body grows. */
+export interface GlueEdges {
+  left?: boolean;
+  right?: boolean;
+  top?: boolean;
+  bottom?: boolean;
+}
+
+/**
+ * Edges the authored box touches (within `eps`) on the panel, plus the edges
+ * a caption type is glued to by definition: the cut Panel-Top variants always
+ * keep the top (the cut edge IS the panel border), the corner variants their side.
+ */
+export function grownBodyGlue(
+  authored: BalloonRectLike,
+  panel: BalloonRectLike | null,
+  balloonType?: string,
+  eps?: number,
+): GlueEdges {
+  const glue: GlueEdges = {};
+  if (panel) {
+    const e = eps ?? Math.max(4, 0.02 * Math.min(panel.width, panel.height));
+    if (authored.x <= panel.x + e) glue.left = true;
+    else if (authored.x + authored.width >= panel.x + panel.width - e) glue.right = true;
+    if (authored.y <= panel.y + e) glue.top = true;
+    else if (authored.y + authored.height >= panel.y + panel.height - e) glue.bottom = true;
+  }
+  if (balloonType === 'cutTop' || balloonType === 'cutTopLeft' || balloonType === 'cutTopRight') {
+    glue.top = true;
+    glue.bottom = false;
+    if (balloonType === 'cutTopLeft') { glue.left = true; glue.right = false; }
+    if (balloonType === 'cutTopRight') { glue.right = true; glue.left = false; }
+  }
+  return glue;
+}
+
+/**
+ * Rect of a grown body (`grown` size) so that
+ * 1. a tail balloon keeps its tail tip where the authored box put it (the
+ *    body moves away from the speaker, the tail keeps angle and length);
+ * 2. glued edges stay on the panel border (overrides 1 on that axis);
+ * 3. a tailless, unglued balloon keeps its centre;
+ * 4. the body stays inside `panel` when one is given (centred on an axis it
+ *    cannot fit) — this is the only rule that may move the tail tip.
+ * Returns the authored rect itself when the size did not change.
+ */
+export function placeGrownBody(
+  authored: BalloonRectLike,
+  grown: { width: number; height: number },
+  tail: { position: number; length: number } | null,
+  cornerRadius: number,
+  panel: BalloonRectLike | null,
+  glue: GlueEdges = {},
+): BalloonRectLike {
+  if (Math.abs(grown.width - authored.width) < 0.5 && Math.abs(grown.height - authored.height) < 0.5) {
+    return { ...authored };
+  }
+  const cx = authored.x + authored.width / 2;
+  const cy = authored.y + authored.height / 2;
+  let x = cx - grown.width / 2;
+  let y = cy - grown.height / 2;
+
+  if (tail) {
+    const tipAuthored = tailConfigToTip({ cx, cy, width: authored.width, height: authored.height }, tail, cornerRadius);
+    const tipGrown = tailConfigToTip({ cx, cy, width: grown.width, height: grown.height }, tail, cornerRadius);
+    x += tipAuthored.x - tipGrown.x;
+    y += tipAuthored.y - tipGrown.y;
+  }
+
+  if (glue.left) x = authored.x;
+  else if (glue.right) x = authored.x + authored.width - grown.width;
+  if (glue.top) y = authored.y;
+  else if (glue.bottom) y = authored.y + authored.height - grown.height;
+
+  if (panel) {
+    if (grown.width >= panel.width) x = panel.x + (panel.width - grown.width) / 2;
+    else x = Math.min(panel.x + panel.width - grown.width, Math.max(panel.x, x));
+    if (grown.height >= panel.height) y = panel.y + (panel.height - grown.height) / 2;
+    else y = Math.min(panel.y + panel.height - grown.height, Math.max(panel.y, y));
+  }
+
+  return { x, y, width: grown.width, height: grown.height };
+}

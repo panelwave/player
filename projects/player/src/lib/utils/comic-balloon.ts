@@ -13,6 +13,30 @@
 
 import { thoughtTrailCircles } from './balloon-geometry';
 
+/**
+ * How a balloon treats text that needs more room than its authored size
+ * (`maxWidth × maxHeight`, schema 1.8 `BalloonConfig.textFit`):
+ * - `grow` (default): the balloon grows beyond the authored size until the
+ *   text fits — proportionally first (the shape keeps its aspect ratio), then
+ *   in height; see {@link BALLOON_GROWTH_MAX}.
+ * - `fixed`: the balloon keeps its authored size and the text spills over the
+ *   edges (pre-1.8 behaviour); `textOverflows` reports it.
+ */
+export type BalloonTextFit = 'grow' | 'fixed';
+
+/**
+ * Largest proportional growth factor per dimension (2 = each side may double).
+ * Text that still does not fit at this width is given its natural height.
+ */
+export const BALLOON_GROWTH_MAX = 2;
+
+/**
+ * Safety margin on the measured text height when deciding whether a grown
+ * body fits: the editor canvas wraps text with Canvas2D `measureText`, the
+ * engine with DOM layout, and the two can differ by a hair at a line break.
+ */
+const GROWTH_SLACK = 1.02;
+
 export interface BalloonPadding {
   top: number;
   right: number;
@@ -21,8 +45,12 @@ export interface BalloonPadding {
 }
 
 export interface BalloonOptions {
+  /** Authored width in px; 0 = natural width. With textFit 'grow' the body may become wider. */
   maxWidth: number;
+  /** Authored height in px; 0 = natural height. With textFit 'grow' the body may become taller. */
   maxHeight: number;
+  /** What happens when the text needs more room than the authored size (default 'grow'). */
+  textFit: BalloonTextFit;
   padding: BalloonPadding;
   strokeWidth: number;
   strokeColor: string;
@@ -71,10 +99,19 @@ interface PathPoint {
 }
 
 export interface BalloonRenderResult {
+  /** Rendered body width (the authored width, or more when the balloon grew). */
   width: number;
+  /** Rendered body height (the authored height, or more when the balloon grew). */
   height: number;
+  /** The authored body size the growth started from (maxWidth/maxHeight, or the natural size for 0). */
+  authoredWidth: number;
+  authoredHeight: number;
+  /** True when the body is larger than the authored size because the text needed more room. */
+  grown: boolean;
+  /** Proportional growth factor applied to the authored size (1 when not grown). */
+  growth: number;
   svg: SVGSVGElement;
-  /** True when the text needs more height than a fixed maxHeight allows (it is cut off). */
+  /** True when the text needs more height than the body gives it (textFit 'fixed' only). */
   textOverflows: boolean;
   balloon: ComicBalloon;
   update: (newText?: string, newTailOptions?: TailOptions | null) => BalloonRenderResult;
@@ -102,6 +139,7 @@ export class ComicBalloon {
       // maxHeight (default 0). Only a missing/non-finite value falls back to 140.
       maxWidth: typeof options.maxWidth === 'number' && Number.isFinite(options.maxWidth) ? options.maxWidth : 140,
       maxHeight: options.maxHeight || 0,
+      textFit: options.textFit === 'fixed' ? 'fixed' : 'grow',
       padding: options.padding || { top: 14, right: 18, bottom: 14, left: 18 },
       strokeWidth: options.strokeWidth || 2,
       strokeColor: options.strokeColor || '#000',
@@ -138,9 +176,8 @@ export class ComicBalloon {
 
     // Use the same padding as the canvas drawBalloonText (padding = 14 on each side)
     const textPadding = 14;
-    const availableTextWidth = this.options.maxWidth > 0
-      ? this.options.maxWidth - textPadding * 2
-      : 140 - textPadding * 2;
+    const availableWidthFor = (bodyWidth: number) =>
+      bodyWidth > 0 ? bodyWidth - textPadding * 2 : 140 - textPadding * 2;
 
     // Text styles shared by the measuring element and the rendered text, so
     // both wrap identically. Everything that inherits is pinned: the rendered
@@ -160,32 +197,77 @@ export class ComicBalloon {
       word-wrap: break-word;
     `;
 
-    // Create a temporary text element to measure
+    // Create a temporary text element to measure (re-used for every probe of
+    // the growth search below, so one DOM node serves all measurements).
     const tempDiv = document.createElement('div');
     tempDiv.style.cssText = `
       position: absolute;
       visibility: hidden;
-      width: ${availableTextWidth}px;
+      width: ${availableWidthFor(this.options.maxWidth)}px;
       ${textStyle}
     `;
     tempDiv.innerHTML = text;
     document.body.appendChild(tempDiv);
 
-    // Measure text
-    const textWidth = Math.min(tempDiv.scrollWidth, availableTextWidth);
-    const textHeight = tempDiv.scrollHeight;
-    document.body.removeChild(tempDiv);
-
-    // Calculate balloon dimensions
     let extraPad = 0;
     if (this.options.isShout) extraPad = Math.round(this.options.fontSize * 0.4);
     if (this.options.isThought) extraPad = Math.round(this.options.fontSize * 0.4);
+    const padW = this.options.padding.left + this.options.padding.right + extraPad * 2;
+    const padH = this.options.padding.top + this.options.padding.bottom + extraPad * 2;
 
-    const naturalWidth = textWidth + this.options.padding.left + this.options.padding.right + extraPad * 2;
-    const naturalHeight = textHeight + this.options.padding.top + this.options.padding.bottom + extraPad * 2;
+    /** Text block size when wrapped inside a body of the given width. */
+    const measureAt = (bodyWidth: number): { textWidth: number; textHeight: number } => {
+      const available = availableWidthFor(bodyWidth);
+      tempDiv.style.width = `${available}px`;
+      return { textWidth: Math.min(tempDiv.scrollWidth, available), textHeight: tempDiv.scrollHeight };
+    };
+    /** Body height the text needs inside a body of the given width. */
+    const naturalHeightAt = (bodyWidth: number) => measureAt(bodyWidth).textHeight + padH;
 
-    const balloonWidth = this.options.maxWidth > 0 ? this.options.maxWidth : naturalWidth;
-    const balloonHeight = this.options.maxHeight > 0 ? this.options.maxHeight : naturalHeight;
+    // Measure at the authored width
+    let { textWidth, textHeight } = measureAt(this.options.maxWidth);
+
+    // Calculate balloon dimensions
+    const naturalWidth = textWidth + padW;
+    let naturalHeight = textHeight + padH;
+
+    const authoredWidth = this.options.maxWidth > 0 ? this.options.maxWidth : naturalWidth;
+    const authoredHeight = this.options.maxHeight > 0 ? this.options.maxHeight : naturalHeight;
+    let balloonWidth = authoredWidth;
+    let balloonHeight = authoredHeight;
+    let growth = 1;
+
+    // Auto-grow: the authored size is the floor. When the text needs more
+    // room, grow proportionally (the shape keeps its aspect ratio; a wider
+    // body takes fewer lines) up to BALLOON_GROWTH_MAX, else keep that width
+    // and take the natural height — the text always ends up inside the body.
+    if (
+      this.options.textFit !== 'fixed'
+      && this.options.maxWidth > 0 && this.options.maxHeight > 0
+      && naturalHeight * GROWTH_SLACK > authoredHeight + 0.5
+    ) {
+      const fits = (s: number) => naturalHeightAt(authoredWidth * s) * GROWTH_SLACK <= authoredHeight * s + 0.5;
+      if (fits(BALLOON_GROWTH_MAX)) {
+        // Binary search for the smallest factor that fits (monotone: wider = fewer lines).
+        let lo = 1;
+        let hi = BALLOON_GROWTH_MAX;
+        for (let i = 0; i < 6; i++) {
+          const mid = (lo + hi) / 2;
+          if (fits(mid)) hi = mid; else lo = mid;
+        }
+        growth = hi;
+        balloonWidth = Math.ceil(authoredWidth * growth);
+        balloonHeight = Math.ceil(authoredHeight * growth);
+      } else {
+        growth = BALLOON_GROWTH_MAX;
+        balloonWidth = Math.ceil(authoredWidth * growth);
+        balloonHeight = Math.ceil(naturalHeightAt(balloonWidth) * GROWTH_SLACK);
+      }
+      ({ textWidth, textHeight } = measureAt(balloonWidth));
+      naturalHeight = textHeight + padH;
+    }
+    document.body.removeChild(tempDiv);
+    const grown = balloonWidth > authoredWidth + 0.5 || balloonHeight > authoredHeight + 0.5;
 
     const cx = balloonWidth / 2;
     const cy = balloonHeight / 2;
@@ -388,6 +470,10 @@ export class ComicBalloon {
     return {
       width: balloonWidth,
       height: balloonHeight,
+      authoredWidth,
+      authoredHeight,
+      grown,
+      growth,
       textOverflows: this.options.maxHeight > 0 && naturalHeight > balloonHeight + 0.5,
       svg: this.svg,
       balloon: this,

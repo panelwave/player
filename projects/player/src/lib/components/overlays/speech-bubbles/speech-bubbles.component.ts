@@ -30,6 +30,7 @@ import type {
 import { ComicBalloon } from '../../../utils/comic-balloon';
 import type { TailOptions } from '../../../utils/comic-balloon';
 import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig, balloonConfigToRenderOptions, balloonConfigToTailOptions } from '../../../utils/balloon-config';
+import { placeGrownBody } from '../../../utils/balloon-geometry';
 import { ManifestService } from '../../../services/manifest.service';
 
 /** Smallest rendered lettering size in CSS px (balloons grow to keep text readable on small pages). */
@@ -318,17 +319,41 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         const visualW = svgWidth * scale;
         const visualH = svgHeight * scale;
 
-        // Anchor at the shape box's center — but edges the authored box
-        // touches stay glued to the panel border (narrator / Panel-Top
-        // caption boxes keep sitting exactly on the border even though the
-        // visual size no longer equals the stored box).
+        // Auto-grow (schema 1.8 textFit): when the text needed more room than
+        // the authored size, the engine grew the body. Place the grown body
+        // so the tail tip stays on the speaker (the body moves away from it)
+        // — the same rule the CMS editor applies; glued caption edges and the
+        // panel clamp below still win. Offsets are in balloon px, scaled.
+        let grownOffsetX = 0;
+        let grownOffsetY = 0;
+        if (result.grown) {
+          const authoredRect = {
+            x: -result.authoredWidth / 2, y: -result.authoredHeight / 2,
+            width: result.authoredWidth, height: result.authoredHeight,
+          };
+          const tail = tailOpts && tailOpts.position !== undefined
+            ? { position: tailOpts.position, length: tailOpts.length }
+            : null;
+          const placed = placeGrownBody(
+            authoredRect, { width: result.width, height: result.height },
+            tail, Number(renderOpts['cornerRadius']) || 0, null,
+          );
+          grownOffsetX = (placed.x + placed.width / 2) * scale;
+          grownOffsetY = (placed.y + placed.height / 2) * scale;
+          wrapper.setAttribute('data-grown', 'true');
+        }
+
+        // Anchor at the shape box's center (shifted for a grown body) — but
+        // edges the authored box touches stay glued to the panel border
+        // (narrator / Panel-Top caption boxes keep sitting exactly on the
+        // border even though the visual size no longer equals the stored box).
         const boxLeft = (bubble.shape?.x ?? 0) * this.containerWidth;
         const boxTop = (bubble.shape?.y ?? 0) * this.containerHeight;
         const boxRight = boxLeft + (bubble.shape?.w ?? 0) * this.containerWidth;
         const boxBottom = boxTop + (bubble.shape?.h ?? 0) * this.containerHeight;
         const eps = Math.max(4, 0.02 * Math.min(this.containerWidth, this.containerHeight));
-        let centerX = pos.left;
-        let centerY = pos.top;
+        let centerX = pos.left + grownOffsetX;
+        let centerY = pos.top + grownOffsetY;
         if (boxLeft <= eps) centerX = visualW / 2;
         else if (boxRight >= this.containerWidth - eps) centerX = this.containerWidth - visualW / 2;
         if (boxTop <= eps) centerY = visualH / 2;

@@ -528,10 +528,12 @@ export interface BalloonConfig {
   balloonType: BalloonType;
   /** 0-1 (0=rectangle, 1=ellipse) */
   cornerRadius: number;
-  /** Pixels */
+  /** Authored width in px — the floor; with textFit 'grow' the body grows for longer text */
   maxWidth: number;
-  /** Pixels */
+  /** Authored height in px — the floor; with textFit 'grow' the body grows for longer text */
   maxHeight: number;
+  /** grow (default): the balloon grows when the text needs more room; fixed: keeps the authored size (schema 1.8.0) */
+  textFit?: 'grow' | 'fixed';
   /** CSS font-family */
   fontFamily: string;
   /** Pixels */

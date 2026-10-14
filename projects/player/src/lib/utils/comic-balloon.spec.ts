@@ -47,6 +47,7 @@ describe('ComicBalloon', () => {
       expect(b.options).toEqual({
         maxWidth: 140,
         maxHeight: 0,
+        textFit: 'grow',
         padding: { top: 14, right: 18, bottom: 14, left: 18 },
         strokeWidth: 2,
         strokeColor: '#000',

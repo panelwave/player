@@ -271,3 +271,109 @@ describe('SpeechBubblesComponent', () => {
     });
   });
 });
+
+describe('SpeechBubblesComponent auto-grow (schema 1.8 textFit)', () => {
+  let fixture: ComponentFixture<SpeechBubblesComponent>;
+  let component: SpeechBubblesComponent;
+  const EN = 'I did my clinical rotation on Meridian at Halcyon North. Honestly, it\'s beautiful.';
+  const DE = 'Ich habe mein klinisches Praktikum bei Meridian im Halcyon North absolviert. Ehrlich gesagt, ist es wunderschön dort.';
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [SpeechBubblesComponent],
+      providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(SpeechBubblesComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.containerWidth = 800;
+    component.containerHeight = 1100;
+    (component as unknown as { initialized: boolean }).initialized = true;
+  });
+
+  function wrapper(): HTMLElement {
+    return fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+  }
+
+  /** Bottom end of the tail path (the tip) in container px, from the rendered SVG. */
+  function tailTipY(w: HTMLElement): number {
+    const svg = w.querySelector('svg') as SVGSVGElement;
+    const vb = (svg.getAttribute('viewBox') || '0 0 0 0').split(' ').map(Number);
+    // The tail tip is the lowest point of the viewBox minus the 20px tail padding.
+    return parseFloat(w.style.top) + (vb[3] + vb[1]) - 20 - vb[1];
+  }
+
+  it('grows the balloon for a longer translation while a fitting text keeps the authored size', () => {
+    const bubble = (text: string) => asBubble({
+      id: 'b1',
+      text: { 'en-US': text },
+      shape: { x: 0.3, y: 0.1, w: 0.25, h: 0.08 },
+      balloonConfig: { fontFamily: 'Arial, sans-serif', maxWidth: 200, maxHeight: 90, tail: { position: 180, length: 45 } },
+    });
+
+    component.bubbles = [bubble('Hi.')];
+    component.renderAllBalloons();
+    const small = wrapper();
+    expect(small.hasAttribute('data-grown')).toBe(false);
+    const smallSvg = small.querySelector('svg') as SVGSVGElement;
+
+    component.bubbles = [bubble(DE)];
+    component.renderAllBalloons();
+    const grown = wrapper();
+    expect(grown.getAttribute('data-grown')).toBe('true');
+    const grownSvg = grown.querySelector('svg') as SVGSVGElement;
+    expect(parseFloat(grownSvg.style.width)).toBeGreaterThan(parseFloat(smallSvg.style.width));
+    expect(parseFloat(grownSvg.style.height)).toBeGreaterThan(parseFloat(smallSvg.style.height));
+    // The lettering is not scaled down to make room.
+    expect(grown.style.transform).toBe('');
+  });
+
+  it('keeps the tail tip on the speaker when the body grows (bottom tail)', () => {
+    const bubble = (text: string) => asBubble({
+      id: 'b1',
+      text: { 'en-US': text },
+      shape: { x: 0.3, y: 0.3, w: 0.25, h: 0.08 },
+      balloonConfig: { fontFamily: 'Arial, sans-serif', maxWidth: 200, maxHeight: 90, tail: { position: 180, length: 45 } },
+    });
+
+    component.bubbles = [bubble(EN)];
+    component.renderAllBalloons();
+    const tipEn = tailTipY(wrapper());
+
+    component.bubbles = [bubble(DE)];
+    component.renderAllBalloons();
+    const w = wrapper();
+    expect(w.getAttribute('data-grown')).toBe('true');
+    expect(tailTipY(w)).toBeCloseTo(tipEn, 0);
+    // The body moved up, away from the speaker.
+    expect(parseFloat(w.style.top)).toBeLessThan(0.3 * 1100);
+  });
+
+  it("textFit 'fixed' keeps the authored size (pre-1.8 behaviour)", () => {
+    component.bubbles = [asBubble({
+      id: 'b1',
+      text: { 'en-US': DE },
+      shape: { x: 0.3, y: 0.3, w: 0.25, h: 0.08 },
+      balloonConfig: { fontFamily: 'Arial, sans-serif', maxWidth: 200, maxHeight: 90, textFit: 'fixed' },
+    })];
+    component.renderAllBalloons();
+    const w = wrapper();
+    expect(w.hasAttribute('data-grown')).toBe(false);
+    const svg = w.querySelector('svg') as SVGSVGElement;
+    // viewBox width = body 200 + 2 × (stroke 2 + 5)
+    expect(parseFloat(svg.style.width)).toBe(214);
+  });
+
+  it('a grown caption glued to the top stays on the top border', () => {
+    component.bubbles = [asBubble({
+      id: 'cap',
+      text: { 'en-US': DE },
+      shape: { x: 0.1, y: 0, w: 0.5, h: 0.05 },
+      balloonConfig: { balloonType: 'narrator', fontFamily: 'Arial, sans-serif', maxWidth: 200, maxHeight: 40, tail: { enabled: false } },
+    })];
+    component.renderAllBalloons();
+    const w = wrapper();
+    expect(w.getAttribute('data-grown')).toBe('true');
+    expect(parseFloat(w.style.top)).toBeCloseTo(0, 0);
+  });
+});

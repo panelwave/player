@@ -7,6 +7,21 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Changed
+- **Balloons grow with their text** (schema 1.8 `BalloonConfig.textFit`).
+  `maxWidth`/`maxHeight` are now the balloon's *authored* size and floor: when
+  the active language's text needs more room, `ComicBalloon.render()` grows the
+  body — proportionally first (same aspect ratio, up to 2× per side), then in
+  height — so a longer German line still fits a balloon lettered in English.
+  `pw-speech-bubbles` places the grown body so the tail tip stays on the
+  speaker (caption boxes keep their glued panel edge; the panel clamp still
+  wins) and marks the wrapper with `data-grown="true"`. Text that fits renders
+  exactly as before. `textFit: 'fixed'` restores the pre-1.8 fixed box.
+  `BalloonRenderResult` gains `authoredWidth`, `authoredHeight`, `grown` and
+  `growth`; `textOverflows` is now only reported for fixed-size balloons.
+  New geometry helpers `placeGrownBody()` and `grownBodyGlue()` (synced from the
+  CMS master with the engine).
+
 ### Added
 - Standalone player app (`projects/standalone`, `npm run build:standalone` →
   `dist/standalone-package/`): one work packaged next to an `index.html` that
