@@ -386,6 +386,61 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   private focus: PanelFocusTransform = NO_FOCUS_TRANSFORM;
   private focusFrame: number | null = null;
 
+  /**
+   * Panel-view box: the largest box of the panel's artwork aspect that fits
+   * the viewport, so the panel fills the screen and speech bubbles (normalised
+   * to the panel) land on the artwork. Null before the first measurement
+   * (the stylesheet's default box applies).
+   */
+  panelBox: { width: number; height: number } | null = null;
+
+  /**
+   * Aspect ratio (w / h) of the current panel's artwork: its background
+   * image's largest variant, else the first image or video asset with known
+   * dimensions, else 16:9 — the same reference the CMS editor sizes its
+   * panel-view content rect from.
+   */
+  get panelAspect(): number {
+    const layers = this.panel?.layers ?? [];
+    const candidates = [
+      ...layers.filter((l) => (l.z ?? 0) === 0 && l.kind === 'image'),
+      ...layers.filter((l) => l.kind === 'image' || l.kind === 'video'),
+    ];
+    for (const layer of candidates) {
+      const assetId = (layer as { assetId?: string }).assetId;
+      if (!assetId) continue;
+      const asset = this.manifestService.getAsset(assetId) as { variants?: { w?: number; h?: number }[]; width?: number; height?: number } | null;
+      let w = 0;
+      let h = 0;
+      for (const v of asset?.variants ?? []) {
+        if ((v.w ?? 0) > w && (v.h ?? 0) > 0) { w = v.w ?? 0; h = v.h ?? 0; }
+      }
+      if (!(w > 0 && h > 0) && (asset?.width ?? 0) > 0 && (asset?.height ?? 0) > 0) {
+        w = asset!.width!;
+        h = asset!.height!;
+      }
+      if (w > 0 && h > 0) return w / h;
+    }
+    return 16 / 9;
+  }
+
+  /** Largest box of `aspect` inside a viewport (0 when the viewport is unmeasured). */
+  static fitBox(viewportWidth: number, viewportHeight: number, aspect: number): { width: number; height: number } | null {
+    if (!(viewportWidth > 0) || !(viewportHeight > 0) || !(aspect > 0)) return null;
+    const width = Math.min(viewportWidth, viewportHeight * aspect);
+    return { width: Math.round(width), height: Math.round(width / aspect) };
+  }
+
+  /**
+   * Page view shows a panel's whole artwork in its box, as the editor does;
+   * the placement's visible area (vx/vy/vw/vh) only crops on compact screens
+   * (phones), where the page's panels run edge to edge.
+   */
+  isCompactHost(): boolean {
+    const width = (this.elementRef.nativeElement as HTMLElement).getBoundingClientRect().width;
+    return width > 0 && width < COMPACT_PAGE_WIDTH;
+  }
+
   /** Recompute the focus placement once the current panel is laid out. */
   private scheduleFocusUpdate(): void {
     if (typeof requestAnimationFrame === 'undefined') {
@@ -402,18 +457,38 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   /** Measure viewport + panel box and place the panel on its focus rect. */
   updateFocusTransform(): void {
     let next = NO_FOCUS_TRANSFORM;
-    if (this.viewMode === 'panel' && this.panel?.formatViews) {
+    let changed = false;
+    if (this.viewMode === 'panel' && this.panel) {
       const host = this.elementRef.nativeElement as HTMLElement;
       const viewport = host.querySelector<HTMLElement>('.viewport-container') ?? host;
-      const box = host.querySelector<HTMLElement>('.t-frame .panel-container');
-      if (box) {
-        const rect = pickFocusRect(this.panel.formatViews, viewport.clientWidth, viewport.clientHeight);
-        next = focusTransform(box.offsetWidth, box.offsetHeight, viewport.clientWidth, viewport.clientHeight, rect);
+      // The panel fills the viewport at its artwork's aspect. On a compact
+      // screen (phone) with a focus rect, the panel is enlarged so that the
+      // rect fills the screen instead — a larger image part on a small
+      // screen — and the crop is centred on the rect below.
+      const aspect = this.panelAspect;
+      const rect = this.panel.formatViews && this.isCompactHost()
+        ? pickFocusRect(this.panel.formatViews, viewport.clientWidth, viewport.clientHeight)
+        : null;
+      const box = rect && rect.w > 0 && rect.h > 0
+        ? ViewportComponent.fitBox(viewport.clientWidth / rect.w, viewport.clientHeight / rect.h, aspect)
+        : ViewportComponent.fitBox(viewport.clientWidth, viewport.clientHeight, aspect);
+      if (box && (box.width !== this.panelBox?.width || box.height !== this.panelBox?.height)) {
+        this.panelBox = box;
+        changed = true;
+      }
+      if (rect && box) {
+        next = focusTransform(box.width, box.height, viewport.clientWidth, viewport.clientHeight, rect);
       }
     }
     if (next.offsetX !== this.focus.offsetX || next.offsetY !== this.focus.offsetY || next.scale !== this.focus.scale) {
       this.focus = next;
+      changed = true;
+    }
+    if (changed) {
       this.cdr.markForCheck();
+      // Bubble/hotspot overlays read the container size through input
+      // bindings; the resized box needs one more pass to reach them.
+      if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(() => this.cdr.markForCheck());
     }
   }
 
@@ -1430,9 +1505,11 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     const vy = placement.vy ?? 0;
     const vw = placement.vw ?? 1;
     const vh = placement.vh ?? 1;
-    
-    // If full panel is visible, no clipping needed
-    if (vx === 0 && vy === 0 && vw === 1 && vh === 1) {
+
+    // If full panel is visible, no clipping needed; on screens that are not
+    // compact the whole artwork is shown anyway (the visible area is a hint
+    // for small screens, see isCompactHost).
+    if ((vx === 0 && vy === 0 && vw === 1 && vh === 1) || !this.isCompactHost()) {
       return 'none';
     }
     
@@ -1453,9 +1530,9 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   getPanelContentTransform(placement: PanelPlacement): string {
     const vx = placement.vx ?? 0;
     const vy = placement.vy ?? 0;
-    
-    // If no offset, return none
-    if (vx === 0 && vy === 0) {
+
+    // If no offset, return none (and never shift on screens that are not compact)
+    if ((vx === 0 && vy === 0) || !this.isCompactHost()) {
       return 'none';
     }
     

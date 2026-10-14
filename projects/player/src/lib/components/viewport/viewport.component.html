@@ -28,6 +28,8 @@
         <div [class]="'t-frame-leave ' + leaveAnimationClass" aria-hidden="true">
           <!-- The outgoing panel holds the end state of its animation. -->
           <div class="panel-container"
+               [style.width.px]="panelBox?.width"
+               [style.height.px]="panelBox?.height"
                [pwPanelAnimation]="leavingPanel.animations"
                [pwPanelAnimationKey]="leavingPanelId || ''"
                [pwPanelAnimationStatic]="true">
@@ -67,6 +69,8 @@
       <div [class]="'t-frame ' + enterAnimationClass">
         @if (panel) {
           <div class="panel-container" tabindex="0"
+               [style.width.px]="panelBox?.width"
+               [style.height.px]="panelBox?.height"
                [pwPanelAnimation]="panel.animations"
                [pwPanelAnimationKey]="currentPanelId || ''"
                [pwPanelAnimationReducedMotion]="reducedMotion"

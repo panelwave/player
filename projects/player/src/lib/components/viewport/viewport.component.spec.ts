@@ -253,8 +253,10 @@ describe('ViewportComponent', () => {
 
       it('centers the crop on the focus rect when the panel is wider than the screen', () => {
         renderOnPhone(phonePanel);
-        // 1280 px wide panel, rect center at 75 %: 320 px right of the middle.
-        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-320px, 0px) scale(1)');
+        // Compact host (400 × 800): the 16:9 panel is enlarged so the focus rect
+        // (20 % × 80 %) fills the screen → 1778 × 1000 px box; rect centre at
+        // 75 %: 444.5 px right of the middle.
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-444.5px, 0px) scale(1)');
       });
 
       it('keeps the panel centered without a focus rect', () => {
@@ -265,7 +267,7 @@ describe('ViewportComponent', () => {
       it('applies the placement in reduced-motion mode too (it is a resting position, not motion)', () => {
         renderOnPhone(phonePanel);
         component.reducedMotion = true;
-        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-320px, 0px) scale(1)');
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-444.5px, 0px) scale(1)');
       });
 
       it('adds pan and zoom on top of the placement', () => {
@@ -273,7 +275,7 @@ describe('ViewportComponent', () => {
         component.panX = 10;
         component.panY = 20;
         component.zoom = 1.5;
-        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-310px, 20px) scale(1.5)');
+        expect(component.getTransformStyle()).toBe('translate(-50%, -50%) translate(-434.5px, 20px) scale(1.5)');
       });
 
       it('does not apply in page view', () => {

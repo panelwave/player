@@ -106,6 +106,15 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   /** Rendered balloon containers, keyed by bubble ID */
   private renderedBalloons = new Map<string, HTMLElement>();
 
+  /**
+   * Font specs ("15px 'Ames Italic', sans-serif") whose loading this overlay
+   * already requested. Web fonts load lazily on first use, so the first
+   * render may have measured with a fallback face while document.fonts.ready
+   * had long resolved (no font was in flight yet). Each new spec is loaded
+   * explicitly and the balloons re-render once it arrives.
+   */
+  private fontsRequested = new Set<string>();
+
   /** ResizeObserver for container size tracking */
   private resizeObserver: ResizeObserver | null = null;
 
@@ -261,11 +270,13 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
     if (!this.bubbles || this.bubbles.length === 0) return;
     if (this.containerWidth <= 0 || this.containerHeight <= 0) return;
 
+    const fontSpecs = new Set<string>();
     for (const bubble of this.bubbles) {
       const text = this.getLocalizedText(bubble);
       if (!text) continue;
 
       const config = this.resolveEffectiveConfig(bubble);
+      fontSpecs.add(`${config.fontSize}px ${config.fontFamily}`);
       const pos = this.computeBubblePosition(bubble);
 
       // Create wrapper div for positioning
@@ -403,6 +414,40 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         console.warn(`[pw-speech-bubbles] Failed to render balloon "${bubble.id}":`, e);
       }
     }
+    this.ensureFontsLoaded(fontSpecs);
+  }
+
+  /**
+   * Request every font spec the balloons use that was not requested before;
+   * re-render once a face that was not yet available arrives, so balloons
+   * measured with a fallback face are laid out again with the real one.
+   */
+  private ensureFontsLoaded(specs: Set<string>): void {
+    if (typeof document === 'undefined' || !document.fonts?.load) return;
+    const pending: Promise<unknown>[] = [];
+    for (const spec of specs) {
+      if (this.fontsRequested.has(spec)) continue;
+      this.fontsRequested.add(spec);
+      let available = false;
+      try {
+        available = document.fonts.check(spec);
+      } catch {
+        available = false;
+      }
+      if (available) continue;
+      try {
+        pending.push(document.fonts.load(spec));
+      } catch {
+        // Unparseable spec (custom family string): nothing to wait for.
+      }
+    }
+    if (pending.length === 0) return;
+    Promise.allSettled(pending).then((results) => {
+      const loadedAny = results.some((r) => r.status === 'fulfilled' && Array.isArray(r.value) && r.value.length > 0);
+      if (loadedAny && this.initialized) {
+        this.renderAllBalloons();
+      }
+    });
   }
 
   /**

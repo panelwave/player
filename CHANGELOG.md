@@ -7,6 +7,24 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Fixed
+- **Panel view fills the screen.** The panel box is the largest box of the
+  panel's artwork aspect (background image's largest variant) that fits the
+  viewport, instead of a fixed 1280 × 720 box — on a 4K screen the full-size
+  artwork is shown, and speech bubbles (normalised to the panel) land on it
+  at the screen's lettering size. On a compact screen (phone) with a focus
+  rect (`formatViews[...].minimalFocusRect`) the panel is enlarged so the
+  rect fills the screen and the crop is centred on it.
+- **Page view shows the whole artwork on large screens.** The placement's
+  visible area (`vx`/`vy`/`vw`/`vh`) only crops on compact screens, as in
+  the CMS editor's page view, which draws the full panel and marks the
+  visible area.
+- **Balloons re-measure once their web font arrives.** Fonts load lazily on
+  first use, so the first render could measure with a fallback face after
+  `document.fonts.ready` had already resolved (wrong line breaks in the
+  self-hosted package). `pw-speech-bubbles` now requests every font it uses
+  and re-renders when one that was not available yet loads.
+
 ### Changed
 - **Balloons grow with their text** (schema 1.8 `BalloonConfig.textFit`).
   `maxWidth`/`maxHeight` are now the balloon's *authored* size and floor: when
