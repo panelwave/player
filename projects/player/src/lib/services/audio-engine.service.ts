@@ -25,6 +25,8 @@ export interface AudioTrack {
   volume?: number;
   fadeIn?: number; // milliseconds
   fadeOut?: number; // milliseconds
+  /** Playback speed (0.25-4; 1 = as recorded). */
+  playbackRate?: number;
 }
 
 /**
@@ -195,10 +197,10 @@ export class AudioEngineService {
   }
 
   /**
-   * Play audio track
+   * Play audio track, optionally from `offsetSeconds` into the file.
    */
-  async play(track: AudioTrack): Promise<void> {
-    await this.startTrack(track, 0);
+  async play(track: AudioTrack, offsetSeconds = 0): Promise<void> {
+    await this.startTrack(track, offsetSeconds);
   }
 
   /**
@@ -525,6 +527,10 @@ export class AudioEngineService {
     // Create audio element
     const audio = new Audio(track.url);
     audio.loop = track.loop || false;
+    const rate = typeof track.playbackRate === 'number' && isFinite(track.playbackRate) ? Math.max(0.25, Math.min(4, track.playbackRate)) : 1;
+    if (rate !== 1) {
+      audio.playbackRate = rate;
+    }
     if (offsetSeconds > 0) {
       audio.currentTime = offsetSeconds;
     }
@@ -551,9 +557,11 @@ export class AudioEngineService {
     }
 
     try {
-      // Apply fade in (shortened when starting mid-fade)
-      if (track.fadeIn && track.fadeIn > 0 && offsetSeconds * 1000 < track.fadeIn) {
-        await this.fadeIn(track.id, track.fadeIn - offsetSeconds * 1000, volume);
+      // Fade in (shortened when starting mid-fade). The ramp runs while the
+      // element plays — awaiting it first delayed the start by the fade.
+      const fadeMs = track.fadeIn && track.fadeIn > 0 ? track.fadeIn - offsetSeconds * 1000 : 0;
+      if (fadeMs > 0) {
+        void this.fadeIn(track.id, fadeMs, volume);
       }
 
       // Play audio

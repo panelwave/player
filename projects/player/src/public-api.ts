@@ -13,6 +13,16 @@ export { VariableStoreService } from './lib/services/variable-store.service';
 export { FlowEngineService } from './lib/services/flow-engine.service';
 export { ImageCacheService } from './lib/services/image-cache.service';
 export { AudioEngineService, type AudioTrack, type AudioRole, type PlaybackState } from './lib/services/audio-engine.service';
+export { SequenceAudioService, SEQUENCE_AUDIO_LEAVE_FADE_MS } from './lib/services/sequence-audio.service';
+export {
+  buildWorkTimeline,
+  resolveTrackRanges,
+  cuesForPanel,
+  type WorkTimeline,
+  type TimelineEntry,
+  type TrackRange,
+  type PanelCue,
+} from './lib/utils/sequence-audio-timeline';
 export {
   PanelAudioService,
   busForRole,

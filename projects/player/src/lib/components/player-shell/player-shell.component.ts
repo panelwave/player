@@ -91,6 +91,7 @@ import type { PaywallGate } from '../../types/entitlement.types';
 import { SettingsModalComponent, type Preferences } from '../modals/settings-modal/settings-modal.component';
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
+import { SequenceAudioService } from '../../services/sequence-audio.service';
 import { isLockedPanel } from '../../utils/panel-lock';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
 import { ExtrasViewerComponent, type Extra } from '../modals/extras-viewer/extras-viewer.component';
@@ -738,6 +739,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly audioEngine = inject(AudioEngineService);
   private readonly panelAudio = inject(PanelAudioService);
+  private readonly sequenceAudio = inject(SequenceAudioService);
 
   /**
    * Reading order per panel id (1-based, across chapters), computed once per
@@ -850,6 +852,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.autoplayEnabled = false;
     this.videoSequencer.reset();
     this.panelAudio.stopAll();
+    this.sequenceAudio.stopAll();
     this.endAnalyticsSession();
     this.analyticsSessionStarted = this.analyticsSessionEnded = this.workCompleteTracked = false;
     this.lastTrackedPanelId = undefined;
@@ -918,6 +921,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.stopAutoplayProgress();
     this.videoSequencer.reset();
     this.panelAudio.stopAll();
+    this.sequenceAudio.stopAll();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -1543,6 +1547,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       (isLockedPanel(panel) || (panelId !== undefined && this.paywallService.isPanelLocked(panelId)));
     // Under the cover the story has not started yet: no panel audio.
     this.panelAudio.syncPanel(panelId, locked || this.coverVisible ? undefined : panel, this.variableContext);
+    // Timeline music/ambience follows the reader's position on the work line
+    // (silent under the cover and on locked panels too).
+    this.sequenceAudio.syncPanel(locked || this.coverVisible ? undefined : panelId, this.activePageFormat);
   }
 
   /**
@@ -3103,6 +3110,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       return;
     }
     this.activePageFormat = next;
+    // The format decides the panel line timeline audio is placed on.
+    this.syncPanelAudio();
     if (this.viewMode === 'page') {
       const page = this.findPageContainingPanel();
       if (page && page.id !== this.currentPage?.id) {

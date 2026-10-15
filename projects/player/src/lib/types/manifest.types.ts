@@ -225,8 +225,15 @@ export interface SequenceAudioTrack {
   /** Optional explicit panel range start */
   startPanelId?: string;
   
-  /** Optional explicit panel range end */
+  /** Optional explicit panel range end (span 'work': may be in a later chapter) */
   endPanelId?: string;
+
+  /**
+   * How long the track lasts, as authored (format 1.8.0, additive; default
+   * 'custom'): 'page' / 'chapter' = that panel range, 'work' = keeps playing
+   * across chapter boundaries until endPanelId (else the last panel).
+   */
+  span?: 'custom' | 'page' | 'chapter' | 'work';
 }
 
 /**

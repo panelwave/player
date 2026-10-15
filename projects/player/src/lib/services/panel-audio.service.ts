@@ -18,10 +18,8 @@ import type { AudioRole } from './audio-engine.service';
 import { ManifestService } from './manifest.service';
 import { UserGestureService } from './user-gesture.service';
 import { evaluateJsonLogic } from '../utils/json-logic-utils';
-import { resolveAssetUrl, guessMimeType } from '../utils/asset-utils';
+import { resolveAudioAsset } from '../utils/audio-asset-utils';
 import type {
-  AssetCatalogItemAudio,
-  AudioVariant,
   Panel,
   PanelAudioRole,
   PanelAudioTrack,
@@ -290,61 +288,24 @@ export class PanelAudioService implements OnDestroy {
   }
 
   private resolveTrack(entry: PanelAudioTrack): ResolvedPanelAudio | null {
-    const asset = this.manifestService.getAsset(entry.assetId);
-    if (!asset || asset.category !== 'audio') {
-      this.warnOnce(entry.assetId, asset ? 'is not an audio asset' : 'is not in the asset catalog');
-      return null;
-    }
-    const audioAsset = asset as AssetCatalogItemAudio;
-    const variant = this.pickVariant(audioAsset.variants ?? []);
-    if (!variant) {
-      this.warnOnce(entry.assetId, 'has no audio variants');
-      return null;
-    }
-    const base = this.manifestService.getManifest()?.assets?.base;
-    const url = resolveAssetUrl(variant.src, base, 'audio');
-    if (!url) {
+    const resolved = resolveAudioAsset(
+      this.manifestService.getAsset(entry.assetId),
+      this.manifestService.getManifest()?.assets?.base
+    );
+    if ('error' in resolved) {
+      if (resolved.error !== 'has no usable URL') {
+        this.warnOnce(entry.assetId, resolved.error);
+      }
       return null;
     }
     return {
       id: entry.assetId,
-      url,
-      role: busForRole(entry.role ?? audioAsset.role),
-      loop: entry.loop ?? variant.loop ?? false,
+      url: resolved.url,
+      role: busForRole(entry.role ?? resolved.role),
+      loop: entry.loop ?? resolved.loop ?? false,
       gain: this.clampGain(entry.gain),
       startAtMs: typeof entry.startAtMs === 'number' && entry.startAtMs > 0 ? entry.startAtMs : 0,
     };
-  }
-
-  /**
-   * First variant the browser reports it can play; otherwise the first one
-   * (the element will surface the real error).
-   */
-  private pickVariant(variants: AudioVariant[]): AudioVariant | undefined {
-    if (variants.length <= 1) {
-      return variants[0];
-    }
-    const probe = this.createProbe();
-    if (!probe) {
-      return variants[0];
-    }
-    const playable = variants.find((variant) => {
-      const mime = variant.mime || guessMimeType(variant.src);
-      return mime ? probe.canPlayType(mime) !== '' : false;
-    });
-    return playable ?? variants[0];
-  }
-
-  private createProbe(): HTMLAudioElement | null {
-    if (typeof document === 'undefined') {
-      return null;
-    }
-    try {
-      const element = document.createElement('audio');
-      return typeof element.canPlayType === 'function' ? element : null;
-    } catch {
-      return null;
-    }
   }
 
   private clampGain(gain: number | undefined): number {
