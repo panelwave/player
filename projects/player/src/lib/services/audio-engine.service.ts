@@ -58,6 +58,28 @@ interface ActiveTrack {
 const ROLES: AudioRole[] = ['ambient', 'music', 'voiceover', 'sfx'];
 
 /**
+ * Whether an audio URL must be loaded with `crossOrigin = 'anonymous'`: an
+ * http(s) file on another origin than the page. Same-origin files, data:/
+ * blob: URLs and `file:` pages (the offline self-hosting package) stay in
+ * no-CORS mode — CORS requests from a file: page fail.
+ */
+export function needsCorsMode(url: string, pageHref: string = typeof location !== 'undefined' ? location.href : ''): boolean {
+  try {
+    const target = new URL(url, pageHref || undefined);
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+      return false;
+    }
+    const page = pageHref ? new URL(pageHref) : null;
+    if (page && page.protocol !== 'http:' && page.protocol !== 'https:') {
+      return false;
+    }
+    return !page || target.origin !== page.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Audio Engine Service
  * Provides Web Audio API-based audio playback with multiple buses.
  *
@@ -524,8 +546,15 @@ export class AudioEngineService {
       throw new Error(`Invalid role: ${track.role}`);
     }
 
-    // Create audio element
-    const audio = new Audio(track.url);
+    // Create audio element. A file from another origin (object storage, a
+    // CDN) must be fetched in CORS mode: routed through Web Audio
+    // (createMediaElementSource below), a no-CORS cross-origin element plays
+    // but outputs silence. crossOrigin has to be set before the src.
+    const audio = new Audio();
+    if (needsCorsMode(track.url)) {
+      audio.crossOrigin = 'anonymous';
+    }
+    audio.src = track.url;
     audio.loop = track.loop || false;
     const rate = typeof track.playbackRate === 'number' && isFinite(track.playbackRate) ? Math.max(0.25, Math.min(4, track.playbackRate)) : 1;
     if (rate !== 1) {

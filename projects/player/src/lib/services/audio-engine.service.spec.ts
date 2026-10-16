@@ -3,7 +3,23 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { AudioEngineService, AudioTrack } from './audio-engine.service';
+import { AudioEngineService, AudioTrack, needsCorsMode } from './audio-engine.service';
+
+describe('needsCorsMode', () => {
+  it('is true for http(s) files on another origin than the page', () => {
+    expect(needsCorsMode('https://cdn.example.com/a.mp3', 'https://read.panelwave.org/x')).toBeTrue();
+    expect(needsCorsMode('http://localhost:9000/b/a.mp3', 'http://localhost:4200/player/')).toBeTrue();
+  });
+
+  it('is false for same-origin, relative, data/blob URLs and file: pages', () => {
+    expect(needsCorsMode('https://read.panelwave.org/a.mp3', 'https://read.panelwave.org/x')).toBeFalse();
+    expect(needsCorsMode('assets/a.mp3', 'https://read.panelwave.org/x')).toBeFalse();
+    expect(needsCorsMode('data:audio/mpeg;base64,AAAA', 'https://read.panelwave.org/x')).toBeFalse();
+    expect(needsCorsMode('assets/a.mp3', 'file:///C:/work/index.html')).toBeFalse();
+    expect(needsCorsMode('https://cdn.example.com/a.mp3', 'file:///C:/work/index.html')).toBeFalse();
+    expect(needsCorsMode('::not a url', 'nonsense')).toBeFalse();
+  });
+});
 
 describe('AudioEngineService', () => {
   let service: AudioEngineService;
@@ -48,6 +64,7 @@ describe('AudioEngineService', () => {
       paused: false,
       loop: false,
       src: '',
+      crossOrigin: null,
       addEventListener: jasmine.createSpy('addEventListener'),
       removeEventListener: jasmine.createSpy('removeEventListener'),
     };
@@ -100,8 +117,18 @@ describe('AudioEngineService', () => {
     it('should play audio track', async () => {
       await service.play(mockTrack);
 
-      expect((window as any).Audio).toHaveBeenCalledWith(mockTrack.url);
+      expect((window as any).Audio).toHaveBeenCalled();
+      expect(mockAudio.src).toBe(mockTrack.url);
+      expect(mockAudio.crossOrigin).toBeNull(); // same-origin file: no CORS mode
       expect(mockAudio.play).toHaveBeenCalled();
+    });
+
+    it('loads a file from another origin in CORS mode (else Web Audio outputs silence)', async () => {
+      const remote = { ...mockTrack, url: 'https://nbg1.your-objectstorage.com/bucket/ufo.mp3?X-Amz-Signature=x' };
+      await service.play(remote);
+
+      expect(mockAudio.crossOrigin).toBe('anonymous');
+      expect(mockAudio.src).toBe(remote.url);
     });
 
     it('should set loop property', async () => {
