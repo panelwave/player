@@ -1,33 +1,37 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, viewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { PlayerShellComponent, locationUrl, parseLocationSearch } from 'player';
+import {
+  FlowEngineService,
+  ManifestService,
+  PlayerShellComponent,
+  PlayerStateService,
+  PreloadService,
+  VariableStoreService,
+  locationUrl,
+  parseLocationSearch,
+} from 'player';
 import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
-import type { EntitlementSnapshot, PanelWaveManifest, PlayerLocation, PlayerPanelChangeEvent } from 'player';
+import type { Chapter, EntitlementSnapshot, PanelWaveManifest, PlayerLocation, PlayerPanelChangeEvent } from 'player';
 import { snapshotFromEntitlements } from './entitlements';
+import {
+  EMBED_ERROR_LIMIT,
+  EMBED_HISTORY_LIMIT,
+  EMBED_PROTOCOL_VERSION,
+  hostOriginFromSearch,
+  isEmbedInboundMessage,
+  manifestFingerprint,
+  pickLocalized,
+  sameVariableValue,
+  type EmbedConfigData,
+  type EmbedInboundMessage,
+  type EmbedOptions,
+  type EmbedOutboundMessage,
+  type EmbedStateSnapshot,
+} from './embed-bridge';
 
-/**
- * Config message posted by an embedding host (the CMS preview iframe):
- * { type: 'config', data: { manifest, locale?, autoplay?, variables?, ... } }
- */
-interface EmbedConfigMessage {
-  type: 'config';
-  data: {
-    manifest?: PanelWaveManifest;
-    locale?: string;
-    autoplay?: boolean;
-    /** 'auto' | 'panel' | 'canvas' — passed to the shell's viewModeOverride. */
-    viewMode?: string;
-    /** Initial variable values keyed by variable id (seeded at init; may set read-only vars). */
-    variables?: Record<string, unknown>;
-    /**
-     * The CMS entitlement simulator's tokens, e.g. ['free', 'premium',
-     * 'purchased:prod-123', 'age-verified'] (see entitlements.ts).
-     */
-    entitlements?: string[];
-    [key: string]: unknown;
-  };
-}
+/** `pw:state` is posted at most once per this many ms after a change. */
+const STATE_DEBOUNCE_MS = 100;
 
 @Component({
     selector: 'app-root',
@@ -44,19 +48,30 @@ export class AppComponent implements OnInit, OnDestroy {
   /**
    * Embed mode: driven by a host page via postMessage (the CMS preview
    * embeds this app at /player/index.html and posts config into the
-   * iframe — see panelwave-cms docs/PLAYER_EMBED.md). Hides the demo
-   * chrome and waits for config instead of loading a bundled sample.
+   * iframe — see docs/EMBED_PROTOCOL.md). Hides the demo chrome and waits
+   * for config instead of loading a bundled sample.
    */
   embedMode = false;
   locale = 'en-US';
   autoplay = false;
   viewModeOverride: 'auto' | 'panel' | 'canvas' = 'auto';
 
-  /** View to open in (`?view=panel|page`); default: the shell's (cover, then page view). */
+  /** Shell inputs the embed config / `setOptions` drive (defaults = the shell's). */
+  pageFormat = 'auto';
+  secondsPerPanel = 5;
+  showCover = true;
+  reducedMotion = false;
+  /** Host's `muted`: applied through the shell's master audio toggle once it is ready. */
+  muted?: boolean;
+
+  /** View to open in (`?view=panel|page` or the embed config's `initialViewMode`); default: the shell's. */
   initialViewMode?: 'page' | 'panel';
 
   /** Position a shared link opens (`?page=` / `?panel=`), as in the reader. */
   readonly start = parseLocationSearch(window.location.search);
+
+  /** Panel to open at: the embed config's `initialPanelId`, else `?panel=`. */
+  initialPanelId?: string = this.start.panelId;
 
   /**
    * Dev/testing hook: `?deny=<panelId>[,<panelId>…]` installs an
@@ -77,6 +92,9 @@ export class AppComponent implements OnInit, OnDestroy {
    */
   entitlementSnapshot?: EntitlementSnapshot;
 
+  /** The host's entitlement tokens as last given (echoed in `pw:state`). */
+  entitlementTokens: string[] | null = null;
+
   /**
    * Initial variable values passed to the shell (seeded privileged at
    * init, so manifest-declared read-only variables can be populated).
@@ -92,32 +110,43 @@ export class AppComponent implements OnInit, OnDestroy {
    */
   shellManifestUrl?: string;
 
+  /**
+   * Origin the embed bridge talks to and accepts messages from:
+   * `?origin=<host origin>`, else this app's own origin (same-origin embed,
+   * which is how the CMS serves `/player/`). Never `'*'`.
+   */
+  readonly hostOrigin = hostOriginFromSearch(window.location.search, window.location.origin);
+
+  /** The running shell (undefined while no manifest is loaded). */
+  readonly shell = viewChild(PlayerShellComponent);
+
+  /** Fingerprint of the manifest the shell runs; a config with another one restarts. */
+  private manifestKey: string | null = null;
+  /** Manifest of the last config, for `restart` without a new manifest. */
+  private lastManifest: PanelWaveManifest | null = null;
+  /** Variables of the last config, diffed on a no-restart config. */
+  private lastVariables: Record<string, unknown> = {};
+  /** Errors since the last (re)start, oldest first (capped). */
+  private bridgeErrors: string[] = [];
+  private stateTimer: number | null = null;
+  private loadStartedAt: number | null = null;
+
+  private readonly playerState = inject(PlayerStateService);
+  private readonly variableStore = inject(VariableStoreService);
+  private readonly flowEngine = inject(FlowEngineService);
+  private readonly manifestService = inject(ManifestService);
+  private readonly preloadService = inject(PreloadService);
+
   private readonly onEmbedMessage = (event: MessageEvent): void => {
-    const message = event.data as EmbedConfigMessage | undefined;
-    if (!message || message.type !== 'config' || !message.data) {
+    if (event.origin !== this.hostOrigin) {
+      return;
+    }
+    const message = event.data;
+    if (!isEmbedInboundMessage(message)) {
       return;
     }
     this.embedMode = true;
-    this.error = null;
-    this.locale = typeof message.data.locale === 'string' ? message.data.locale : 'en-US';
-    this.autoplay = message.data.autoplay === true;
-    this.viewModeOverride =
-      message.data.viewMode === 'panel' || message.data.viewMode === 'canvas'
-        ? message.data.viewMode
-        : 'auto';
-    this.initialVariables =
-      message.data.variables && typeof message.data.variables === 'object'
-        ? message.data.variables
-        : undefined;
-    this.entitlementSnapshot = snapshotFromEntitlements(message.data.entitlements);
-    if (message.data.manifest) {
-      // Recreate the shell so the new manifest initializes cleanly.
-      this.manifest = null;
-      this.loading = false;
-      setTimeout(() => {
-        this.manifest = message.data.manifest as PanelWaveManifest;
-      });
-    }
+    this.handleEmbedMessage(message);
   };
 
   /** Available demo manifests (the player is re-created on switch). */
@@ -212,6 +241,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (params.get('embed') === '1' || this.isFramed()) {
       this.embedMode = true;
       this.loading = false;
+      this.postToHost({ type: 'pw:hello', protocol: EMBED_PROTOCOL_VERSION });
       return;
     }
 
@@ -229,12 +259,329 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     window.removeEventListener('message', this.onEmbedMessage);
+    if (this.stateTimer !== null) {
+      window.clearTimeout(this.stateTimer);
+      this.stateTimer = null;
+    }
   }
 
   /** Running inside an iframe (the CMS preview embed). Separate for tests. */
   protected isFramed(): boolean {
     return window.self !== window.top;
   }
+
+  /** The host window the bridge posts to (null when not framed). Separate for tests. */
+  protected hostWindow(): Window | null {
+    return window.parent && window.parent !== window ? window.parent : null;
+  }
+
+  // ── Embed bridge (protocol v1) ─────────────────────────────────────────
+
+  private handleEmbedMessage(message: EmbedInboundMessage): void {
+    switch (message.type) {
+      case 'config':
+        if (message.data && typeof message.data === 'object') {
+          this.handleConfig(message.data);
+        }
+        break;
+      case 'navigate':
+        if (typeof message.panelId === 'string') {
+          void this.navigateToPanel(message.panelId);
+        }
+        break;
+      case 'setVariable':
+        if (typeof message.key === 'string') {
+          this.setVariableLive(message.key, message.value);
+        }
+        break;
+      case 'setLocale':
+        if (typeof message.locale === 'string') {
+          this.setLocaleLive(message.locale);
+        }
+        break;
+      case 'setEntitlements':
+        this.setEntitlementsLive(message.entitlements);
+        this.scheduleState();
+        break;
+      case 'setOptions':
+        if (message.data && typeof message.data === 'object') {
+          this.applyOptions(message.data);
+          this.scheduleState();
+        }
+        break;
+      case 'getState':
+        this.postState();
+        break;
+      case 'restart':
+        this.restart();
+        break;
+    }
+  }
+
+  /**
+   * `config`: the shell is (re)created on the first manifest, on
+   * `restart: true` and when the manifest changed; otherwise locale,
+   * entitlements, options and variables are applied to the running story.
+   */
+  private handleConfig(data: EmbedConfigData): void {
+    this.error = null;
+    const manifest = data.manifest ?? this.lastManifest;
+    const key = data.manifest ? manifestFingerprint(data.manifest) : this.manifestKey;
+    const recreate = !!manifest && (!this.manifest || data.restart === true || key !== this.manifestKey);
+
+    if ('locale' in data) {
+      this.locale = typeof data.locale === 'string' ? data.locale : 'en-US';
+    }
+    this.setEntitlementsLive(data.entitlements);
+    this.applyOptions(data, recreate);
+    if (typeof data.initialPanelId === 'string') {
+      this.initialPanelId = data.initialPanelId;
+    }
+    if (data.initialViewMode === 'page' || data.initialViewMode === 'panel') {
+      this.initialViewMode = data.initialViewMode;
+    }
+
+    const variables = data.variables && typeof data.variables === 'object' ? data.variables : undefined;
+    if (recreate) {
+      this.initialVariables = variables;
+      this.lastVariables = variables ?? {};
+      this.lastManifest = manifest;
+      this.manifestKey = key;
+      this.createShell(manifest as PanelWaveManifest);
+      return;
+    }
+    if (!this.manifest) {
+      // No work yet (a config without a manifest): remember the seed for the first load.
+      this.initialVariables = variables;
+      this.lastVariables = variables ?? {};
+    } else if (variables) {
+      this.applyVariablesLive(variables);
+    }
+    if (!recreate && this.shell()) {
+      // A re-posted locale is applied even when the reader switched in between.
+      if ('locale' in data) {
+        this.setLocaleLive(this.locale);
+      }
+      this.scheduleState();
+    }
+  }
+
+  /** Destroy and re-create the shell so the work initializes cleanly. */
+  private createShell(manifest: PanelWaveManifest): void {
+    this.manifest = null;
+    this.loading = false;
+    this.resetMetrics();
+    this.bridgeErrors = [];
+    this.loadStartedAt = performance.now();
+    setTimeout(() => {
+      this.manifest = manifest;
+    });
+  }
+
+  /** `restart`: the same work from the start, with the current config. */
+  private restart(): void {
+    if (!this.lastManifest) {
+      return;
+    }
+    this.error = null;
+    this.initialVariables = Object.keys(this.lastVariables).length ? { ...this.lastVariables } : undefined;
+    this.createShell(this.lastManifest);
+  }
+
+  /**
+   * Shell inputs the host can change live. `showCover` is read by the shell
+   * at (re)start; `false` additionally drops a cover that is showing.
+   */
+  private applyOptions(options: EmbedOptions, starting = false): void {
+    if ('autoplay' in options) {
+      this.autoplay = options.autoplay === true;
+    }
+    if ('viewMode' in options) {
+      this.viewModeOverride =
+        options.viewMode === 'panel' || options.viewMode === 'canvas' ? options.viewMode : 'auto';
+    }
+    if ('pageFormat' in options) {
+      this.pageFormat = typeof options.pageFormat === 'string' && options.pageFormat ? options.pageFormat : 'auto';
+    }
+    if ('secondsPerPanel' in options) {
+      const seconds = Number(options.secondsPerPanel);
+      this.secondsPerPanel = Number.isFinite(seconds) && seconds > 0 ? seconds : 5;
+    }
+    if ('reducedMotion' in options) {
+      this.reducedMotion = options.reducedMotion === true;
+    }
+    if ('showCover' in options) {
+      this.showCover = options.showCover !== false;
+      const shell = this.shell();
+      if (!starting && !this.showCover && shell?.coverVisible) {
+        shell.hideCover();
+      }
+    }
+    if ('muted' in options) {
+      this.muted = typeof options.muted === 'boolean' ? options.muted : undefined;
+      if (!starting) {
+        this.applyMuted();
+      }
+    }
+  }
+
+  /** The host's `muted` wins over the work default and the stored preference. */
+  private applyMuted(): void {
+    const shell = this.shell();
+    if (shell && typeof this.muted === 'boolean') {
+      shell.setAudioEnabled(!this.muted);
+    }
+  }
+
+  private setEntitlementsLive(tokens: unknown): void {
+    const snapshot = snapshotFromEntitlements(tokens);
+    this.entitlementSnapshot = snapshot;
+    this.entitlementTokens = snapshot
+      ? typeof tokens === 'string'
+        ? tokens.split(',').map((t) => t.trim()).filter(Boolean)
+        : (tokens as string[]).filter((t): t is string => typeof t === 'string')
+      : null;
+  }
+
+  private setLocaleLive(locale: string): void {
+    this.locale = locale;
+    // The input binding only fires on a changed value; the reader may have
+    // switched locales in the player meanwhile, so tell the shell directly.
+    this.shell()?.onLocaleChange(locale);
+    this.scheduleState();
+  }
+
+  /** Live variable write — no restart, conditional content reacts at once. */
+  private setVariableLive(key: string, value: unknown): void {
+    const shell = this.shell();
+    this.lastVariables = { ...this.lastVariables, [key]: value };
+    if (!shell) {
+      this.initialVariables = { ...(this.initialVariables ?? {}), [key]: value };
+      return;
+    }
+    shell.seedVariable(key, value);
+    this.scheduleState();
+  }
+
+  /** A re-posted `config.variables`: write what changed, reset what was removed to its default. */
+  private applyVariablesLive(variables: Record<string, unknown>): void {
+    const shell = this.shell();
+    if (!shell) {
+      return;
+    }
+    const previous = this.lastVariables;
+    this.lastVariables = { ...variables };
+    for (const [key, value] of Object.entries(variables)) {
+      if (!(key in previous) || !sameVariableValue(previous[key], value)) {
+        shell.seedVariable(key, value);
+      }
+    }
+    for (const key of Object.keys(previous)) {
+      if (key in variables) {
+        continue;
+      }
+      const def = shell.variableDefinitions.find((d) => d.id === key);
+      if (def && 'default' in def) {
+        shell.seedVariable(key, def.default);
+      }
+    }
+    this.scheduleState();
+  }
+
+  /** `navigate`: jump to any panel of the work (leaves the cover if it is showing). */
+  private async navigateToPanel(panelId: string): Promise<void> {
+    const shell = this.shell();
+    if (!shell) {
+      return;
+    }
+    const located = this.manifestService.getPanel(panelId);
+    if (!located) {
+      this.pushError(`navigate: unknown panel "${panelId}"`);
+      this.scheduleState();
+      return;
+    }
+    await shell.navigateToPanel(located.chapterId, panelId);
+    if (shell.coverVisible) {
+      shell.hideCover();
+    }
+    this.scheduleState();
+  }
+
+  private pushError(message: string): void {
+    this.bridgeErrors = [...this.bridgeErrors, message].slice(-EMBED_ERROR_LIMIT);
+  }
+
+  /** Post the live state once, 100 ms after the last change. */
+  private scheduleState(): void {
+    if (!this.embedMode) {
+      return;
+    }
+    if (this.stateTimer !== null) {
+      window.clearTimeout(this.stateTimer);
+    }
+    this.stateTimer = window.setTimeout(() => {
+      this.stateTimer = null;
+      this.postState();
+    }, STATE_DEBOUNCE_MS);
+  }
+
+  private postState(): void {
+    this.postToHost({ type: 'pw:state', data: this.buildState() });
+  }
+
+  /** The live state snapshot (`pw:state`). */
+  buildState(): EmbedStateSnapshot {
+    const shell = this.shell();
+    const chapter: Chapter | undefined = shell?.currentChapter;
+    const chapterId = chapter?.id ?? null;
+    const pageId = shell?.currentPage?.id ?? null;
+    const panelId = shell?.getCurrentPanelId() ?? null;
+    const locale = this.playerState.getLocale();
+    const nextPanels =
+      chapter?.graph && panelId
+        ? this.flowEngine.getPossibleNextPanels(chapter.graph, panelId).map((id) => {
+            const title = pickLocalized(this.manifestService.getPanel(id)?.panel.title, locale);
+            return title ? { panelId: id, title } : { panelId: id };
+          })
+        : [];
+    return {
+      chapterId,
+      pageId,
+      panelId,
+      viewMode: shell ? (shell.coverVisible ? 'cover' : shell.viewMode) : null,
+      locale,
+      entitlements: this.entitlementTokens,
+      variables: this.variableStore.createContext(chapterId ?? undefined, pageId ?? undefined),
+      history: (shell?.visitedPanelIds ?? []).slice(-EMBED_HISTORY_LIMIT),
+      nextPanels,
+      paywallGate: shell?.paywallVisible ? shell.paywallGate : null,
+      preloadStatus: shell ? this.preloadService.getQueueStatus() : null,
+      errors: [...this.bridgeErrors],
+      loadTimeMs: this.loadMs,
+    };
+  }
+
+  /** Forward a shell output to the host as `pw:event`. */
+  emitToHost(name: string, data: unknown): void {
+    if (!this.embedMode) {
+      return;
+    }
+    this.postToHost({ type: 'pw:event', name, data });
+  }
+
+  private postToHost(message: EmbedOutboundMessage): void {
+    const host = this.hostWindow();
+    if (!host) {
+      return;
+    }
+    try {
+      host.postMessage(message, this.hostOrigin);
+    } catch (e) {
+      console.warn('Embed bridge: could not post to host', e);
+    }
+  }
+
+  // ── Demo chrome ────────────────────────────────────────────────────────
 
   setDevice(id: string): void {
     if (this.devices.some((d) => d.id === id)) {
@@ -344,12 +691,26 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
+  // ── Shell outputs ──────────────────────────────────────────────────────
+
   onPlayerReady() {
     this.log('ready', '');
+    if (this.embedMode) {
+      if (this.loadStartedAt !== null) {
+        this.loadMs = Math.round(performance.now() - this.loadStartedAt);
+        this.loadStartedAt = null;
+      }
+      this.applyMuted();
+      this.postToHost({ type: 'pw:ready' });
+      this.emitToHost('ready', {});
+      this.scheduleState();
+    }
   }
 
   /** The address bar follows the reading position, as in the reader. */
   onLocationChange(location: PlayerLocation): void {
+    this.emitToHost('locationChange', location);
+    this.scheduleState();
     if (this.embedMode) {
       return;
     }
@@ -362,11 +723,36 @@ export class AppComponent implements OnInit, OnDestroy {
   onPanelChange(event: PlayerPanelChangeEvent) {
     this.panelChanges++;
     this.log('panelChange', { panel: event.panelId, previous: event.previousPanelId ?? null, chapter: event.chapter.id });
+    // Ids only: the panel and chapter objects carry every layer of the chapter.
+    this.emitToHost('panelChange', {
+      panelId: event.panelId,
+      previousPanelId: event.previousPanelId ?? null,
+      chapterId: event.chapter.id,
+    });
+    this.scheduleState();
+  }
+
+  onChapterChange(chapter: Chapter): void {
+    this.log('chapterChange', { chapter: chapter.id });
+    this.emitToHost('chapterChange', { chapterId: chapter.id, title: chapter.title ?? null });
+    this.scheduleState();
+  }
+
+  /** Outputs with small, cloneable payloads: logged and forwarded as they are. */
+  onShellEvent(name: string, data: unknown): void {
+    this.log(name, data);
+    this.emitToHost(name, data);
+    if (name !== 'cameraChange') {
+      this.scheduleState();
+    }
   }
 
   onError(error: Error) {
     console.error('Player error:', error);
     this.error = error.message;
     this.log('error', error.message);
+    this.pushError(error.message);
+    this.emitToHost('error', { message: error.message });
+    this.scheduleState();
   }
 }

@@ -74,6 +74,15 @@ completed purchase; drops the paywall when the gated panel is now accessible.
 `reload()` — reload the work from the current `manifest` / `manifestUrl`
 (also used by the error screen's Retry).
 
+`seedVariable(key, value)` — host-side variable write after load (a live
+variable editor, the CMS preview bridge): lands in the definition's declared
+scope, may set read-only variables like `initialVariables`, conditional
+content reacts at once, `variableChange` fires; the reading position is kept.
+
+`navigateToPanel(chapterId, panelId)` / `hideCover()` / `setAudioEnabled(on)`
+/ `onLocaleChange(locale)` — the public hooks the embed bridge
+(`docs/EMBED_PROTOCOL.md`) drives.
+
 ### Device-local state
 
 The shell keeps three keys in `localStorage`: `pw-preferences` (toggles the

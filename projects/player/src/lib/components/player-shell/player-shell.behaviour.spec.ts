@@ -712,4 +712,106 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(shell.getCurrentPanelId()).toBe('p1');
     });
   });
+
+  describe('analytics events (schema tracking vocabulary, every one with a panelId)', () => {
+    let track: jasmine.Spy;
+    const calls = (name: string) => track.calls.allArgs().filter(([n]) => n === name).map(([, data]) => data);
+
+    beforeEach(() => {
+      track = spyOn(TestBed.inject(TrackingService), 'track');
+    });
+
+    it('tracks one transition per move with from/to, none for the first panel', async () => {
+      shell.manifest = buildManifest({ paywall: undefined });
+      await init();
+      expect(calls('transition')).toEqual([]);
+
+      await shell.navigateNext();
+      expect(calls('transition')).toEqual([{ fromPanelId: 'p1', toPanelId: 'p2', panelId: 'p2', chapterId: 'c1' }]);
+
+      await shell.navigatePrevious();
+      expect(calls('transition')[1]).toEqual({ fromPanelId: 'p2', toPanelId: 'p1', panelId: 'p1', chapterId: 'c1' });
+    });
+
+    it('tracks lang_change with the previous locale and the reading position', async () => {
+      await init();
+      expect(calls('lang_change')).toEqual([]);
+
+      shell.onLocaleChange('de-DE');
+      expect(calls('lang_change')).toEqual([{ locale: 'de-DE', fromLocale: 'en-US', panelId: 'p1', chapterId: 'c1' }]);
+
+      shell.onLocaleChange('de-DE');
+      expect(calls('lang_change').length).toBe(1);
+    });
+
+    it('tracks paywall_view with the rule and panel, then the reader action', async () => {
+      await init();
+      await shell.navigateNext();
+      expect(calls('paywall_view')).toEqual([
+        jasmine.objectContaining({ panelId: 'p2', chapterId: 'c1', ruleId: 'p2-sale', scope: 'panel', refId: 'p2', lockReason: 'purchase_required' }),
+      ]);
+
+      shell.onPaywallAction('dismiss');
+      expect(calls('paywall_action')).toEqual([
+        jasmine.objectContaining({ panelId: 'p2', ruleId: 'p2-sale', action: 'dismiss' }),
+      ]);
+      expect(shell.paywallVisible).toBeFalse();
+    });
+
+    it('tracks like and share on the current panel', async () => {
+      await init();
+      shell.onLike();
+      expect(calls('like')).toEqual([jasmine.objectContaining({ liked: true, panelId: 'p1', chapterId: 'c1' })]);
+
+      shell.onShared('copy');
+      expect(calls('share')).toEqual([jasmine.objectContaining({ platform: 'copy', panelId: 'p1', chapterId: 'c1' })]);
+    });
+
+    it('tracks a branch choice as a decision with choiceId and label', async () => {
+      shell.manifest = buildManifest({
+        paywall: undefined,
+        chapters: [
+          {
+            id: 'c1',
+            panels: { p1: { layers: [] }, p2: { layers: [] }, p3: { layers: [] } },
+            graph: { entry: 'p1', edges: [{ from: 'p1', to: 'p2' }, { from: 'p1', to: 'p3' }] },
+          },
+        ],
+      });
+      await init();
+
+      await shell.onBranchChosen({ edge: { from: 'p1', to: 'p3' }, label: 'Right', index: 1 });
+      expect(calls('decision')).toEqual([
+        { panelId: 'p1', chapterId: 'c1', fromPanelId: 'p1', toPanelId: 'p3', choiceId: 'p1->p3', choiceLabel: 'Right', source: 'branch', index: 1 },
+      ]);
+      expect(shell.getCurrentPanelId()).toBe('p3');
+    });
+  });
+
+  describe('seedVariable (host write after load)', () => {
+    it('writes into the declared scope, seeds read-only variables and keeps the position', async () => {
+      shell.manifest = buildManifest({
+        paywall: undefined,
+        variables: {
+          definitions: [
+            { id: 'tries', type: 'number', scope: 'session', default: 0 },
+            { id: 'user.age', type: 'number', scope: 'global', readOnly: true },
+          ],
+        },
+      });
+      await init();
+      const changes: { key: string; value: unknown }[] = [];
+      shell.variableChange.subscribe((c) => changes.push(c));
+
+      shell.seedVariable('tries', 5);
+      shell.seedVariable('user.age', 12);
+      expect(variables.get('tries', 'session')).toBe(5);
+      expect(variables.get('user.age', 'global')).toBe(12);
+      expect(changes).toEqual([
+        { key: 'tries', value: 5 },
+        { key: 'user.age', value: 12 },
+      ]);
+      expect(shell.getCurrentPanelId()).toBe('p1');
+    });
+  });
 });

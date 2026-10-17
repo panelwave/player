@@ -759,6 +759,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   /** Id of the panel of the last `panelChange` emission (its `previousPanelId` source). */
   private lastPanelChangeId?: string;
 
+  /** Locale of the last `lang_change` tracked (its `fromLocale` source); the work's start locale at load. */
+  private lastTrackedLocale?: LocaleCode;
+
   /** Bound pagehide handler so add/removeEventListener match. */
   private readonly onPageHide = (): void => this.endAnalyticsSession();
 
@@ -1038,6 +1041,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
       // Set initial locale and configure translations
       this.applyLocale();
+      this.lastTrackedLocale = this.locale;
 
       // Check if page view is available
       const loadedManifest = this.manifestService.getManifest();
@@ -1279,6 +1283,16 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
             panelId,
             previousPanelId: this.lastPanelChangeId,
           });
+          // One `transition` per move between two panels (the flow analytics
+          // aggregate edges from it); the first panel of a session has none.
+          if (panelId && this.lastPanelChangeId && this.lastPanelChangeId !== panelId) {
+            this.trackingService.track('transition', {
+              fromPanelId: this.lastPanelChangeId,
+              toPanelId: panelId,
+              panelId,
+              chapterId: this.currentChapter.id,
+            });
+          }
           this.lastPanelChangeId = panelId || undefined;
           this.trackPanelView(panel, this.currentChapter);
           this.updatePreloadTargets();
@@ -1294,7 +1308,17 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.playerState.locale$
       .pipe(skip(1), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((locale) => {
+        const fromLocale = this.lastTrackedLocale;
+        this.lastTrackedLocale = locale;
         this.localeChange.emit(locale);
+        if (fromLocale && fromLocale !== locale) {
+          this.trackingService.track('lang_change', {
+            locale,
+            fromLocale,
+            panelId: this.getCurrentPanelId(),
+            chapterId: this.currentChapter?.id,
+          });
+        }
       });
   }
 
@@ -1566,6 +1590,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       // A choice: its path appears in page view, the other options' panels stay placeholders.
       this.madeChoices.set(evt.panelId, effect.to);
       this.refreshBranchVisibility();
+      if (this.currentChapter) {
+        this.trackDecision(this.currentChapter.id, evt.panelId, effect.to, {
+          choiceId: evt.hotspot.id,
+          choiceLabel: this.localizedText(evt.hotspot.label),
+          source: 'hotspot',
+        });
+      }
     }
     this.applyHotspotEffect(effect);
     this.refreshVariableContext();
@@ -1811,6 +1842,24 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   setVariable(key: string, value: unknown, scope: 'global' | 'chapter' | 'page' | 'session' | 'persistent' = 'session'): void {
     this.variableStore.set(key, value, scope);
     // Conditional content (visibleIf, variants) reacts immediately.
+    this.refreshVariableContext();
+    this.variableChange.emit({ key, value });
+  }
+
+  /**
+   * Host-side variable write after load (the CMS preview's live variable
+   * editor, an embed bridge): the value lands in its definition's declared
+   * scope, a read-only variable is seeded the privileged way
+   * `initialVariables` uses, and conditional content reacts at once.
+   * Emits `variableChange`; the story position is kept.
+   */
+  seedVariable(key: string, value: unknown): void {
+    const def = this.variableDefinitions.find((d) => d.id === key);
+    if (def?.readOnly) {
+      this.variableStore.seed({ [key]: value });
+    } else {
+      this.variableStore.set(key, value, def?.scope ?? 'session', def ? this.scopeIdFor(def) : undefined);
+    }
     this.refreshVariableContext();
     this.variableChange.emit({ key, value });
   }
@@ -2331,7 +2380,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     store[this.workKey()] = entry;
     this.writeSocialStore(store);
 
-    this.trackingService.track('like', { workId: this.workKey(), liked: this.liked });
+    this.trackingService.track('like', {
+      workId: this.workKey(),
+      liked: this.liked,
+      panelId: this.getCurrentPanelId(),
+      chapterId: this.currentChapter?.id,
+    });
     this.likeChange.emit({ workId: this.workKey(), liked: this.liked });
     this.cdr.markForCheck();
   }
@@ -2369,6 +2423,17 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   onShare(): void {
     this.shareLink = this.buildShareLink();
     this.shareVisible = true;
+  }
+
+  /** The reader copied or posted the link from the share dialog. */
+  onShared(platform: string): void {
+    this.trackingService.track('share', {
+      workId: this.workKey(),
+      platform,
+      panelId: this.getCurrentPanelId(),
+      chapterId: this.currentChapter?.id,
+      url: this.shareLink,
+    });
   }
 
   /** Link in the open share dialog. */
@@ -3561,6 +3626,45 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private openPaywall(gate: PaywallGate): void {
     this.paywallGate = gate;
     this.paywallVisible = true;
+    this.trackingService.track('paywall_view', this.paywallEventPayload(gate));
+  }
+
+  /**
+   * Analytics payload shared by `paywall_view` and `paywall_action`: the
+   * gated panel (the gate's panel, else where the reader stands), the rule
+   * that raised the gate and why.
+   */
+  private paywallEventPayload(gate: PaywallGate): Record<string, unknown> {
+    const panelId = gate.scope === 'panel' && gate.refId ? gate.refId : this.getCurrentPanelId();
+    return {
+      panelId,
+      chapterId: gate.scope === 'chapter' && gate.refId ? gate.refId : this.currentChapter?.id,
+      ruleId: gate.ruleId,
+      scope: gate.scope,
+      refId: gate.refId,
+      lockReason: gate.lockReason,
+      requireEntitlement: gate.requireEntitlement,
+    };
+  }
+
+  /**
+   * Track a reader's choice between branches — the branch chooser's edge or
+   * a `goTo` hotspot — as a `decision` (schema tracking vocabulary; the flow
+   * analytics aggregate `choiceId` per `panelId`).
+   */
+  private trackDecision(
+    chapterId: string,
+    fromPanelId: string,
+    toPanelId: string,
+    choice: { choiceId: string; choiceLabel: string; source: 'branch' | 'hotspot'; index?: number }
+  ): void {
+    this.trackingService.track('decision', {
+      panelId: fromPanelId,
+      chapterId,
+      fromPanelId,
+      toPanelId,
+      ...choice,
+    });
   }
 
   /** Dismiss the overlay without changing entitlement. */
@@ -3578,6 +3682,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     const gate = this.paywallGate;
     const productId = action === 'purchase' || action === 'subscribe' ? this.paywallProductId : undefined;
     if (gate) {
+      this.trackingService.track('paywall_action', { ...this.paywallEventPayload(gate), action, productId });
       this.paywallAction.emit({ action, gate, ...(productId ? { productId } : {}) });
     }
     this.paywallProductId = undefined;
@@ -3840,10 +3945,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       return;
     }
     const settings = this.manifestService.getManifest()?.settings;
-    this.trackingService.track('branch_choice', {
-      chapterId: chapter.id,
-      from: choice.edge.from,
-      to: choice.edge.to,
+    this.trackDecision(chapter.id, choice.edge.from, choice.edge.to, {
+      choiceId: `${choice.edge.from}->${choice.edge.to}`,
+      choiceLabel: choice.label,
+      source: 'branch',
       index: choice.index,
     });
     // Like a hotspot choice: page view reveals the chosen path.

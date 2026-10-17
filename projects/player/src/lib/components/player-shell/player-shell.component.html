@@ -278,6 +278,7 @@
           [shareUrl]="shareLink"
           [shareTitle]="workTitle"
           [shareable]="currentPanel.shareable ?? true"
+          (share)="onShared($event)"
           (close)="shareVisible = false">
         </pw-share-modal>
       }

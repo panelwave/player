@@ -7,6 +7,26 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Added
+- **Embed bridge protocol v1** (demo app in embed mode, `docs/EMBED_PROTOCOL.md`).
+  Two-way `postMessage` with a fixed host origin (`?origin=`, never `'*'`):
+  `pw:hello` / `pw:ready` / `pw:event` for every shell output / `pw:state`
+  snapshots (position, variables, history, next panels, paywall gate,
+  preload, errors, load time); inbound `navigate`, `setVariable`,
+  `setLocale`, `setEntitlements`, `setOptions`, `getState`, `restart` apply
+  **without recreating the shell** — `config` restarts only on the first
+  manifest, a changed manifest or `restart: true`. The embed config also
+  carries `pageFormat`, `secondsPerPanel`, `showCover`, `reducedMotion`,
+  `muted`, `initialPanelId`, `initialViewMode`.
+- `PlayerShellComponent.seedVariable(key, value)` — a privileged host write
+  after load (definition scope, read-only allowed, conditional content
+  reacts, no restart).
+- Analytics: `transition` (`fromPanelId`/`toPanelId`), `decision`
+  (`choiceId`/`choiceLabel`, replaces `branch_choice`, which the schema
+  whitelist dropped; also for `goTo` hotspots), `paywall_view` /
+  `paywall_action` (`ruleId`), `lang_change`, `share`; `like` carries the
+  panel — every event has a `panelId`.
+
 ### Fixed
 - **Panel view fills the screen.** The panel box is the largest box of the
   panel's artwork aspect (background image's largest variant) that fits the
