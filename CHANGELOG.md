@@ -24,8 +24,9 @@ semver. The reader-facing product changelog lives on the docs site
 - Analytics: `transition` (`fromPanelId`/`toPanelId`), `decision`
   (`choiceId`/`choiceLabel`, replaces `branch_choice`, which the schema
   whitelist dropped; also for `goTo` hotspots), `paywall_view` /
-  `paywall_action` (`ruleId`), `lang_change`, `share`; `like` carries the
-  panel — every event has a `panelId`.
+  `paywallAction` (`ruleId`, `action`), `lang_change` (`from`/`to`),
+  `share` (`channel`); `like` carries the panel — every event has a
+  `panelId`.
 
 ### Fixed
 - **Panel view fills the screen.** The panel box is the largest box of the

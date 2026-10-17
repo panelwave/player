@@ -128,8 +128,8 @@ For the CMS analytics worker (unchanged beacon, `TrackingService`):
 | `decision` | `panelId (= from), chapterId, fromPanelId, toPanelId, choiceId, choiceLabel, source: 'branch' \| 'hotspot', index?` (was `branch_choice`, which the schema whitelist dropped) |
 | `hotspot_click` | `panelId, chapterId, hotspotId?, x, y, hit` |
 | `paywall_view` | `panelId, chapterId, ruleId, scope, refId, lockReason, requireEntitlement` |
-| `paywall_action` | same + `action, productId?` — **not in the schema `eventWhitelist` enum yet**, so the CMS manifest filters it until schema + `ManifestBuilderService` add it |
-| `lang_change` | `locale, fromLocale, panelId, chapterId` |
+| `paywallAction` | same + `action ('purchase' \| 'subscribe' \| 'login' \| 'dismiss'), productId?` — **not in the schema `eventWhitelist` enum yet**; the CMS manifest filters it until schema + `ManifestBuilderService` add it (cms-api ingest accepts it) |
+| `lang_change` | `from, to, panelId, chapterId` |
 | `like` | `workId, liked, panelId, chapterId` |
 | `bookmark` | `workId, chapterId, panelId, bookmarked` |
-| `share` | `workId, platform ('copy' \| 'twitter' \| 'facebook' …), panelId, chapterId, url` — on the share dialog's copy/post, not on opening it |
+| `share` | `workId, channel ('copy' \| 'twitter' \| 'facebook' …), panelId, chapterId, url` — on the share dialog's copy/post, not on opening it |

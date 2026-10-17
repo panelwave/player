@@ -738,7 +738,7 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(calls('lang_change')).toEqual([]);
 
       shell.onLocaleChange('de-DE');
-      expect(calls('lang_change')).toEqual([{ locale: 'de-DE', fromLocale: 'en-US', panelId: 'p1', chapterId: 'c1' }]);
+      expect(calls('lang_change')).toEqual([{ from: 'en-US', to: 'de-DE', panelId: 'p1', chapterId: 'c1' }]);
 
       shell.onLocaleChange('de-DE');
       expect(calls('lang_change').length).toBe(1);
@@ -752,7 +752,7 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       ]);
 
       shell.onPaywallAction('dismiss');
-      expect(calls('paywall_action')).toEqual([
+      expect(calls('paywallAction')).toEqual([
         jasmine.objectContaining({ panelId: 'p2', ruleId: 'p2-sale', action: 'dismiss' }),
       ]);
       expect(shell.paywallVisible).toBeFalse();
@@ -764,7 +764,7 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect(calls('like')).toEqual([jasmine.objectContaining({ liked: true, panelId: 'p1', chapterId: 'c1' })]);
 
       shell.onShared('copy');
-      expect(calls('share')).toEqual([jasmine.objectContaining({ platform: 'copy', panelId: 'p1', chapterId: 'c1' })]);
+      expect(calls('share')).toEqual([jasmine.objectContaining({ channel: 'copy', panelId: 'p1', chapterId: 'c1' })]);
     });
 
     it('tracks a branch choice as a decision with choiceId and label', async () => {

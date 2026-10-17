@@ -1313,8 +1313,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
         this.localeChange.emit(locale);
         if (fromLocale && fromLocale !== locale) {
           this.trackingService.track('lang_change', {
-            locale,
-            fromLocale,
+            from: fromLocale,
+            to: locale,
             panelId: this.getCurrentPanelId(),
             chapterId: this.currentChapter?.id,
           });
@@ -2426,10 +2426,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   }
 
   /** The reader copied or posted the link from the share dialog. */
-  onShared(platform: string): void {
+  onShared(channel: string): void {
     this.trackingService.track('share', {
       workId: this.workKey(),
-      platform,
+      channel,
       panelId: this.getCurrentPanelId(),
       chapterId: this.currentChapter?.id,
       url: this.shareLink,
@@ -3682,7 +3682,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     const gate = this.paywallGate;
     const productId = action === 'purchase' || action === 'subscribe' ? this.paywallProductId : undefined;
     if (gate) {
-      this.trackingService.track('paywall_action', { ...this.paywallEventPayload(gate), action, productId });
+      this.trackingService.track('paywallAction', { ...this.paywallEventPayload(gate), action, productId });
       this.paywallAction.emit({ action, gate, ...(productId ? { productId } : {}) });
     }
     this.paywallProductId = undefined;
