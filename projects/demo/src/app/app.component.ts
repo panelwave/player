@@ -1,5 +1,4 @@
 import { Component, OnDestroy, OnInit, inject, viewChild } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import {
   FlowEngineService,
@@ -35,7 +34,7 @@ const STATE_DEBOUNCE_MS = 100;
 
 @Component({
     selector: 'app-root',
-    imports: [RouterOutlet, PlayerShellComponent, DevToolsComponent],
+    imports: [PlayerShellComponent, DevToolsComponent],
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss'
 })
