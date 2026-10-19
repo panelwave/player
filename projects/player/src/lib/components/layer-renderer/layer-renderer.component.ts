@@ -31,6 +31,7 @@ import {
   resolveMuted,
 } from '../../utils/video-config-utils';
 import { selectImageVariantForWidth } from '../../utils/image-variant-utils';
+import { layerBoxPercent, layerReferenceOf, type LayerReference } from '../../utils/layer-reference';
 
 /**
  * Layer Renderer Component
@@ -51,6 +52,15 @@ export class LayerRendererComponent {
    * Layer to render
    */
   @Input() layer!: Layer;
+
+  /**
+   * All layers of the owning panel. When set, the layer is placed in the
+   * panel's 1024 px reference space (utils/layer-reference): the background
+   * fills the panel, other layers sit at their x/y/width/height in percent of
+   * the panel box. Without it, x/y are raw px offsets (legacy hosts).
+   */
+  @Input() panelLayers: readonly Layer[] | null | undefined = null;
+  private referenceCache: { layers: readonly Layer[]; reference: LayerReference } | null = null;
 
   /**
    * Current locale for localized content
@@ -126,31 +136,24 @@ export class LayerRendererComponent {
     };
 
     const layer = this.layer as Record<string, unknown>;
+    const reference = this.layerReference();
 
-    // Position
-    if (layer['x'] !== undefined) {
-      styles['left'] = `${layer['x']}px`;
+    if (reference) {
+      const box = layerBoxPercent(this.layer, reference);
+      styles['left'] = `${box.left}%`;
+      styles['top'] = `${box.top}%`;
+      styles['width'] = `${box.width}%`;
+      styles['height'] = `${box.height}%`;
+      // Text sizes are reference px too: the box is their size container.
+      if (this.layer.kind === 'text') {
+        styles['container-type'] = 'size';
+      }
     } else {
-      styles['left'] = '0';
-    }
-    
-    if (layer['y'] !== undefined) {
-      styles['top'] = `${layer['y']}px`;
-    } else {
-      styles['top'] = '0';
-    }
-
-    // Size
-    if (layer['w'] !== undefined) {
-      styles['width'] = `${layer['w']}px`;
-    } else {
-      styles['width'] = '100%';
-    }
-    
-    if (layer['h'] !== undefined) {
-      styles['height'] = `${layer['h']}px`;
-    } else {
-      styles['height'] = '100%';
+      // Legacy hosts (no panelLayers): raw px offsets, full-panel size.
+      styles['left'] = layer['x'] !== undefined ? `${layer['x']}px` : '0';
+      styles['top'] = layer['y'] !== undefined ? `${layer['y']}px` : '0';
+      styles['width'] = layer['w'] !== undefined ? `${layer['w']}px` : '100%';
+      styles['height'] = layer['h'] !== undefined ? `${layer['h']}px` : '100%';
     }
 
     // Z-index
@@ -164,6 +167,19 @@ export class LayerRendererComponent {
     }
 
     return styles;
+  }
+
+  /** Reference space of the owning panel (cached per layers array), or null. */
+  private layerReference(): LayerReference | null {
+    const layers = this.panelLayers;
+    if (!layers || layers.length === 0) return null;
+    if (this.referenceCache?.layers !== layers) {
+      this.referenceCache = {
+        layers,
+        reference: layerReferenceOf(layers, (id) => this.manifestService.getAsset(id)),
+      };
+    }
+    return this.referenceCache.reference;
   }
 
   /**
@@ -469,7 +485,14 @@ export class LayerRendererComponent {
     }
 
     if (layer['fontSize']) {
-      styles['font-size'] = `${layer['fontSize']}px`;
+      const reference = this.layerReference();
+      if (reference) {
+        // fontSize is reference px; the layer box (100cqh) is this many of them.
+        const boxHeightRef = (layerBoxPercent(this.layer, reference).height / 100) * reference.height;
+        styles['font-size'] = `calc(${layer['fontSize']} * 100cqh / ${boxHeightRef})`;
+      } else {
+        styles['font-size'] = `${layer['fontSize']}px`;
+      }
     }
 
     if (layer['fontFamily']) {

@@ -52,6 +52,7 @@
               @for (layer of entry.panel.layers; track layer.id) {
                 <pw-layer-renderer
                   [layer]="layer"
+                  [panelLayers]="entry.panel.layers"
                   [locale]="locale"
                   viewMode="panel"
                   [viewActive]="isCurrent(entry.panelId)"

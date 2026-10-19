@@ -175,6 +175,47 @@ describe('LayerRendererComponent', () => {
       expect(styles['font-size']).toBe('12pt');
     });
   });
+  describe('reference-space placement (panelLayers)', () => {
+    // 2:1 artwork → reference space 2048 × 1024.
+    const background = { kind: 'image', id: 'bg', assetId: 'art', z: 0, x: -9, y: -20 } as any;
+    const inset = { kind: 'image', id: 'inset', assetId: 'art', z: 1, x: 512, y: 256, width: 1024, height: 512 } as any;
+    const caption = { kind: 'text', id: 'cap', z: 2, x: 0, y: 768, width: 2048, height: 256, fontSize: 64, text: { 'en-US': 'Hi' } } as any;
+    const layers = [background, inset, caption];
+
+    beforeEach(() => {
+      spyOn(manifestService, 'getAsset').and.returnValue({ id: 'art', variants: [{ src: 'a.png', w: 2000, h: 1000 }] } as any);
+      spyOn(manifestService, 'getManifest').and.returnValue(null);
+    });
+
+    it('pins the background to the whole panel, ignoring its stored offset', () => {
+      component.layer = background;
+      component.panelLayers = layers;
+      const styles = component.getLayerStyles();
+      expect([styles['left'], styles['top'], styles['width'], styles['height']]).toEqual(['0%', '0%', '100%', '100%']);
+    });
+
+    it('places other layers in percent of the reference space', () => {
+      component.layer = inset;
+      component.panelLayers = layers;
+      const styles = component.getLayerStyles();
+      expect([styles['left'], styles['top'], styles['width'], styles['height']]).toEqual(['25%', '25%', '50%', '50%']);
+      expect(styles['z-index']).toBe('1');
+    });
+
+    it('scales a text layer font with its box', () => {
+      component.layer = caption;
+      component.panelLayers = layers;
+      expect(component.getLayerStyles()['container-type']).toBe('size');
+      // 64 reference px in a 256 reference-px-tall box = a quarter of it.
+      expect(component.getTextStyles()['font-size']).toBe('calc(64 * 100cqh / 256)');
+    });
+
+    it('keeps raw px offsets without panelLayers (legacy hosts)', () => {
+      component.layer = inset;
+      const styles = component.getLayerStyles();
+      expect([styles['left'], styles['top'], styles['width'], styles['height']]).toEqual(['512px', '256px', '100%', '100%']);
+    });
+  });
 });
 
 describe('LayerRendererComponent image loading priority', () => {

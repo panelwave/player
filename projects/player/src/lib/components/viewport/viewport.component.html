@@ -40,6 +40,7 @@
                 @for (layer of leavingPanel.layers; track layer.id) {
                   <pw-layer-renderer
                     [layer]="layer"
+                    [panelLayers]="leavingPanel.layers"
                     [locale]="locale"
                     [viewMode]="viewMode"
                     [viewActive]="false"
@@ -84,6 +85,7 @@
                 @for (layer of panel.layers; track layer.id) {
                   <pw-layer-renderer
                     [layer]="layer"
+                    [panelLayers]="panel.layers"
                     [locale]="locale"
                     [viewMode]="viewMode"
                     [viewActive]="true"
@@ -177,6 +179,7 @@
                           @for (layer of panelData.layers; track layer.id) {
                             <pw-layer-renderer
                               [layer]="layer"
+                              [panelLayers]="panelData.layers"
                               [locale]="locale"
                               [viewMode]="viewMode"
                               [viewActive]="false"
@@ -267,6 +270,7 @@
                       @for (layer of panelData.layers; track layer.id) {
                         <pw-layer-renderer
                           [layer]="layer"
+                          [panelLayers]="panelData.layers"
                           [locale]="locale"
                           [altText]="getAltText(layer)"
                           [viewMode]="viewMode"

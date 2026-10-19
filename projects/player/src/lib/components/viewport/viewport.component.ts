@@ -39,7 +39,8 @@ import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { pageAspectRatio } from '../../utils/page-format-utils';
-import { resolvePageBackground } from '../../utils/page-background';
+import { resolvePageBackground } from '../../utils/page-background';
+import { panelArtworkAspect } from '../../utils/layer-reference';
 
 /**
  * Performance metrics interface
@@ -401,27 +402,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    * panel-view content rect from.
    */
   get panelAspect(): number {
-    const layers = this.panel?.layers ?? [];
-    const candidates = [
-      ...layers.filter((l) => (l.z ?? 0) === 0 && l.kind === 'image'),
-      ...layers.filter((l) => l.kind === 'image' || l.kind === 'video'),
-    ];
-    for (const layer of candidates) {
-      const assetId = (layer as { assetId?: string }).assetId;
-      if (!assetId) continue;
-      const asset = this.manifestService.getAsset(assetId) as { variants?: { w?: number; h?: number }[]; width?: number; height?: number } | null;
-      let w = 0;
-      let h = 0;
-      for (const v of asset?.variants ?? []) {
-        if ((v.w ?? 0) > w && (v.h ?? 0) > 0) { w = v.w ?? 0; h = v.h ?? 0; }
-      }
-      if (!(w > 0 && h > 0) && (asset?.width ?? 0) > 0 && (asset?.height ?? 0) > 0) {
-        w = asset!.width!;
-        h = asset!.height!;
-      }
-      if (w > 0 && h > 0) return w / h;
-    }
-    return 16 / 9;
+    return panelArtworkAspect(this.panel?.layers ?? [], (id) => this.manifestService.getAsset(id));
   }
 
   /** Largest box of `aspect` inside a viewport (0 when the viewport is unmeasured). */
