@@ -8,7 +8,9 @@
   (pointerdown)="onPointerDown($event)"
   (pointermove)="onPointerMove($event)"
   (pointerup)="onPointerUp($event)"
-  (pointercancel)="onPointerUp($event)"
+  (pointercancel)="onPointerLost($event)"
+  (lostpointercapture)="onPointerLost($event)"
+  (dragstart)="$event.preventDefault()"
   (wheel)="onWheel($event)">
 
   <div class="canvas-world" [style.transform]="worldTransform">

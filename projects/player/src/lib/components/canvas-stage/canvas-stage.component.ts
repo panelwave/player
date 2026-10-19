@@ -168,6 +168,8 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
   private pressStart: { x: number; y: number; time: number } | null = null;
   private isPanning = false;
   private lastPinchDistance = 0;
+  /** The element holding the pointer listeners (and the capture). */
+  private pointerSurface: Element | null = null;
 
   ngOnInit(): void {
     this.camera.state$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
@@ -598,7 +600,13 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     if (this.isInteractiveHotspotTarget(event.target)) {
       return;
     }
-    this.elementRef.nativeElement.setPointerCapture?.(event.pointerId);
+    // Capture on the element that listens: captured events are retargeted
+    // to the capturing element, so capturing on the host made the inner
+    // viewport miss every move and the release — the press then never
+    // ended and plain hovering dragged the canvas.
+    const surface: Element = (event.currentTarget as Element | null) ?? this.elementRef.nativeElement;
+    this.pointerSurface = surface;
+    surface.setPointerCapture?.(event.pointerId);
     this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (this.activePointers.size === 1) {
       this.pressStart = { x: event.clientX, y: event.clientY, time: Date.now() };
@@ -611,6 +619,11 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   onPointerMove(event: PointerEvent): void {
     if (!this.interactive || !this.activePointers.has(event.pointerId)) {
+      return;
+    }
+    // A mouse moving with no button held is not pressing (missed release).
+    if (event.pointerType === 'mouse' && event.buttons === 0) {
+      this.onPointerLost(event);
       return;
     }
     const prev = this.activePointers.get(event.pointerId)!;
@@ -639,6 +652,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
       );
       if (total > TAP_SLOP_PX) {
         this.isPanning = true;
+        this.pointerSurface?.classList.add('panning');
       }
     }
     if (this.isPanning && this.freeRoamAllowed()) {
@@ -657,15 +671,29 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     const press = this.pressStart;
-    this.pressStart = null;
-    if (!press || this.isPanning) {
-      this.isPanning = false;
+    const wasPanning = this.isPanning;
+    this.endPress();
+    if (!press || wasPanning) {
       return;
     }
     if (Date.now() - press.time > TAP_MAX_MS) {
       return;
     }
     this.handleTap(event);
+  }
+
+  /** Cancelled press / lost capture / stale mouse press: end it without a tap. */
+  onPointerLost(event: PointerEvent): void {
+    this.activePointers.delete(event.pointerId);
+    if (this.activePointers.size === 0) {
+      this.endPress();
+    }
+  }
+
+  private endPress(): void {
+    this.pressStart = null;
+    this.isPanning = false;
+    this.pointerSurface?.classList.remove('panning');
   }
 
   /** Whether an event target sits on a clickable hotspot shape. */
@@ -706,7 +734,9 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
       this.navigatePrevious.emit();
       return;
     }
-    if (screenX >= rect.width * (1 - EDGE_ZONE_FRACTION)) {
+    // A mouse click on the current panel reads on; a touch tap there shows
+    // the toolbar (as in panel view).
+    if (screenX >= rect.width * (1 - EDGE_ZONE_FRACTION) || event.pointerType === 'mouse') {
       this.navigateNext.emit();
       return;
     }

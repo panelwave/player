@@ -134,6 +134,15 @@ describe('CanvasStageComponent', () => {
       component.onPointerDown(pointer(shape));
       expect((component as unknown as { activePointers: Map<number, unknown> }).activePointers.size).toBe(1);
     });
+
+    it('ends a mouse press whose release was missed instead of panning on hover', () => {
+      spyOn(fixture.nativeElement as HTMLElement, 'setPointerCapture');
+      const panBy = spyOn((component as unknown as { camera: { panBy: (x: number, y: number) => void } }).camera, 'panBy');
+      component.onPointerDown(pointer(fixture.nativeElement));
+      component.onPointerMove({ pointerId: 7, clientX: 200, clientY: 200, pointerType: 'mouse', buttons: 0 } as unknown as PointerEvent);
+      expect(panBy).not.toHaveBeenCalled();
+      expect((component as unknown as { activePointers: Map<number, unknown> }).activePointers.size).toBe(0);
+    });
   });
 
   describe('hit testing', () => {

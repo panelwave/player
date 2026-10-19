@@ -11,11 +11,14 @@
   overflow: hidden;
   background-color: #101014;
   touch-action: none;
-  cursor: grab;
+  /* A drag pans the camera: no native image drag (Firefox) or text selection. */
+  user-select: none;
+  -webkit-user-select: none;
   outline: none;
 }
 
-.canvas-viewport:active {
+/* Arrow by default; the grabbing hand only while a drag pans the camera. */
+.canvas-viewport.panning {
   cursor: grabbing;
 }
 
