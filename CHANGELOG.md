@@ -7,6 +7,27 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-10-19
+
+### Fixed
+- **Layers sit where the CMS editor put them.** Layer `x` / `y` / `width` /
+  `height` are authored in the panel's 1024 px reference space (1024 tall,
+  1024 × artwork aspect wide); the renderer applied `x` / `y` as raw pixels
+  and ignored the size, so every layer above the background filled the panel,
+  shifted. With the new `panelLayers` input (every view of the player passes
+  it) the background (first z-0 image) fills the panel and the other layers
+  sit at their rect in percent of the panel box; text `fontSize` scales with
+  the box. `panelArtworkAspect` moves to `utils/layer-reference`. Hosts that
+  do not pass `panelLayers` keep the old behaviour.
+- Canvas view pans only while the button is held. The stage captured the
+  pointer on its host but listened on the inner viewport, so drags never
+  panned and plain hovering dragged the camera afterwards. Arrow cursor by
+  default, grabbing only while panning; native image drag and text selection
+  are blocked on the stage. A mouse click on the current panel advances
+  (touch taps still show the toolbar).
+
+## [1.7.0] — 2026-10-18
+
 ### Added
 - **Embed bridge protocol v1** (demo app in embed mode, `docs/EMBED_PROTOCOL.md`).
   Two-way `postMessage` with a fixed host origin (`?origin=`, never `'*'`):
@@ -27,6 +48,72 @@ semver. The reader-facing product changelog lives on the docs site
   `paywallAction` (`ruleId`, `action`), `lang_change` (`from`/`to`),
   `share` (`channel`); `like` carries the panel — every event has a
   `panelId`.
+
+## [1.6.1] — 2026-10-16
+
+### Fixed
+- Audio from another origin loads in CORS mode. The engine routes every
+  track through Web Audio, and a cross-origin `<audio>` element loaded
+  without CORS plays silence, so timeline tracks and panel sounds served from
+  object storage were silent (read.panelwave.org). Cross-origin http(s) files
+  now get `crossOrigin="anonymous"` (the storage must answer with
+  `Access-Control-Allow-Origin`); same-origin, `data:` / `blob:` and
+  `file:` pages (the offline package) keep no-CORS mode.
+
+## [1.6.0] — 2026-10-16
+
+### Added
+- **Timeline audio**: music and ambience follow the reader.
+  `SequenceAudioService` starts every `chapter.sequenceAudio` track that
+  covers the panel being entered, at the matching offset; a track keeps
+  playing inside its range (no restart per panel), fades out on leaving it,
+  and `span: 'work'` (format 1.8) continues across chapters. Silent under the
+  cover and on locked panels. Panels are placed as on the CMS timeline
+  (chapters → the active format's pages → reading order; `durationMs`, else
+  `settings.ui.secondsPerPanel`, else 5 s — `utils/sequence-audio-timeline`,
+  exported). `SequenceAudioTrack.span` is typed. Audio engine:
+  `play(track, offset)`, `playbackRate`; a fade-in no longer delays the
+  start by the fade length.
+
+### Fixed
+- Page view anchors speech balloons on the authored tail tip, as the CMS
+  editor's page view does: a readability boost grows only the body and the
+  tail keeps its length (balloons were pushed toward the faces and tails
+  stretched in page view and the lettered PDF). New `pw-speech-bubbles`
+  input `anchorTailTip` (on for page view only).
+
+## [1.5.0] — 2026-10-14
+
+### Added
+- Standalone player app (`projects/standalone`, `npm run build:standalone` →
+  `dist/standalone-package/`): one work packaged next to an `index.html` that
+  opens from disk (`file://`) and from any static host. The work comes from
+  `panelwave.js` (`window.PANELWAVE_MANIFEST` + `PANELWAVE_CONFIG`), falling
+  back to `panelwave.json` + `panelwave.config.json` over http. UI
+  translations are bundled (no request), the bundles run as classic deferred
+  scripts in a strict IIFE, and the build fails if they ever need module
+  semantics. Basis of the PanelWave CMS export "Package with player (.zip)".
+  See docs/STANDALONE.md.
+- Standalone print config: `PANELWAVE_CONFIG` takes `pageFormat`,
+  `viewMode` and `reducedMotion`; `print: true` gives a static page view
+  without cover or toolbar and marks `<html>` with `pw-print` for a print
+  stylesheet; `?page=<page id>` opens a page directly. The CMS lettered PDF
+  export prints through it.
+
+### Changed
+- **Balloons grow with their text** (schema 1.8 `BalloonConfig.textFit`).
+  `maxWidth`/`maxHeight` are now the balloon's *authored* size and floor: when
+  the active language's text needs more room, `ComicBalloon.render()` grows the
+  body — proportionally first (same aspect ratio, up to 2× per side), then in
+  height — so a longer German line still fits a balloon lettered in English.
+  `pw-speech-bubbles` places the grown body so the tail tip stays on the
+  speaker (caption boxes keep their glued panel edge; the panel clamp still
+  wins) and marks the wrapper with `data-grown="true"`. Text that fits renders
+  exactly as before. `textFit: 'fixed'` restores the pre-1.8 fixed box.
+  `BalloonRenderResult` gains `authoredWidth`, `authoredHeight`, `grown` and
+  `growth`; `textOverflows` is now only reported for fixed-size balloons.
+  New geometry helpers `placeGrownBody()` and `grownBodyGlue()` (synced from the
+  CMS master with the engine).
 
 ### Fixed
 - **Panel view fills the screen.** The panel box is the largest box of the
@@ -55,32 +142,18 @@ semver. The reader-facing product changelog lives on the docs site
   `document.fonts.ready` had already resolved (wrong line breaks in the
   self-hosted package). `pw-speech-bubbles` now requests every font it uses
   and re-renders when one that was not available yet loads.
+- The thumbnail strip no longer snaps back to the current panel while it is
+  scrolled (a new array with the same panel ids re-queued the scroll).
 
-### Changed
-- **Balloons grow with their text** (schema 1.8 `BalloonConfig.textFit`).
-  `maxWidth`/`maxHeight` are now the balloon's *authored* size and floor: when
-  the active language's text needs more room, `ComicBalloon.render()` grows the
-  body — proportionally first (same aspect ratio, up to 2× per side), then in
-  height — so a longer German line still fits a balloon lettered in English.
-  `pw-speech-bubbles` places the grown body so the tail tip stays on the
-  speaker (caption boxes keep their glued panel edge; the panel clamp still
-  wins) and marks the wrapper with `data-grown="true"`. Text that fits renders
-  exactly as before. `textFit: 'fixed'` restores the pre-1.8 fixed box.
-  `BalloonRenderResult` gains `authoredWidth`, `authoredHeight`, `grown` and
-  `growth`; `textOverflows` is now only reported for fixed-size balloons.
-  New geometry helpers `placeGrownBody()` and `grownBodyGlue()` (synced from the
-  CMS master with the engine).
+## [1.4.0] — not published
+
+No 1.4.0 exists on npm. The version had been bumped by hand before the
+release workflow ran, and the workflow bumps the version itself, so that
+release went out as 1.5.0.
+
+## [1.3.0] — 2026-10-04
 
 ### Added
-- Standalone player app (`projects/standalone`, `npm run build:standalone` →
-  `dist/standalone-package/`): one work packaged next to an `index.html` that
-  opens from disk (`file://`) and from any static host. The work comes from
-  `panelwave.js` (`window.PANELWAVE_MANIFEST` + `PANELWAVE_CONFIG`), falling
-  back to `panelwave.json` + `panelwave.config.json` over http. UI
-  translations are bundled (no request), the bundles run as classic deferred
-  scripts in a strict IIFE, and the build fails if they ever need module
-  semantics. Basis of the PanelWave CMS export "Package with player (.zip)".
-  See docs/STANDALONE.md.
 - Reading position as a URL: page view and panel view get their own
   addresses (`?page=<pageId>`, `?panel=<panelId>`; none on the cover). New
   shell output `locationChange` (`PlayerLocation`), inputs `initialPageId`
@@ -149,63 +222,6 @@ semver. The reader-facing product changelog lives on the docs site
   in place: the age gate when only the age is missing, otherwise the paywall
   with that panel's purchase / subscribe options. New viewport output
   `lockedPanelActivate` (panel id).
-
-### Changed
-- Start: a work opens on the cover, then in page view (when it has
-  pages); a resumed bookmark opens on the cover too, with its page behind
-  it (was: panel view, and no cover on a bookmark). Links open where they
-  point, without the cover. `initialViewMode: 'panel'` keeps panel view.
-- Toolbar: a solid bar with a clear top line (was a gradient fading into
-  the artwork); the button row may use up to 1800 px (was 1400 px).
-- Page background color: `page.visual.background_color` (else
-  `settings.typography.default_page_bg_color`, else the previous `#1a1a1a`)
-  fills the space between the panels in page view and the frame around the
-  panel in panel view. Panel view takes the color of the page holding the
-  current panel, so it switches when the first panel of the next page
-  appears. The page box has no inset or rounded corners any more and the
-  letterbox around it is painted in the page color, so the page runs edge to
-  edge (was a 16 px light-grey `#f5f5f5` border plus grey letterbox). The
-  panel-view panel box is transparent (was white with a shadow). New
-  viewport input `pageBackground`, exported `resolvePageBackground` /
-  `DEFAULT_PAGE_BACKGROUND` and type `PageVisual`.
-- Balloon text is centered horizontally and vertically by layout (the text
-  box spans the balloon body), not by the measured text height, which put
-  the text off-center when the lettering font loaded after measuring. The
-  measuring and rendered text share all styles (white-space, weight,
-  letter-spacing pinned), so they wrap alike.
-- Peer dependencies accept Angular 21 and 22: `@angular/core` and
-  `@angular/common` are `^20.0.0 || ^21.0.0 || ^22.0.0` (was `^20.0.0`, which
-  made npm refuse the install on newer apps). Verified with fresh Angular
-  20.3 / 21.2 / 22.2 apps: strict-peer install, production build (the
-  partial-compiled package links cleanly) and a headless render, zoneless and
-  zone.js. No library code changes were needed.
-- Peer dependency accepts ngx-translate 18: `@ngx-translate/core` is
-  `^17.0.0 || ^18.0.0` (was `^17.0.0`, a conflict for hosts on the new
-  `latest`). 18 removed `TranslateModule` and the `default*` aliases, so the
-  components import the standalone `TranslatePipe` and `TranslationService`
-  uses `setFallbackLang` / `getCurrentLang` / `getFallbackLang`, all of which
-  exist in 17 too. Hosts on 18 must register ngx-translate with
-  `provideTranslateService({ loader: { provide: TranslateLoader, useClass:
-  ... } })`; the README setup now uses that form, which also works on 17
-  (`provideTranslateLoader(SomeClass)` breaks 18 production builds for a
-  plain class: its class detection fails on minified code). The consumer smoke
-  test takes `--ngx-translate <major>` (default 18) and CI covers Angular
-  20/21/22 on 18 plus 20 and 22 on 17.
-- Package README: the usage example read `$event.panel.id` from
-  `panelChange`, which does not compile (the player's `Panel` type has no
-  `id`; panels are keyed by id in the manifest). It now reads the new
-  `$event.panelId`. The setup section mentions `allowedCommonJsDependencies`
-  for `json-logic-js`.
-
-### Added
-- `panelChange` carries the panel id: the payload (new exported type
-  `PlayerPanelChangeEvent`) gains `panelId` (the panel's key in
-  `chapter.panels`) and `previousPanelId` (the panel before it, possibly in
-  the previous chapter; unset for the first panel after a load or reload).
-  Additive: `panel` and `chapter` are unchanged, so existing handlers keep
-  working. Hosts no longer need to look the id up by object identity.
-- `npm run smoke:consumer -- --angular <major>` (`scripts/consumer-smoke.mjs`)
-  and a CI matrix job running it for Angular 20, 21 and 22.
 - Panel view honours `Panel.formatViews[format].minimalFocusRect`. A panel
   is shown at its natural size, centered — on a screen smaller than the panel
   (a landscape panel on a phone) that cropped it around its middle, whatever
@@ -252,66 +268,30 @@ semver. The reader-facing product changelog lives on the docs site
 - Format 1.6: ensemble character sheets. A character sheet's `characterIds`
   (or the single `characterId`) are resolved to the characters' names and
   shown under the sheet's title in the extras viewer (`Extra.characters`).
-- Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of
-  the schema (the player already honoured it). Owning any listed product
-  unlocks the rule; the overlay offers one Buy option per product.
-  `PaywallRule` type documents the field; README format table covers 1.5/1.6.
-- Format 1.6: `paywall.products` (`PaywallProduct`: id, localized name /
-  description, price, type). Buy / Subscribe options take their label,
-  description and price from the entry with the option's id, resolved in the
-  reader's locale; without one they fall back to the rule's name (single
-  option) or the id (several), and the rule's description / price.
-  `PaywallService.gateFor(panelId, locale?)`, `purchaseOptions(rule, products?,
-  locale?, fallbackLocale?)`, `productsFromManifest()`; `PaywallProduct`
-  type exported.
-- The shell reacts to input changes after init: a new `manifest` /
-  `manifestUrl` reloads the work (story state reset); `locale`,
-  `entitlementSnapshot` (gates re-evaluated), `viewModeOverride`,
-  `showToolbar`, `reducedMotion`, `secondsPerPanel` and `autoplay` apply
-  live. `reload()` is public (the error screen's Retry uses it).
-- Paywall overlay Buy / Subscribe options derived from the blocking rule
-  (products, tiers, name, description, price); `paywallAction` emits
-  `'subscribe'` and carries `productId`. `PaywallGate` gains `ruleId`,
-  `lockReason` and `options`; `PaywallService.purchaseOptions()`,
-  `isExtraLocked()`; evaluator exports `isExtraLocked`,
-  `chapterOrderFromManifest`.
-- Chapter-scoped paywall rules (`scope: "chapter"`, `refId`): gate only that
-  chapter's panels, free preview counted within the chapter.
-- Age gate, branch chooser and paywall reason are translated (`age_gate.*`,
-  `branch_chooser.*`, `paywall.reason_*` in en/de); month names via `Intl`.
-- Demo: `?byUrl=1` passes the manifest to the shell as `manifestUrl`.
-- Age gate: `age_gate` paywall rules now raise `pw-age-gate` (birth-date
-  check) instead of the purchase overlay. A pass is persisted on the device,
-  folded into the entitlement snapshot and the interrupted navigation resumes.
-  New output `ageVerified`.
-- Like and Bookmark toolbar actions: persisted per work on the device, tracked
-  (`like`, `bookmark` events), emitted as `likeChange` / `bookmarkChange`. A
-  bookmark is resumed on the next load when the host gives no initial position.
-- Choices: the toolbar shows the button when at least two outgoing edges of
-  the current panel are open (conditions evaluated); `pw-branch-chooser` lists the edges whose conditions pass
-  and traverses the chosen one (transition, camera move, mutations). Tracked as
-  `branch_choice`.
-- `CONTRIBUTING.md`, `docs/API.md`, GitHub Actions workflows (CI, release,
-  demo pages, size limit).
-- Hotspots are interactive in the canvas view (keyboard-activatable too).
-- Extras viewer shows the blocks' real media.
-- The current panel's art loads eagerly with `fetchpriority="high"`.
-- Demo app: manifest selector (URL / local file), responsive device frames,
-  dev-tools drawer with live metrics and a layer debug overlay.
 
 ### Changed
-- `PurchaseInfo.price` is optional (rules without a price still offer Buy /
-  Subscribe).
-- Sign in stays visible next to purchase options on the paywall overlay.
-- Extras-scoped paywall rules no longer gate panels (they were mapped onto a
-  work gate and locked the whole work); they lock their extras block.
-- A new `entitlementSnapshot` / `refreshEntitlements()` keeps an age
-  verification the reader already passed on the device.
-- Canvas-view edge taps apply the edge's `action` mutations.
-- The speech-balloon engine (`comic-balloon.ts`, `balloon-geometry.ts`) is
-  synced from the CMS editor, which is its master copy; do not edit the
-  player files by hand (they carry a banner).
-- Toolbar, comments and paywall texts are translated (were English-only).
+- Start: a work opens on the cover, then in page view (when it has
+  pages); a resumed bookmark opens on the cover too, with its page behind
+  it (was: panel view, and no cover on a bookmark). Links open where they
+  point, without the cover. `initialViewMode: 'panel'` keeps panel view.
+- Toolbar: a solid bar with a clear top line (was a gradient fading into
+  the artwork); the button row may use up to 1800 px (was 1400 px).
+- Page background color: `page.visual.background_color` (else
+  `settings.typography.default_page_bg_color`, else the previous `#1a1a1a`)
+  fills the space between the panels in page view and the frame around the
+  panel in panel view. Panel view takes the color of the page holding the
+  current panel, so it switches when the first panel of the next page
+  appears. The page box has no inset or rounded corners any more and the
+  letterbox around it is painted in the page color, so the page runs edge to
+  edge (was a 16 px light-grey `#f5f5f5` border plus grey letterbox). The
+  panel-view panel box is transparent (was white with a shadow). New
+  viewport input `pageBackground`, exported `resolvePageBackground` /
+  `DEFAULT_PAGE_BACKGROUND` and type `PageVisual`.
+- Balloon text is centered horizontally and vertically by layout (the text
+  box spans the balloon body), not by the measured text height, which put
+  the text off-center when the lettering font loaded after measuring. The
+  measuring and rendered text share all styles (white-space, weight,
+  letter-spacing pinned), so they wrap alike.
 
 ### Fixed
 - Autoplay no longer stalls on video panels: when a video's pass ended, the
@@ -393,6 +373,87 @@ semver. The reader-facing product changelog lives on the docs site
   fully opaque; the same happened when an animation was detached.
 - The outgoing panel of a transition holds the end state of its animation
   instead of snapping back to the resting state while it leaves.
+
+## [1.2.0] — 2026-09-29
+
+### Added
+- `panelChange` carries the panel id: the payload (new exported type
+  `PlayerPanelChangeEvent`) gains `panelId` (the panel's key in
+  `chapter.panels`) and `previousPanelId` (the panel before it, possibly in
+  the previous chapter; unset for the first panel after a load or reload).
+  Additive: `panel` and `chapter` are unchanged, so existing handlers keep
+  working. Hosts no longer need to look the id up by object identity.
+- `npm run smoke:consumer -- --angular <major>` (`scripts/consumer-smoke.mjs`)
+  and a CI matrix job running it for Angular 20, 21 and 22.
+
+### Changed
+- Peer dependencies accept Angular 21 and 22: `@angular/core` and
+  `@angular/common` are `^20.0.0 || ^21.0.0 || ^22.0.0` (was `^20.0.0`, which
+  made npm refuse the install on newer apps). Verified with fresh Angular
+  20.3 / 21.2 / 22.2 apps: strict-peer install, production build (the
+  partial-compiled package links cleanly) and a headless render, zoneless and
+  zone.js. No library code changes were needed.
+- Peer dependency accepts ngx-translate 18: `@ngx-translate/core` is
+  `^17.0.0 || ^18.0.0` (was `^17.0.0`, a conflict for hosts on the new
+  `latest`). 18 removed `TranslateModule` and the `default*` aliases, so the
+  components import the standalone `TranslatePipe` and `TranslationService`
+  uses `setFallbackLang` / `getCurrentLang` / `getFallbackLang`, all of which
+  exist in 17 too. Hosts on 18 must register ngx-translate with
+  `provideTranslateService({ loader: { provide: TranslateLoader, useClass:
+  ... } })`; the README setup now uses that form, which also works on 17
+  (`provideTranslateLoader(SomeClass)` breaks 18 production builds for a
+  plain class: its class detection fails on minified code). The consumer smoke
+  test takes `--ngx-translate <major>` (default 18) and CI covers Angular
+  20/21/22 on 18 plus 20 and 22 on 17.
+- Package README: the usage example read `$event.panel.id` from
+  `panelChange`, which does not compile (the player's `Panel` type has no
+  `id`; panels are keyed by id in the manifest). It now reads the new
+  `$event.panelId`. The setup section mentions `allowedCommonJsDependencies`
+  for `json-logic-js`.
+
+## [1.1.0] — 2026-09-27
+
+### Added
+- Format 1.6: `requiredProductIds` on a purchase paywall rule is now part of
+  the schema (the player already honoured it). Owning any listed product
+  unlocks the rule; the overlay offers one Buy option per product.
+  `PaywallRule` type documents the field; README format table covers 1.5/1.6.
+- Format 1.6: `paywall.products` (`PaywallProduct`: id, localized name /
+  description, price, type). Buy / Subscribe options take their label,
+  description and price from the entry with the option's id, resolved in the
+  reader's locale; without one they fall back to the rule's name (single
+  option) or the id (several), and the rule's description / price.
+  `PaywallService.gateFor(panelId, locale?)`, `purchaseOptions(rule, products?,
+  locale?, fallbackLocale?)`, `productsFromManifest()`; `PaywallProduct`
+  type exported.
+- The shell reacts to input changes after init: a new `manifest` /
+  `manifestUrl` reloads the work (story state reset); `locale`,
+  `entitlementSnapshot` (gates re-evaluated), `viewModeOverride`,
+  `showToolbar`, `reducedMotion`, `secondsPerPanel` and `autoplay` apply
+  live. `reload()` is public (the error screen's Retry uses it).
+- Paywall overlay Buy / Subscribe options derived from the blocking rule
+  (products, tiers, name, description, price); `paywallAction` emits
+  `'subscribe'` and carries `productId`. `PaywallGate` gains `ruleId`,
+  `lockReason` and `options`; `PaywallService.purchaseOptions()`,
+  `isExtraLocked()`; evaluator exports `isExtraLocked`,
+  `chapterOrderFromManifest`.
+- Chapter-scoped paywall rules (`scope: "chapter"`, `refId`): gate only that
+  chapter's panels, free preview counted within the chapter.
+- Age gate, branch chooser and paywall reason are translated (`age_gate.*`,
+  `branch_chooser.*`, `paywall.reason_*` in en/de); month names via `Intl`.
+- Demo: `?byUrl=1` passes the manifest to the shell as `manifestUrl`.
+
+### Changed
+- `PurchaseInfo.price` is optional (rules without a price still offer Buy /
+  Subscribe).
+- Sign in stays visible next to purchase options on the paywall overlay.
+- Extras-scoped paywall rules no longer gate panels (they were mapped onto a
+  work gate and locked the whole work); they lock their extras block.
+- A new `entitlementSnapshot` / `refreshEntitlements()` keeps an age
+  verification the reader already passed on the device.
+- Canvas-view edge taps apply the edge's `action` mutations.
+
+### Fixed
 - `ageGate` / `minimumAge` is an age check on top of the rule's entitlement
   (schema semantics): a rule with a custom `requireEntitlement` marker (or
   `premium`) plus an age no longer degrades to a pure age gate, and purchase /
@@ -410,6 +471,52 @@ semver. The reader-facing product changelog lives on the docs site
 - The Choices button showed with fewer than two open paths (edge conditions
   were not evaluated).
 - Retry on the error screen re-ran `ngOnInit` and duplicated subscriptions.
+
+## [1.0.1] — 2026-09-27
+
+### Changed
+- The npm package carries a real README (setup, API, paywalls, repository
+  links). First release through npm trusted publishing. No library code
+  changes.
+
+## [1.0.0] — 2026-09-27
+
+Feature-complete player through Phase 6 of the development plan: graph-based
+navigation with conditional edges, panel and page views, infinite-canvas view
+(format 1.4), video panels (1.1), panel variants, hotspots (all five actions),
+speech bubbles with the ComicBalloon renderer (9 balloon types), style presets
+(1.3), localized strings and assets, variables in five scopes, panel audio with
+Audio/SFX/Speech toggles, manifest paywall rules with the paywall overlay,
+tracking with consent and whitelist, plugin sandbox, PDF/EDL/JSON export
+helpers.
+
+### Added
+- Age gate: `age_gate` paywall rules now raise `pw-age-gate` (birth-date
+  check) instead of the purchase overlay. A pass is persisted on the device,
+  folded into the entitlement snapshot and the interrupted navigation resumes.
+  New output `ageVerified`.
+- Like and Bookmark toolbar actions: persisted per work on the device, tracked
+  (`like`, `bookmark` events), emitted as `likeChange` / `bookmarkChange`. A
+  bookmark is resumed on the next load when the host gives no initial position.
+- Choices: the toolbar shows the button when at least two outgoing edges of
+  the current panel are open (conditions evaluated); `pw-branch-chooser` lists the edges whose conditions pass
+  and traverses the chosen one (transition, camera move, mutations). Tracked as
+  `branch_choice`.
+- `CONTRIBUTING.md`, `docs/API.md`, GitHub Actions workflows (CI, release,
+  demo pages, size limit).
+- Hotspots are interactive in the canvas view (keyboard-activatable too).
+- Extras viewer shows the blocks' real media.
+- The current panel's art loads eagerly with `fetchpriority="high"`.
+- Demo app: manifest selector (URL / local file), responsive device frames,
+  dev-tools drawer with live metrics and a layer debug overlay.
+
+### Changed
+- The speech-balloon engine (`comic-balloon.ts`, `balloon-geometry.ts`) is
+  synced from the CMS editor, which is its master copy; do not edit the
+  player files by hand (they carry a banner).
+- Toolbar, comments and paywall texts are translated (were English-only).
+
+### Fixed
 - Plugin host: only messages from the plugin's own frame and origin are
   trusted; per-plugin waits, retry after a failed load, cleanup on dispose.
 - `panelChange` is emitted once per navigation (was twice).
@@ -433,13 +540,13 @@ semver. The reader-facing product changelog lives on the docs site
   overlay and view; heap-stability and frame-rate guards; E2E for speech,
   audio/SFX toggles, thumbnails, table of contents and persisted settings.
 
-## [1.0.0] — unreleased on npm
-
-Feature-complete player through Phase 6 of the development plan: graph-based
-navigation with conditional edges, panel and page views, infinite-canvas view
-(format 1.4), video panels (1.1), panel variants, hotspots (all five actions),
-speech bubbles with the ComicBalloon renderer (9 balloon types), style presets
-(1.3), localized strings and assets, variables in five scopes, panel audio with
-Audio/SFX/Speech toggles, manifest paywall rules with the paywall overlay,
-tracking with consent and whitelist, plugin sandbox, PDF/EDL/JSON export
-helpers.
+[Unreleased]: https://github.com/panelwave/player/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/panelwave/player/compare/v1.7.0...v1.8.0
+[1.7.0]: https://github.com/panelwave/player/compare/v1.6.1...v1.7.0
+[1.6.1]: https://github.com/panelwave/player/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/panelwave/player/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/panelwave/player/compare/v1.3.0...v1.5.0
+[1.3.0]: https://github.com/panelwave/player/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/panelwave/player/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/panelwave/player/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/panelwave/player/releases/tag/v1.0.1
