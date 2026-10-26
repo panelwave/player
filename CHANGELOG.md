@@ -7,6 +7,21 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Added
+- `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
+  stay keyed by id in `chapter.panels`; read the id from that key or from
+  `panelChange`'s `panelId`.
+
+### Removed
+- The unused `@ngx-translate/http-loader` dependency of the repository (the
+  library, demo, reader and standalone app load translations with their own
+  `TranslateLoader`). The published package is unchanged.
+
+### Fixed
+- Demo: the empty router is gone. Served as `/player/index.html` (the CMS
+  preview iframe), its first navigation matched no route and logged NG04002
+  on every load.
+
 ## [1.8.0] — 2026-10-19
 
 ### Fixed
