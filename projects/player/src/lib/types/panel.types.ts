@@ -9,6 +9,13 @@ import type { LocalizedString, Transition, AssetRef } from './manifest.types';
  * Panel definition with layers, interactions, and metadata
  */
 export interface Panel {
+  /**
+   * Panel id (schema `Identifier`, optional and usually absent). Panels are
+   * keyed by id in `chapter.panels`; read the id from that key (or from
+   * `panelChange`'s `panelId`), not from here.
+   */
+  id?: string;
+
   /** Localized panel title (optional) */
   title?: LocalizedString;
   
