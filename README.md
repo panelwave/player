@@ -249,7 +249,7 @@ panelwave-player/
 
 ### Internationalization
 - **Library:** @ngx-translate/core
-- **Loader:** @ngx-translate/http-loader
+- **Loader:** own `TranslateLoader` on `HttpClient` (`utils/translation-loader.ts`); the standalone build bundles the translations
 
 ### Development
 - **Build:** ng-packagr (library packaging)
