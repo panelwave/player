@@ -538,10 +538,10 @@ Frontend (`apps/cms-frontend`):
 - [ ] Optional: live preview via `srcdoc` in the preview device frame — **not done** (2026-10-27): the "Download example page" covers trying it; a `srcdoc` frame has an opaque origin, so the bridge would be off
 
 Export (`apps/worker-export`):
-- [ ] `PlayerPackageOptions.includeEmbedExample` / `allowCrossOriginEmbed`; wizard options + presets
-- [ ] `panelwave.config.json.chapters` from sidecar `embedSettings`; `embed-example.html`; README.txt paragraph
-- [ ] `packageHosting.ts`: optional CORS lines for `panelwave.json` + `player/*`
-- [ ] Jest specs; `docs/EXPORT_PLAYER_PACKAGE.md`
+- [x] `PlayerPackageOptions.includeEmbedExample` / `allowCrossOriginEmbed`; wizard options + presets — `includeEmbedExample` done; **`allowCrossOriginEmbed` dropped** (2026-10-27): iframes and `<script>` tags need no CORS and the package sets no frame restriction; the cross-origin e2e (package and course page on two origins) passes without it
+- [x] `panelwave.config.json.chapters` from sidecar `embedSettings`; `embed-example.html`; README.txt paragraph
+- [x] `packageHosting.ts`: optional CORS lines for `panelwave.json` + `player/*` — not needed (see above); `docs/EXPORT_PLAYER_PACKAGE.md` says so
+- [x] Jest specs; `docs/EXPORT_PLAYER_PACKAGE.md`
 - [ ] Re-vendor: `update-player-embed.ps1`, `update-player-standalone.ps1`, `update-reader-app.ps1` after the 1.9.0 player build (all three — PDF export uses the standalone copy)
 
 ### P5 — Docs, release, follow-ups
