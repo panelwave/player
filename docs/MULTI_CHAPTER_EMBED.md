@@ -527,7 +527,7 @@ API (`apps/cms-api`):
 - [x] Tracking: accept `embedHost` in `session_start` data (ingest + aggregates in `worker-analytics`: new dimension "embedded vs reader") — migration `112_analytics_sessions_embed_host.sql` adds `analytics_agg_sessions.embed_host` (dev applied; prod pending); player: shell `trackingContext`, reader sends `{ embedHost }`; `chapterUuid` on every event (`TrackingService.setChapterUuids`)
 - [x] `WorkArchiveService` player sidecar includes per-chapter `embedSettings` + poster URLs
 - [x] Publish pre-flight warning: cross-chapter links are inert in chapter embeds
-- [ ] `npm run test:api:chunked` (incl. `specs/integration/`) green; regenerate `API_REFERENCE.md`
+- [x] `npm run test:api:chunked` (incl. `specs/integration/`) green; regenerate `API_REFERENCE.md`
 
 Frontend (`apps/cms-frontend`):
 - [ ] `Chapter` model + `api-client.service.ts` gain `embedSettings`
