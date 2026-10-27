@@ -132,4 +132,21 @@ test.describe('content widgets', () => {
     await expect(widget(page, 'download').locator('.name')).toHaveText('Arbeitsblatt 3.pdf');
     await expect(widget(page, 'scrollText').locator('h2')).toHaveText('Mäander');
   });
+
+});
+
+test.describe('content widgets in page view', () => {
+  test('render on the page and mount the iframe once it is on screen', async ({ page }) => {
+    await openPlayer(page, WIDGETS, { view: 'default' });
+    const pageView = page.locator('pw-player-shell');
+    for (const kind of ['download', 'audioPlayer', 'videoPlayer', 'scrollText', 'iframe']) {
+      await expect(pageView.locator(`[data-pw-widget="${kind}"]`).first()).toBeVisible();
+    }
+    await expect(pageView.locator('[data-pw-widget="iframe"] iframe').first()).toHaveAttribute('sandbox', /allow-scripts/);
+    // The modal opens from page view too.
+    await pageView.locator('[data-pw-widget="videoPlayer"] button').first().click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('pw-video-modal')).toHaveCount(0);
+  });
 });
