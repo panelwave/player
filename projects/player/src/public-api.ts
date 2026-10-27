@@ -146,4 +146,48 @@ export { PaywallOverlayComponent, type PaywallAction } from './lib/components/ov
 export { AgeGateComponent, type AgeVerificationResult } from './lib/components/overlays/age-gate/age-gate.component';
 export { PluginSandboxComponent } from './lib/components/plugin-sandbox/plugin-sandbox.component';
 export { VideoLayerComponent, type LayerViewMode } from './lib/components/layers/video-layer/video-layer.component';
+
+// Content widget layers + theme (schema 1.10+)
+export {
+  ThemeService,
+  resolveTheme,
+  themeCssVariables,
+  themeOverrideVars,
+  contrastRatio,
+  readableOn,
+  DEFAULT_THEME_COLORS,
+  type PwResolvedTheme,
+  type PwThemeOverride,
+  type ThemeMode,
+} from './lib/services/theme.service';
+export {
+  WidgetPlaybackService,
+  type WidgetEvent,
+  type WidgetEventType,
+  type WidgetPlaybackHandle,
+  type VideoModalRequest,
+} from './lib/services/widget-playback.service';
+export { DownloadLayerComponent } from './lib/components/layers/widgets/download-layer/download-layer.component';
+export {
+  AudioPlayerLayerComponent,
+  AUDIO_PLAYER_DUCK,
+  resamplePeaks,
+} from './lib/components/layers/widgets/audio-player-layer/audio-player-layer.component';
+export { VideoPlayerLayerComponent } from './lib/components/layers/widgets/video-player-layer/video-player-layer.component';
+export { ScrollTextLayerComponent } from './lib/components/layers/widgets/scroll-text-layer/scroll-text-layer.component';
+export { IframeLayerComponent } from './lib/components/layers/widgets/iframe-layer/iframe-layer.component';
+export { VideoModalComponent } from './lib/components/modals/video-modal/video-modal.component';
+export { renderSafeMarkdown, renderPlainText, escapeHtml } from './lib/utils/safe-markdown';
+export {
+  isLayerVisible,
+  fileTypeInfo,
+  formatBytes,
+  formatMediaTime,
+  checkIframeUrl,
+  iframeSandboxValue,
+  iframeAllowValue,
+  type FileTypeInfo,
+  type FileTypeKind,
+  type IframeUrlVerdict,
+} from './lib/utils/widget-utils';
 export * from './lib/player.component';

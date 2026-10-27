@@ -200,3 +200,12 @@ export function displayHost(src: string | undefined | null): string {
     return '';
   }
 }
+
+/**
+ * Static print render (the standalone player's `print` boot option marks
+ * `<html class="pw-print">`, used by the CMS PDF export): widgets render
+ * their still state, nothing plays and no iframe loads.
+ */
+export function isPrintRender(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('pw-print');
+}

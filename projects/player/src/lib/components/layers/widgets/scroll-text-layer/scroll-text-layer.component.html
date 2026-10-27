@@ -1,0 +1,19 @@
+<div class="pw-card pw-scroll" [class.plain]="plain" [class.print]="print" [ngStyle]="rootStyles">
+  @if (title) {
+    <div class="heading pw-ellipsis" aria-hidden="true">{{ title }}</div>
+  }
+  <div
+    #scroller
+    class="scroller"
+    [class.fade-top]="overflowing && !atTop"
+    [class.fade-bottom]="overflowing && !atBottom"
+    role="region"
+    [attr.aria-label]="regionLabel"
+    [attr.tabindex]="print ? null : 0"
+    (scroll)="onScroll()">
+    <div class="content" [ngStyle]="textStyles" [innerHTML]="html"></div>
+  </div>
+  @if (print && overflowing) {
+    <div class="continued pw-muted">{{ continuedText }}</div>
+  }
+</div>

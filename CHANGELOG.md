@@ -8,6 +8,35 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- **Content widget layers** (format 1.10, docs/CONTENT_WIDGETS.md): five new
+  layer kinds drawn by the player with the work theme — `download` (file card
+  with type icon, localized name, size; `pw-download-layer`), `audioPlayer`
+  (play/pause, waveform from the catalog peaks, position, click/drag/keyboard
+  seeking, ducks music + ambient; `pw-audio-player-layer`), `videoPlayer`
+  (poster or button opening `pw-video-modal`: custom controls, scrub bar with
+  buffered range, mute, fullscreen, focus trap; `pw-video-player-layer`),
+  `scrollText` (localized text, plain or a safe Markdown subset, fades, links
+  in a new tab; `pw-scroll-text-layer`) and `iframe` (https only, sandbox
+  presets, `allow` allowlist, lazy mounting, open-in-new-tab;
+  `pw-iframe-layer`). Widgets scale with the panel (clamped 11–20 px base
+  font), keep clicks / touches / wheel to themselves, honour `visibleIf`,
+  render a still state in print renders (`html.pw-print`) and play one at a
+  time; autoplay waits while one plays.
+- **Widget theme**: `ThemeService` resolves `ui.theme` (light / dark / auto,
+  14 colour tokens, ui + body fonts, shape, density; `ui.branding` as
+  fallback) into `--pw-theme-*` custom properties scoped to the player
+  instance with zero specificity, so host CSS can override them. The action
+  modal, choice buttons, branch chooser and toasts use the tokens too. New
+  shell input `themeOverride` and method `setThemeOverride()`.
+- `widgetEvent` output (`download`, `play`, `pause`, `ended`, `open`,
+  `close`) and the analytics events `download`, `widgetPlay`, `widgetOpen`.
+- Embed protocol **v3**: inbound `setTheme`, the `widgetEvent` event.
+- `AudioEngineService.setRoleDuck()` (bus duck factor on top of volume and
+  mute); `file` asset category with `filesBase`; `waveform` on audio items.
+- Exports: the five widget components, `VideoModalComponent`,
+  `ThemeService` + `resolveTheme` / `themeCssVariables` / colour helpers,
+  `WidgetPlaybackService`, `renderSafeMarkdown`, widget utils.
+- Demo: "Content Widgets" work (`assets/widgets-manifest.json`).
 - **Chapter embeds** (docs/MULTI_CHAPTER_EMBED.md). New shell input
   `chapterScope` (a chapter's manifest `id` or CMS `chapterId`) plays only
   that chapter: it starts at its entry, next / previous and page turns stop at

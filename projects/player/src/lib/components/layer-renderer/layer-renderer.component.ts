@@ -25,6 +25,11 @@ import type {
 import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { VideoLayerComponent, type LayerViewMode } from '../layers/video-layer/video-layer.component';
+import { DownloadLayerComponent } from '../layers/widgets/download-layer/download-layer.component';
+import { AudioPlayerLayerComponent } from '../layers/widgets/audio-player-layer/audio-player-layer.component';
+import { VideoPlayerLayerComponent } from '../layers/widgets/video-player-layer/video-player-layer.component';
+import { ScrollTextLayerComponent } from '../layers/widgets/scroll-text-layer/scroll-text-layer.component';
+import { IframeLayerComponent } from '../layers/widgets/iframe-layer/iframe-layer.component';
 import {
   resolvePlayMode,
   resolveStartMode,
@@ -51,7 +56,15 @@ export const WIDGET_FONT_MAX_PX = 20;
  */
 @Component({
     selector: 'pw-layer-renderer',
-    imports: [CommonModule, VideoLayerComponent],
+    imports: [
+      CommonModule,
+      VideoLayerComponent,
+      DownloadLayerComponent,
+      AudioPlayerLayerComponent,
+      VideoPlayerLayerComponent,
+      ScrollTextLayerComponent,
+      IframeLayerComponent,
+    ],
     templateUrl: './layer-renderer.component.html',
     styleUrls: ['./layer-renderer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

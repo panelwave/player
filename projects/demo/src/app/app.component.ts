@@ -10,7 +10,7 @@ import {
   parseLocationSearch,
 } from 'player';
 import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
-import type { Chapter, EntitlementSnapshot, PanelWaveManifest, PlayerLocation, PlayerPanelChangeEvent } from 'player';
+import type { Chapter, EntitlementSnapshot, PanelWaveManifest, PlayerLocation, PlayerPanelChangeEvent, UITheme } from 'player';
 import { snapshotFromEntitlements } from './entitlements';
 import {
   EMBED_ERROR_LIMIT,
@@ -162,9 +162,17 @@ export class AppComponent implements OnInit, OnDestroy {
       label: 'Infinite Canvas',
       url: 'assets/canvas-manifest.json',
     },
+    {
+      id: 'widgets',
+      label: 'Content Widgets',
+      url: 'assets/widgets-manifest.json',
+    },
   ];
 
   activeDemo = 'sample';
+
+  /** Live widget theme from the embed host (`setTheme`, protocol v3), on top of `ui.theme`. */
+  themeOverride: UITheme | null = null;
 
   /** Responsive preview frames (CSS px). 'fill' = the whole window. */
   readonly devices = [
@@ -317,6 +325,12 @@ export class AppComponent implements OnInit, OnDestroy {
         break;
       case 'hostGesture':
         this.gesture.markInteracted();
+        break;
+      case 'setTheme':
+        // v3: live widget theme (CMS theme manager preview).
+        if (message.theme === null || (message.theme && typeof message.theme === 'object')) {
+          this.themeOverride = message.theme;
+        }
         break;
     }
   }

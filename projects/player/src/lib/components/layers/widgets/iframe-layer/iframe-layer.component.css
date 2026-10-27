@@ -1,0 +1,82 @@
+.pw-iframe {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: calc(var(--pw-pad) / 2) calc(var(--pw-pad) / 2) calc(var(--pw-pad) / 2) var(--pw-pad);
+  border-bottom: 1px solid color-mix(in srgb, var(--pw-theme-border, #4b5563) 60%, transparent);
+}
+
+.pw-iframe.plain .header {
+  border-bottom: none;
+}
+
+.title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.open {
+  font-size: 0.85em;
+  color: var(--pw-theme-link, #93c5fd);
+  text-decoration: none;
+}
+
+.frame-box {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #fff;
+}
+
+.frame-host {
+  position: absolute;
+  inset: 0;
+}
+
+.frame-host ::ng-deep .frame,
+.frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding: var(--pw-pad);
+  text-align: center;
+  background: var(--pw-theme-surface-muted, #374151);
+}
+
+.placeholder-icon {
+  font-size: 2em;
+}
+
+.placeholder.blocked {
+  color: var(--pw-theme-on-surface, #f9fafb);
+}
+
+.url {
+  font-size: 0.75em;
+  overflow-wrap: anywhere;
+}
+
+@container pw-widget (max-width: 260px) {
+  .open-label {
+    display: none;
+  }
+}

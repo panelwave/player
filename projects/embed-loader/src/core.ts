@@ -174,7 +174,7 @@ export function viewportDistance(top: number, bottom: number, viewportHeight: nu
   return 0;
 }
 
-/** Inbound bridge message from the player page (protocol v1/v2), loosely checked. */
+/** Inbound bridge message from the player page (protocol v1–v3), loosely checked. */
 export interface PlayerMessage {
   type: 'pw:hello' | 'pw:ready' | 'pw:event' | 'pw:state';
   name?: string;

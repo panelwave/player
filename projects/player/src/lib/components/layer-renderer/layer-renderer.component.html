@@ -66,6 +66,30 @@
     </div>
   }
 
+  <!-- Content widget layers (schema 1.10+) -->
+  @switch (layer.kind) {
+    @case ('download') {
+      <pw-download-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+    }
+    @case ('audioPlayer') {
+      <pw-audio-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+    }
+    @case ('videoPlayer') {
+      <pw-video-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+    }
+    @case ('scrollText') {
+      <pw-scroll-text-layer [layer]="$any(layer)" [locale]="locale" />
+    }
+    @case ('iframe') {
+      <pw-iframe-layer
+        [layer]="$any(layer)"
+        [locale]="locale"
+        [panelId]="panelId"
+        [viewActive]="viewActive"
+        [viewMode]="viewMode" />
+    }
+  }
+
   <!-- Hotspot Layer -->
   @if (layer.kind === 'hotspot') {
     <div 

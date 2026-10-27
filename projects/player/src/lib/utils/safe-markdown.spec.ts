@@ -4,8 +4,8 @@ describe('safe-markdown', () => {
   describe('renderSafeMarkdown', () => {
     it('renders headings as h2–h4', () => {
       expect(renderSafeMarkdown('# A')).toBe('<h2>A</h2>');
-      expect(renderSafeMarkdown('## B')).toBe('<h3>B</h3>');
-      expect(renderSafeMarkdown('### C')).toBe('<h4>C</h4>');
+      expect(renderSafeMarkdown('## B')).toBe('<h2>B</h2>');
+      expect(renderSafeMarkdown('### C')).toBe('<h3>C</h3>');
       expect(renderSafeMarkdown('#### D')).toBe('<h4>D</h4>');
     });
 

@@ -185,6 +185,21 @@ export function resolveTheme(
 
 const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
 
+/**
+ * `--pw-theme-*` overrides of one widget layer (`themeOverrides`): only
+ * known colour keys with valid hex values; set on the widget's root element.
+ */
+export function themeOverrideVars(colors: ThemeColors | null | undefined): Record<string, string> {
+  const vars: Record<string, string> = {};
+  const known = DEFAULT_THEME_COLORS.dark as Record<string, string>;
+  for (const [key, value] of Object.entries(colors ?? {})) {
+    if (key in known && validHex(value)) {
+      vars[`--pw-theme-${kebab(key)}`] = value;
+    }
+  }
+  return vars;
+}
+
 /** The `--pw-theme-*` custom properties of a resolved theme. */
 export function themeCssVariables(theme: PwResolvedTheme): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -261,7 +276,12 @@ export class ThemeService implements OnDestroy {
 
   private render(): void {
     const theme = resolveTheme(this.ui, this.prefersDark(), this.override);
+    this.writeStyle(theme);
+    // After the rule is in place: canvas widgets re-read the variables.
     this.themeSubject.next(theme);
+  }
+
+  private writeStyle(theme: PwResolvedTheme): void {
     if (!this.host || typeof document === 'undefined') return;
     this.host.setAttribute('data-pw-theme-mode', theme.mode);
     const body = Object.entries(themeCssVariables(theme))

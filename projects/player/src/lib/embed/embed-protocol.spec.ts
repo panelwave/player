@@ -12,8 +12,12 @@ import {
 } from './embed-protocol';
 
 describe('embed bridge protocol helpers', () => {
-  it('is protocol version 2', () => {
-    expect(EMBED_PROTOCOL_VERSION).toBe(2);
+  it('is protocol version 3', () => {
+    expect(EMBED_PROTOCOL_VERSION).toBe(3);
+  });
+
+  it('knows the v3 setTheme message', () => {
+    expect(isEmbedInboundMessage({ type: 'setTheme', theme: { mode: 'light' } })).toBeTrue();
   });
 
   it('knows the v2 hostGesture message', () => {

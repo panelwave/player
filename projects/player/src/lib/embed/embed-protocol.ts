@@ -11,13 +11,16 @@
  * `config`, `showToolbar` in `setOptions`, inbound `hostGesture`, the
  * `chapterComplete` and `autoplayChange` events, and `chapterScope` /
  * `chapterComplete` / `autoplayActive` in `pw:state`.
+ * v3 (player 1.10, backward compatible): inbound `setTheme` (live widget
+ * theme on top of the manifest's `ui.theme`, `null` clears it) and the
+ * `widgetEvent` event (content widget layers).
  *
  * Documented in docs/EMBED_PROTOCOL.md and docs/MULTI_CHAPTER_EMBED.md.
  */
-import type { PanelWaveManifest } from '../types';
+import type { PanelWaveManifest, UITheme } from '../types';
 
 /** Protocol version announced in `pw:hello`. */
-export const EMBED_PROTOCOL_VERSION = 2;
+export const EMBED_PROTOCOL_VERSION = 3;
 
 /** Live state: how many panel ids the `history` carries at most. */
 export const EMBED_HISTORY_LIMIT = 50;
@@ -69,7 +72,8 @@ export type EmbedInboundMessage =
   | { type: 'setOptions'; data: EmbedOptions }
   | { type: 'getState' }
   | { type: 'restart' }
-  | { type: 'hostGesture' };
+  | { type: 'hostGesture' }
+  | { type: 'setTheme'; theme: UITheme | null };
 
 const INBOUND_TYPES = new Set<EmbedInboundMessage['type']>([
   'config',
@@ -81,6 +85,7 @@ const INBOUND_TYPES = new Set<EmbedInboundMessage['type']>([
   'getState',
   'restart',
   'hostGesture',
+  'setTheme',
 ]);
 
 /** Snapshot posted as `pw:state`. */

@@ -1,0 +1,97 @@
+@if (visible) {
+  <div class="video-modal-overlay" tabindex="-1" (click)="onBackdropClick($event)" (keydown.escape)="$event.stopPropagation(); close.emit()">
+    <div
+      #dialog
+      class="video-modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="titleId"
+      (keydown)="onKeydown($event)">
+      <div class="video-modal-header">
+        <h2 class="video-modal-title" [id]="titleId">{{ title }}</h2>
+        <button type="button" class="icon-btn close" [attr.aria-label]="text('close')" (click)="close.emit()">
+          <pw-icon name="lucideX" />
+        </button>
+      </div>
+
+      <div #stage class="video-modal-stage" [style.aspect-ratio]="aspect">
+        <video
+          #video
+          class="video"
+          playsinline
+          preload="metadata"
+          tabindex="-1"
+          [src]="src"
+          [attr.poster]="poster || null"
+          [muted]="muted"
+          (click)="toggle()"
+          (loadedmetadata)="onMeta()"
+          (durationchange)="onMeta()"
+          (play)="onPlay()"
+          (pause)="onPause()"
+          (ended)="onEnded()"
+          (timeupdate)="onTimeUpdate()"
+          (progress)="onProgress()"
+          (waiting)="onWaiting()"
+          (playing)="onPlaying()"
+          (canplay)="onPlaying()"></video>
+        @if (buffering) {
+          <div class="spinner" role="status" [attr.aria-label]="text('loading')"></div>
+        }
+
+        <div class="controls">
+          <button
+            #playBtn
+            type="button"
+            class="icon-btn play"
+            [attr.aria-label]="playing ? text('pause') : text('play')"
+            (click)="toggle()">
+            <pw-icon [name]="playing ? 'lucidePause' : 'lucidePlay'" />
+          </button>
+
+          <div
+            #track
+            class="scrub"
+            role="slider"
+            tabindex="0"
+            [attr.aria-label]="text('seek')"
+            aria-valuemin="0"
+            [attr.aria-valuemax]="ariaMax"
+            [attr.aria-valuenow]="ariaNow"
+            [attr.aria-valuetext]="timeText"
+            (pointerdown)="onPointerDown($event)"
+            (pointermove)="onPointerMove($event)"
+            (pointerup)="onPointerUp($event)"
+            (pointercancel)="onPointerUp($event)">
+            <div class="scrub-track">
+              <div class="scrub-buffered" [style.width.%]="buffered * 100"></div>
+              <div class="scrub-progress" [style.width.%]="progress * 100"></div>
+            </div>
+            <div class="scrub-thumb" [style.left.%]="progress * 100"></div>
+          </div>
+
+          <span class="time" aria-hidden="true">{{ timeText }}</span>
+
+          <button
+            type="button"
+            class="icon-btn mute"
+            [attr.aria-label]="muted ? text('unmute') : text('mute')"
+            [attr.aria-pressed]="muted"
+            (click)="toggleMute()">
+            <pw-icon [name]="muted ? 'lucideVolumeX' : 'lucideVolume2'" />
+          </button>
+
+          @if (fullscreenAvailable) {
+            <button
+              type="button"
+              class="icon-btn fullscreen"
+              [attr.aria-label]="fullscreen ? text('exit_fullscreen') : text('fullscreen')"
+              (click)="toggleFullscreen()">
+              <pw-icon [name]="fullscreen ? 'lucideMinimize' : 'lucideMaximize'" />
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

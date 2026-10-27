@@ -1,0 +1,91 @@
+button.pw-card {
+  cursor: pointer;
+}
+
+button.pw-card:disabled {
+  cursor: default;
+}
+
+.pw-video-poster {
+  position: relative;
+  padding: 0;
+  justify-content: center;
+  background: #000;
+}
+
+.pw-video-poster.plain {
+  background: transparent;
+}
+
+.poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0) 55%);
+  pointer-events: none;
+}
+
+.badge {
+  position: relative;
+  width: 3.2em;
+  height: 3.2em;
+  font-size: 1.1em;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease;
+}
+
+.pw-video-poster:hover .badge,
+.pw-video-poster:focus-visible .badge {
+  transform: scale(1.08);
+}
+
+.caption {
+  position: absolute;
+  left: var(--pw-pad);
+  right: var(--pw-pad);
+  bottom: var(--pw-pad);
+  display: flex;
+  align-items: baseline;
+  gap: var(--pw-gap);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.caption .title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.caption .duration {
+  flex: none;
+  padding: 0.1em 0.45em;
+  border-radius: 0.3em;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pw-video-button .label {
+  flex: 1;
+  font-weight: 600;
+}
+
+.pw-video-button .duration {
+  flex: none;
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+@container pw-widget (max-width: 180px) {
+  .caption .title,
+  .pw-video-button .label {
+    display: none;
+  }
+}

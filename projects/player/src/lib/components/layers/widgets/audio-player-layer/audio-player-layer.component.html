@@ -1,0 +1,61 @@
+<div class="pw-card pw-audio" [class.plain]="plain" [class.playing]="playing" [ngStyle]="rootStyles">
+  @if (!print && src) {
+    <audio
+      #audio
+      [src]="src"
+      preload="metadata"
+      (loadedmetadata)="onLoadedMetadata()"
+      (durationchange)="onLoadedMetadata()"
+      (play)="onPlay()"
+      (pause)="onPause()"
+      (ended)="onEnded()"
+      (timeupdate)="onTimeUpdate()"
+      (waiting)="onWaiting(true)"
+      (playing)="onWaiting(false)"
+      (canplay)="onWaiting(false)"></audio>
+  }
+
+  <button
+    type="button"
+    class="pw-round-btn play"
+    [class.waiting]="waiting && playing"
+    [disabled]="print || !src"
+    [attr.aria-label]="playLabel"
+    [attr.aria-pressed]="playing"
+    (click)="toggle()">
+    <pw-icon [name]="playing ? 'lucidePause' : 'lucidePlay'" />
+  </button>
+
+  <div class="body">
+    @if (title) {
+      <div class="title pw-ellipsis">{{ title }}</div>
+    }
+    <div
+      #track
+      class="seek"
+      [class.has-wave]="showWaveform"
+      role="slider"
+      [attr.tabindex]="print ? null : 0"
+      [attr.aria-label]="title ? text('seek') + ': ' + title : text('seek')"
+      aria-valuemin="0"
+      [attr.aria-valuemax]="ariaMax"
+      [attr.aria-valuenow]="ariaNow"
+      [attr.aria-valuetext]="valueText"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
+      (keydown)="onSliderKey($event)">
+      @if (showWaveform) {
+        <canvas #wave class="wave" aria-hidden="true"></canvas>
+      } @else {
+        <div class="bar" aria-hidden="true">
+          <div class="bar-fill" [style.width.%]="progress * 100"></div>
+        </div>
+      }
+    </div>
+    @if (showTime) {
+      <div class="time pw-muted" aria-hidden="true">{{ timeText }}</div>
+    }
+  </div>
+</div>

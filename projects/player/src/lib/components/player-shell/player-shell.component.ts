@@ -107,7 +107,8 @@ import { ShareModalComponent } from '../modals/share-modal/share-modal.component
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
 import { ThemeService, type PwThemeOverride } from '../../services/theme.service';
-import { WidgetPlaybackService, type WidgetEvent } from '../../services/widget-playback.service';
+import { WidgetPlaybackService, type VideoModalRequest, type WidgetEvent } from '../../services/widget-playback.service';
+import { VideoModalComponent } from '../modals/video-modal/video-modal.component';
 
 /**
  * Factory function for TranslateLoader
@@ -171,7 +172,8 @@ export interface EntitlementAdapter {
     BranchChooserComponent,
     ShareModalComponent,
     CommentsDrawerComponent,
-    PwIconComponent
+    PwIconComponent,
+    VideoModalComponent
 ],
     templateUrl: './player-shell.component.html',
     styleUrls: ['./player-shell.component.css'],
@@ -864,6 +866,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   readonly widgetPlayback = inject(WidgetPlaybackService);
   /** Autoplay reached its advance while a widget played: advance once it stops. */
   private autoplayHeldByWidget = false;
+  /** The open video modal of a `videoPlayer` widget (schema 1.10+), or null. */
+  videoModal: VideoModalRequest | null = null;
 
   /** The player is shown in fullscreen (kept in sync with the browser, Esc included). */
   isFullscreen = false;
@@ -1097,6 +1101,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
         });
       }
     });
+    this.widgetPlayback.videoRequests$.pipe(takeUntil(this.destroy$)).subscribe((request) => {
+      this.videoModal = request;
+      this.cdr.markForCheck();
+    });
     this.widgetPlayback.active$.pipe(takeUntil(this.destroy$)).subscribe((active) => {
       if (!active && this.autoplayHeldByWidget) {
         this.autoplayHeldByWidget = false;
@@ -1106,6 +1114,25 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
         }
       }
     });
+  }
+
+  /**
+   * Live widget theme from a host (embed `setTheme`, protocol v3) — same
+   * effect as the `themeOverride` input; `null` clears it.
+   */
+  setThemeOverride(theme: PwThemeOverride | null): void {
+    this.themeOverride = theme;
+    this.themeService.setOverride(theme);
+  }
+
+  /** Close the video modal and give focus back to the widget that opened it. */
+  closeVideoModal(): void {
+    const returnFocus = this.videoModal?.returnFocus;
+    this.videoModal = null;
+    this.cdr.markForCheck();
+    if (returnFocus?.isConnected) {
+      setTimeout(() => returnFocus.focus(), 0);
+    }
   }
 
   /** Panel-view auto-advance for video panels (§4.5). */
@@ -2864,13 +2891,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
   /** Dialogs the reader can dismiss with Escape (paywall/age gate excluded). */
   private closableDialogOpen(): boolean {
-    return this.actionModalVisible || this.branchChooserVisible || this.shareVisible
+    return !!this.videoModal || this.actionModalVisible || this.branchChooserVisible || this.shareVisible
       || this.commentsVisible || this.extrasVisible || this.charactersVisible
       || this.languageModalVisible || this.settingsVisible || this.tocVisible;
   }
 
   /** Close the most recently layered dialog (nested ones first). */
   private closeTopDialog(): void {
+    if (this.videoModal) { this.closeVideoModal(); return; }
     if (this.actionModalVisible) { this.actionModalVisible = false; return; }
     if (this.branchChooserVisible) { this.branchChooserVisible = false; return; }
     if (this.shareVisible) { this.shareVisible = false; return; }
@@ -2885,7 +2913,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private static readonly DIALOG_HOSTS = new Set([
     'PW-ACTION-MODAL', 'PW-BRANCH-CHOOSER', 'PW-CHARACTER-ROSTER', 'PW-COMMENTS-DRAWER',
     'PW-EXTRAS-VIEWER', 'PW-LANGUAGE-MODAL', 'PW-SETTINGS-MODAL', 'PW-SHARE-MODAL',
-    'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY',
+    'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY', 'PW-VIDEO-MODAL',
   ]);
 
   private cameFromWidget(event: KeyboardEvent): boolean {

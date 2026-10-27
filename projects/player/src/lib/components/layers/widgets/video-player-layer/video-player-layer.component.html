@@ -1,0 +1,41 @@
+@if (usePoster) {
+  <button
+    #trigger
+    type="button"
+    class="pw-card pw-video-poster"
+    [class.plain]="plain"
+    [ngStyle]="rootStyles"
+    [disabled]="print || !available"
+    [attr.aria-label]="ariaLabel"
+    aria-haspopup="dialog"
+    (click)="open()">
+    @if (poster) {
+      <img class="poster" [src]="poster" alt="" loading="lazy" draggable="false" />
+    }
+    <span class="shade" aria-hidden="true"></span>
+    @if (!print) {
+      <span class="pw-round-btn badge" aria-hidden="true"><pw-icon name="lucidePlay" /></span>
+    }
+    @if (title || duration) {
+      <span class="caption" aria-hidden="true">
+        @if (title) {<span class="title pw-ellipsis">{{ title }}</span>}
+        @if (duration) {<span class="duration">{{ duration }}</span>}
+      </span>
+    }
+  </button>
+} @else {
+  <button
+    #trigger
+    type="button"
+    class="pw-card pw-video-button"
+    [class.plain]="plain"
+    [ngStyle]="rootStyles"
+    [disabled]="print || !available"
+    [attr.aria-label]="ariaLabel"
+    aria-haspopup="dialog"
+    (click)="open()">
+    <span class="pw-round-btn" aria-hidden="true"><pw-icon name="lucidePlay" /></span>
+    <span class="label pw-ellipsis" aria-hidden="true">{{ title }}</span>
+    @if (duration) {<span class="duration pw-muted" aria-hidden="true">{{ duration }}</span>}
+  </button>
+}

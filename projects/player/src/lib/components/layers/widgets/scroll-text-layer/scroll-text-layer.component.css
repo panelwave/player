@@ -1,0 +1,101 @@
+.pw-scroll {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.heading {
+  flex: none;
+  padding: var(--pw-pad) var(--pw-pad) calc(var(--pw-pad) / 2);
+  font-weight: 700;
+  font-size: 1.05em;
+  border-bottom: 1px solid color-mix(in srgb, var(--pw-theme-border, #4b5563) 60%, transparent);
+}
+
+.scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: calc(var(--pw-pad) / 2) var(--pw-pad) var(--pw-pad);
+  scrollbar-width: thin;
+  scrollbar-color: var(--pw-theme-accent, #f59e0b) transparent;
+  --pw-fade: 1.6em;
+}
+
+.scroller.fade-top {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--pw-fade), #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--pw-fade), #000 100%);
+}
+
+.scroller.fade-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--pw-fade)), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--pw-fade)), transparent 100%);
+}
+
+.scroller.fade-top.fade-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--pw-fade), #000 calc(100% - var(--pw-fade)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--pw-fade), #000 calc(100% - var(--pw-fade)), transparent 100%);
+}
+
+.pw-scroll.print .scroller {
+  overflow: hidden;
+}
+
+.content {
+  font-family: var(--pw-theme-font-body, Georgia, 'Times New Roman', serif);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.content :is(h2, h3, h4) {
+  margin: 0.8em 0 0.35em;
+  line-height: 1.2;
+  font-family: var(--pw-theme-font-ui, inherit);
+}
+
+.content h2 {
+  font-size: 1.3em;
+}
+
+.content h3 {
+  font-size: 1.15em;
+}
+
+.content h4 {
+  font-size: 1em;
+}
+
+.content :is(p, ul, ol) {
+  margin: 0 0 0.7em;
+}
+
+.content :is(ul, ol) {
+  padding-inline-start: 1.3em;
+}
+
+.content > :first-child {
+  margin-top: 0;
+}
+
+.content a {
+  color: var(--pw-theme-link, #93c5fd);
+}
+
+.content code {
+  padding: 0.05em 0.3em;
+  border-radius: 0.25em;
+  background: var(--pw-theme-surface-muted, #374151);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.continued {
+  flex: none;
+  padding: 0 var(--pw-pad) var(--pw-pad);
+  font-size: 0.8em;
+  font-style: italic;
+}

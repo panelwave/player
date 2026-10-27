@@ -3,8 +3,8 @@
  *
  * Escape-first: the source is HTML-escaped before any markup is produced, so
  * no input can create a tag or attribute the renderer did not write itself.
- * Supported: headings (`#`–`####`, rendered h2–h4 — the panel already has
- * the page's h1), paragraphs, `**bold**` / `__bold__`, `*italic*` / `_italic_`,
+ * Supported: headings (`#` and `##` → h2, `###` → h3, `####` → h4 — the
+ * page owns h1, and a widget's first heading must not skip a level), paragraphs, `**bold**` / `__bold__`, `*italic*` / `_italic_`,
  * `` `code` ``, bullet (`-`, `*`, `+`) and numbered (`1.`) lists, and
  * `[text](url)` links with http(s) / mailto URLs only (opened in a new tab,
  * `rel="noopener noreferrer"`). Anything else is plain text.
@@ -87,7 +87,7 @@ export function renderSafeMarkdown(source: string | null | undefined): string {
     const heading = /^\s*(#{1,4})\s+(.+)$/.exec(line);
     if (heading) {
       flush();
-      blocks.push({ type: 'h', level: Math.min(4, Math.max(2, heading[1].length + 1)), text: heading[2] });
+      blocks.push({ type: 'h', level: Math.min(4, Math.max(2, heading[1].length)), text: heading[2] });
       continue;
     }
     const bullet = /^\s*[-*+]\s+(.+)$/.exec(line);
