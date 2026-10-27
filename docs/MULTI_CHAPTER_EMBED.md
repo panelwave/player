@@ -547,10 +547,10 @@ Export (`apps/worker-export`):
 ### P5 — Docs, release, follow-ups
 
 - [ ] Docs site: `player/embed-chapters.mdx` (+ `documentation.json`), updates to inputs-outputs / standalone-package / cms publishing; squash + push
-- [ ] CMS docs: `PUBLISHING.md`, `PLAYER_EMBED.md`, `ANALYTICS.md`, `MANIFEST_MODES.md`
+- [x] CMS docs: `PUBLISHING.md`, `PLAYER_EMBED.md`, `ANALYTICS.md`, `MANIFEST_MODES.md`
 - [ ] Player release 1.9.0 via `release.yml` (no pre-bump); `@panelwave/types`/CLI untouched (no schema change)
 - [ ] Prod: migrations 111 + 112, deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
-- [ ] Analytics dashboard: "embedded" split (uses `embedHost`)
+- [x] Analytics dashboard: "embedded" split (uses `embedHost`)
 - [ ] Follow-ups (not scheduled): server-sliced one-chapter manifests; `Chapter.embed` + `chapter_complete` schema minor; multi-shell-per-app refactor; xAPI/SCORM wrapper for LMS customers (business plan Segment C)
 
 ## 9. Test plan (acceptance)
