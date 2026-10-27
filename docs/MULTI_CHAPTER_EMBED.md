@@ -525,8 +525,8 @@ API (`apps/cms-api`):
 - [x] `ChapterDAO.update()` + `PATCH /chapters/{id}` accept validated `embedSettings`; chapters GET returns it; TestBox specs
 - [x] `ManifestProfileService.dropInternalIds`: keep `chapterId` in player mode (D2); update `MANIFEST_MODES.md`; `AnalyticsService` chapter remap prefers UUID
 - [x] Tracking: accept `embedHost` in `session_start` data (ingest + aggregates in `worker-analytics`: new dimension "embedded vs reader") — migration `112_analytics_sessions_embed_host.sql` adds `analytics_agg_sessions.embed_host` (dev applied; prod pending); player: shell `trackingContext`, reader sends `{ embedHost }`; `chapterUuid` on every event (`TrackingService.setChapterUuids`)
-- [ ] `WorkArchiveService` player sidecar includes per-chapter `embedSettings` + poster URLs
-- [ ] Publish pre-flight warning: cross-chapter links are inert in chapter embeds
+- [x] `WorkArchiveService` player sidecar includes per-chapter `embedSettings` + poster URLs
+- [x] Publish pre-flight warning: cross-chapter links are inert in chapter embeds
 - [ ] `npm run test:api:chunked` (incl. `specs/integration/`) green; regenerate `API_REFERENCE.md`
 
 Frontend (`apps/cms-frontend`):
