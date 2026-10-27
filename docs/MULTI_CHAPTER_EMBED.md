@@ -542,7 +542,7 @@ Export (`apps/worker-export`):
 - [x] `panelwave.config.json.chapters` from sidecar `embedSettings`; `embed-example.html`; README.txt paragraph
 - [x] `packageHosting.ts`: optional CORS lines for `panelwave.json` + `player/*` — not needed (see above); `docs/EXPORT_PLAYER_PACKAGE.md` says so
 - [x] Jest specs; `docs/EXPORT_PLAYER_PACKAGE.md`
-- [ ] Re-vendor: `update-player-embed.ps1`, `update-player-standalone.ps1`, `update-reader-app.ps1` after the 1.9.0 player build (all three — PDF export uses the standalone copy)
+- [x] Re-vendor: `update-player-embed.ps1`, `update-player-standalone.ps1`, `update-reader-app.ps1` after the 1.9.0 player build (all three — PDF export uses the standalone copy)
 
 ### P5 — Docs, release, follow-ups
 
