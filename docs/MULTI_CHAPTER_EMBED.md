@@ -1,6 +1,9 @@
 # Multi-chapter embeds — one player instance per chapter on a host page
 
-Technical concept + implementation tracker. Status: **draft, 2026-10-27**.
+Technical concept + implementation tracker. Status: **implemented 2026-10-27** on
+`feature/multi-chapter-embed` (panelwave-player, panelwave-cms) and `docs/chapter-embeds`
+(panelwave-docs), unmerged and unpushed. Open: npm release, prod migrations 111 + 112, docs-site
+push, the optional live preview (see §8).
 Owner: player + CMS. Related: [EMBED_PROTOCOL.md](EMBED_PROTOCOL.md),
 [STANDALONE.md](STANDALONE.md), [API.md](API.md),
 `panelwave-cms/docs/PUBLISHING.md`, `panelwave-cms/docs/EXPORT_PLAYER_PACKAGE.md`.
@@ -378,7 +381,7 @@ Help link via `DOCS_PAGES` → new docs-site page (§5.6).
   table), `STANDALONE.md` (query params, `chapters` config, embed-example),
   `API.md` (`chapterScope`, `chapterComplete`, `pauseAutoplayWhenHidden`),
   README feature list, `CHANGELOG.md` 1.9.0.
-- Docs site (`panelwave-docs`): new `player/embed-chapters.mdx` (host-page
+- Docs site (`panelwave-docs`): new `guides/embed-chapters.mdx` (host-page
   recipe, attributes table, events, LMS notes), update
   `player/inputs-outputs.mdx`, `player/standalone-package.mdx`,
   `cms/publishing` (Embed chapters builder), `documentation.json`; squash
@@ -546,10 +549,10 @@ Export (`apps/worker-export`):
 
 ### P5 — Docs, release, follow-ups
 
-- [ ] Docs site: `player/embed-chapters.mdx` (+ `documentation.json`), updates to inputs-outputs / standalone-package / cms publishing; squash + push
+- [ ] Docs site: `guides/embed-chapters.mdx` (+ `documentation.json`), updates to inputs-outputs / standalone-package; squash + push — **written** on panelwave-docs branch `docs/chapter-embeds` (one commit, b825f7e); the push to `main` deploys, so it waits for your go-ahead
 - [x] CMS docs: `PUBLISHING.md`, `PLAYER_EMBED.md`, `ANALYTICS.md`, `MANIFEST_MODES.md`
-- [ ] Player release 1.9.0 via `release.yml` (no pre-bump); `@panelwave/types`/CLI untouched (no schema change)
-- [ ] Prod: migrations 111 + 112, deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
+- [ ] Player release 1.9.0 via `release.yml` (no pre-bump); `@panelwave/types`/CLI untouched (no schema change) — after merging; publishes to npm, yours to trigger
+- [ ] Prod: migrations 111 + 112 (both applied on dev), deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
 - [x] Analytics dashboard: "embedded" split (uses `embedHost`)
 - [ ] Follow-ups (not scheduled): server-sliced one-chapter manifests; `Chapter.embed` + `chapter_complete` schema minor; multi-shell-per-app refactor; xAPI/SCORM wrapper for LMS customers (business plan Segment C)
 
