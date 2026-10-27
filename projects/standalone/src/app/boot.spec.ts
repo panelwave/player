@@ -2,6 +2,7 @@ import type { PanelWaveManifest } from 'player';
 import {
   DEFAULT_CONFIG,
   chooseLocale,
+  embedParamsFromSearch,
   isManifestLike,
   localizedText,
   matchLocale,
@@ -91,6 +92,47 @@ describe('standalone boot', () => {
     expect(matchLocale('de-at', ['en-US', 'de-DE'])).toBe('de-DE');
     expect(matchLocale('fr', ['en-US', 'de-DE'])).toBeUndefined();
     expect(matchLocale(null, ['en-US'])).toBeUndefined();
+  });
+
+  describe('chapter embeds', () => {
+    it('normalizeConfig keeps a valid chapters map only', () => {
+      const config = normalizeConfig({
+        chapters: {
+          'ch-1': { autoplay: true, poster: 'assets/p1.webp' },
+          'ch-2': { autoplay: 'yes', poster: 'javascript:alert(1)' },
+          'bad key!': { autoplay: true },
+          'ch-3': 'nope',
+        },
+      });
+      expect(config.chapters).toEqual({ 'ch-1': { autoplay: true, poster: 'assets/p1.webp' }, 'ch-2': {} });
+      expect(normalizeConfig({ chapters: [] }).chapters).toBeUndefined();
+    });
+
+    it('embedParamsFromSearch reads the URL', () => {
+      expect(
+        embedParamsFromSearch('?embed=1&origin=https%3A%2F%2Fcourse.example%2Fx&chapter=ch-2&autoplay=0&toolbar=1&cover=0&spp=4', DEFAULT_CONFIG)
+      ).toEqual({
+        embed: true,
+        origin: 'https://course.example',
+        chapter: 'ch-2',
+        autoplay: false,
+        showToolbar: true,
+        showCover: false,
+        secondsPerPanel: 4,
+      });
+      expect(embedParamsFromSearch('', DEFAULT_CONFIG)).toEqual({ embed: false });
+    });
+
+    it('autoplay falls back to the chapter default of the config', () => {
+      const config = normalizeConfig({ chapters: { 'ch-2': { autoplay: true } } });
+      expect(embedParamsFromSearch('?chapter=ch-2', config).autoplay).toBeTrue();
+      expect(embedParamsFromSearch('?chapter=ch-2&autoplay=0', config).autoplay).toBeFalse();
+      expect(embedParamsFromSearch('?chapter=ch-1', config).autoplay).toBeUndefined();
+    });
+
+    it('rejects a malformed chapter and origin', () => {
+      expect(embedParamsFromSearch('?chapter=%3Cx%3E&origin=file%3A%2F%2F%2Fc', DEFAULT_CONFIG)).toEqual({ embed: false });
+    });
   });
 
   describe('chooseLocale', () => {

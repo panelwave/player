@@ -2,20 +2,24 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  OnDestroy,
   OnInit,
+  ViewChild,
   inject,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import {
+  PlayerEmbedBridge,
   PlayerShellComponent,
   locationUrl,
   parseLocationSearch,
+  type EmbedOptions,
   type PanelWaveManifest,
   type PlayerLocation,
 } from 'player';
-import { readBootConfig, type ReaderBootConfig } from './boot-config';
+import { readBootConfig, readEmbedOptions, type ReaderBootConfig } from './boot-config';
 import { forReview } from './review-rules';
 import { readRememberedLocale, rememberLocale, startLocale } from './start-locale';
 
@@ -30,6 +34,10 @@ type State = 'empty' | 'loading' | 'error' | 'ready';
  * The address bar follows the reading position (`?page=` in page view,
  * `?panel=` in panel view, nothing on the cover), so every page and panel
  * has its own URL to bookmark and share; opening such a URL starts there.
+ *
+ * Embedded (`embed`), it speaks the embed protocol with the framing page
+ * (`PlayerEmbedBridge`) and leaves the address bar alone; a `chapter` locks
+ * it to one chapter — the chapter embeds of docs/MULTI_CHAPTER_EMBED.md.
  */
 @Component({
   selector: 'pwr-root',
@@ -38,12 +46,31 @@ type State = 'empty' | 'loading' | 'error' | 'ready';
   styleUrl: './reader.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReaderComponent implements OnInit {
+export class ReaderComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly bridge = inject(PlayerEmbedBridge);
   private inFlight = false;
 
   readonly config: ReaderBootConfig = readBootConfig(window);
+  readonly embedOptions = readEmbedOptions(window);
+
+  /** Chapter the reader is locked to (chapter embeds). */
+  readonly chapterScope = this.embedOptions.chapter;
+  readonly autoplay = signal(this.embedOptions.autoplay ?? false);
+  readonly showToolbar = signal(this.embedOptions.showToolbar ?? false);
+  readonly showCover = signal(this.embedOptions.showCover ?? !this.chapterScope);
+  readonly secondsPerPanel = signal(this.embedOptions.secondsPerPanel ?? 5);
+  /** Several chapter embeds share the device: each keeps a smaller image cache. */
+  readonly imageCacheBudgetMb = this.config.embed && this.chapterScope ? 32 : undefined;
+
+  /** The shell, once mounted: the embed bridge follows it. */
+  @ViewChild(PlayerShellComponent)
+  set shellRef(shell: PlayerShellComponent | undefined) {
+    if (shell && this.bridge.connected) {
+      this.bridge.attach(shell);
+    }
+  }
   readonly state = signal<State>('loading');
   readonly manifest = signal<PanelWaveManifest | null>(null);
   readonly locale = signal('en-US');
@@ -51,7 +78,26 @@ export class ReaderComponent implements OnInit {
   readonly start = parseLocationSearch(window.location.search);
 
   ngOnInit(): void {
+    if (this.config.embed) {
+      this.bridge.connect({
+        hostOrigin: this.embedOptions.embedOrigin ?? window.location.origin,
+        handlers: { setOptions: (options) => this.applyOptions(options) },
+      });
+    }
     this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.bridge.disconnect();
+  }
+
+  /** Live options from the framing page (`setOptions` / `config`). */
+  private applyOptions(options: EmbedOptions): void {
+    if (typeof options.autoplay === 'boolean') this.autoplay.set(options.autoplay);
+    if (typeof options.showToolbar === 'boolean') this.showToolbar.set(options.showToolbar);
+    if (typeof options.showCover === 'boolean') this.showCover.set(options.showCover);
+    const seconds = Number(options.secondsPerPanel);
+    if (Number.isFinite(seconds) && seconds > 0) this.secondsPerPanel.set(seconds);
   }
 
   load(): void {

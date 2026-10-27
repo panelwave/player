@@ -1,4 +1,4 @@
-import { readBootConfig } from './boot-config';
+import { readBootConfig, readEmbedOptions } from './boot-config';
 
 function fakeWin(search: string, injected?: unknown): Window {
   return { location: { search }, __PW_READER__: injected } as unknown as Window;
@@ -75,5 +75,54 @@ describe('readBootConfig', () => {
   it('returns an empty manifestUrl when nothing is configured', () => {
     expect(readBootConfig(fakeWin(''))).toEqual({ manifestUrl: '', embed: false, mode: 'read' });
     expect(readBootConfig(fakeWin('', {})).manifestUrl).toBe('');
+  });
+});
+
+describe('readEmbedOptions', () => {
+  it('is empty without embed options', () => {
+    expect(readEmbedOptions(fakeWin('', { manifestUrl: 'i.json' }))).toEqual({});
+  });
+
+  it('reads the injected options', () => {
+    expect(
+      readEmbedOptions(
+        fakeWin('', {
+          manifestUrl: 'i.json',
+          chapter: 'ch-2',
+          autoplay: true,
+          showToolbar: false,
+          showCover: false,
+          secondsPerPanel: 4,
+          embedOrigin: 'https://course.example/lesson-1',
+        })
+      )
+    ).toEqual({
+      chapter: 'ch-2',
+      autoplay: true,
+      showToolbar: false,
+      showCover: false,
+      secondsPerPanel: 4,
+      embedOrigin: 'https://course.example',
+    });
+  });
+
+  it('falls back to the URL (production too: display options only)', () => {
+    expect(
+      readEmbedOptions(fakeWin('?chapter=7c1e0000-0000-4000-8000-000000000002&autoplay=1&toolbar=0&cover=0&spp=3&origin=https%3A%2F%2Fa.example'))
+    ).toEqual({
+      chapter: '7c1e0000-0000-4000-8000-000000000002',
+      autoplay: true,
+      showToolbar: false,
+      showCover: false,
+      secondsPerPanel: 3,
+      embedOrigin: 'https://a.example',
+    });
+  });
+
+  it('lets injected values win and drops malformed ones', () => {
+    const options = readEmbedOptions(
+      fakeWin('?chapter=url-ch&autoplay=1&origin=javascript%3Aalert(1)&spp=999', { manifestUrl: 'i.json', chapter: 'inj', autoplay: false })
+    );
+    expect(options).toEqual({ chapter: 'inj', autoplay: false });
   });
 });

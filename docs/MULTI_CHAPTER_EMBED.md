@@ -245,8 +245,11 @@ implementation instead of three).
 `autoplay`, `showToolbar`, `showCover`, `embedOrigin`, `secondsPerPanel`;
 dev query fallback accepts the same as URL params. Template binds
 `[chapterScope] [autoplay] [showToolbar] [showCover]`, starts the bridge when
-`embed` is set. Address-bar sync (`history.replaceState`) is **off** in embed
-mode (the iframe URL is the host's business).
+`embed` is set. Address-bar sync (`history.replaceState`) stays on: it only
+changes the iframe's own URL (never the host page's), so a reload inside the
+iframe resumes the position, as for the existing whole-work embed. The embed
+options are also read from the reader's own URL (`?chapter=&autoplay=&toolbar=&cover=&spp=&origin=`)
+when the server does not inject them — display options only, safe in production.
 
 **F. Standalone app (`projects/standalone`).** Query params `chapter`,
 `autoplay`, `embed`, `origin`, `toolbar`, `cover`; `normalizeConfig` accepts
@@ -482,13 +485,13 @@ be worked in parallel by repo: P1 (player) is a prerequisite for P2–P4.
 
 ### P2 — Embed bridge v2 in the library + apps
 
-- [ ] Move bridge types/helpers to `projects/player/src/lib/embed/`, export `PlayerEmbedBridge` + message types from `public-api.ts`
-- [ ] Protocol v2: `config.chapterScope`/`showToolbar`, `setOptions.showToolbar`, `pw:state` additions, `hostGesture`, `pw:hello protocol:2`
-- [ ] Demo app uses the library bridge (CMS preview unchanged in behaviour; `app.component.spec.ts` "embed bridge" green)
-- [ ] Reader app: read `chapter/autoplay/showToolbar/showCover/embedOrigin/secondsPerPanel` from `__PW_READER__` (+ dev query), bind inputs, start bridge when `embed`, disable address-bar sync in embed mode
-- [ ] Standalone app: query params `chapter/autoplay/embed/origin/toolbar/cover`, `config.chapters` map, bridge on http(s) only
-- [ ] `EMBED_PROTOCOL.md` → v2; `STANDALONE.md` updated
-- [ ] Specs: reader boot-config, standalone `boot.ts` (`normalizeConfig` with `chapters`), bridge class
+- [x] Move bridge types/helpers to `projects/player/src/lib/embed/`, export `PlayerEmbedBridge` + message types from `public-api.ts`
+- [x] Protocol v2: `config.chapterScope`/`showToolbar`, `setOptions.showToolbar`, `pw:state` additions, `hostGesture`, `pw:hello protocol:2`
+- [x] Demo app uses the library bridge (CMS preview unchanged in behaviour; `app.component.spec.ts` "embed bridge" green)
+- [x] Reader app: read `chapter/autoplay/showToolbar/showCover/embedOrigin/secondsPerPanel` from `__PW_READER__` (+ URL fallback), bind inputs, start bridge when `embed` (address-bar sync stays: iframe-local)
+- [x] Standalone app: query params `chapter/autoplay/embed/origin/toolbar/cover`, `config.chapters` map, bridge on http(s) only
+- [x] `EMBED_PROTOCOL.md` → v2; `STANDALONE.md` updated
+- [x] Specs: reader boot-config, standalone `boot.ts` (`normalizeConfig` with `chapters`), bridge class
 
 ### P3 — Embed loader (`projects/embed-loader`)
 

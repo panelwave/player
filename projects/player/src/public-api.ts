@@ -73,6 +73,9 @@ export { PluginHostService } from './lib/services/plugin-host.service';
 export { ExportService } from './lib/services/export.service';
 export { TranslationService } from './lib/services/translation.service';
 
+// Embed bridge (postMessage protocol for iframe embeds: CMS preview, chapter embeds)
+export * from './lib/embed';
+
 // Legacy
 export * from './lib/player.service';
 

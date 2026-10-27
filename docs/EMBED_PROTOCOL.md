@@ -1,18 +1,43 @@
-# Embed bridge protocol v1
+# Embed bridge protocol v2
 
-The demo app (`projects/demo`) doubles as the **CMS preview embed**: the CMS
-serves its build same-origin at `/player/index.html` and drives it from an
-iframe through `postMessage`. Protocol v1 (player 1.7) makes that bridge
-two-way and stops restarting the story on every control change.
+Three player pages speak this `postMessage` protocol with the page that
+frames them:
 
-Source: `projects/demo/src/app/embed-bridge.ts` (types, helpers) and
-`app.component.ts` (handlers). Tests: `app.component.spec.ts` → "embed bridge".
+- the **demo app** (`projects/demo`) — the **CMS preview embed**: the CMS
+  serves its build same-origin at `/player/index.html` and drives it,
+  manifest included, through `config`;
+- the **reader app** (`projects/reader`, read.panelwave.org) and
+- the **standalone page** (`projects/standalone`, self-hosted packages) —
+  the **chapter embeds** of [MULTI_CHAPTER_EMBED.md](MULTI_CHAPTER_EMBED.md):
+  they own their manifest; the host (normally the embed loader
+  `panelwave-embed.js`) controls options, autoplay and navigation.
+
+Protocol v1 (player 1.7) made the bridge two-way and stopped restarting the
+story on every control change. **v2 (player 1.9) is backward compatible**:
+`config.chapterScope` / `showToolbar`, `setOptions.showToolbar`, the inbound
+`hostGesture`, the `chapterComplete` and `autoplayChange` events and three
+`pw:state` fields. `pw:hello` reports `protocol: 2`.
+
+Source (library, exported from `@panelwave/player`):
+`projects/player/src/lib/embed/` — `embed-protocol.ts` (types, helpers),
+`embed-state.service.ts` (the `pw:state` snapshot), `player-embed-bridge.ts`
+(`PlayerEmbedBridge`, used by the reader and standalone apps). The demo keeps
+its CMS-preview handlers (manifest restarts, variable diffing, entitlement
+simulator) in `app.component.ts`. Tests: `player-embed-bridge.spec.ts`,
+`embed-protocol.spec.ts`, demo `app.component.spec.ts` → "embed bridge".
 
 ## Loading the iframe
 
 ```
-/player/index.html?embed=1&origin=<encodeURIComponent(parent origin)>
+/player/index.html?embed=1&origin=<encodeURIComponent(parent origin)>                (CMS preview)
+https://read.panelwave.org/<team>/<work>?embed=1&origin=…&chapter=<id|uuid>&autoplay=0  (chapter embed, hosted)
+./course/index.html?embed=1&origin=…&chapter=<id|uuid>&autoplay=0                    (chapter embed, package)
 ```
+
+Chapter-embed URL parameters (reader and standalone): `chapter` (manifest
+chapter id or CMS chapter uuid → `chapterScope`), `autoplay`, `toolbar`,
+`cover` (`1`/`0`), `spp` (seconds per panel, 0.5–120), `origin`. The
+standalone page speaks the bridge only over http(s), never from `file://`.
 
 - `embed=1` (or simply being framed) puts the app in embed mode: no demo
   chrome, no toolbar, no bundled sample — it waits for `config`.
@@ -28,7 +53,7 @@ Source: `projects/demo/src/app/embed-bridge.ts` (types, helpers) and
 |---------|------|
 | `{ type: 'pw:hello', protocol: 1 }` | On load, before any config. Hosts that get it know the bridge speaks v1. |
 | `{ type: 'pw:ready' }` | The shell's `ready` output: the work is loaded and positioned. |
-| `{ type: 'pw:event', name, data }` | Every shell output: `ready`, `panelChange`, `chapterChange`, `locationChange`, `variableChange`, `localeChange`, `navigationAttempt`, `cameraChange`, `paywallAction`, `ageVerified`, `likeChange`, `bookmarkChange`, `error`. |
+| `{ type: 'pw:event', name, data }` | Every shell output: `ready`, `panelChange`, `chapterChange`, `chapterComplete` (v2), `autoplayChange` (v2), `locationChange`, `variableChange`, `localeChange`, `navigationAttempt`, `cameraChange`, `paywallAction`, `ageVerified`, `likeChange`, `bookmarkChange`, `error`. |
 | `{ type: 'pw:state', data }` | In reply to `getState`, and ~100 ms (debounced) after `ready`, every navigation/event above (except `cameraChange`), every inbound change and every error. |
 
 Event payloads are the shell's, except where the shell emits whole manifest
@@ -51,7 +76,10 @@ objects: `panelChange` → `{ panelId, previousPanelId, chapterId }`,
   paywallGate: PaywallGate | null,  // the gate the overlay shows, else null
   preloadStatus: { queued, loading, loaded, maxConcurrent } | null,
   errors: string[],                 // last 20 since the last (re)start
-  loadTimeMs: number | null         // config received → ready
+  loadTimeMs: number | null,        // config received → ready
+  chapterScope: string | null,      // v2: manifest id of the chapter the player is locked to
+  chapterComplete: boolean,         // v2: the current chapter's end was reached on this visit
+  autoplayActive: boolean           // v2: autoplay on and running (not suspended off screen)
 }
 ```
 
@@ -70,7 +98,8 @@ unused copy) and `preloadStatus` from `PreloadService.getQueueStatus()`.
 | `{ type: 'setEntitlements', entitlements }` | Tokens as in `config` (`basic`/`premium`/`pro`, `purchased:<productId>`, `age-verified`). The shell re-evaluates every gate live: a visible paywall closes when the reader now passes, locked placeholders unlock, extras re-lock. No restart. |
 | `{ type: 'setOptions', data }` | Live shell inputs, see the table below. |
 | `{ type: 'getState' }` | Replies with `pw:state` immediately. |
-| `{ type: 'restart' }` | Same work from the start with the current config (locale, entitlements, options, last `variables`). |
+| `{ type: 'restart' }` | Same work from the start with the current config (locale, entitlements, options, last `variables`). Reader / standalone: `reload()` of the shell. |
+| `{ type: 'hostGesture' }` | v2: the reader interacted with the host page. Marks the player's `UserGestureService` as interacted, so sound the browser's autoplay policy held back is retried (the iframe needs `allow="autoplay"`). |
 
 ### `config`
 
@@ -78,7 +107,8 @@ unused copy) and `preloadStatus` from `PreloadService.getQueueStatus()`.
 { type: 'config', data: {
   manifest?, locale?, variables?, entitlements?,
   autoplay?, muted?, viewMode?, pageFormat?, secondsPerPanel?, showCover?, reducedMotion?,
-  initialPanelId?, initialViewMode?, restart?
+  initialPanelId?, initialViewMode?, restart?,
+  chapterScope?, showToolbar?          // v2
 } }
 ```
 
@@ -104,6 +134,8 @@ only updates the settings (and the seed for the first load).
 | `reducedMotion` | `reducedMotion` | live |
 | `showCover` | `showCover` | read at (re)start; `false` additionally drops a cover that is showing. `true` shows again only after `restart`. |
 | `initialPanelId`, `initialViewMode` | `initialPanelId`, `initialViewMode` | restart only (`config` keys, not `setOptions`) |
+| `chapterScope` (v2) | `chapterScope` | restart only (`config` key). Reader / standalone take it from the URL. |
+| `showToolbar` (v2) | `showToolbar` | live |
 
 Note: `autoplay` and `viewMode` are input bindings; if the reader changed
 them inside the player (keyboard shortcut), re-posting the same value is a

@@ -22,6 +22,20 @@ semver. The reader-facing product changelog lives on the docs site
 - `imageCacheBudgetMb` input for the decoded-image cache budget.
 - `Chapter.chapterId` (the schema's optional CMS uuid) in the player types.
 - Demo: `?chapter=` sets `chapterScope`.
+- `autoplayChange` output: autoplay switched on or off (toolbar, input, or by
+  itself at the end of the work / chapter scope).
+- **Embed bridge in the library, protocol v2** (`PlayerEmbedBridge`,
+  `EmbedStateService`, protocol types and helpers, exported from the package).
+  v2 adds `config.chapterScope` / `showToolbar`, `setOptions.showToolbar`,
+  the inbound `hostGesture`, the `chapterComplete` / `autoplayChange` events
+  and `chapterScope` / `chapterComplete` / `autoplayActive` in `pw:state`;
+  v1 hosts keep working. The demo uses the library's types and state builder.
+- Reader app: chapter embeds — `chapter`, `autoplay`, `showToolbar`,
+  `showCover`, `secondsPerPanel`, `embedOrigin` from `__PW_READER__` or the
+  page URL; with `embed` it speaks the bridge.
+- Standalone page: `?chapter=&autoplay=&toolbar=&cover=&spp=`, a `chapters`
+  map of per-chapter defaults in the config, and the bridge with `?embed=1`
+  on http(s).
 - `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
   stay keyed by id in `chapter.panels`; read the id from that key or from
   `panelChange`'s `panelId`.

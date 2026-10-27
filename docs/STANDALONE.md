@@ -47,6 +47,7 @@ Config (`PANELWAVE_CONFIG` / `panelwave.config.json`), all optional:
 | `pageFormat` | chosen by screen size | Page format to show, e.g. `a4-portrait` (used when the work has pages in it) |
 | `viewMode` | page view when the work has pages | Start in `page` or `panel` view |
 | `reducedMotion` | `false` (or the OS setting) | Hold animations at their end state, no autoplay |
+| `chapters` | — | Per-chapter embed defaults `{ autoplay?, poster? }`, keyed by chapter id or uuid (see below) |
 | `print` | `false` | Static print render: implies no cover, no toolbar, page view and reduced motion, and adds the class `pw-print` to `<html>` for a print stylesheet. The CMS PDF export prints every page this way. |
 
 Start language, first match wins: `?locale=` (or `?lang=`) in the URL, the
@@ -55,6 +56,25 @@ config's `locale`, `meta.default_locale`. Matching accepts the language alone
 
 Start page: `?page=<page id>` (a manifest page id such as `pg-A3`) opens that
 page in page view, without the cover.
+
+### Chapter pages and chapter embeds
+
+`?chapter=<chapter id or CMS chapter uuid>` locks the page to that chapter
+(the shell's `chapterScope`): it starts at the chapter, never leaves it and
+skips the work's cover unless `?cover=1`. More URL parameters: `autoplay`,
+`toolbar`, `cover` (`1`/`0`), `spp` (seconds per panel). With
+`?embed=1&origin=<host origin>` on http(s) the page also speaks the embed
+protocol ([EMBED_PROTOCOL.md](EMBED_PROTOCOL.md)) — that is how the embed
+loader `player/panelwave-embed.js` puts one chapter per iframe on a course
+page ([MULTI_CHAPTER_EMBED.md](MULTI_CHAPTER_EMBED.md)). From `file://` the
+bridge stays off.
+
+The config may carry per-chapter defaults (the CMS export writes them from
+the chapters' embed settings); the URL wins:
+
+```json
+{ "chapters": { "ch-2": { "autoplay": true, "poster": "assets/posters/ch-2.webp" } } }
+```
 
 The page title is whatever `index.html` says; if it still carries the
 placeholder `PanelWave`, the tab is named after `meta.title`.

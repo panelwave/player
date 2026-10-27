@@ -5,11 +5,58 @@ import {
   manifestFingerprint,
   pickLocalized,
   sameVariableValue,
-} from './embed-bridge';
+  normalizeOrigin,
+  parseChapterRef,
+  parseEmbedFlag,
+  parseSecondsPerPanel,
+} from './embed-protocol';
 
 describe('embed bridge protocol helpers', () => {
-  it('is protocol version 1', () => {
-    expect(EMBED_PROTOCOL_VERSION).toBe(1);
+  it('is protocol version 2', () => {
+    expect(EMBED_PROTOCOL_VERSION).toBe(2);
+  });
+
+  it('knows the v2 hostGesture message', () => {
+    expect(isEmbedInboundMessage({ type: 'hostGesture' })).toBeTrue();
+  });
+
+  describe('normalizeOrigin', () => {
+    it('keeps http(s) origins only', () => {
+      expect(normalizeOrigin('https://a.example/x?y=1')).toBe('https://a.example');
+      expect(normalizeOrigin('http://localhost:4200')).toBe('http://localhost:4200');
+      expect(normalizeOrigin('file:///c/x.html')).toBeNull();
+      expect(normalizeOrigin('javascript:alert(1)')).toBeNull();
+      expect(normalizeOrigin('nonsense')).toBeNull();
+      expect(normalizeOrigin(null)).toBeNull();
+    });
+  });
+
+  describe('URL parameter parsers', () => {
+    it('reads flags', () => {
+      expect(parseEmbedFlag('1')).toBeTrue();
+      expect(parseEmbedFlag('true')).toBeTrue();
+      expect(parseEmbedFlag('0')).toBeFalse();
+      expect(parseEmbedFlag('false')).toBeFalse();
+      expect(parseEmbedFlag('maybe')).toBeUndefined();
+      expect(parseEmbedFlag(null)).toBeUndefined();
+    });
+
+    it('reads chapter references', () => {
+      expect(parseChapterRef('ch-2')).toBe('ch-2');
+      expect(parseChapterRef('7c1e0000-0000-4000-8000-000000000002')).toBe('7c1e0000-0000-4000-8000-000000000002');
+      expect(parseChapterRef('<script>')).toBeUndefined();
+      expect(parseChapterRef('')).toBeUndefined();
+      expect(parseChapterRef(3)).toBeUndefined();
+    });
+
+    it('reads seconds per panel within 0.5–120', () => {
+      expect(parseSecondsPerPanel('4')).toBe(4);
+      expect(parseSecondsPerPanel(0.5)).toBe(0.5);
+      expect(parseSecondsPerPanel('0.1')).toBeUndefined();
+      expect(parseSecondsPerPanel('500')).toBeUndefined();
+      expect(parseSecondsPerPanel('x')).toBeUndefined();
+      expect(parseSecondsPerPanel('')).toBeUndefined();
+    });
   });
 
   describe('hostOriginFromSearch', () => {

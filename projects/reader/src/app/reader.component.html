@@ -6,7 +6,12 @@
       [locale]="locale()"
       [initialPageId]="start.pageId"
       [initialPanelId]="start.panelId"
-      [showToolbar]="false"
+      [chapterScope]="chapterScope"
+      [autoplay]="autoplay()"
+      [secondsPerPanel]="secondsPerPanel()"
+      [showCover]="showCover()"
+      [imageCacheBudgetMb]="imageCacheBudgetMb"
+      [showToolbar]="showToolbar()"
       (locationChange)="onLocationChange($event)"
       (localeChange)="onLocaleChange($event)" />
   }

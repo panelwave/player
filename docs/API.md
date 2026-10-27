@@ -60,6 +60,7 @@ Inputs may change after init: `manifest` / `manifestUrl` reload the work
 | `panelChange` | `PlayerPanelChangeEvent`: `{ panel: Panel; chapter: Chapter; panelId: string; previousPanelId?: string }` | The current panel changed. `panelId` is the panel's key in `chapter.panels` (`Panel.id` is optional in the format, so don't read it from `panel`); `previousPanelId` is the panel before it, possibly in the previous chapter, and unset for the first panel after a (re)load. Fires once per change, not for a navigation the paywall or age gate blocks. |
 | `chapterChange` | `Chapter` | The current chapter changed. |
 | `navigationAttempt` | `PlayerNavigationAttempt`: `{ direction: 'next' \| 'previous' \| 'panel'; target?: string; blocked?: 'outside-scope' }` | Before a navigation is resolved (also when it is blocked). `blocked` is set when the target lies outside the `chapterScope`. |
+| `autoplayChange` | `boolean` | Autoplay was switched on or off — the reader's toolbar, the `autoplay` input, or by itself at the end of the work (with `chapterScope`: the chapter). Not emitted for an off-screen suspension. |
 | `chapterComplete` | `PlayerChapterCompleteEvent`: `{ chapterId, panelId, isLastChapter }` | The reader reached the end of a chapter: an end panel (panel / canvas view) or the chapter's last page on their path (page view). Once per chapter visit; entering another chapter re-arms it. |
 | `localeChange` | `LocaleCode` | The reader switched the locale. |
 | `variableChange` | `{ key: string; value: unknown }` | A variable value changed. |
@@ -102,6 +103,22 @@ handler. To show several chapters of a work on one page, give each its own
 iframe (the reader or standalone page with `?embed=1&chapter=…`) — the
 embed loader does exactly that; see
 [MULTI_CHAPTER_EMBED.md](MULTI_CHAPTER_EMBED.md).
+
+## Embed bridge
+
+`PlayerEmbedBridge` (with `EmbedStateService` and the protocol types /
+helpers of `embed-protocol.ts`) is the player side of the iframe
+`postMessage` protocol — see [EMBED_PROTOCOL.md](EMBED_PROTOCOL.md).
+
+```ts
+const bridge = inject(PlayerEmbedBridge);
+bridge.connect({
+  hostOrigin: 'https://course.example',              // the only origin it talks to
+  handlers: { setOptions: (o) => { /* update the inputs you bind */ } },
+});
+bridge.attach(shell);                                 // once the shell exists
+bridge.disconnect();                                  // on destroy
+```
 
 ## Other components
 

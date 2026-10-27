@@ -1,13 +1,12 @@
 import { Component, OnDestroy, OnInit, inject, viewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
-  FlowEngineService,
+  EmbedStateService,
   ManifestService,
   PlayerShellComponent,
-  PlayerStateService,
-  PreloadService,
-  VariableStoreService,
+  UserGestureService,
   locationUrl,
+  parseChapterRef,
   parseLocationSearch,
 } from 'player';
 import { DevToolsComponent, type DevToolsEvent } from './dev-tools/dev-tools.component';
@@ -15,12 +14,10 @@ import type { Chapter, EntitlementSnapshot, PanelWaveManifest, PlayerLocation, P
 import { snapshotFromEntitlements } from './entitlements';
 import {
   EMBED_ERROR_LIMIT,
-  EMBED_HISTORY_LIMIT,
   EMBED_PROTOCOL_VERSION,
   hostOriginFromSearch,
   isEmbedInboundMessage,
   manifestFingerprint,
-  pickLocalized,
   sameVariableValue,
   type EmbedConfigData,
   type EmbedInboundMessage,
@@ -72,8 +69,11 @@ export class AppComponent implements OnInit, OnDestroy {
   /** Panel to open at: the embed config's `initialPanelId`, else `?panel=`. */
   initialPanelId?: string = this.start.panelId;
 
-  /** Chapter embed: play only this chapter (`?chapter=<id or uuid>`). */
-  chapterScope?: string = new URLSearchParams(window.location.search).get('chapter') ?? undefined;
+  /** Chapter embed: play only this chapter (`?chapter=<id or uuid>`, or the embed config's `chapterScope`). */
+  chapterScope?: string = parseChapterRef(new URLSearchParams(window.location.search).get('chapter'));
+
+  /** Toolbar in embed mode (protocol v2 `showToolbar`); the demo itself always shows it. */
+  embedShowToolbar = false;
 
   /**
    * Dev/testing hook: `?deny=<panelId>[,<panelId>…]` installs an
@@ -133,11 +133,9 @@ export class AppComponent implements OnInit, OnDestroy {
   private stateTimer: number | null = null;
   private loadStartedAt: number | null = null;
 
-  private readonly playerState = inject(PlayerStateService);
-  private readonly variableStore = inject(VariableStoreService);
-  private readonly flowEngine = inject(FlowEngineService);
   private readonly manifestService = inject(ManifestService);
-  private readonly preloadService = inject(PreloadService);
+  private readonly embedState = inject(EmbedStateService);
+  private readonly gesture = inject(UserGestureService);
 
   private readonly onEmbedMessage = (event: MessageEvent): void => {
     if (event.origin !== this.hostOrigin) {
@@ -317,6 +315,9 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'restart':
         this.restart();
         break;
+      case 'hostGesture':
+        this.gesture.markInteracted();
+        break;
     }
   }
 
@@ -341,6 +342,10 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     if (data.initialViewMode === 'page' || data.initialViewMode === 'panel') {
       this.initialViewMode = data.initialViewMode;
+    }
+    if ('chapterScope' in data) {
+      // Read by the shell at (re)start, like initialPanelId.
+      this.chapterScope = parseChapterRef(data.chapterScope);
     }
 
     const variables = data.variables && typeof data.variables === 'object' ? data.variables : undefined;
@@ -411,6 +416,9 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     if ('reducedMotion' in options) {
       this.reducedMotion = options.reducedMotion === true;
+    }
+    if ('showToolbar' in options) {
+      this.embedShowToolbar = options.showToolbar === true;
     }
     if ('showCover' in options) {
       this.showCover = options.showCover !== false;
@@ -533,34 +541,11 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** The live state snapshot (`pw:state`). */
   buildState(): EmbedStateSnapshot {
-    const shell = this.shell();
-    const chapter: Chapter | undefined = shell?.currentChapter;
-    const chapterId = chapter?.id ?? null;
-    const pageId = shell?.currentPage?.id ?? null;
-    const panelId = shell?.getCurrentPanelId() ?? null;
-    const locale = this.playerState.getLocale();
-    const nextPanels =
-      chapter?.graph && panelId
-        ? this.flowEngine.getPossibleNextPanels(chapter.graph, panelId).map((id) => {
-            const title = pickLocalized(this.manifestService.getPanel(id)?.panel.title, locale);
-            return title ? { panelId: id, title } : { panelId: id };
-          })
-        : [];
-    return {
-      chapterId,
-      pageId,
-      panelId,
-      viewMode: shell ? (shell.coverVisible ? 'cover' : shell.viewMode) : null,
-      locale,
+    return this.embedState.build(this.shell(), {
       entitlements: this.entitlementTokens,
-      variables: this.variableStore.createContext(chapterId ?? undefined, pageId ?? undefined),
-      history: (shell?.visitedPanelIds ?? []).slice(-EMBED_HISTORY_LIMIT),
-      nextPanels,
-      paywallGate: shell?.paywallVisible ? shell.paywallGate : null,
-      preloadStatus: shell ? this.preloadService.getQueueStatus() : null,
-      errors: [...this.bridgeErrors],
+      errors: this.bridgeErrors,
       loadTimeMs: this.loadMs,
-    };
+    });
   }
 
   /** Forward a shell output to the host as `pw:event`. */

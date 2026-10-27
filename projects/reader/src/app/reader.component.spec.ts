@@ -244,6 +244,42 @@ describe('ReaderComponent', () => {
     });
   });
 
+  describe('chapter embed', () => {
+    it('binds the embed options to the shell', () => {
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: true, chapter: 'c', autoplay: false, showToolbar: true });
+      http.expectOne('https://x/m.json').flush(validManifest());
+      fixture.detectChanges();
+      const shell = shellOf(fixture);
+      expect(shell.chapterScope).toBe('c');
+      expect(shell.showToolbar).toBeTrue();
+      expect(shell.showCover).toBeFalse();
+      expect(shell.autoplay).toBeFalse();
+      expect(shell.imageCacheBudgetMb).toBe(32);
+    });
+
+    it('applies setOptions from the framing page', async () => {
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: true, chapter: 'c', embedOrigin: window.location.origin });
+      http.expectOne('https://x/m.json').flush(validManifest());
+      fixture.detectChanges();
+      window.dispatchEvent(
+        new MessageEvent('message', { origin: window.location.origin, data: { type: 'setOptions', data: { autoplay: true } } })
+      );
+      fixture.detectChanges();
+      expect(fixture.componentInstance.autoplay()).toBeTrue();
+      expect(shellOf(fixture).autoplay).toBeTrue();
+    });
+
+    it('keeps the whole work and the cover without a chapter', () => {
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: true });
+      http.expectOne('https://x/m.json').flush(validManifest());
+      fixture.detectChanges();
+      const shell = shellOf(fixture);
+      expect(shell.chapterScope).toBeUndefined();
+      expect(shell.showCover).toBeTrue();
+      expect(shell.imageCacheBudgetMb).toBeUndefined();
+    });
+  });
+
   it('shows "Nothing to read here." without a manifest URL', () => {
     const fixture = setup(undefined);
     expect(fixture.nativeElement.textContent).toContain('Nothing to read here.');

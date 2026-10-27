@@ -456,6 +456,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   @Output() chapterComplete = new EventEmitter<PlayerChapterCompleteEvent>();
 
   /**
+   * Autoplay was switched on or off — by the reader's toolbar, the
+   * `autoplay` input, or by itself at the end of the work (chapter scope:
+   * the chapter). Not emitted for an off-screen suspension.
+   */
+  @Output() autoplayChange = new EventEmitter<boolean>();
+
+  /**
    * Camera moved in canvas view (throttled).
    */
   @Output() cameraChange = new EventEmitter<CameraState>();
@@ -2315,6 +2322,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
   onToggleAutoplay(): void {
     this.autoplayEnabled = !this.autoplayEnabled;
+    this.autoplayChange.emit(this.autoplayEnabled);
 
     if (this.autoplayEnabled) {
       this.startAutoplay();
@@ -2945,6 +2953,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (this.currentPanel === panelBefore && this.currentPage === pageBefore && this.atEndOfWork()) {
       this.autoplayEnabled = false;
       this.stopAutoplay();
+      this.autoplayChange.emit(false);
     }
   }
 
@@ -3343,6 +3352,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   /** Cover entry of the ToC / thumbnail strip: none in a chapter embed without cover. */
   get coverEntryThumbUrl(): string {
     return this.scopedChapterId && !this.showCover ? '' : this.coverThumbUrl;
+  }
+
+  /** The current chapter's end was reached on this visit (`chapterComplete` fired). */
+  get chapterCompleted(): boolean {
+    return !!this.currentChapter && this.completedChapterId === this.currentChapter.id;
   }
 
   /** Autoplay is on and its timers run (not suspended off screen). */

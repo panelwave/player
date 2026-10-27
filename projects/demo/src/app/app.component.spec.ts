@@ -232,7 +232,7 @@ describe('AppComponent embed bridge (protocol v1)', () => {
   }
 
   it('greets the host on load, only at the host origin', () => {
-    expect(host.postMessage).toHaveBeenCalledWith({ type: 'pw:hello', protocol: 1 }, ORIGIN);
+    expect(host.postMessage).toHaveBeenCalledWith({ type: 'pw:hello', protocol: 2 }, ORIGIN);
     expect(app.hostOrigin).toBe(ORIGIN);
     expect(app.embedMode).toBeTrue();
   });
