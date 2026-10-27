@@ -552,7 +552,7 @@ Export (`apps/worker-export`):
 - [ ] Docs site: `guides/embed-chapters.mdx` (+ `documentation.json`), updates to inputs-outputs / standalone-package; squash + push — **written** on panelwave-docs branch `docs/chapter-embeds` (one commit, b825f7e); the push to `main` deploys, so it waits for your go-ahead
 - [x] CMS docs: `PUBLISHING.md`, `PLAYER_EMBED.md`, `ANALYTICS.md`, `MANIFEST_MODES.md`
 - [ ] Player release 1.9.0 via `release.yml` (no pre-bump); `@panelwave/types`/CLI untouched (no schema change) — after merging; publishes to npm, yours to trigger
-- [ ] Prod: migrations 111 + 112 (both applied on dev), deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
+- [ ] Prod: migrations 111 + 112 (**applied on prod 2026-10-27**, ledger 104 / 0 pending, verified on Node A + replica; backup `/tmp/pw-migrate/panelwave-20261027-145616-pre-111-112.dump`), deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
 - [x] Analytics dashboard: "embedded" split (uses `embedHost`)
 - [ ] Follow-ups (not scheduled): server-sliced one-chapter manifests; `Chapter.embed` + `chapter_complete` schema minor; multi-shell-per-app refactor; xAPI/SCORM wrapper for LMS customers (business plan Segment C)
 
