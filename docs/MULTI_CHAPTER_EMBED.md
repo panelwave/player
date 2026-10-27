@@ -530,12 +530,12 @@ API (`apps/cms-api`):
 - [x] `npm run test:api:chunked` (incl. `specs/integration/`) green; regenerate `API_REFERENCE.md`
 
 Frontend (`apps/cms-frontend`):
-- [ ] `Chapter` model + `api-client.service.ts` gain `embedSettings`
-- [ ] `chapter-embed-builder` component in Publishing tab (source selector, chapter table with Autoplay toggle + poster, page options, snippet output, copy, download example page)
-- [ ] Hosted mode gated on a current Public release (reuse `reader-links-panel` state)
-- [ ] Help link (`DOCS_PAGES`) to the new docs page
-- [ ] Unit specs (snippet generation is a pure function → test it exhaustively); Playwright smoke for the builder
-- [ ] Optional: live preview via `srcdoc` in the preview device frame
+- [x] `Chapter` model + `api-client.service.ts` gain `embedSettings` (`updateChapter` already passes any body)
+- [x] `chapter-embed-builder` component in Publishing tab (source selector, chapter table with Autoplay toggle + poster, page options, snippet output, copy, download example page)
+- [x] Hosted mode gated on a current Public release (reuse `reader-links-panel` state) — hosted embeds carry no poster (published asset URLs are presigned and expire); posters are used by the self-hosted package. Follow-up: a public poster route on the reader
+- [x] Help link (`DOCS_PAGES`) to the new docs page (`guides/embed-chapters` — help links must live under `cms/` or `guides/`)
+- [x] Unit specs (snippet generation is a pure function → test it exhaustively); Playwright smoke for the builder
+- [ ] Optional: live preview via `srcdoc` in the preview device frame — **not done** (2026-10-27): the "Download example page" covers trying it; a `srcdoc` frame has an opaque origin, so the bridge would be off
 
 Export (`apps/worker-export`):
 - [ ] `PlayerPackageOptions.includeEmbedExample` / `allowCrossOriginEmbed`; wizard options + presets
