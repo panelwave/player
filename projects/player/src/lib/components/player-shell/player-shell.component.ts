@@ -106,6 +106,8 @@ import { branchVisibility, buildBranchGraph, type BranchGraph } from '../../util
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
+import { ThemeService, type PwThemeOverride } from '../../services/theme.service';
+import { WidgetPlaybackService, type WidgetEvent } from '../../services/widget-playback.service';
 
 /**
  * Factory function for TranslateLoader
@@ -151,7 +153,7 @@ export interface EntitlementAdapter {
  */
 @Component({
     selector: 'pw-player-shell',
-    providers: [CanvasCameraService],
+    providers: [CanvasCameraService, ThemeService, WidgetPlaybackService],
     imports: [
     TranslatePipe,
     ViewportComponent,
@@ -398,6 +400,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    */
   @Input() trackingContext?: Record<string, string | number | boolean>;
 
+  /**
+   * Host-side widget theme on top of the manifest's `ui.theme` (schema
+   * 1.10+), e.g. a live theme preview in an authoring tool. Fields set here
+   * win; the manifest is not changed. Applied live.
+   */
+  @Input() themeOverride?: PwThemeOverride | null;
+
   /** Manifest id of the chapter `chapterScope` resolved to (set on load). */
   scopedChapterId?: string;
 
@@ -468,6 +477,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    * the chapter). Not emitted for an off-screen suspension.
    */
   @Output() autoplayChange = new EventEmitter<boolean>();
+
+  /**
+   * A reader acted on a content widget layer (schema 1.10+): `download`,
+   * `play` / `pause` / `ended` (audio player, video modal), `open` / `close`
+   * (video modal, iframe shown).
+   */
+  @Output() widgetEvent = new EventEmitter<WidgetEvent>();
 
   /**
    * Camera moved in canvas view (throttled).
@@ -844,6 +860,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private readonly preloadService = inject(PreloadService);
   private readonly imageCache = inject(ImageCacheService);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly themeService = inject(ThemeService);
+  readonly widgetPlayback = inject(WidgetPlaybackService);
+  /** Autoplay reached its advance while a widget played: advance once it stops. */
+  private autoplayHeldByWidget = false;
 
   /** The player is shown in fullscreen (kept in sync with the browser, Esc included). */
   isFullscreen = false;
@@ -863,8 +883,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   ngOnInit(): void {
     this.initialized = true;
     this.toolbarVisible = this.showToolbar;
+    this.themeService.attach(this.host.nativeElement);
+    this.themeService.setOverride(this.themeOverride);
     this.watchReducedMotion();
     this.subscribeToVideoSignals();
+    this.subscribeToWidgets();
     this.observeVisibility();
     this.initializePlayer();
     // pagehide fires for both tab close and navigation (incl. bfcache) —
@@ -889,6 +912,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     if (changes['locale']) {
       this.applyLocale();
+    }
+    if (changes['themeOverride']) {
+      this.themeService.setOverride(this.themeOverride);
     }
     if (changes['entitlementSnapshot']) {
       if (!this.entitlementSnapshot && !this.httpEntitlement) {
@@ -1047,6 +1073,41 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       .subscribe(() => this.onVideoQueueComplete());
   }
 
+  /**
+   * Content widgets (schema 1.10+): reader actions go out as `widgetEvent`
+   * and analytics (`download`, `widgetPlay`, `widgetOpen`); a playing widget
+   * holds autoplay, which advances once the widget stops.
+   */
+  private subscribeToWidgets(): void {
+    this.widgetPlayback.events$.pipe(takeUntil(this.destroy$)).subscribe((event) => {
+      const panelId = event.panelId || this.getCurrentPanelId() || undefined;
+      const payload = { ...event, panelId };
+      this.widgetEvent.emit(payload);
+      const tracked = event.type === 'download' ? 'download'
+        : event.type === 'play' ? 'widgetPlay'
+        : event.type === 'open' ? 'widgetOpen'
+        : null;
+      if (tracked) {
+        this.trackingService.track(tracked, {
+          panelId,
+          chapterId: this.currentChapter?.id,
+          layerId: event.layerId,
+          kind: event.kind,
+          ...(event.assetId ? { assetId: event.assetId } : {}),
+        });
+      }
+    });
+    this.widgetPlayback.active$.pipe(takeUntil(this.destroy$)).subscribe((active) => {
+      if (!active && this.autoplayHeldByWidget) {
+        this.autoplayHeldByWidget = false;
+        if (this.autoplayEnabled) {
+          this.startAutoplay();
+          this.cdr.markForCheck();
+        }
+      }
+    });
+  }
+
   /** Panel-view auto-advance for video panels (§4.5). */
   private onVideoPassComplete(videoId: string): void {
     if (
@@ -1101,6 +1162,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       } else {
         throw new Error('No manifest or manifestUrl provided');
       }
+
+      // Widget theme (schema 1.10+ ui.theme, branding as fallback).
+      this.themeService.setUi(this.manifestService.getManifest()?.ui);
 
       // Register the manifest's variable definitions: initializes defaults
       // and arms type validation + the read-only guard for every later
@@ -1393,6 +1457,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       .pipe(takeUntil(this.destroy$))
       .subscribe((panel) => {
         if (panel && this.currentChapter) {
+          if (panel !== this.currentPanel) {
+            // Leaving a panel stops its audio / video widgets.
+            this.widgetPlayback.pauseAll();
+          }
           this.currentPanel = panel;
           // Resolve variants before emitting so consumers (and the
           // tracked event) see the effective panel state.
@@ -2729,6 +2797,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (event.key === 'Escape' && this.cameFromDialog(event)) {
       return;
     }
+    // Keys pressed inside a content widget (scroll box, audio slider,
+    // iframe card) belong to the widget, not to the story navigation.
+    if (this.cameFromWidget(event)) {
+      return;
+    }
 
     switch (event.key) {
       case 'ArrowRight':
@@ -2814,6 +2887,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     'PW-EXTRAS-VIEWER', 'PW-LANGUAGE-MODAL', 'PW-SETTINGS-MODAL', 'PW-SHARE-MODAL',
     'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY',
   ]);
+
+  private cameFromWidget(event: KeyboardEvent): boolean {
+    return event.composedPath().some(
+      (node) => node instanceof Element && node.hasAttribute('data-pw-widget')
+    );
+  }
 
   private cameFromDialog(event: KeyboardEvent): boolean {
     return event.composedPath().some(
@@ -2936,6 +3015,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.startAutoplayProgress();
 
     this.autoplayTimer = setTimeout(() => {
+      // A reader listening to an audio player / watching the video modal is
+      // not interrupted: the advance waits until the widget stops.
+      if (this.autoplayEnabled && this.widgetPlayback.isActive()) {
+        this.autoplayTimer = undefined;
+        this.autoplayHeldByWidget = true;
+        return;
+      }
       // Continue autoplay if still enabled
       if (this.autoplayEnabled) {
         void this.autoplayAdvance().then(() => {
@@ -3043,6 +3129,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       clearTimeout(this.autoplayTimer);
       this.autoplayTimer = undefined;
     }
+    this.autoplayHeldByWidget = false;
     this.pendingVideoPasses.clear();
     this.clearVideoWatchdog();
     this.stopAutoplayProgress();

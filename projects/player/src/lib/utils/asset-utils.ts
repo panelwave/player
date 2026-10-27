@@ -78,6 +78,7 @@ export function pickAssetBase(assetBase?: AssetBase, category?: AssetCategory): 
     audio: assetBase.audioBase,
     video: assetBase.videoBase,
     pluginPayload: assetBase.pluginsBase,
+    file: assetBase.filesBase,
   };
   return (category && specific[category]) || assetBase.mediaBase || '';
 }

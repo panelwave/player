@@ -247,6 +247,37 @@ describe('AudioEngineService', () => {
     });
   });
 
+  describe('setRoleDuck', () => {
+    it('ramps the bus to volume × duck factor and back, keeping the reader volume', async () => {
+      await service.initialize();
+      service.setRoleVolume('music', 0.8);
+      mockGainNode.gain.linearRampToValueAtTime.calls.reset();
+
+      service.setRoleDuck('music', 0.2, 300);
+      expect(service.getRoleDuck('music')).toBe(0.2);
+      expect(mockGainNode.gain.linearRampToValueAtTime).toHaveBeenCalledWith(jasmine.any(Number), 0.3);
+      const ducked = mockGainNode.gain.linearRampToValueAtTime.calls.mostRecent().args[0];
+      expect(ducked).toBeCloseTo(0.16, 5);
+      expect(service.getRoleVolume('music')).toBe(0.8);
+
+      service.setRoleDuck('music', 1);
+      expect(service.getRoleDuck('music')).toBe(1);
+      expect(mockGainNode.gain.linearRampToValueAtTime.calls.mostRecent().args[0]).toBeCloseTo(0.8, 5);
+    });
+
+    it('a muted bus stays silent while ducked', async () => {
+      await service.initialize();
+      service.setRoleMuted('ambient', true);
+      service.setRoleDuck('ambient', 0.5);
+      expect(mockGainNode.gain.linearRampToValueAtTime.calls.mostRecent().args[0]).toBe(0);
+    });
+
+    it('works before the context exists (applied on initialize)', () => {
+      expect(() => service.setRoleDuck('music', 0.3)).not.toThrow();
+      expect(service.getRoleDuck('music')).toBe(0.3);
+    });
+  });
+
   describe('getActiveTracks', () => {
     it('should return active track IDs', async () => {
       const track1: AudioTrack = { id: 'track1', url: 'test1.mp3', role: 'music' };

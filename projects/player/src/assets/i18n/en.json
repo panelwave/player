@@ -238,5 +238,28 @@
     "cover_open": "Show the cover",
     "start_reading": "Cover – start reading",
     "chapter_n": "Chapter {{n}}"
+  },
+  "widgets": {
+    "download": "Download",
+    "download_file": "Download {{name}}",
+    "file_size": "File size",
+    "play": "Play",
+    "pause": "Pause",
+    "play_title": "Play {{title}}",
+    "seek": "Playback position",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "fullscreen": "Fullscreen",
+    "exit_fullscreen": "Exit fullscreen",
+    "close": "Close",
+    "video": "Video",
+    "watch_video": "Watch video: {{title}}",
+    "loading": "Loading…",
+    "open_new_tab": "Open in new tab",
+    "blocked_insecure": "This embed is blocked: only secure (https) addresses can be shown.",
+    "continued_online": "Continued in the digital edition",
+    "embedded_content": "Embedded content",
+    "audio": "Audio",
+    "scroll_region": "Scrollable text"
   }
 }

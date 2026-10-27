@@ -246,3 +246,103 @@ describe('LayerRendererComponent image loading priority', () => {
     expect(img().hasAttribute('fetchpriority')).toBeFalse();
   });
 });
+
+describe('LayerRendererComponent content widget layers (schema 1.10)', () => {
+  let fixture: ComponentFixture<LayerRendererComponent>;
+  let component: LayerRendererComponent;
+  let manifestService: ManifestService;
+
+  const widget = {
+    kind: 'download' as const,
+    id: 'w1',
+    assetId: 'file-1',
+    x: 100,
+    y: 200,
+    width: 400,
+    height: 100,
+  };
+  const background = { kind: 'image' as const, id: 'bg', assetId: 'img', z: 0 };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [LayerRendererComponent],
+      providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(LayerRendererComponent);
+    component = fixture.componentInstance;
+    manifestService = TestBed.inject(ManifestService);
+    spyOn(manifestService, 'getAsset').and.callFake((id: string) =>
+      id === 'img'
+        ? ({ id: 'img', category: 'image', variants: [{ src: 'a.webp', w: 2048, h: 1024 }] } as never)
+        : null
+    );
+    component.layer = widget;
+    component.panelLayers = [background, widget];
+  });
+
+  it('places the widget in the reference space as a size container with a clamped base font', () => {
+    const styles = component.getLayerStyles();
+    expect(styles['left']).toBe(`${(100 / 2048) * 100}%`);
+    expect(styles['height']).toBe(`${(100 / 1024) * 100}%`);
+    expect(styles['container-type']).toBe('size');
+    expect(styles['container-name']).toBe('pw-widget');
+    expect(styles['--pw-widget-font']).toBe('clamp(11px, calc(18 * 100cqh / 100), 20px)');
+  });
+
+  it('is a widget, marks the wrapper and is not keyboard-clickable itself', () => {
+    fixture.detectChanges();
+    const wrapper: HTMLElement = fixture.nativeElement.querySelector('.layer-wrapper');
+    expect(component.isWidget()).toBeTrue();
+    expect(wrapper.getAttribute('data-pw-widget')).toBe('download');
+    expect(wrapper.classList.contains('layer-widget')).toBeTrue();
+    expect(wrapper.hasAttribute('tabindex')).toBeFalse();
+  });
+
+  it('keeps clicks, presses, touches and plain wheel inside the widget', () => {
+    fixture.detectChanges();
+    const wrapper: HTMLElement = fixture.nativeElement.querySelector('.layer-wrapper');
+    const outer = jasmine.createSpy('outer');
+    fixture.nativeElement.addEventListener('click', outer);
+    fixture.nativeElement.addEventListener('mousedown', outer);
+    fixture.nativeElement.addEventListener('pointerdown', outer);
+    fixture.nativeElement.addEventListener('touchstart', outer);
+    fixture.nativeElement.addEventListener('wheel', outer);
+    wrapper.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    wrapper.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    wrapper.dispatchEvent(new Event('touchstart', { bubbles: true }));
+    wrapper.dispatchEvent(new WheelEvent('wheel', { bubbles: true }));
+    expect(outer).not.toHaveBeenCalled();
+    wrapper.dispatchEvent(new WheelEvent('wheel', { bubbles: true, ctrlKey: true }));
+    expect(outer).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not emit layerClick for widgets', () => {
+    const emitted = jasmine.createSpy('layerClick');
+    component.layerClick.subscribe(emitted);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.layer-wrapper').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(emitted).not.toHaveBeenCalled();
+  });
+
+  it('honours visibleIf for widgets only', () => {
+    component.layer = { ...widget, visibleIf: { var: 'shown' } };
+    component.variableContext = { shown: false };
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.layer-wrapper')).toBeNull();
+
+    fixture.componentRef.setInput('variableContext', { shown: true });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.layer-wrapper')).not.toBeNull();
+  });
+
+  it('older kinds ignore visibleIf (unchanged behaviour)', () => {
+    component.layer = { ...background, visibleIf: { var: 'shown' } };
+    component.variableContext = { shown: false };
+    expect(component.isVisible()).toBeTrue();
+  });
+
+  it('widgetFontSize falls back for a box without height', () => {
+    expect(component.widgetFontSize(0)).toBe('14px');
+  });
+});

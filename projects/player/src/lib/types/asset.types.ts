@@ -40,6 +40,9 @@ export interface AssetBase {
   
   /** Base URL for plugin payloads (optional) */
   pluginsBase?: string;
+
+  /** Base URL for `file` assets (optional, schema 1.10+) */
+  filesBase?: string;
 }
 
 /**
@@ -52,7 +55,8 @@ export type AssetCatalogItem =
   | AssetCatalogItemSubtitle
   | AssetCatalogItemVector
   | AssetCatalogItemJson
-  | AssetCatalogItemPluginPayload;
+  | AssetCatalogItemPluginPayload
+  | AssetCatalogItemFile;
 
 /**
  * Common properties for all asset types
@@ -96,7 +100,8 @@ export type AssetCategory =
   | 'subtitle'
   | 'vector'
   | 'json'
-  | 'pluginPayload';
+  | 'pluginPayload'
+  | 'file';
 
 /**
  * Image asset catalog item
@@ -136,7 +141,13 @@ export interface AssetCatalogItemAudio extends AssetCommon {
   
   /** Audio role/purpose (optional) */
   role?: AudioRole;
-  
+
+  /**
+   * Normalised peak amplitudes (0..1), evenly spaced over `durationMs`
+   * (schema 1.10+). Drawn by audio player widgets.
+   */
+  waveform?: number[];
+
   /** Array of audio variants (different formats) */
   variants: AudioVariant[];
 }
@@ -324,6 +335,39 @@ export interface AssetCatalogItemPluginPayload extends AssetCommon {
 }
 
 /**
+ * Downloadable file asset (schema 1.10+), referenced by download layers.
+ */
+export interface AssetCatalogItemFile extends AssetCommon {
+  category: 'file';
+
+  /** File variants (usually one) */
+  variants: FileVariant[];
+}
+
+/**
+ * File variant (schema 1.10+)
+ */
+export interface FileVariant {
+  /** Source path or URL */
+  src: string;
+
+  /** MIME type (optional; derived from the src / fileName extension) */
+  mime?: string;
+
+  /** Size in bytes (optional) */
+  sizeBytes?: number;
+
+  /** Original file name incl. extension; the default download name (optional) */
+  fileName?: string;
+
+  /** SHA-256 hash (optional) */
+  sha256?: string;
+
+  /** Locale for this variant (optional) */
+  locale?: LocaleCode;
+}
+
+/**
  * Generic asset variant (union of all variant types)
  */
 export type AssetVariant =
@@ -332,7 +376,8 @@ export type AssetVariant =
   | VideoVariant
   | SubtitleVariant
   | VectorVariant
-  | JsonVariant;
+  | JsonVariant
+  | FileVariant;
 
 /**
  * Asset reference with optional variant selection
