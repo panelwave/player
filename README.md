@@ -315,6 +315,26 @@ and the folder opens by double-click (`file://`) or from any static web space.
 The PanelWave CMS export "Package with player (.zip)" produces exactly this.
 Details: [docs/STANDALONE.md](docs/STANDALONE.md).
 
+### Chapter embeds on a course page
+
+`panelwave-embed.js` (ships in the npm package as `embed/panelwave-embed.js`,
+in every standalone package as `player/panelwave-embed.js`, and is served by
+the reader as `https://read.panelwave.org/embed.js`) turns placeholders into
+lazily loaded players, one chapter each:
+
+```html
+<script src="https://read.panelwave.org/embed.js" defer></script>
+<div class="panelwave-embed" data-src="https://read.panelwave.org/acme/first-aid"
+     data-chapter="0d3a…" data-autoplay="true" data-title="1. Arrival"></div>
+<p>…lesson text…</p>
+<div class="panelwave-embed" data-src="https://read.panelwave.org/acme/first-aid"
+     data-chapter="7c1e…" data-title="2. The accident"></div>
+```
+
+`npm run build:embed-loader` builds it (type check + 6 KB gzip budget),
+`npm run test:embed-loader` tests its logic. Attributes, events and the JS API:
+[docs/MULTI_CHAPTER_EMBED.md](docs/MULTI_CHAPTER_EMBED.md).
+
 ---
 
 ## 📚 Documentation

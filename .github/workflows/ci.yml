@@ -34,6 +34,11 @@ jobs:
       - name: Unit tests
         run: npx ng test player --watch=false --browsers=ChromeHeadless --code-coverage
 
+      - name: Embed loader (unit tests, type check, size budget)
+        run: |
+          npm run test:embed-loader
+          npm run build:embed-loader
+
       - name: Build library
         run: npx ng build player --configuration production
 
@@ -75,7 +80,9 @@ jobs:
         run: npm ci
 
       - name: Build library (the demo resolves @panelwave/player from dist/)
-        run: npx ng build player
+        run: |
+          npm run build:embed-loader
+          npx ng build player
 
       - name: Build standalone package (for e2e/standalone-package.spec.ts)
         run: npm run build:standalone -- --skip-lib

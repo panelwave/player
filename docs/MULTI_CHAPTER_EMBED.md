@@ -271,7 +271,7 @@ Markup contract:
 |-----------|---------|---------|
 | `data-src` | required | Reader URL of the work (`https://read.panelwave.org/{team}/{slug}`) or the package page (`./course/index.html`). |
 | `data-chapter` | required | `chapterId` UUID (preferred) or manifest `id`. |
-| `data-autoplay` | `false` | Start autoplay when ≥ 50 % of the instance is visible; pause when it leaves; do not re-arm after `chapterComplete`. |
+| `data-autoplay` | `false` | Autoplay this chapter. The player plays only while at least half of it is on screen, pauses when it leaves, stops at the chapter's end (§6.1). |
 | `data-loading` | `auto` | `eager` \| `lazy` \| `auto` (first instance on the page eager, the rest lazy) \| `click` (poster until tapped). Lazy uses IntersectionObserver with `rootMargin: 800px 0px`. |
 | `data-poster` | — | Poster image URL for the placeholder (CMS fills it with the chapter's first panel thumbnail). |
 | `data-title` | — | Placeholder caption + iframe `title` (a11y). |
@@ -284,16 +284,18 @@ Loader behaviour:
 1. On `DOMContentLoaded` (and `PanelWaveEmbed.scan()` for dynamically added
    nodes) each element gets `role="region"`, an aspect-ratio box, poster and
    a play button; `aria-busy` while loading.
-2. Mount = create `<iframe src="{src}?embed=1&origin={encodeURIComponent(location.origin)}&chapter=…&autoplay=0&toolbar=…&cover=…&locale=…" allow="autoplay; fullscreen" referrerpolicy="strict-origin-when-cross-origin" title="…">`. Autoplay is *always* sent as `0` in the URL; the loader turns it on via `setOptions` only when the instance is visible (R3).
+2. Mount = create `<iframe src="{src}?embed=1&origin={encodeURIComponent(location.origin)}&chapter=…&autoplay=0|1&toolbar=…&cover=…&lang=…&spp=…" allow="autoplay; fullscreen" referrerpolicy="strict-origin-when-cross-origin" title="…">`. `data-autoplay` goes into the URL as is (R3): the player itself only plays while it is on screen (`pauseAutoplayWhenHidden`, an IntersectionObserver inside the iframe measures against the top-level viewport). **Implementation note (2026-10-27):** the first draft had the loader switch autoplay on and off over `setOptions`; with the in-player gating that is redundant, and the in-player way also works where no bridge runs (a package opened from `file://`) and can never fight the reader's toolbar.
 3. Bridge: validate `event.origin === new URL(src).origin` (for same-origin
    package embeds this equals `location.origin`); on `pw:ready` remove the
    poster; forward `pw:event` as DOM `CustomEvent`s on the element
    (`panelwave:ready`, `panelwave:panelchange`, `panelwave:chaptercomplete`, …)
    so course pages / LMS glue can react without knowing the protocol.
-4. Visibility: one shared IntersectionObserver (thresholds 0 / 0.5): entering
-   ≥ 0.5 → `setOptions {autoplay:true}` if `data-autoplay` and not complete;
-   leaving → `setOptions {autoplay:false}`. A host-page `pointerdown`/`keydown`
-   (capture, once) is forwarded as `hostGesture` to every mounted iframe.
+4. Visibility: two shared IntersectionObservers — one with `rootMargin 800px`
+   mounts lazy instances, one with thresholds 0…1 tracks which instances are
+   at least half on screen (`data-exclusive-audio` mutes the others, and
+   `data-max-live` never unmounts a visible one). A host-page
+   `pointerdown`/`keydown` (capture, once) is forwarded as `hostGesture` to
+   every mounted iframe (and to later ones on their `pw:hello`).
 5. `data-loading=auto`: the first element in document order mounts at once,
    others when within `rootMargin`. `prefers-reduced-data` → behave as `click`.
 6. Public JS API: `window.PanelWaveEmbed = { scan(root?), mount(el), unmount(el), get(el) → { navigate(panelId), setOptions(o), getState(): Promise<State>, destroy() }, version }`.
@@ -393,12 +395,13 @@ Help link via `DOCS_PAGES` → new docs-site page (§5.6).
 
 | Situation | Behaviour |
 |-----------|-----------|
-| Instance mounts (lazy or eager) | Player boots with `autoplay=0`; poster stays until `pw:ready`. |
-| ≥ 50 % visible, `data-autoplay=true`, chapter not complete | Loader sends `setOptions {autoplay:true}` → shell toggles autoplay on, first dwell starts now (not while off-screen). |
-| Drops below 50 % | `setOptions {autoplay:false}` → autoplay paused on the current panel (the shell's own `pauseAutoplayWhenHidden` is the belt to this suspender when a host does not use the loader). |
-| Back in view | re-armed unless `chapterComplete` was received. |
-| Reader toggles autoplay off in the toolbar | the reader wins: the loader only *starts* autoplay once per visibility entry and never fights a manual off (it watches `pw:event autoplay_stop` from the toolbar vs. its own pause). |
-| `data-autoplay=false` | nothing is sent; the reader taps/arrows through the chapter. |
+| Instance mounts (lazy or eager) | Player boots with `autoplay=1` (`data-autoplay`) or `0`; poster stays until `pw:ready`. Mounted ahead of the viewport, it is off screen, so its autoplay is suspended from the start. |
+| ≥ 50 % visible (or half the viewport for a taller player), `data-autoplay=true` | The shell resumes autoplay; the first dwell starts now, not while off screen. |
+| Drops below 50 % / tab hidden | The shell suspends autoplay on the current panel (timers cleared, autoplay stays on). |
+| Back in view | Re-armed with a fresh dwell; a page-view video queue that finished meanwhile turns the page now. |
+| Chapter end | `atEndOfWork` holds at the scope's end: autoplay switches itself off (`autoplayChange(false)`) and `chapterComplete` fires — nothing re-arms it. |
+| Reader toggles autoplay off in the toolbar | Off stays off: nothing outside the player switches it back on. |
+| `data-autoplay=false` | The reader taps / arrows through the chapter; turning autoplay on in the toolbar is still gated by visibility. |
 | Sound | Autoplay here means *panel advance*. Audio/video with sound follow browser policy: the iframe gets `allow="autoplay"`, the loader forwards the first host-page gesture (`hostGesture`), the player's unmute affordance covers the rest. Document this for customers. |
 | Tab hidden | shell suspends timers (`visibilitychange`). |
 | `prefers-reduced-motion` | shell already forces reduced motion; autoplay is still allowed (reader expectation for a lesson), toolbar toggle available. |
@@ -458,7 +461,7 @@ Help link via `DOCS_PAGES` → new docs-site page (§5.6).
 | D2 | Stable chapter reference | keep `chapterId` UUID in player manifests, accept id or UUID in `chapterScope` (§4.3). |
 | D3 | Where per-chapter autoplay is stored | `chapters.embed_settings jsonb` (migration 111), edited in the Embed chapters builder; no schema change. |
 | D4 | Loader distribution | player repo `projects/embed-loader`; npm asset, reader `/embed.js`, package `player/panelwave-embed.js`. |
-| D5 | Autoplay off-screen | pause + resume, never re-arm after `chapterComplete`, never override a manual toolbar off. |
+| D5 | Autoplay off-screen | pause + resume inside the player (`pauseAutoplayWhenHidden`), never re-arm after the chapter's end, never override a manual toolbar off. Decided 2026-10-27 during implementation: in-player, not remote-controlled by the loader. |
 | D6 | Default loading | `auto` (first eager, rest lazy, 800 px margin). |
 | D7 | Rybbit on embedded reader pages | off when `embed=1`. |
 | D8 | Several shells in one Angular app | out of scope; document as unsupported in API.md. |
@@ -495,19 +498,19 @@ be worked in parallel by repo: P1 (player) is a prerequisite for P2–P4.
 
 ### P3 — Embed loader (`projects/embed-loader`)
 
-- [ ] Project scaffold (TypeScript, esbuild script `scripts/build-embed-loader.mjs`, IIFE, size budget ≤ 6 KB gz, no deps)
-- [ ] Placeholder rendering (aspect box, poster, title, play button, `aria-busy`, focus handling)
-- [ ] Mount/unmount, URL building (`embed=1&origin=…&chapter=…&autoplay=0&…`), `allow="autoplay; fullscreen"`
-- [ ] Bridge client: origin check, `pw:ready` → remove poster, `pw:event` → DOM `CustomEvent`s, `getState()` promise
-- [ ] Visibility controller: shared IntersectionObserver, 0.5 threshold autoplay start/pause, `chapterComplete` latch, no fight with manual toggle
-- [ ] Loading strategies `eager | lazy | auto | click`, `rootMargin 800px`, `prefers-reduced-data` → `click`
-- [ ] `hostGesture` forwarding (first pointerdown/keydown on host page)
-- [ ] `window.PanelWaveEmbed` API (`scan/mount/unmount/get/version`), MutationObserver-free (explicit `scan()` for SPAs)
-- [ ] v1.1: `data-max-live` unmount-to-poster; optional `data-exclusive-audio`
-- [ ] Unit tests (Jasmine/Karma or vitest + jsdom) for URL building, strategy selection, visibility state machine
-- [ ] e2e `e2e/multi-chapter-embed.spec.ts`: fixture page with 3 chapters (`e2e/fixtures/multi-chapter-embed.html`), asserts: only first iframe exists at load; 2nd mounts on scroll; autoplay starts only when visible and only where configured; pause when scrolled away; scope boundaries hold; keyboard only reaches the focused iframe; chromium + firefox + webkit
-- [ ] Ship: `dist/player/embed/panelwave-embed.js` via ng-package assets; `build-standalone.mjs` copies it into `player/`; `VERSION.json` lists loader version
-- [ ] README section + `docs/MULTI_CHAPTER_EMBED.md` (this file) kept current
+- [x] Project scaffold (TypeScript, esbuild script `scripts/build-embed-loader.mjs`, IIFE, size budget ≤ 6 KB gz, no deps)
+- [x] Placeholder rendering (aspect box, poster, title, play button, `aria-busy`, focus handling)
+- [x] Mount/unmount, URL building (`embed=1&origin=…&chapter=…&autoplay=0&…`), `allow="autoplay; fullscreen"`
+- [x] Bridge client: origin check, `pw:ready` → remove poster, `pw:event` → DOM `CustomEvent`s, `getState()` promise
+- [x] Visibility controller: shared IntersectionObservers (lazy mount at 800 px, ≥ 50 % visibility); autoplay start/pause/end-latch/manual-toggle handled in the player (`pauseAutoplayWhenHidden`, D5) with `data-autoplay` passed in the URL
+- [x] Loading strategies `eager | lazy | auto | click`, `rootMargin 800px`, `prefers-reduced-data` → `click`
+- [x] `hostGesture` forwarding (first pointerdown/keydown on host page)
+- [x] `window.PanelWaveEmbed` API (`scan/mount/unmount/get/version`), MutationObserver-free (explicit `scan()` for SPAs)
+- [x] v1.1: `data-max-live` unmount-to-poster; optional `data-exclusive-audio`
+- [x] Unit tests (`node --test scripts/embed-loader.test.mjs`, core bundled by esbuild) for options, URL building, strategy selection, unmount choice
+- [x] e2e `e2e/multi-chapter-embed.spec.ts`: course page with 3 chapters generated by the spec (host and package on two origins), asserts: only first iframe exists at load; 2nd mounts on scroll; autoplay starts only when visible and only where configured; pause when scrolled away; scope boundaries hold; keyboard only reaches the focused iframe; chromium + firefox + webkit
+- [x] Ship: `dist/player/embed/panelwave-embed.js` via ng-package assets; `build-standalone.mjs` copies it into `player/`; `VERSION.json` lists loader version
+- [x] README section + `docs/MULTI_CHAPTER_EMBED.md` (this file) kept current
 
 ### P4 — CMS: reader server, API, frontend, export
 

@@ -7,7 +7,8 @@
  *   └── player/
  *       ├── main.js, polyfills.js, styles.css, media/   (Angular build of projects/standalone)
  *       ├── LICENSE                                     (MIT, from the repo root)
- *       └── VERSION.json                                { playerVersion, commit, builtAt }
+ *       ├── panelwave-embed.js                          (embed loader: one chapter per iframe on a course page)
+ *       └── VERSION.json                                { playerVersion, loaderVersion, commit, builtAt }
  *
  * A host (e.g. the PanelWave CMS "Package with player" export) adds the work
  * next to index.html: panelwave.js, panelwave.json, assets/, fonts/.
@@ -82,6 +83,7 @@ export function rewriteIndexHtml(html) {
 }
 
 function main() {
+  run('node scripts/build-embed-loader.mjs');
   if (!skipLib) run('npx ng build player');
   run('npx ng build standalone --configuration production');
 
@@ -107,6 +109,9 @@ function main() {
   }
   writeFileSync(join(outDir, 'index.html'), rewriteIndexHtml(readFileSync(join(buildDir, 'index.html'), 'utf8')));
   cpSync(join(root, 'LICENSE'), join(playerDir, 'LICENSE'));
+  const loaderDir = join(root, 'dist', 'embed-loader');
+  cpSync(join(loaderDir, 'panelwave-embed.js'), join(playerDir, 'panelwave-embed.js'));
+  const loaderVersion = JSON.parse(readFileSync(join(loaderDir, 'VERSION.json'), 'utf8')).loaderVersion;
 
   const playerVersion = JSON.parse(readFileSync(join(root, 'projects', 'player', 'package.json'), 'utf8')).version;
   let commit = '';
@@ -117,7 +122,7 @@ function main() {
   }
   writeFileSync(
     join(playerDir, 'VERSION.json'),
-    JSON.stringify({ playerVersion, commit, builtAt: new Date().toISOString() }, null, 2) + '\n'
+    JSON.stringify({ playerVersion, loaderVersion, commit, builtAt: new Date().toISOString() }, null, 2) + '\n'
   );
 
   console.log(`\nStandalone package skeleton: ${outDir} (player ${playerVersion}${commit ? ', ' + commit : ''})`);

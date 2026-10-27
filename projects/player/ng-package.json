@@ -11,6 +11,11 @@
       "input": "src/assets",
       "output": "src/assets",
       "ignore": ["**/amespro-*"]
+    },
+    {
+      "glob": "panelwave-embed.js",
+      "input": "embed-build",
+      "output": "embed"
     }
   ]
 }

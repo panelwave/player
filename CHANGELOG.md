@@ -33,6 +33,13 @@ semver. The reader-facing product changelog lives on the docs site
 - Reader app: chapter embeds — `chapter`, `autoplay`, `showToolbar`,
   `showCover`, `secondsPerPanel`, `embedOrigin` from `__PW_READER__` or the
   page URL; with `embed` it speaks the bridge.
+- **Embed loader `panelwave-embed.js`** (`projects/embed-loader`, ~4 KB gzipped,
+  no dependencies): `<div class="panelwave-embed" data-src data-chapter …>`
+  placeholders become one-chapter player iframes — poster first, mounted
+  lazily 800 px ahead (`data-loading`: auto / eager / lazy / click), at most
+  `data-max-live` mounted, optional `data-exclusive-audio`, player events as
+  `panelwave:*` DOM events, `window.PanelWaveEmbed` API. Shipped in the
+  package as `embed/panelwave-embed.js` and in the standalone package.
 - Standalone page: `?chapter=&autoplay=&toolbar=&cover=&spp=`, a `chapters`
   map of per-chapter defaults in the config, and the bridge with `?embed=1`
   on http(s).

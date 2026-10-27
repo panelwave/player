@@ -40,6 +40,9 @@ jobs:
       - name: Lint + build
         run: |
           npx ng lint player
+          # The embed loader ships inside the package (embed/panelwave-embed.js, ng-package asset).
+          npm run test:embed-loader
+          npm run build:embed-loader
           npx ng build player --configuration production
 
       - name: Bump version

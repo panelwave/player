@@ -13,7 +13,9 @@
     "e2e:ui": "playwright test --ui",
     "smoke:consumer": "node scripts/consumer-smoke.mjs",
     "build:standalone": "node scripts/build-standalone.mjs",
-    "test:standalone-build": "node --test scripts/build-standalone.test.mjs"
+    "test:standalone-build": "node --test scripts/build-standalone.test.mjs",
+    "build:embed-loader": "node scripts/build-embed-loader.mjs",
+    "test:embed-loader": "node --test scripts/embed-loader.test.mjs"
   },
   "private": true,
   "dependencies": {
@@ -41,6 +43,7 @@
     "@types/jasmine": "~5.1.0",
     "@types/json-logic-js": "^2.0.8",
     "angular-eslint": "20.4.0",
+    "esbuild": "0.25.9",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",

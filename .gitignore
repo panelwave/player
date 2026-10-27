@@ -49,3 +49,6 @@ projects/player/src/assets/fonts/balloon/amespro-*
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Embed loader copy for ng-packagr (scripts/build-embed-loader.mjs)
+/projects/player/embed-build/
