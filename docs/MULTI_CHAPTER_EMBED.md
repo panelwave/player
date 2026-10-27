@@ -523,8 +523,8 @@ Reader server (`apps/reader`):
 API (`apps/cms-api`):
 - [x] Migration `111_chapter_embed_settings.sql` (`embed_settings jsonb NOT NULL DEFAULT '{}'`), apply on dev; prod via `scripts/migrate.sh` (hand to the user)
 - [x] `ChapterDAO.update()` + `PATCH /chapters/{id}` accept validated `embedSettings`; chapters GET returns it; TestBox specs
-- [ ] `ManifestProfileService.dropInternalIds`: keep `chapterId` in player mode (D2); update `MANIFEST_MODES.md`; `AnalyticsService` chapter remap prefers UUID
-- [ ] Tracking: accept `embedHost` in `session_start` data (ingest + aggregates in `worker-analytics`: new dimension "embedded vs reader")
+- [x] `ManifestProfileService.dropInternalIds`: keep `chapterId` in player mode (D2); update `MANIFEST_MODES.md`; `AnalyticsService` chapter remap prefers UUID
+- [x] Tracking: accept `embedHost` in `session_start` data (ingest + aggregates in `worker-analytics`: new dimension "embedded vs reader") — migration `112_analytics_sessions_embed_host.sql` adds `analytics_agg_sessions.embed_host` (dev applied; prod pending); player: shell `trackingContext`, reader sends `{ embedHost }`; `chapterUuid` on every event (`TrackingService.setChapterUuids`)
 - [ ] `WorkArchiveService` player sidecar includes per-chapter `embedSettings` + poster URLs
 - [ ] Publish pre-flight warning: cross-chapter links are inert in chapter embeds
 - [ ] `npm run test:api:chunked` (incl. `specs/integration/`) green; regenerate `API_REFERENCE.md`
@@ -549,7 +549,7 @@ Export (`apps/worker-export`):
 - [ ] Docs site: `player/embed-chapters.mdx` (+ `documentation.json`), updates to inputs-outputs / standalone-package / cms publishing; squash + push
 - [ ] CMS docs: `PUBLISHING.md`, `PLAYER_EMBED.md`, `ANALYTICS.md`, `MANIFEST_MODES.md`
 - [ ] Player release 1.9.0 via `release.yml` (no pre-bump); `@panelwave/types`/CLI untouched (no schema change)
-- [ ] Prod: migration 111, deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
+- [ ] Prod: migrations 111 + 112, deploy cms + reader + workers; verify `https://read.panelwave.org/embed.js` and one real customer-style page on a foreign origin (CORS, frame-ancestors, autoplay delegation)
 - [ ] Analytics dashboard: "embedded" split (uses `embedHost`)
 - [ ] Follow-ups (not scheduled): server-sliced one-chapter manifests; `Chapter.embed` + `chapter_complete` schema minor; multi-shell-per-app refactor; xAPI/SCORM wrapper for LMS customers (business plan Segment C)
 
