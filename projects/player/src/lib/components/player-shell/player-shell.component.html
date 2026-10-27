@@ -138,11 +138,11 @@
       <!-- Thumbnail Strip -->
       <pw-thumbnail-strip
         [visible]="thumbnailsVisible"
-        [chapters]="loadedManifest?.chapters || []"
+        [chapters]="listedChapters"
         [currentChapterId]="currentChapter?.id"
         [currentPanelId]="coverVisible ? undefined : getCurrentPanelId()"
         [currentPanelIds]="currentPagePanelIds"
-        [coverThumbnail]="coverThumbUrl"
+        [coverThumbnail]="coverEntryThumbUrl"
         [coverCurrent]="coverVisible"
         [locale]="locale"
         [lockedPanels]="[]"
@@ -207,11 +207,11 @@
       @if (tocVisible) {
         <pw-toc-overlay
           [visible]="tocVisible"
-          [manifest]="loadedManifest"
+          [chapters]="listedChapters"
           [currentChapterId]="currentChapter?.id"
           [currentPanelId]="coverVisible ? undefined : getCurrentPanelId()"
           [pageFormat]="activePageFormat"
-          [coverThumbnail]="coverThumbUrl"
+          [coverThumbnail]="coverEntryThumbUrl"
           [coverCurrent]="coverVisible"
           [locale]="locale"
           (navigate)="onTocNavigate($event)"

@@ -8,6 +8,20 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- **Chapter embeds** (docs/MULTI_CHAPTER_EMBED.md). New shell input
+  `chapterScope` (a chapter's manifest `id` or CMS `chapterId`) plays only
+  that chapter: it starts at its entry, next / previous and page turns stop at
+  its ends, autoplay and the preload look-ahead stay inside it, the ToC and
+  thumbnail strip list only it, and jumps out of it are refused with
+  `navigationAttempt` `{ blocked: 'outside-scope' }`.
+- `chapterComplete` output (`PlayerChapterCompleteEvent`): the reader reached
+  a chapter's end panel (page view: its last page), once per chapter visit.
+- `pauseAutoplayWhenHidden` input (default `true`): autoplay is suspended
+  while the player is less than half on screen or its tab is hidden, and
+  resumes when it is back. Previously its timers ran on in a background tab.
+- `imageCacheBudgetMb` input for the decoded-image cache budget.
+- `Chapter.chapterId` (the schema's optional CMS uuid) in the player types.
+- Demo: `?chapter=` sets `chapterScope`.
 - `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
   stay keyed by id in `chapter.panels`; read the id from that key or from
   `panelChange`'s `panelId`.

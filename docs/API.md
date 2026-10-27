@@ -43,6 +43,9 @@ rules (graph, variables, paywall, tracking) into behaviour.
 | `entitlementSnapshot` | `EntitlementSnapshot` | — | What the reader owns (subscription tier, purchased products, verified age). Enables the manifest's `paywall.rules`. |
 | `entitlementEndpoint` | `string` | — | URL returning the snapshot (`{workId}` substituted) when the host prefers the player to fetch it. |
 | `readerToken` | `string` | — | Bearer token sent to `entitlementEndpoint`. |
+| `chapterScope` | `string` | — | Play only this chapter (its manifest `id` or CMS `chapterId`). Reading starts at its entry (a bookmark or link inside it is honoured), next / previous and page turns stop at its ends, the ToC and thumbnail strip list only it, and every jump out of it (cross-chapter edge, hotspot `goTo`, `navigateToPanel`, `navigateToChapter`) is refused with `navigationAttempt` `{ blocked: 'outside-scope' }`. Autoplay stops at its end; `work_complete` is tracked only when it is the work's last chapter. The cover shows only with `showCover`. An unknown id is a load `error`. Read on (re)load. |
+| `pauseAutoplayWhenHidden` | `boolean` | `true` | Suspend autoplay while less than half of the player (or half the viewport, for a taller player) is on screen, or the tab is hidden; resume from the start of the current panel's dwell time when it is back. A page-view video queue that finished meanwhile turns the page on return. |
+| `imageCacheBudgetMb` | `number` | `100` | Decoded-image cache budget in MB. Each iframe has its own cache, so chapter embeds use a smaller one (32). |
 
 Inputs may change after init: `manifest` / `manifestUrl` reload the work
 (position, non-persistent variables, open overlays and autoplay reset),
@@ -56,7 +59,8 @@ Inputs may change after init: `manifest` / `manifestUrl` reload the work
 | `ready` | `void` | Manifest loaded and the initial panel is on screen. |
 | `panelChange` | `PlayerPanelChangeEvent`: `{ panel: Panel; chapter: Chapter; panelId: string; previousPanelId?: string }` | The current panel changed. `panelId` is the panel's key in `chapter.panels` (`Panel.id` is optional in the format, so don't read it from `panel`); `previousPanelId` is the panel before it, possibly in the previous chapter, and unset for the first panel after a (re)load. Fires once per change, not for a navigation the paywall or age gate blocks. |
 | `chapterChange` | `Chapter` | The current chapter changed. |
-| `navigationAttempt` | `{ direction: 'next' \| 'previous' \| 'panel'; target?: string }` | Before a navigation is resolved (also when it is blocked). |
+| `navigationAttempt` | `PlayerNavigationAttempt`: `{ direction: 'next' \| 'previous' \| 'panel'; target?: string; blocked?: 'outside-scope' }` | Before a navigation is resolved (also when it is blocked). `blocked` is set when the target lies outside the `chapterScope`. |
+| `chapterComplete` | `PlayerChapterCompleteEvent`: `{ chapterId, panelId, isLastChapter }` | The reader reached the end of a chapter: an end panel (panel / canvas view) or the chapter's last page on their path (page view). Once per chapter visit; entering another chapter re-arms it. |
 | `localeChange` | `LocaleCode` | The reader switched the locale. |
 | `variableChange` | `{ key: string; value: unknown }` | A variable value changed. |
 | `cameraChange` | `CameraState` | Canvas view: the camera moved. |
@@ -88,6 +92,16 @@ content reacts at once, `variableChange` fires; the reading position is kept.
 The shell keeps three keys in `localStorage`: `pw-preferences` (toggles the
 reader set explicitly), `pw-social` (per-work like + bookmark) and
 `pw-age-verified`. All are optional — the player works without storage.
+
+### Several players on one page
+
+Every service is `providedIn: 'root'`, so **one Angular application runs one
+`<pw-player-shell>`**: two shells in the same app would share the manifest,
+the current panel, the audio context, the tracking session and the keyboard
+handler. To show several chapters of a work on one page, give each its own
+iframe (the reader or standalone page with `?embed=1&chapter=…`) — the
+embed loader does exactly that; see
+[MULTI_CHAPTER_EMBED.md](MULTI_CHAPTER_EMBED.md).
 
 ## Other components
 

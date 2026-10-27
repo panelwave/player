@@ -394,6 +394,35 @@ export interface PlayerPanelChangeEvent {
 }
 
 /**
+ * Payload of `<pw-player-shell>`'s `(chapterComplete)` output: the reader
+ * reached the end of a chapter (an end panel in panel / canvas view, the
+ * chapter's last page on the reader's path in page view).
+ */
+export interface PlayerChapterCompleteEvent {
+  /** The chapter's manifest id (`chapter.id`). */
+  chapterId: string;
+
+  /** The panel the chapter ended on (page view: the last panel of the last page). */
+  panelId: string;
+
+  /** The chapter is the work's last chapter. */
+  isLastChapter: boolean;
+}
+
+/**
+ * Payload of `<pw-player-shell>`'s `(navigationAttempt)` output. Fires before
+ * a navigation is resolved; `blocked` is set when the move was refused
+ * because the target lies outside the `chapterScope`.
+ */
+export interface PlayerNavigationAttempt {
+  direction: 'next' | 'previous' | 'panel';
+  /** Target panel (or chapter) id of a jump. */
+  target?: string;
+  /** Why the move was refused, when it was. */
+  blocked?: 'outside-scope';
+}
+
+/**
  * Decision event payload
  */
 export interface DecisionEvent {

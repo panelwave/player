@@ -181,6 +181,8 @@ export type {
   PlayerEventData,
   PanelChangeEvent,
   PlayerPanelChangeEvent,
+  PlayerChapterCompleteEvent,
+  PlayerNavigationAttempt,
   DecisionEvent,
   PaywallEvent,
   ErrorEvent,

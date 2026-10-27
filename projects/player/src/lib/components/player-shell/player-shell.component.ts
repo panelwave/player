@@ -46,6 +46,8 @@ import type {
   Mutation,
   Edge,
   PlayerPanelChangeEvent,
+  PlayerChapterCompleteEvent,
+  PlayerNavigationAttempt,
 } from '../../types';
 import type { Character as RosterCharacter } from '../modals/character-roster/character-roster.component';
 
@@ -71,6 +73,7 @@ import { workLocales } from '../../utils/work-locales';
 import { coverImageSrc, THUMBNAIL_WIDTH } from '../../utils/thumbnail-utils';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
+import { ImageCacheService } from '../../services/image-cache.service';
 import { PANELWAVE_ICON_DATA_URI } from '../../utils/brand';
 
 import { ViewportComponent, type ViewportPreloadTarget } from '../viewport/viewport.component';
@@ -366,6 +369,50 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   @Input() viewModeOverride: 'auto' | 'panel' | 'canvas' = 'auto';
 
   /**
+   * Play only this chapter (its manifest `id` or its CMS `chapterId`):
+   * reading starts at its entry, next / previous and page turns stop at its
+   * ends, the table of contents and thumbnails list only it, and jumps out
+   * of it (cross-chapter edges, hotspot `goTo`, `navigateToPanel`) are
+   * refused with a `navigationAttempt` carrying `blocked: 'outside-scope'`.
+   * Used by chapter embeds (`docs/MULTI_CHAPTER_EMBED.md`). Read on (re)load.
+   */
+  @Input() chapterScope?: string;
+
+  /**
+   * Suspend autoplay while the player is less than half on screen or the
+   * browser tab is hidden, and resume it (from the start of the current
+   * panel's dwell time) when it is back. Default on.
+   */
+  @Input() pauseAutoplayWhenHidden = true;
+
+  /**
+   * Memory budget of the decoded-image cache in MB (default 100). Pages with
+   * several player instances (one per chapter embed) lower it.
+   */
+  @Input() imageCacheBudgetMb?: number;
+
+  /** Manifest id of the chapter `chapterScope` resolved to (set on load). */
+  scopedChapterId?: string;
+
+  /** Chapters the table of contents and the thumbnail strip list. */
+  listedChapters: Chapter[] = [];
+
+  /** Chapter whose completion was last reported (re-armed on chapter change). */
+  private completedChapterId?: string;
+  /** Chapter of the current visit (completion is reported once per visit). */
+  private visitChapterId?: string;
+  /** A page-view video queue finished while off screen: turn the page on return. */
+  private pendingQueueAdvance = false;
+
+  /** The player is at least half on screen and its tab is visible. */
+  private onScreen = true;
+  /** Autoplay is on but its timers are suspended while off screen. */
+  private autoplaySuspended = false;
+  private visibilityObserver?: IntersectionObserver;
+  private readonly onDocumentVisibilityChange = (): void => this.updateOnScreen();
+  private hostIntersecting = true;
+
+  /**
    * Player ready
    */
   @Output() ready = new EventEmitter<void>();
@@ -399,7 +446,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   /**
    * Navigation attempted
    */
-  @Output() navigationAttempt = new EventEmitter<{ direction: 'next' | 'previous' | 'panel'; target?: string }>();
+  @Output() navigationAttempt = new EventEmitter<PlayerNavigationAttempt>();
+
+  /**
+   * The reader reached the end of a chapter: an end panel (panel / canvas
+   * view) or the chapter's last page on the reader's path (page view).
+   * Fires once per chapter visit; entering another chapter re-arms it.
+   */
+  @Output() chapterComplete = new EventEmitter<PlayerChapterCompleteEvent>();
 
   /**
    * Camera moved in canvas view (throttled).
@@ -774,6 +828,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private readonly paywallService = inject(PaywallService);
   private readonly assetUrl = inject(AssetUrlService);
   private readonly preloadService = inject(PreloadService);
+  private readonly imageCache = inject(ImageCacheService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
   /** The player is shown in fullscreen (kept in sync with the browser, Esc included). */
@@ -796,6 +851,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.toolbarVisible = this.showToolbar;
     this.watchReducedMotion();
     this.subscribeToVideoSignals();
+    this.observeVisibility();
     this.initializePlayer();
     // pagehide fires for both tab close and navigation (incl. bfcache) —
     // the last chance to flush the analytics queue.
@@ -834,6 +890,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     if (changes['showToolbar']) {
       this.toolbarVisible = this.showToolbar;
+    }
+    if (changes['pauseAutoplayWhenHidden'] && !this.pauseAutoplayWhenHidden && this.autoplaySuspended) {
+      this.resumeAutoplay();
     }
     if (changes['autoplay'] && this.autoplay !== this.autoplayEnabled) {
       this.onToggleAutoplay();
@@ -878,6 +937,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.hiddenPanelIds = this.unchosenPanelIds = new Set();
     this.coverVisible = false;
     this.activePageFormat = null;
+    this.scopedChapterId = undefined;
+    this.listedChapters = [];
+    this.completedChapterId = this.visitChapterId = undefined;
+    this.autoplaySuspended = this.pendingQueueAdvance = false;
     this.preloadTargets = [];
     this.httpEntitlement = undefined;
     this.hasError = false;
@@ -919,6 +982,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       window.removeEventListener('pagehide', this.onPageHide);
     }
     this.reducedMotionQuery?.removeEventListener('change', this.onReducedMotionQueryChange);
+    this.visibilityObserver?.disconnect();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
+    }
     this.endAnalyticsSession();
     this.stopAutoplay();
     this.stopAutoplayProgress();
@@ -996,6 +1063,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (!this.autoplayEnabled || this.viewMode !== 'page') {
       return;
     }
+    if (this.pauseAutoplayWhenHidden && !this.onScreen) {
+      // Turn the page once the player is back on screen.
+      this.pendingQueueAdvance = true;
+      this.autoplaySuspended = true;
+      return;
+    }
     void this.navigateToNextPage();
   }
 
@@ -1043,14 +1116,30 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       this.applyLocale();
       this.lastTrackedLocale = this.locale;
 
-      // Check if page view is available
+      // Chapter scope (chapter embeds): resolve by manifest id or CMS uuid.
       const loadedManifest = this.manifestService.getManifest();
-      if (loadedManifest?.chapters) {
-        const chapters = Object.values(loadedManifest.chapters);
-        this.pageViewAvailable = chapters.some(chapter =>
-          chapter.pages && chapter.pages.length > 0
+      const allChapters = loadedManifest?.chapters ?? [];
+      this.scopedChapterId = undefined;
+      if (this.chapterScope) {
+        const scoped = allChapters.find(
+          (chapter) => chapter.id === this.chapterScope || chapter.chapterId === this.chapterScope
         );
+        if (!scoped) {
+          throw new Error(`chapterScope not found: ${this.chapterScope}`);
+        }
+        this.scopedChapterId = scoped.id;
       }
+      this.listedChapters = this.scopedChapterId
+        ? allChapters.filter((chapter) => chapter.id === this.scopedChapterId)
+        : allChapters;
+      if (this.imageCacheBudgetMb && this.imageCacheBudgetMb > 0) {
+        this.imageCache.setMemoryBudget(Math.round(this.imageCacheBudgetMb * 1024 * 1024));
+      }
+
+      // Check if page view is available
+      this.pageViewAvailable = this.listedChapters.some(chapter =>
+        chapter.pages && chapter.pages.length > 0
+      );
       this.updatePageFormat();
       this.resolveCover(loadedManifest ?? null);
 
@@ -1072,22 +1161,32 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       // Navigate to the initial position. A link (page / panel / chapter)
       // opens right there; otherwise reading starts on the cover — then the
       // first page, or the page the reader's bookmark is on.
-      const linkedPage = this.initialPageId ? this.findPageById(this.initialPageId) : undefined;
+      // Links outside the chapter scope are ignored (reading starts at the
+      // scope's beginning instead).
+      const anyLinkedPage = this.initialPageId ? this.findPageById(this.initialPageId) : undefined;
+      const linkedPage = anyLinkedPage && this.inScope(anyLinkedPage.chapter.id) ? anyLinkedPage : undefined;
       const linkedPageStart = linkedPage ? this.firstPanelOf(linkedPage.page) : undefined;
-      const panelChapterId = this.initialPanelId
-        ? this.initialChapterId ?? this.findChapterOfPanel(this.initialPanelId)?.id
+      const initialChapterId =
+        this.initialChapterId && this.inScope(this.initialChapterId) ? this.initialChapterId : undefined;
+      const anyPanelChapterId = this.initialPanelId
+        ? initialChapterId ?? this.findChapterOfPanel(this.initialPanelId)?.id
         : undefined;
+      const panelChapterId = anyPanelChapterId && this.inScope(anyPanelChapterId) ? anyPanelChapterId : undefined;
       let linked = true;
       if (linkedPage && linkedPageStart) {
         await this.navigateToPanel(linkedPage.chapter.id, linkedPageStart);
       } else if (panelChapterId && this.initialPanelId) {
         await this.navigateToPanel(panelChapterId, this.initialPanelId);
-      } else if (this.initialChapterId) {
-        await this.navigateToChapter(this.initialChapterId);
+      } else if (initialChapterId) {
+        await this.navigateToChapter(initialChapterId);
       } else {
         linked = false;
         const bookmark = this.readBookmark();
-        if (bookmark && this.manifestService.getChapter(bookmark.chapterId)?.panels?.[bookmark.panelId]) {
+        if (
+          bookmark &&
+          this.inScope(bookmark.chapterId) &&
+          this.manifestService.getChapter(bookmark.chapterId)?.panels?.[bookmark.panelId]
+        ) {
           await this.navigateToPanel(bookmark.chapterId, bookmark.panelId);
         } else {
           await this.navigateToStart();
@@ -1111,6 +1210,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
       this.loading = false;
       this.ready.emit();
+      // A one-panel (one-page) chapter is complete as soon as it shows.
+      this.checkChapterComplete();
     } catch (err) {
       this.handleError(err as Error);
     }
@@ -1296,6 +1397,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
           this.lastPanelChangeId = panelId || undefined;
           this.trackPanelView(panel, this.currentChapter);
           this.updatePreloadTargets();
+          if (!this.loading) {
+            this.checkChapterComplete();
+          }
         }
       });
 
@@ -1331,8 +1435,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       throw new Error('No manifest loaded');
     }
 
-    // Get first chapter
-    const firstChapter = manifest.chapters[0];
+    // Get first chapter (the scope's chapter for a chapter embed)
+    const firstChapter = this.scopedChapterId
+      ? this.manifestService.getChapter(this.scopedChapterId)
+      : manifest.chapters[0];
     if (!firstChapter) {
       throw new Error('No chapters in manifest');
     }
@@ -1344,6 +1450,10 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    * Navigate to chapter
    */
   async navigateToChapter(chapterId: string): Promise<void> {
+    if (!this.inScope(chapterId)) {
+      this.navigationAttempt.emit({ direction: 'panel', target: chapterId, blocked: 'outside-scope' });
+      return;
+    }
     try {
       const chapter = this.manifestService.getChapter(chapterId);
       if (!chapter) {
@@ -1409,6 +1519,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       // hotspot goTo): the panel's own chapter wins over the caller's, so the
       // flow continues in that chapter's graph instead of re-entering it.
       chapterId = this.manifestService.getPanel(panelId)?.chapterId ?? chapterId;
+      // A chapter embed never leaves its chapter.
+      if (!this.inScope(chapterId)) {
+        this.navigationAttempt.emit({ direction: 'panel', target: panelId, blocked: 'outside-scope' });
+        return;
+      }
       this.viewportTransition = transition ?? null;
       // Navigation stops at a gate: the reader stays on the last panel they
       // were entitled to see. Without a position yet (initial load, resumed
@@ -2736,6 +2851,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private startAutoplay(): void {
     this.stopAutoplay(); // Clear any existing timer / pending media waits
 
+    // Off screen (or a hidden tab): hold until the player is back.
+    if (this.pauseAutoplayWhenHidden && !this.onScreen) {
+      this.autoplaySuspended = true;
+      return;
+    }
+    this.autoplaySuspended = false;
+
     if (this.coverVisible) {
       // The cover stays for the reader's seconds-per-panel, then the story starts.
       this.armAutoplayTimer(this.secondsPerPanel * 1000);
@@ -3213,14 +3335,155 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.updatePreloadTargets();
   }
 
+  /** The chapter lies inside the `chapterScope` (always true without a scope). */
+  private inScope(chapterId: string | undefined): boolean {
+    return !this.scopedChapterId || chapterId === this.scopedChapterId;
+  }
+
+  /** Cover entry of the ToC / thumbnail strip: none in a chapter embed without cover. */
+  get coverEntryThumbUrl(): string {
+    return this.scopedChapterId && !this.showCover ? '' : this.coverThumbUrl;
+  }
+
+  /** Autoplay is on and its timers run (not suspended off screen). */
+  get autoplayRunning(): boolean {
+    return this.autoplayEnabled && !this.autoplaySuspended;
+  }
+
+  /**
+   * Report `chapterComplete` once per chapter visit: on an end panel of the
+   * chapter (panel / canvas view) or its last page on the reader's path
+   * (page view). Entering another chapter re-arms it.
+   */
+  private checkChapterComplete(): void {
+    const chapter = this.currentChapter;
+    if (!chapter) {
+      return;
+    }
+    if (this.visitChapterId !== chapter.id) {
+      this.visitChapterId = chapter.id;
+      this.completedChapterId = undefined;
+    }
+    if (this.completedChapterId === chapter.id || this.coverVisible) {
+      return;
+    }
+    let endPanelId: string | undefined;
+    if (this.viewMode === 'page') {
+      if (!this.currentPage) {
+        return;
+      }
+      const pages = this.chapterPages(chapter).filter((page) => !this.isPageOffPath(page));
+      if (pages[pages.length - 1]?.id !== this.currentPage.id) {
+        return;
+      }
+      const ids = this.pageReadingOrderIds();
+      endPanelId = ids[ids.length - 1] ?? this.getCurrentPanelId();
+    } else {
+      const panelId = this.getCurrentPanelId();
+      if (!panelId || !isChapterEndPanel(chapter, panelId)) {
+        return;
+      }
+      endPanelId = panelId;
+    }
+    if (!endPanelId) {
+      return;
+    }
+    this.completedChapterId = chapter.id;
+    const chapters = this.manifestService.getManifest()?.chapters ?? [];
+    this.chapterComplete.emit({
+      chapterId: chapter.id,
+      panelId: endPanelId,
+      isLastChapter: chapters[chapters.length - 1]?.id === chapter.id,
+    });
+  }
+
+  /**
+   * Watch whether the player is on screen (at least half of it, or half the
+   * viewport for a player taller than that) and whether its tab is visible;
+   * autoplay is suspended while it is not (`pauseAutoplayWhenHidden`).
+   */
+  private observeVisibility(): void {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
+    }
+    const element = this.host.nativeElement as HTMLElement | undefined;
+    if (typeof IntersectionObserver === 'undefined' || !element) {
+      return;
+    }
+    this.visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (!entry) {
+          return;
+        }
+        const box = entry.boundingClientRect;
+        if (box.width === 0 || box.height === 0) {
+          // Not laid out (yet): no basis to call it hidden.
+          this.hostIntersecting = true;
+        } else {
+          const viewportHeight =
+            entry.rootBounds?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0);
+          this.hostIntersecting =
+            entry.isIntersecting &&
+            (entry.intersectionRatio >= 0.5 ||
+              (viewportHeight > 0 && entry.intersectionRect.height >= viewportHeight * 0.5));
+        }
+        this.updateOnScreen();
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    this.visibilityObserver.observe(element);
+  }
+
+  /** Recompute on-screen state; suspend or resume autoplay on a change. */
+  private updateOnScreen(): void {
+    const tabVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+    const onScreen = this.hostIntersecting && tabVisible;
+    if (onScreen === this.onScreen) {
+      return;
+    }
+    this.onScreen = onScreen;
+    if (!this.pauseAutoplayWhenHidden || !this.autoplayEnabled) {
+      return;
+    }
+    if (onScreen) {
+      this.resumeAutoplay();
+    } else {
+      this.startAutoplay(); // suspends: clears the timers, keeps autoplay on
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Resume suspended autoplay: a held page turn first, else re-arm the dwell. */
+  private resumeAutoplay(): void {
+    if (!this.autoplaySuspended || !this.autoplayEnabled) {
+      this.autoplaySuspended = false;
+      return;
+    }
+    this.autoplaySuspended = false;
+    if (this.pendingQueueAdvance) {
+      this.pendingQueueAdvance = false;
+      void this.navigateToNextPage().then(() => this.cdr.markForCheck());
+      return;
+    }
+    this.startAutoplay();
+  }
+
   /** The chapter before (-1) or after (+1) the current one. */
   private adjacentChapter(direction: 1 | -1): Chapter | undefined {
+    if (this.scopedChapterId) {
+      // A chapter embed has no neighbours: reading stops at its ends.
+      return undefined;
+    }
     const chapters = this.manifestService.getManifest()?.chapters ?? [];
     const index = chapters.findIndex((chapter) => chapter.id === this.currentChapter?.id);
     return index < 0 ? undefined : chapters[index + direction];
   }
 
   private isFirstChapter(chapter: Chapter): boolean {
+    if (this.scopedChapterId) {
+      return chapter.id === this.scopedChapterId;
+    }
     return this.manifestService.getManifest()?.chapters?.[0]?.id === chapter.id;
   }
 
@@ -3304,7 +3567,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
   /** Make the cover visible (thumbnail strip, TOC, back from the first panel/page). */
   showCoverPage(): void {
-    if (!this.coverUrl) {
+    if (!this.coverUrl || (this.scopedChapterId && !this.showCover)) {
       return;
     }
     this.coverVisible = true;
@@ -3435,6 +3698,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (this.viewMode === 'page') {
       this.startPageSequence();
       this.promptAgeGateForPage();
+      if (!this.loading) {
+        this.checkChapterComplete();
+      }
     }
     if (this.autoplayEnabled) {
       this.startAutoplay();

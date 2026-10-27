@@ -467,18 +467,18 @@ be worked in parallel by repo: P1 (player) is a prerequisite for P2–P4.
 
 ### P1 — Player library: chapter scope & visibility (player 1.9.0)
 
-- [ ] `chapterScope` input: resolve by `id` or `chapterId`; unknown → `error` + error screen
-- [ ] Start position inside the scope (`initializePlayer`); bookmark resume only when inside scope
-- [ ] `adjacentChapter()` returns `undefined` when scoped (next/prev/page turn/preload)
-- [ ] `navigateToPanel()` blocks outside-scope targets; `navigationAttempt` gains optional `blocked: 'outside-scope'`
-- [ ] TOC overlay + thumbnail strip receive scoped `chapters`; cover entry hidden unless cover shown
-- [ ] `isEndOfWork()`/`atEndOfWork()` → end of scope; `work_complete` only when scope is the last chapter
-- [ ] New output `chapterComplete` (`{chapterId, panelId, isLastChapter}`), fired once per chapter entry
-- [ ] `pauseAutoplayWhenHidden` input (IntersectionObserver on host + `visibilitychange`), default `true`
-- [ ] `ImageCacheService.setMemoryBudget(32 MB)` when scoped + embedded (or an `imageCacheBudgetMb` input)
-- [ ] Unit specs: scope navigation (panel/page/canvas), blocked targets, TOC filtering, preload no-spill, `chapterComplete`, visibility pause/resume
-- [ ] e2e: `e2e/chapter-scope.spec.ts` against the demo app with `?chapter=` (demo gets the param for testing)
-- [ ] `API.md`, README, CHANGELOG entries; `ng lint player` clean
+- [x] `chapterScope` input: resolve by `id` or `chapterId`; unknown → `error` + error screen
+- [x] Start position inside the scope (`initializePlayer`); bookmark resume only when inside scope
+- [x] `adjacentChapter()` returns `undefined` when scoped (next/prev/page turn/preload)
+- [x] `navigateToPanel()` blocks outside-scope targets; `navigationAttempt` gains optional `blocked: 'outside-scope'`
+- [x] TOC overlay + thumbnail strip receive scoped `chapters`; cover entry hidden unless cover shown
+- [x] `isEndOfWork()`/`atEndOfWork()` → end of scope; `work_complete` only when scope is the last chapter
+- [x] New output `chapterComplete` (`{chapterId, panelId, isLastChapter}`), fired once per chapter entry
+- [x] `pauseAutoplayWhenHidden` input (IntersectionObserver on host + `visibilitychange`), default `true`
+- [x] `ImageCacheService.setMemoryBudget(32 MB)` when scoped + embedded (or an `imageCacheBudgetMb` input)
+- [x] Unit specs: scope navigation (panel/page/canvas), blocked targets, TOC filtering, preload no-spill, `chapterComplete`, visibility pause/resume
+- [x] e2e: `e2e/chapter-scope.spec.ts` against the demo app with `?chapter=` (demo gets the param for testing)
+- [x] `API.md`, README, CHANGELOG entries; `ng lint player` clean
 
 ### P2 — Embed bridge v2 in the library + apps
 

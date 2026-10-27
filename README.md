@@ -95,6 +95,8 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **History Navigation** - Back/forward with state preservation
 - **Keyboard Shortcuts** - Arrow keys, spacebar, hotkeys
 
+- **Chapter embeds** - `chapterScope` locks a player to one chapter; several players (one iframe each) can sit on one host page with lazy loading and autoplay on scroll ([concept](docs/MULTI_CHAPTER_EMBED.md))
+
 ### ✅ View Modes
 - **Panel View** - Classic one-panel-at-a-time reading with transitions
 - **Canvas View** - Infinite-canvas spatial mode (format 1.4): panels placed on a 2D stage, camera pan/zoom via `CanvasCameraService`, panel budget culling; select per work/chapter or force via the `viewModeOverride` input
@@ -681,6 +683,9 @@ constructor(private playerState: PlayerStateService) {
 | `reducedMotion` | `boolean` | `false` | Force reduced motion |
 | `showToolbar` | `boolean` | `false` | Show the bottom toolbar |
 | `viewModeOverride` | `'auto' \| 'panel' \| 'canvas'` | `'auto'` | Force panel or infinite-canvas view |
+| `chapterScope` | `string` | — | Play only this chapter (manifest `id` or CMS `chapterId`): no chapter jumps, ToC lists only it. For chapter embeds, see [docs/MULTI_CHAPTER_EMBED.md](docs/MULTI_CHAPTER_EMBED.md) |
+| `pauseAutoplayWhenHidden` | `boolean` | `true` | Suspend autoplay while the player is less than half on screen or its tab is hidden |
+| `imageCacheBudgetMb` | `number` | `100` | Decoded-image cache budget (lower it with several players on one page) |
 
 And emits these outputs:
 
@@ -691,7 +696,8 @@ And emits these outputs:
 | `chapterChange` | `Chapter` | Chapter boundary crossed |
 | `localeChange` | `LocaleCode` | Language switched |
 | `variableChange` | `{ key, value }` | A story variable changed |
-| `navigationAttempt` | `{ direction, target? }` | Any navigation attempt |
+| `navigationAttempt` | `{ direction, target?, blocked? }` | Any navigation attempt; `blocked: 'outside-scope'` when a jump left the `chapterScope` |
+| `chapterComplete` | `{ chapterId, panelId, isLastChapter }` | The reader reached a chapter's end panel (page view: its last page), once per chapter visit |
 | `cameraChange` | `CameraState` | Canvas-view camera moved |
 | `paywallAction` | `{ action, gate, productId? }` | Reader clicks Buy (`purchase`) / Subscribe (`subscribe`) / Sign in (`login`) / Maybe later (`dismiss`) on the paywall |
 | `ageVerified` | `AgeVerificationResult` | Reader answers an age gate |

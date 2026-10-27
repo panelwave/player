@@ -72,6 +72,9 @@ export class AppComponent implements OnInit, OnDestroy {
   /** Panel to open at: the embed config's `initialPanelId`, else `?panel=`. */
   initialPanelId?: string = this.start.panelId;
 
+  /** Chapter embed: play only this chapter (`?chapter=<id or uuid>`). */
+  chapterScope?: string = new URLSearchParams(window.location.search).get('chapter') ?? undefined;
+
   /**
    * Dev/testing hook: `?deny=<panelId>[,<panelId>…]` installs an
    * entitlement adapter that denies access to the listed panels, so the

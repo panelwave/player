@@ -242,6 +242,13 @@ export interface SequenceAudioTrack {
 export interface Chapter {
   /** Unique chapter identifier */
   id: string;
+
+  /**
+   * CMS database chapter UUID (schema: optional, not needed for playback).
+   * Stable across chapter reordering, so chapter embeds may address a
+   * chapter by it (`chapterScope`).
+   */
+  chapterId?: string;
   
   /** Localized chapter title (optional) */
   title?: LocalizedString;
