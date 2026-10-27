@@ -521,8 +521,8 @@ Reader server (`apps/reader`):
 - [x] `apps/reader/README.md`
 
 API (`apps/cms-api`):
-- [ ] Migration `111_chapter_embed_settings.sql` (`embed_settings jsonb NOT NULL DEFAULT '{}'`), apply on dev; prod via `scripts/migrate.sh` (hand to the user)
-- [ ] `ChapterDAO.update()` + `PATCH /chapters/{id}` accept validated `embedSettings`; chapters GET returns it; TestBox specs
+- [x] Migration `111_chapter_embed_settings.sql` (`embed_settings jsonb NOT NULL DEFAULT '{}'`), apply on dev; prod via `scripts/migrate.sh` (hand to the user)
+- [x] `ChapterDAO.update()` + `PATCH /chapters/{id}` accept validated `embedSettings`; chapters GET returns it; TestBox specs
 - [ ] `ManifestProfileService.dropInternalIds`: keep `chapterId` in player mode (D2); update `MANIFEST_MODES.md`; `AnalyticsService` chapter remap prefers UUID
 - [ ] Tracking: accept `embedHost` in `session_start` data (ingest + aggregates in `worker-analytics`: new dimension "embedded vs reader")
 - [ ] `WorkArchiveService` player sidecar includes per-chapter `embedSettings` + poster URLs
