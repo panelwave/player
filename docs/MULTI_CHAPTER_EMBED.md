@@ -515,10 +515,10 @@ be worked in parallel by repo: P1 (player) is a prerequisite for P2–P4.
 ### P4 — CMS: reader server, API, frontend, export
 
 Reader server (`apps/reader`):
-- [ ] Parse/validate `chapter/autoplay/toolbar/cover/origin/locale/secondsPerPanel`; inject into `__PW_READER__`; tests in `routes.test.ts` / `render.test.ts`
-- [ ] Serve `/embed.js` (copied by `scripts/update-reader-app.ps1`), cache + CORS headers
-- [ ] Skip Rybbit when `embed=1`
-- [ ] `apps/reader/README.md`
+- [x] Parse/validate `chapter/autoplay/toolbar/cover/origin/locale/secondsPerPanel`; inject into `__PW_READER__`; tests in `routes.test.ts` / `render.test.ts`
+- [x] Serve `/embed.js` (copied by `scripts/update-reader-app.ps1`), cache + CORS headers
+- [x] Skip Rybbit when `embed=1`
+- [x] `apps/reader/README.md`
 
 API (`apps/cms-api`):
 - [ ] Migration `111_chapter_embed_settings.sql` (`embed_settings jsonb NOT NULL DEFAULT '{}'`), apply on dev; prod via `scripts/migrate.sh` (hand to the user)
