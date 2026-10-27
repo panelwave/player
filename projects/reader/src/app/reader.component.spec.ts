@@ -255,6 +255,7 @@ describe('ReaderComponent', () => {
       expect(shell.showCover).toBeFalse();
       expect(shell.autoplay).toBeFalse();
       expect(shell.imageCacheBudgetMb).toBe(32);
+      expect(shell.trackingContext).toEqual({ embedHost: jasmine.any(String) });
     });
 
     it('applies setOptions from the framing page', async () => {
@@ -277,6 +278,20 @@ describe('ReaderComponent', () => {
       expect(shell.chapterScope).toBeUndefined();
       expect(shell.showCover).toBeTrue();
       expect(shell.imageCacheBudgetMb).toBeUndefined();
+    });
+
+    it('reports the embedding origin to analytics', () => {
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: true, embedOrigin: 'https://course.example' });
+      http.expectOne('https://x/m.json').flush(validManifest());
+      fixture.detectChanges();
+      expect(shellOf(fixture).trackingContext).toEqual({ embedHost: 'https://course.example' });
+    });
+
+    it('sends no tracking context outside an embed', () => {
+      const fixture = setup({ manifestUrl: 'https://x/m.json', embed: false });
+      http.expectOne('https://x/m.json').flush(validManifest());
+      fixture.detectChanges();
+      expect(shellOf(fixture).trackingContext).toBeUndefined();
     });
   });
 

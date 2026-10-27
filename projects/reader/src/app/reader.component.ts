@@ -25,6 +25,15 @@ import { readRememberedLocale, rememberLocale, startLocale } from './start-local
 
 type State = 'empty' | 'loading' | 'error' | 'ready';
 
+/** Origin of the page that opened / frames the reader, from document.referrer. */
+function referrerOrigin(): string | undefined {
+  try {
+    return document.referrer ? new URL(document.referrer).origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The public reader. Gating is left to the shell's PaywallService (manifest
  * `paywall.rules` + `x-locked` stubs, anonymous snapshot), so paywall and age
@@ -61,6 +70,10 @@ export class ReaderComponent implements OnInit, OnDestroy {
   readonly showToolbar = signal(this.embedOptions.showToolbar ?? false);
   readonly showCover = signal(this.embedOptions.showCover ?? !this.chapterScope);
   readonly secondsPerPanel = signal(this.embedOptions.secondsPerPanel ?? 5);
+  /** Analytics: which site embeds the reader (dashboard split "embedded vs. reader"). */
+  readonly trackingContext = this.config.embed
+    ? { embedHost: this.embedOptions.embedOrigin ?? referrerOrigin() ?? 'unknown' }
+    : undefined;
   /** Several chapter embeds share the device: each keeps a smaller image cache. */
   readonly imageCacheBudgetMb = this.config.embed && this.chapterScope ? 32 : undefined;
 

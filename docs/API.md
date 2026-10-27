@@ -45,6 +45,7 @@ rules (graph, variables, paywall, tracking) into behaviour.
 | `readerToken` | `string` | — | Bearer token sent to `entitlementEndpoint`. |
 | `chapterScope` | `string` | — | Play only this chapter (its manifest `id` or CMS `chapterId`). Reading starts at its entry (a bookmark or link inside it is honoured), next / previous and page turns stop at its ends, the ToC and thumbnail strip list only it, and every jump out of it (cross-chapter edge, hotspot `goTo`, `navigateToPanel`, `navigateToChapter`) is refused with `navigationAttempt` `{ blocked: 'outside-scope' }`. Autoplay stops at its end; `work_complete` is tracked only when it is the work's last chapter. The cover shows only with `showCover`. An unknown id is a load `error`. Read on (re)load. |
 | `pauseAutoplayWhenHidden` | `boolean` | `true` | Suspend autoplay while less than half of the player (or half the viewport, for a taller player) is on screen, or the tab is hidden; resume from the start of the current panel's dwell time when it is back. A page-view video queue that finished meanwhile turns the page on return. |
+| `trackingContext` | `Record<string, string \| number \| boolean>` | — | Extra fields of the analytics `session_start` event — the reader app sends `{ embedHost }` (origin of the embedding page) for embeds. Read on (re)load. |
 | `imageCacheBudgetMb` | `number` | `100` | Decoded-image cache budget in MB. Each iframe has its own cache, so chapter embeds use a smaller one (32). |
 
 Inputs may change after init: `manifest` / `manifestUrl` reload the work

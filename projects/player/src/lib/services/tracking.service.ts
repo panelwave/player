@@ -120,7 +120,23 @@ export class TrackingService {
   /**
    * Track an event
    */
+  /**
+   * Manifest chapter id → CMS chapter uuid (`chapter.chapterId`). Events that
+   * carry a `chapterId` found here also get `chapterUuid`, so analytics stay
+   * right when the author reorders chapters (manifest ids are positional).
+   */
+  setChapterUuids(map: Record<string, string> | null): void {
+    this.chapterUuids = new Map(Object.entries(map ?? {}));
+  }
+
+  private chapterUuids = new Map<string, string>();
+
   track(type: string, data?: Record<string, unknown>): void {
+    const chapterId = data?.['chapterId'];
+    if (typeof chapterId === 'string' && data?.['chapterUuid'] === undefined && this.chapterUuids.has(chapterId)) {
+      data = { ...data, chapterUuid: this.chapterUuids.get(chapterId) };
+    }
+
     // Check consent
     if (this.config.consentRequired && !this.hasConsent) {
       return;

@@ -110,6 +110,20 @@ describe('TrackingService', () => {
       expect(sessionId).toBeTruthy();
       expect(typeof sessionId).toBe('string');
     });
+
+    it('adds the CMS chapter uuid to events that name a known chapter', () => {
+      const queue = () => (service as unknown as { eventQueue: { data?: Record<string, unknown> }[] }).eventQueue;
+      service.setChapterUuids({ 'ch-1': '7c1e0000-0000-4000-8000-000000000002' });
+      service.track('panel_view', { panelId: 'p1', chapterId: 'ch-1' });
+      service.track('panel_view', { panelId: 'p2', chapterId: 'ch-9' });
+      service.track('page_view');
+      expect(queue()[0].data).toEqual({ panelId: 'p1', chapterId: 'ch-1', chapterUuid: '7c1e0000-0000-4000-8000-000000000002' });
+      expect(queue()[1].data).toEqual({ panelId: 'p2', chapterId: 'ch-9' });
+      expect(queue()[2].data).toBeUndefined();
+      service.setChapterUuids(null);
+      service.track('panel_view', { chapterId: 'ch-1' });
+      expect(queue()[3].data).toEqual({ chapterId: 'ch-1' });
+    });
   });
 
   describe('event whitelist', () => {

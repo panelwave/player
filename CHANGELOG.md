@@ -20,6 +20,10 @@ semver. The reader-facing product changelog lives on the docs site
   while the player is less than half on screen or its tab is hidden, and
   resumes when it is back. Previously its timers ran on in a background tab.
 - `imageCacheBudgetMb` input for the decoded-image cache budget.
+- `trackingContext` input: extra `session_start` fields (the reader sends
+  `embedHost` when embedded). `TrackingService.setChapterUuids()`: events that
+  name a chapter also carry its CMS `chapterUuid` when the manifest has
+  `chapter.chapterId`, so analytics survive chapter reordering.
 - `Chapter.chapterId` (the schema's optional CMS uuid) in the player types.
 - Demo: `?chapter=` sets `chapterScope`.
 - `autoplayChange` output: autoplay switched on or off (toolbar, input, or by

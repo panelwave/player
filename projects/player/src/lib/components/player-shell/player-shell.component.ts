@@ -391,6 +391,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    */
   @Input() imageCacheBudgetMb?: number;
 
+  /**
+   * Extra fields for the analytics `session_start` event, e.g. `embedHost`
+   * (the origin of the page that embeds the player) for chapter embeds.
+   * Read on (re)load.
+   */
+  @Input() trackingContext?: Record<string, string | number | boolean>;
+
   /** Manifest id of the chapter `chapterScope` resolved to (set on load). */
   scopedChapterId?: string;
 
@@ -1242,6 +1249,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       eventWhitelist: tracking.eventWhitelist,
       endpoint: tracking.endpoint,
     });
+    // CMS chapter uuids (when the manifest carries them) ride along with
+    // every event that names a chapter.
+    const uuids: Record<string, string> = {};
+    for (const chapter of manifest?.chapters ?? []) {
+      if (chapter.chapterId) uuids[chapter.id] = chapter.chapterId;
+    }
+    this.trackingService.setChapterUuids(uuids);
     if (tracking.consent?.defaultOptIn) {
       this.trackingService.setConsent(true);
     }
@@ -1275,6 +1289,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.analyticsTotalPanels = order;
 
     this.trackingService.track('session_start', {
+      ...(this.trackingContext ?? {}),
       deviceType: this.detectDeviceType(),
       locale: this.locale,
       totalPanels: this.analyticsTotalPanels,

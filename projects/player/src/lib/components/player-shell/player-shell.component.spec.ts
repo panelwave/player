@@ -42,6 +42,7 @@ describe('PlayerShellComponent auto-advance', () => {
     track: jasmine.Spy;
     setSessionId: jasmine.Spy;
     flushSync: jasmine.Spy;
+    setChapterUuids: jasmine.Spy;
   };
   let manifest: Partial<PanelWaveManifest> | null;
 
@@ -95,6 +96,7 @@ describe('PlayerShellComponent auto-advance', () => {
       track: jasmine.createSpy('tracking.track'),
       setSessionId: jasmine.createSpy('tracking.setSessionId'),
       flushSync: jasmine.createSpy('tracking.flushSync'),
+      setChapterUuids: jasmine.createSpy('tracking.setChapterUuids'),
     };
     const manifestServiceMock = {
       getManifest: () => manifest,
@@ -696,6 +698,23 @@ describe('PlayerShellComponent auto-advance', () => {
       // BFS reading order across chapters: p1, p2, p3, p4
       expect(priv().analyticsPanelOrder.get('p1')).toBe(1);
       expect(priv().analyticsPanelOrder.get('p4')).toBe(4);
+    });
+
+    it('adds the host trackingContext (embedHost) to session_start', () => {
+      manifest = analyticsManifest();
+      shell.trackingContext = { embedHost: 'https://course.example' };
+      priv().configureTracking(manifest);
+      expect(trackingMock.track).toHaveBeenCalledWith(
+        'session_start',
+        jasmine.objectContaining({ embedHost: 'https://course.example', totalPanels: 4 })
+      );
+    });
+
+    it('hands the CMS chapter uuids to the tracking service', () => {
+      manifest = analyticsManifest();
+      (manifest!.chapters![1] as { chapterId?: string }).chapterId = '7c1e0000-0000-4000-8000-000000000002';
+      priv().configureTracking(manifest);
+      expect(trackingMock.setChapterUuids).toHaveBeenCalledWith({ ch2: '7c1e0000-0000-4000-8000-000000000002' });
     });
 
     it('tracks panel_view with panelOrder and work_complete only on the final panel', () => {
