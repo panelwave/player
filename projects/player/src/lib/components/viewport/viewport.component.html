@@ -78,6 +78,9 @@
                [pwPanelAnimation]="panel.animations"
                [pwPanelAnimationKey]="currentPanelId || ''"
                [pwPanelAnimationReducedMotion]="reducedMotion"
+               [pwBubbleClock]="panel"
+               [pwBubbleClockKey]="currentPanelId || ''"
+               [pwBubbleClockReducedMotion]="reducedMotion"
                (click)="onPanelContainerClick($event, currentPanelId)" (keydown.enter)="onPanelContainerClick($any($event), currentPanelId)">
             <!-- Everything that belongs to the artwork; a camera move transforms it as one. -->
             <div class="pw-panel-camera">
@@ -265,6 +268,9 @@
                      [pwPanelAnimation]="panelData.animations"
                      [pwPanelAnimationKey]="placement.panelId"
                      [pwPanelAnimationReducedMotion]="reducedMotion"
+                     [pwBubbleClock]="panelData"
+                     [pwBubbleClockKey]="placement.panelId"
+                     [pwBubbleClockReducedMotion]="reducedMotion"
                      tabindex="0"
                      (click)="onPanelContainerClick($event, placement.panelId)"
                      (keydown.enter)="onPanelContainerClick($any($event), placement.panelId)">

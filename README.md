@@ -623,6 +623,25 @@ const villainStyle: BalloonConfigOverride = {
 const effective = mergeBalloonConfig(workDefaults, villainStyle);
 ```
 
+#### Timed balloons (format 1.10)
+
+A bubble with `showAtMs` waits for its line: it appears that many milliseconds after its panel's clock starts, fades in and stays. Use it for dialogue on a video panel, where the second speaker answers a moment after the first.
+
+```json
+"speechBubbles": [
+  { "id": "right", "text": { "en-US": "You came back." }, "shape": { "x": 0.58, "y": 0.08, "w": 0.32, "h": 0.18 } },
+  { "id": "left", "text": { "en-US": "I never left." }, "shape": { "x": 0.08, "y": 0.12, "w": 0.3, "h": 0.16 }, "showAtMs": 2400 }
+]
+```
+
+- On a panel with a video layer the clock starts when the video starts playing and pauses while it is paused or buffering. With an `on-click` / `on-hover` video, the reader's click or hover starts it.
+- On other panels it starts when the panel is shown (the same moment a panel animation starts) and pauses while the panel is off screen or the tab is hidden.
+- Entering the panel again restarts the dialogue. A looping video does not replay it.
+- Reduced motion, print renders (`html.pw-print`) and the outgoing copy of a transition show every balloon at once.
+- Autoplay keeps a panel without video until the last timed balloon has been readable for 2 s. Video panels advance on the video's pass as before.
+
+The player shell wires this up. A host that renders `pw-speech-bubbles` itself puts `[pwBubbleClock]="panel"` and `[pwBubbleClockKey]="panelId"` (`BubbleClockDirective`) on the element around the overlay and the panel's layers; without the directive every balloon shows at once.
+
 ### Interact with Plugins
 
 Plugin layers are declared in the manifest and rendered in a sandboxed iframe (`PluginSandboxComponent`). The host application talks to them via `PluginHostService`:

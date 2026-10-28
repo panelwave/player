@@ -409,6 +409,56 @@ describe('PlayerShellComponent reading features (real services)', () => {
       priv().stopAutoplay();
     });
 
+    describe('timed balloons (showAtMs)', () => {
+      const timeBalloons = (): void => {
+        const p1 = (shell.manifest as unknown as { chapters: { panels: Record<string, Record<string, unknown>> }[] })
+          .chapters[0].panels['p1'];
+        p1['speechBubbles'] = [
+          { id: 'b1', text: { 'en-US': 'First' }, shape: { x: 0.1, y: 0.1, w: 0.3, h: 0.2 } },
+          { id: 'b2', text: { 'en-US': 'Answer' }, shape: { x: 0.5, y: 0.1, w: 0.3, h: 0.2 }, showAtMs: 2500 },
+        ];
+      };
+
+      it('keeps the panel until the last timed balloon has been readable for 2 s', async () => {
+        timeBalloons();
+        await init();
+        shell.hideCover();
+        shell.autoplayEnabled = true;
+        priv().startAutoplay();
+        expect(priv().autoplayDuration).toBe(4500); // 2500 + BUBBLE_READ_MS, longer than the authored 1200
+        priv().stopAutoplay();
+      });
+
+      it('does not wait with speech off or reduced motion', async () => {
+        timeBalloons();
+        await init();
+        shell.hideCover();
+        shell.autoplayEnabled = true;
+        // Set the flag directly: setSpeechEnabled() would persist the
+        // preference in localStorage and leak into later specs.
+        shell.speechEnabled = false;
+        priv().startAutoplay();
+        expect(priv().autoplayDuration).toBe(1200);
+
+        shell.speechEnabled = true;
+        shell.reducedMotion = true;
+        priv().startAutoplay();
+        expect(priv().autoplayDuration).toBe(1200);
+        priv().stopAutoplay();
+      });
+
+      it('page view keeps the plain page dwell', async () => {
+        timeBalloons();
+        await init();
+        shell.hideCover();
+        toPageView();
+        shell.autoplayEnabled = true;
+        priv().startAutoplay();
+        expect(priv().autoplayDuration).toBe(2000);
+        priv().stopAutoplay();
+      });
+    });
+
     it('stops at the end of the work', async () => {
       await init();
       shell.hideCover();

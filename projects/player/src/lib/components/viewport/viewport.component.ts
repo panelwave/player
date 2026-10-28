@@ -20,6 +20,7 @@ import {
 
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
+import { BubbleClockDirective } from '../../directives/bubble-clock.directive';
 import {
   NO_FOCUS_TRANSFORM,
   focusTransform,
@@ -39,7 +40,7 @@ import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { pageAspectRatio } from '../../utils/page-format-utils';
-import { resolvePageBackground } from '../../utils/page-background';
+import { resolvePageBackground } from '../../utils/page-background';
 import { panelArtworkAspect } from '../../utils/layer-reference';
 import { artworkLetteringScale, pageLetteringScale } from '../../utils/balloon-config';
 
@@ -78,7 +79,7 @@ export interface ViewportPreloadTarget {
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective, LockedPanelComponent],
+    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective, BubbleClockDirective, LockedPanelComponent],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush

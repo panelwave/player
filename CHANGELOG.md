@@ -8,6 +8,27 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- **Timed speech balloons** (format 1.10 `SpeechBubble.showAtMs`): a balloon
+  can wait for its line. It is laid out with the others but hidden
+  (`pw-bubble-pending`, `aria-hidden`, out of the tab order) until its panel's
+  clock reaches `showAtMs`, then fades in (300 ms) and stays. The clock
+  belongs to the new `BubbleClockDirective` (`[pwBubbleClock]`) on each panel
+  host in panel, page and canvas view; `pw-speech-bubbles` injects it, so
+  re-renders and the speech toggle never re-hide a shown balloon. On a panel
+  with a video layer the clock starts when the video starts playing and
+  pauses while it is paused or buffering (native media events captured on the
+  host), so a two-person dialogue follows the clip, also when the page-view
+  sequencer starts the video late; other panels start it when the panel is
+  shown (the panel-animation rule) and pause it off screen or in a hidden
+  tab. Entering the panel again restarts it; reduced motion, print renders
+  and transition copies show every balloon at once. Panel-view autoplay keeps
+  a panel without video until the last timed balloon has been on screen for
+  2 s (`BUBBLE_READ_MS`). Exports: `BubbleClockDirective`, `BubbleClock`,
+  `bubbleShowAtMs`, `hasTimedBubbles`, `lastBubbleShowAtMs`,
+  `panelVideoLayerIds`, `observePanelShown` / `isPanelShown` /
+  `START_VISIBLE_RATIO` (the "panel is shown" rule, now shared with
+  `PanelAnimationDirective`), `BUBBLE_PENDING_CLASS`, `BUBBLE_REVEAL_MS`.
+  Demo: the video-sequencing work's panel 2 carries a timed dialogue.
 - **Content widget layers** (format 1.10, docs/CONTENT_WIDGETS.md): five new
   layer kinds drawn by the player with the work theme — `download` (file card
   with type icon, localized name, size; `pw-download-layer`), `audioPlayer`

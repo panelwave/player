@@ -130,7 +130,8 @@ bridge.disconnect();                                  // on destroy
 
 | Component | Selector | Purpose |
 |-----------|----------|---------|
-| `SpeechBubblesComponent` | `pw-speech-bubbles` | Renders a panel's bubbles with the ComicBalloon SVG engine. |
+| `SpeechBubblesComponent` | `pw-speech-bubbles` | Renders a panel's bubbles with the ComicBalloon SVG engine. Timed bubbles (`showAtMs`, format 1.10) wait on the clock of an enclosing `pwBubbleClock`; without one every bubble shows at once. |
+| `BubbleClockDirective` | `[pwBubbleClock]` | The clock timed bubbles wait on, one per panel host: inputs `pwBubbleClock` (the panel), `pwBubbleClockKey` (a change restarts it), `pwBubbleClockReducedMotion`, `pwBubbleClockStatic`. Starts with the panel's video (`playing`) or when the panel is shown; exposes `clock` (`BubbleClock`: `state`, `elapsed()`, `changes$`). |
 | `HotspotsOverlayComponent` | `pw-hotspots-overlay` | Interactive hotspot shapes (all five actions). |
 | `VideoLayerComponent` | `pw-video-layer` | Video layer with play/start modes, sequencing hooks. |
 | `PaywallOverlayComponent` | `pw-paywall-overlay` | Purchase / subscription gate UI (`gate`, `visible`; `action`, `close`). |

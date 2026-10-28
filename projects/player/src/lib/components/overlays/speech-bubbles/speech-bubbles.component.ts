@@ -17,8 +17,10 @@ import {
   SimpleChanges,
   AfterViewInit,
   OnDestroy,
+  NgZone,
   inject,
 } from '@angular/core';
+import type { Subscription } from 'rxjs';
 
 import type {
   LocaleCode,
@@ -32,6 +34,16 @@ import type { TailOptions } from '../../../utils/comic-balloon';
 import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig, balloonConfigToRenderOptions, balloonConfigToTailOptions, artworkLetteringScale } from '../../../utils/balloon-config';
 import { placeGrownBody, tailConfigToTip, tailTipToTailConfig } from '../../../utils/balloon-geometry';
 import { ManifestService } from '../../../services/manifest.service';
+import { BubbleClockDirective } from '../../../directives/bubble-clock.directive';
+import { bubbleShowAtMs } from '../../../utils/bubble-timing-utils';
+import { shouldReduceMotion } from '../../../utils/animation-utils';
+import { isPrintRender } from '../../../utils/widget-utils';
+
+/** Class of a timed balloon that waits for its time (schema 1.10 `showAtMs`). */
+export const BUBBLE_PENDING_CLASS = 'pw-bubble-pending';
+
+/** Duration of the fade-in of a timed balloon when its time comes. */
+export const BUBBLE_REVEAL_MS = 300;
 
 /** Smallest rendered lettering size in CSS px (balloons grow to keep text readable on small pages). */
 export const MIN_LETTERING_PX = 9;
@@ -144,8 +156,23 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
 
   private manifestService = inject(ManifestService);
 
+  private zone = inject(NgZone);
+
+  /**
+   * The panel clock timed balloons wait on (schema 1.10 `showAtMs`), owned by
+   * the `pwBubbleClock` directive on the panel host around this overlay.
+   * Without one (outgoing copies, standalone use) every balloon shows at once.
+   */
+  private clockHost = inject(BubbleClockDirective, { optional: true });
+
+  private clockSubscription: Subscription | null = null;
+
+  /** Pending reveal timers of timed balloons. */
+  private revealTimers: ReturnType<typeof setTimeout>[] = [];
+
   ngAfterViewInit(): void {
     this.initialized = true;
+    this.clockSubscription = this.clockHost?.clock.changes$.subscribe(() => this.applyClock()) ?? null;
     // First paint without blocking on fonts (font-display: swap shows a
     // fallback), small delay to ensure container dimensions are available.
     setTimeout(() => this.renderAllBalloons(), 50);
@@ -182,6 +209,9 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   ngOnDestroy(): void {
     this.initialized = false;
     this.resizeObserver?.disconnect();
+    this.clockSubscription?.unsubscribe();
+    this.clockSubscription = null;
+    this.clearRevealTimers();
     this.renderedBalloons.clear();
   }
 
@@ -288,6 +318,7 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
     // Clear existing rendered balloons
     container.innerHTML = '';
     this.renderedBalloons.clear();
+    this.clearRevealTimers();
 
     if (!this.bubbles || this.bubbles.length === 0) return;
     if (this.containerWidth <= 0 || this.containerHeight <= 0) return;
@@ -518,6 +549,14 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           }
         });
 
+        // Timed balloon (schema 1.10): laid out like every other balloon, so
+        // the reveal is instant and the layout never shifts; applyClock()
+        // hides it until its time.
+        const showAt = bubbleShowAtMs(bubble);
+        if (showAt > 0) {
+          wrapper.setAttribute('data-show-at', String(showAt));
+        }
+
         wrapper.appendChild(balloonContainer);
         container.appendChild(wrapper);
         this.renderedBalloons.set(bubble.id, wrapper);
@@ -525,7 +564,80 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         console.warn(`[pw-speech-bubbles] Failed to render balloon "${bubble.id}":`, e);
       }
     }
+    this.applyClock();
     this.ensureFontsLoaded(fontSpecs);
+  }
+
+  /**
+   * Show or hide the timed balloons for the panel clock's current time and
+   * schedule the reveals still to come. Runs after every render and on every
+   * clock transition (start, pause, finish, restart).
+   */
+  private applyClock(): void {
+    this.clearRevealTimers();
+    const clock = this.clockHost?.clock ?? null;
+    const timed = !!clock && !isPrintRender();
+    const elapsed = clock ? clock.elapsed() : Number.POSITIVE_INFINITY;
+    const upcoming: { wrapper: HTMLElement; showAt: number }[] = [];
+
+    for (const wrapper of this.renderedBalloons.values()) {
+      const showAt = Number(wrapper.getAttribute('data-show-at')) || 0;
+      if (showAt <= 0) continue;
+      if (timed && elapsed < showAt) {
+        this.markPending(wrapper);
+        upcoming.push({ wrapper, showAt });
+      } else {
+        this.reveal(wrapper);
+      }
+    }
+
+    if (!clock || clock.state !== 'running' || upcoming.length === 0) return;
+    this.zone.runOutsideAngular(() => {
+      for (const { wrapper, showAt } of upcoming) {
+        const wait = Math.max(0, showAt - elapsed);
+        this.revealTimers.push(setTimeout(() => {
+          // A timer can fire a hair early; re-check on the clock itself.
+          if (clock.elapsed() + 1 >= showAt) this.reveal(wrapper);
+          else this.applyClock();
+        }, wait));
+      }
+    });
+  }
+
+  /** Hide a timed balloon until its time: invisible, not clickable, out of the tab order. */
+  private markPending(wrapper: HTMLElement): void {
+    if (wrapper.classList.contains(BUBBLE_PENDING_CLASS)) return;
+    wrapper.classList.add(BUBBLE_PENDING_CLASS);
+    wrapper.style.visibility = 'hidden';
+    wrapper.style.pointerEvents = 'none';
+    wrapper.setAttribute('aria-hidden', 'true');
+    wrapper.setAttribute('tabindex', '-1');
+  }
+
+  /** Show a timed balloon whose time has come, fading it in. */
+  private reveal(wrapper: HTMLElement): void {
+    if (!wrapper.classList.contains(BUBBLE_PENDING_CLASS)) return;
+    wrapper.classList.remove(BUBBLE_PENDING_CLASS);
+    wrapper.style.removeProperty('visibility');
+    wrapper.style.removeProperty('pointer-events');
+    wrapper.removeAttribute('aria-hidden');
+    wrapper.setAttribute('tabindex', '0');
+    // The individual `scale` property composes with the wrapper's own
+    // `transform: scale(...)` (reading scale), so the pop never snaps.
+    if (typeof wrapper.animate === 'function' && !shouldReduceMotion() && !isPrintRender()) {
+      wrapper.animate(
+        [
+          { opacity: 0, scale: '0.85' },
+          { opacity: 1, scale: '1' },
+        ],
+        { duration: BUBBLE_REVEAL_MS, easing: 'ease-out' }
+      );
+    }
+  }
+
+  private clearRevealTimers(): void {
+    for (const timer of this.revealTimers) clearTimeout(timer);
+    this.revealTimers = [];
   }
 
   /**

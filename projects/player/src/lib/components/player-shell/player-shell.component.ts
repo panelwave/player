@@ -62,6 +62,7 @@ import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { resolveStartMode } from '../../utils/video-config-utils';
 import { shouldReduceMotion } from '../../utils/animation-utils';
 import { panelAnimationPlayTime } from '../../utils/camera-move';
+import { BUBBLE_READ_MS, lastBubbleShowAtMs } from '../../utils/bubble-timing-utils';
 import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
@@ -3037,6 +3038,16 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     // shows several panels at once and keeps the plain dwell time.
     if (this.viewMode !== 'page' && !this.motionReduced) {
       durationMs = Math.max(durationMs, panelAnimationPlayTime((this.effectivePanel ?? this.currentPanel)?.animations));
+    }
+
+    // Timed balloons (schema 1.10 showAtMs) are never cut short either: the
+    // last line stays readable for BUBBLE_READ_MS. Reduced motion shows every
+    // balloon at once, and with speech off there is nothing to wait for.
+    if (this.viewMode !== 'page' && !this.motionReduced && this.speechEnabled) {
+      const lastShowAt = lastBubbleShowAtMs(this.effectivePanel ?? this.currentPanel);
+      if (lastShowAt > 0) {
+        durationMs = Math.max(durationMs, lastShowAt + BUBBLE_READ_MS);
+      }
     }
 
     this.armAutoplayTimer(durationMs);

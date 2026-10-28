@@ -48,6 +48,7 @@ import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
+import { BubbleClockDirective } from '../../directives/bubble-clock.directive';
 import { LockedPanelComponent } from '../locked-panel/locked-panel.component';
 import { isLockedPanel } from '../../utils/panel-lock';
 import { PaywallService } from '../../services/paywall.service';
@@ -79,7 +80,7 @@ const CAMERA_EMIT_INTERVAL_MS = 100;
 
 @Component({
   selector: 'pw-canvas-stage',
-  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective, LockedPanelComponent],
+  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective, BubbleClockDirective, LockedPanelComponent],
   templateUrl: './canvas-stage.component.html',
   styleUrls: ['./canvas-stage.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

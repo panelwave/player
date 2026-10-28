@@ -543,9 +543,17 @@ export interface SpeechBubble {
   
   /** Audio asset ID for voice-over (optional) */
   audioAssetId?: AssetRef;
-  
+
   /** Condition for bubble visibility (optional) */
   visibleIf?: JsonLogic;
+
+  /**
+   * When the balloon appears, in ms on its panel's clock (schema 1.10+;
+   * 0 or absent = with the panel). The clock starts when the panel is shown,
+   * or — on a panel with a video layer — when that video starts playing, and
+   * pauses with the video. See `BubbleClockDirective`.
+   */
+  showAtMs?: number;
 }
 
 /**

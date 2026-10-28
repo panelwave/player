@@ -42,6 +42,9 @@
         [pwPanelAnimation]="entry.revealed ? entry.panel.animations : null"
         [pwPanelAnimationKey]="entry.panelId"
         [pwPanelAnimationReducedMotion]="reducedMotion"
+        [pwBubbleClock]="entry.revealed ? entry.panel : null"
+        [pwBubbleClockKey]="entry.panelId"
+        [pwBubbleClockReducedMotion]="reducedMotion"
         [attr.aria-hidden]="isCurrent(entry.panelId) ? null : true"
         [attr.inert]="isCurrent(entry.panelId) ? null : ''">
 

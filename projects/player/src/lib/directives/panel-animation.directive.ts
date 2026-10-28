@@ -56,9 +56,7 @@ import {
   sampleViewportRect,
   viewportRectTransform,
 } from '../utils/camera-move';
-
-/** Share of the panel (or of the viewport, for oversized panels) that must be visible to start. */
-const START_VISIBLE_RATIO = 0.25;
+import { observePanelShown } from '../utils/panel-visibility';
 
 /** A frame gap longer than this is a suspended tab, not animation time. */
 const MAX_FRAME_DELTA_MS = 250;
@@ -99,7 +97,7 @@ export class PanelAnimationDirective implements OnChanges, OnDestroy {
   private started = false;
   private finished = false;
   private visible = false;
-  private observer: IntersectionObserver | null = null;
+  private stopObserving: (() => void) | null = null;
 
   /**
    * Inline values elements carried before this run styled them (restored when
@@ -119,8 +117,8 @@ export class PanelAnimationDirective implements OnChanges, OnDestroy {
   /** Stop everything and put back the styles this directive replaced. */
   private teardown(): void {
     this.cancelFrame();
-    this.observer?.disconnect();
-    this.observer = null;
+    this.stopObserving?.();
+    this.stopObserving = null;
     for (const [el, saved] of this.originals) {
       for (const [prop, value] of saved) this.writeStyle(el, prop, value);
     }
@@ -162,24 +160,7 @@ export class PanelAnimationDirective implements OnChanges, OnDestroy {
         if (!this.started) this.applyAt(0);
       });
 
-      if (typeof IntersectionObserver === 'undefined') {
-        this.onVisibility(true);
-        return;
-      }
-      this.observer = new IntersectionObserver(
-        (entries) => {
-          const entry = entries[entries.length - 1];
-          if (!entry) return;
-          const root = entry.rootBounds;
-          const visibleArea = entry.intersectionRect.width * entry.intersectionRect.height;
-          const fillsViewport = !!root && visibleArea >= root.width * root.height * START_VISIBLE_RATIO;
-          this.onVisibility(
-            entry.isIntersecting && (entry.intersectionRatio >= START_VISIBLE_RATIO || fillsViewport)
-          );
-        },
-        { threshold: [0, START_VISIBLE_RATIO, 0.5, 1] }
-      );
-      this.observer.observe(this.host);
+      this.stopObserving = observePanelShown(this.host, (shown) => this.onVisibility(shown));
     });
   }
 
@@ -210,8 +191,8 @@ export class PanelAnimationDirective implements OnChanges, OnDestroy {
 
     if (done) {
       this.finished = true;
-      this.observer?.disconnect();
-      this.observer = null;
+      this.stopObserving?.();
+      this.stopObserving = null;
       return;
     }
     if (this.visible) this.requestFrame(this.tick);

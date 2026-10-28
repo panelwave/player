@@ -137,7 +137,23 @@ export {
   CanvasCameraService,
   type CameraState,
 } from './lib/services/canvas-camera.service';
-export { SpeechBubblesComponent } from './lib/components/overlays/speech-bubbles/speech-bubbles.component';
+export {
+  SpeechBubblesComponent,
+  BUBBLE_PENDING_CLASS,
+  BUBBLE_REVEAL_MS,
+} from './lib/components/overlays/speech-bubbles/speech-bubbles.component';
+// Timed speech balloons (schema 1.10 SpeechBubble.showAtMs)
+export { BubbleClockDirective } from './lib/directives/bubble-clock.directive';
+export { BubbleClock, type BubbleClockState } from './lib/utils/bubble-clock';
+export {
+  bubbleShowAtMs,
+  hasTimedBubbles,
+  lastBubbleShowAtMs,
+  panelVideoLayerIds,
+  BUBBLE_READ_MS,
+  MAX_BUBBLE_SHOW_AT_MS,
+} from './lib/utils/bubble-timing-utils';
+export { observePanelShown, isPanelShown, START_VISIBLE_RATIO } from './lib/utils/panel-visibility';
 export { HotspotsOverlayComponent } from './lib/components/overlays/hotspots-overlay/hotspots-overlay.component';
 export { ActionModalComponent } from './lib/components/modals/action-modal/action-modal.component';
 export { BranchChooserComponent, type BranchChoice } from './lib/components/modals/branch-chooser/branch-chooser.component';

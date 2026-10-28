@@ -214,6 +214,25 @@
                 "de-DE": "2: on-view · Schleife (loopt nach dem Durchlauf stumm weiter)"
               }
             }
+          ],
+          "speechBubbles": [
+            {
+              "id": "sb-pv2-right",
+              "text": {
+                "en-US": "Did you see that?",
+                "de-DE": "Hast du das gesehen?"
+              },
+              "shape": { "x": 0.58, "y": 0.06, "w": 0.34, "h": 0.2 }
+            },
+            {
+              "id": "sb-pv2-left",
+              "text": {
+                "en-US": "Every single loop.",
+                "de-DE": "Bei jeder Schleife."
+              },
+              "shape": { "x": 0.06, "y": 0.1, "w": 0.32, "h": 0.18 },
+              "showAtMs": 1500
+            }
           ]
         },
         "pv-3": {
