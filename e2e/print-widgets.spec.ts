@@ -79,7 +79,9 @@ test.describe('content widgets in print renders', () => {
       await expect(widget(page, 'audioPlayer').locator('pw-print-qr')).toContainText('Scan to listen');
       await expect(widget(page, 'download').locator('.attached')).toHaveText('Printed on page 3');
       // Nothing to click or play on paper; no iframe loads.
-      await expect(widget(page, 'download').locator('a')).not.toHaveAttribute('href', /.+/);
+      await expect(widget(page, 'download').locator('a.pw-download')).not.toHaveAttribute('href', /.+/);
+      // The code itself is a link (clickable in the PDF).
+      await expect(widget(page, 'download').locator('pw-print-qr a')).toHaveAttribute('href', link);
       await expect(page.locator('.page-canvas iframe')).toHaveCount(0);
       // QR codes stay square.
       const box = (await widget(page, 'audioPlayer').locator('pw-print-qr svg').boundingBox())!;

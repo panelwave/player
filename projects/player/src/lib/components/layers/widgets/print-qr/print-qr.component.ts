@@ -13,10 +13,13 @@ import { qrModules } from '../../../../utils/qr';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (size) {
-      <svg class="code" [attr.viewBox]="'0 0 ' + size + ' ' + size" role="img" [attr.aria-label]="label || value" shape-rendering="crispEdges">
-        <rect [attr.width]="size" [attr.height]="size" fill="#fff" />
-        <path [attr.d]="path" fill="#000" />
-      </svg>
+      <!-- A link too: in the PDF the code is clickable when it is read on screen. -->
+      <a class="code-link" [attr.href]="value" target="_blank" rel="noopener">
+        <svg class="code" [attr.viewBox]="'0 0 ' + size + ' ' + size" role="img" [attr.aria-label]="label || value" shape-rendering="crispEdges">
+          <rect [attr.width]="size" [attr.height]="size" fill="#fff" />
+          <path [attr.d]="path" fill="#000" />
+        </svg>
+      </a>
       @if (label) {
         <span class="label">{{ label }}</span>
       }
@@ -34,8 +37,14 @@ import { qrModules } from '../../../../utils/qr';
       aspect-ratio: 0.82;
       min-width: 0;
     }
-    .code {
+    .code-link {
       flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .code {
+      height: 100%;
       min-height: 0;
       aspect-ratio: 1;
       max-width: 100%;
