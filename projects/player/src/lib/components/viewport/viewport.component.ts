@@ -41,7 +41,7 @@ import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/ima
 import { pageAspectRatio } from '../../utils/page-format-utils';
 import { resolvePageBackground } from '../../utils/page-background';
 import { panelArtworkAspect } from '../../utils/layer-reference';
-import { artworkLetteringScale, PAGE_LETTERING_FACTOR } from '../../utils/balloon-config';
+import { artworkLetteringScale, pageLetteringScale } from '../../utils/balloon-config';
 
 /**
  * Performance metrics interface
@@ -1016,14 +1016,19 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   /**
    * Base lettering scale of a page-view panel: the page's UNIFORM lettering
    * scale (every panel of the page the same — font size 15 is one size in a
-   * page-high panel and in a small one, as in print): PAGE_LETTERING_FACTOR
-   * × the page scale (getReadingScale: page height / 1123, never above the
-   * screen scale), as the editor's page view letters it. pw-speech-bubbles
-   * raises it to the MIN_LETTERING_PX floor with the tail tip kept, so small
-   * panels stay readable.
+   * page-high panel and in a small one, as in print): panel view's artwork
+   * scale of a full-width landscape panel of the page (pageLetteringScale of
+   * the page canvas width, never above the screen scale), as the editor's
+   * page view letters it. pw-speech-bubbles raises it to the MIN_LETTERING_PX
+   * floor with the tail tip kept, and shrinks a balloon back towards its
+   * panel-view size when it would not fit its panel.
    */
   getPageReadingScale(_placement: PanelPlacement): number {
-    return this.getReadingScale() * PAGE_LETTERING_FACTOR;
+    const host = this.elementRef.nativeElement as HTMLElement;
+    const h = host.getBoundingClientRect().height;
+    const screen = h > 0 ? h / 1123 : Number.POSITIVE_INFINITY;
+    const canvas = host.querySelector('.pt-frame .page-canvas') as HTMLElement | null;
+    return Math.min(screen, pageLetteringScale(canvas?.clientWidth ?? 0));
   }
 
   /**

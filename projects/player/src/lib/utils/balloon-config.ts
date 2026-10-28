@@ -55,11 +55,15 @@ export function artworkLetteringScale(width: number, height: number): number {
 }
 
 /**
- * Page view letters every panel of a page at ONE scale (uniform lettering
- * across the page, as in print): this share of the page's format scale
- * (page height / 1123). 0.75 — font size 12 letters 9 px on an A4 page.
+ * Page view's uniform lettering scale for a page `pageWidth` CSS px wide:
+ * panel view's artwork scale of a full-width landscape (16:9) panel of that
+ * page — pageWidth × 9/16 / 1123 — so a balloon looks the same on the page
+ * as in panel view and one font size is one size across the page.
+ * pw-speech-bubbles raises small results to its MIN_LETTERING_PX floor.
  */
-export const PAGE_LETTERING_FACTOR = 0.75;
+export function pageLetteringScale(pageWidth: number): number {
+  return artworkLetteringScale(pageWidth, pageWidth * 9 / 16);
+}
 
 /**
  * Merge a partial override onto a base config, producing a complete config.

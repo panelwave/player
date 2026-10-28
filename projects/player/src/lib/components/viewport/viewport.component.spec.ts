@@ -349,20 +349,21 @@ describe('ViewportComponent', () => {
       expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
     });
 
-    it('page-view panels all letter at the page\'s uniform scale (0.75 × page height / 1123), like the editor', () => {
+    it('page-view panels all letter at the page\'s uniform scale (a full-width landscape panel\'s artwork scale), like the editor', () => {
       hostWidth(2560, 1300);
       fixture.componentRef.setInput('viewMode', 'page');
       fixture.componentRef.setInput('panels', mockPanels);
       fixture.componentRef.setInput('page', onePanelPage);
       fixture.detectChanges();
       const canvas = fixture.nativeElement.querySelector('.pt-frame .page-canvas') as HTMLElement;
-      const pageHeight = spyOnProperty(canvas, 'clientHeight', 'get').and.returnValue(1123);
-      // A page-high panel and a small one get the same scale.
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(0.75, 5);
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(0.75, 5);
-      // Never above the screen scale (a page larger than the screen).
-      pageHeight.and.returnValue(2000);
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(0.75 * 1300 / 1123, 5);
+      const pageWidth = spyOnProperty(canvas, 'clientWidth', 'get').and.returnValue(794);
+      // An A4 page: 794 × 9/16 / 1123 ≈ 0.40 — a page-high panel and a small one alike.
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(794 * 9 / 16 / 1123, 5);
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(794 * 9 / 16 / 1123, 5);
+      // A Bigscreen page (its panel view's 1.92) on a 1300 px screen: never
+      // above the screen scale (a page larger than the screen).
+      pageWidth.and.returnValue(3840);
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(1300 / 1123, 5);
     });
 
     it('panel view letters proportionally to the panel box (the artwork as shown)', () => {

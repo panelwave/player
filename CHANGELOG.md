@@ -114,11 +114,11 @@ semver. The reader-facing product changelog lives on the docs site
   along with the body there), and lowers that boost until the
   body fits inside the panel instead of moving it off the speaker. Page view
   letters every panel of a page at ONE scale, as in print (`getPageReadingScale`
-  = `PAGE_LETTERING_FACTOR` 0.75 × page height / 1123 — font size 12 is 9 px
-  on an A4 page; it no longer shrinks with a panel's share of the page, the
-  9 px floor still grows small panels) and anchors the authored tail tip at
-  the panel's artwork scale, where the editor draws it. `artworkLetteringScale`,
-  `PAGE_LETTERING_FACTOR` and
+  = `pageLetteringScale(page width)`, panel view's artwork scale of a
+  full-width landscape panel — a balloon looks the same on the page as in
+  panel view, the 9 px floor still grows small lettering, and a balloon that
+  would not fit its panel shrinks back towards its panel-view size instead
+  of moving off the speaker). `artworkLetteringScale`, `pageLetteringScale` and
   `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
   `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS

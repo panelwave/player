@@ -97,9 +97,9 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   /**
    * With anchorTailTip: scale the tail along with the body when the
    * MIN_LETTERING_PX floor boosts the balloon (the whole balloon grows about
-   * its tip — the editor's panel view), instead of keeping the tail at its
-   * base length (page view's counter-scaling). The viewport sets it in panel
-   * view.
+   * its tip — the editor's rule), instead of keeping the tail at its base
+   * length (the former page-view counter-scaling). The viewport sets it in
+   * both views.
    */
   @Input() scaleTailWithBoost = false;
 
@@ -383,13 +383,15 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           : null;
 
         // A boosted, tip-anchored balloon must still fit its panel: lower the
-        // boost (towards the base scale) until it does, instead of moving the
-        // body — and with it the tip — off the speaker. The box checked is
-        // the SVG's (body + stroke padding + tail, as the clamp below sees
-        // it); taking the tail at the balloon's full length is conservative,
-        // the counter-scaled tail is shorter. A balloon that does not fit
-        // even at the base scale is clamped below, as before.
-        if (authoredTip && scale > baseScale * 1.001) {
+        // boost — down to the base scale, or to the panel-view size the author
+        // placed inside (the artwork scale, below the base on a page) — until
+        // it does, instead of moving the body — and with it the tip — off the
+        // speaker. The box checked is the SVG's (body + stroke padding + tail,
+        // as the clamp below sees it); taking the tail at the balloon's full
+        // length is conservative, the counter-scaled tail is shorter. A balloon
+        // that does not fit even then is clamped below, as before.
+        const floorScale = Math.min(baseScale, authoredScale);
+        if (authoredTip && scale > floorScale * 1.001) {
           const vbNow = (result.svg?.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
           const padded = vbNow.length === 4 && vbNow.every((v) => Number.isFinite(v));
           const padLeft = padded ? -vbNow[0] : 0;
@@ -408,8 +410,8 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
               && left + (result.width + padLeft + padRight) * s <= this.containerWidth + 0.5
               && top + (result.height + padTop + padBottom) * s <= this.containerHeight + 0.5;
           };
-          if (!bodyFits(scale) && bodyFits(baseScale)) {
-            let lo = baseScale;
+          if (!bodyFits(scale) && bodyFits(floorScale)) {
+            let lo = floorScale;
             let hi = scale;
             for (let i = 0; i < 10; i++) {
               const mid = (lo + hi) / 2;

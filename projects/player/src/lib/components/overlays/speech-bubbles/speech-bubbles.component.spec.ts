@@ -520,7 +520,7 @@ describe('SpeechBubblesComponent body anchoring', () => {
       component.renderAllBalloons();
       const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
       const scale = parseFloat(/scale\(([\d.]+)\)/.exec(w.style.transform)![1]);
-      expect(scale).toBeGreaterThan(0.2);
+      expect(scale).toBeGreaterThan(0.18); // never below the artwork scale (0.188)
       expect(scale).toBeLessThan(0.75);
       // Body inside the panel …
       const fo = w.querySelector('foreignObject') as SVGForeignObjectElement;
