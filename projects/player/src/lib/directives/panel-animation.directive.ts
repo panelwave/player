@@ -219,8 +219,11 @@ export class PanelAnimationDirective implements OnChanges, OnDestroy {
 
   /** Style the camera and every animated layer for the given timeline position. */
   private applyAt(timeMs: number): void {
-    const width = this.host.clientWidth;
-    const height = this.host.clientHeight;
+    // Camera rects and keyframe offsets are fractions of the panel artwork:
+    // the camera box (in page view the artwork box inside its slot).
+    const box = this.cameraElement() ?? this.host;
+    const width = box.clientWidth;
+    const height = box.clientHeight;
 
     if (this.camera) {
       const cameraEl = this.cameraElement();

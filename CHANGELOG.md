@@ -89,6 +89,17 @@ semver. The reader-facing product changelog lives on the docs site
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS
   preview iframe), its first navigation matched no route and logged NG04002
   on every load.
+- **Page view keeps a panel's overlays on its artwork.** A slot of another
+  shape than the artwork used to stretch the overlay space (layers, speech
+  bubbles, hotspots, content widgets) to the slot while the image itself was
+  letterboxed, so overlays drifted off the picture, into the bars. The
+  artwork box (`.pw-panel-camera`) is now the largest box of the artwork
+  aspect inside the slot, centred (`--pw-art-aspect`), as the CMS editor
+  draws page view; bubbles and hotspots are sized from it
+  (`getPageArtBox()`), camera moves and keyframes measure it, and dead
+  clicks report positions on the artwork. Slots of the artwork's own shape
+  look the same as before; the lettered PDF export (standalone player)
+  follows once it is re-vendored.
 
 ## [1.8.0] — 2026-10-19
 

@@ -149,4 +149,29 @@ test.describe('content widgets in page view', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('pw-video-modal')).toHaveCount(0);
   });
+
+  test('stay on the artwork when the slot has another shape (letterboxed, not stretched)', async ({ page }) => {
+    // The 16:9 panel in a tall slot: the artwork letterboxes inside it.
+    await page.route('**/assets/widgets-manifest.json', async (route) => {
+      const response = await route.fetch();
+      const manifest = await response.json();
+      manifest.chapters[0].pages[0].layout.placements[0] = { panelId: 'pw-1', x: 0.3, y: 0.05, w: 0.4, h: 0.9 };
+      await route.fulfill({ response, json: manifest });
+    });
+    await openPlayer(page, WIDGETS, { view: 'default' });
+    const pageView = page.locator('pw-player-shell .pt-frame');
+    const art = (await pageView.locator('[data-layer-id="ly-bg"]').boundingBox())!;
+    const slot = (await pageView.locator('[data-panel-id="pw-1"] .panel-content').boundingBox())!;
+    expect(art.width / art.height).toBeCloseTo(2048 / 1152, 1);
+    expect(art.width).toBeCloseTo(slot.width, 0);
+    expect(art.y - slot.y).toBeCloseTo(slot.y + slot.height - (art.y + art.height), 0);
+
+    // Layers sit at their rect in the 1024-high reference space of the artwork.
+    const refWidth = 1024 * (2048 / 1152);
+    const download = (await pageView.locator('[data-pw-widget="download"]').first().boundingBox())!;
+    expect(Math.abs(download.x - (art.x + (60 / refWidth) * art.width))).toBeLessThan(2);
+    expect(Math.abs(download.y - (art.y + (660 / 1024) * art.height))).toBeLessThan(2);
+    expect(Math.abs(download.width - (620 / refWidth) * art.width)).toBeLessThan(2);
+    expect(Math.abs(download.height - (110 / 1024) * art.height)).toBeLessThan(2);
+  });
 });

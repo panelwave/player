@@ -8,6 +8,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { By } from '@angular/platform-browser';
 import { ViewportComponent, PerformanceMetrics } from './viewport.component';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
+import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { ManifestService } from '../../services/manifest.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
@@ -368,6 +369,88 @@ describe('ViewportComponent', () => {
       hostWidth(390, 844);
       component.viewMode = 'panel';
       expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
+    });
+  });
+
+  describe('page view artwork box (slot of another shape)', () => {
+    // 16:9 artwork; a bubble and an overlay layer authored on it.
+    const artPanel: Panel = {
+      layers: [
+        { kind: 'image', id: 'bg', assetId: 'art-16x9', z: 0 },
+        { kind: 'text', id: 'note', text: { 'en-US': 'Note' }, x: 100, y: 100, width: 300, height: 100, z: 1 },
+      ],
+      speechBubbles: [{ id: 'b1', text: { 'en-US': 'Ow!' }, shape: { x: 0.1, y: 0.1, w: 0.3, h: 0.2 } }],
+    } as unknown as Panel;
+    // A tall slot (0.4 × 0.9 of a 16:9 page): taller than the artwork.
+    const tallPage: Page = {
+      id: 'pg',
+      layout: { format: 'bigscreen-landscape', placements: [{ panelId: 'p1', x: 0.3, y: 0.05, w: 0.4, h: 0.9, z: 0 }] },
+      readingOrder: ['p1'],
+    } as Page;
+
+    beforeEach(() => {
+      spyOn(TestBed.inject(ManifestService), 'getAsset').and.returnValue({ id: 'art-16x9', width: 1600, height: 900 } as never);
+    });
+
+    it('is the largest box of the artwork aspect inside the slot', () => {
+      spyOn(component, 'getPagePanelWidth').and.returnValue(400);
+      spyOn(component, 'getPagePanelHeight').and.returnValue(600);
+      expect(component.getPageArtBox(tallPage.layout!.placements[0], artPanel)).toEqual({ width: 400, height: 225 });
+      // A wide slot: the height limits it.
+      (component.getPagePanelWidth as jasmine.Spy).and.returnValue(800);
+      (component.getPagePanelHeight as jasmine.Spy).and.returnValue(200);
+      const wide = component.getPageArtBox(tallPage.layout!.placements[0], artPanel);
+      expect(wide.height).toBeCloseTo(200, 5);
+      expect(wide.width).toBeCloseTo(200 * 16 / 9, 5);
+    });
+
+    it('lays the artwork out letterboxed and centred in the slot; bubbles get its size', () => {
+      const host = fixture.nativeElement as HTMLElement;
+      host.style.display = 'block';
+      host.style.width = '1600px';
+      host.style.height = '900px';
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('panels', { p1: artPanel });
+      fixture.componentRef.setInput('page', tallPage);
+      fixture.detectChanges();
+      fixture.detectChanges();
+
+      const content = host.querySelector('.pt-frame .panel-content') as HTMLElement;
+      const camera = content.querySelector(':scope > .pw-panel-camera') as HTMLElement;
+      expect(content.style.getPropertyValue('--pw-art-aspect')).toBe(String(1600 / 900));
+      // The slot is taller than the artwork: full width, centred vertically.
+      expect(content.offsetHeight).toBeGreaterThan(content.offsetWidth);
+      expect(camera.offsetWidth).toBeCloseTo(content.offsetWidth, 0);
+      expect(camera.offsetHeight).toBeCloseTo(content.offsetWidth * 9 / 16, 0);
+      expect(camera.offsetTop).toBeCloseTo((content.offsetHeight - camera.offsetHeight) / 2, 0);
+
+      const bubbles = fixture.debugElement.query(By.directive(SpeechBubblesComponent)).componentInstance as SpeechBubblesComponent;
+      const box = component.getPageArtBox(tallPage.layout!.placements[0], artPanel);
+      expect(box.height).toBeCloseTo(box.width * 9 / 16, 5);
+      expect(bubbles.containerWidth).toBeCloseTo(box.width, 5);
+      expect(bubbles.containerHeight).toBeCloseTo(box.height, 5);
+    });
+
+    it('reports dead clicks relative to the artwork, not the slot', () => {
+      const host = fixture.nativeElement as HTMLElement;
+      host.style.display = 'block';
+      host.style.width = '1600px';
+      host.style.height = '900px';
+      fixture.componentRef.setInput('viewMode', 'page');
+      fixture.componentRef.setInput('interactive', true);
+      fixture.componentRef.setInput('panels', { p1: artPanel });
+      fixture.componentRef.setInput('page', tallPage);
+      fixture.detectChanges();
+      const clicks: { x: number; y: number }[] = [];
+      component.deadClick.subscribe((c) => clicks.push(c));
+
+      const content = host.querySelector('.pt-frame .panel-content') as HTMLElement;
+      const camera = content.querySelector(':scope > .pw-panel-camera') as HTMLElement;
+      const r = camera.getBoundingClientRect();
+      content.dispatchEvent(new MouseEvent('click', { clientX: r.left + r.width / 2, clientY: r.top + r.height / 4, bubbles: true }));
+      expect(clicks.length).toBe(1);
+      expect(clicks[0].x).toBeCloseTo(0.5, 2);
+      expect(clicks[0].y).toBeCloseTo(0.25, 2);
     });
   });
 

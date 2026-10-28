@@ -448,6 +448,20 @@
   position: relative;
   width: 100%;
   height: 100%;
+  /* The artwork box below fits this slot (container query units). */
+  container-type: size;
+}
+
+/*
+ * Page view: the artwork (layers, speech bubbles, hotspots) is the largest
+ * box of the panel's artwork aspect (--pw-art-aspect) that fits the slot,
+ * centred — as the editor fits a panel's content into its page frame. A
+ * slot of another shape letterboxes the artwork; its overlays stay on it.
+ */
+.viewport-page .pw-panel-camera {
+  margin: auto;
+  width: min(100cqw, 100cqh * var(--pw-art-aspect, 1.7778));
+  height: min(100cqh, 100cqw / var(--pw-art-aspect, 1.7778));
 }
 
 /* Navigation Arrows (Hover Zones) */
