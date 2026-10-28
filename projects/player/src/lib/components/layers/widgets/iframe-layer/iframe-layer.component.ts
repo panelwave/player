@@ -38,12 +38,14 @@ import {
   type IframeUrlVerdict,
 } from '../../../../utils/widget-utils';
 import { PwIconComponent } from '../../../icon/pw-icon.component';
+import { PrintContextService } from '../../../../services/print-context.service';
+import { PrintQrComponent } from '../print-qr/print-qr.component';
 import { localized, widgetRootStyles, widgetText } from '../widget-shared';
 
 @Component({
   selector: 'pw-iframe-layer',
   standalone: true,
-  imports: [NgStyle, PwIconComponent],
+  imports: [NgStyle, PwIconComponent, PrintQrComponent],
   templateUrl: './iframe-layer.component.html',
   styleUrls: ['../widget-card.css', './iframe-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +53,7 @@ import { localized, widgetRootStyles, widgetText } from '../widget-shared';
 export class IframeLayerComponent implements OnChanges, AfterViewInit, OnDestroy {
   private readonly playback = inject(WidgetPlaybackService, { optional: true });
   private readonly translate = inject(TranslateService, { optional: true });
+  private readonly printContext = inject(PrintContextService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
 
@@ -62,6 +65,11 @@ export class IframeLayerComponent implements OnChanges, AfterViewInit, OnDestroy
   @Input() viewMode: 'panel' | 'page' | 'canvas' | string = 'panel';
 
   readonly print = isPrintRender();
+
+  /** Print card: QR code to this panel in the online reader (null: none). */
+  get printLink(): string | null {
+    return this.print ? this.printContext.linkFor(this.panelId) : null;
+  }
   verdict: IframeUrlVerdict = 'invalid';
   /** The checked src (https, not our origin), or null. */
   trustedSrc: string | null = null;

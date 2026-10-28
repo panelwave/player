@@ -21,6 +21,7 @@ import type {
   AssetCatalogItemVideo,
   VideoVariant,
   ImageVariant,
+  WidgetLayerBase,
 } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
@@ -39,7 +40,8 @@ import { selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { layerBoxPercent, layerReferenceOf, type LayerReference } from '../../utils/layer-reference';
 import { isWidgetLayer } from '../../types/panel.types';
 import type { VariableContext } from '../../types/variable.types';
-import { isLayerVisible } from '../../utils/widget-utils';
+import { isLayerVisible, isPrintRender } from '../../utils/widget-utils';
+import { PrintContextService } from '../../services/print-context.service';
 
 /**
  * Base text size of content widgets (schema 1.10+) in reference px: the
@@ -72,6 +74,7 @@ export const WIDGET_FONT_MAX_PX = 20;
 export class LayerRendererComponent {
   private manifestService = inject(ManifestService);
   private readonly assetUrl = inject(AssetUrlService);
+  private readonly printContext = inject(PrintContextService);
 
   /**
    * Layer to render
@@ -218,7 +221,10 @@ export class LayerRendererComponent {
    * older kinds keep their behaviour (always rendered).
    */
   isVisible(): boolean {
-    return !this.isWidget() || isLayerVisible(this.layer, this.variableContext);
+    if (!this.isWidget()) return true;
+    // Print renders leave out widgets set to `print: "hide"` (or all of them).
+    if (isPrintRender() && this.printContext.hides(this.layer as WidgetLayerBase)) return false;
+    return isLayerVisible(this.layer, this.variableContext);
   }
 
   /**

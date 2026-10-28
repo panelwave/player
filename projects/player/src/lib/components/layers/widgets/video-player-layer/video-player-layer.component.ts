@@ -15,12 +15,14 @@ import { AssetUrlService } from '../../../../services/asset-url.service';
 import { WidgetPlaybackService } from '../../../../services/widget-playback.service';
 import { formatMediaTime, isPrintRender } from '../../../../utils/widget-utils';
 import { PwIconComponent } from '../../../icon/pw-icon.component';
+import { PrintContextService } from '../../../../services/print-context.service';
+import { PrintQrComponent } from '../print-qr/print-qr.component';
 import { localized, widgetRootStyles, widgetText } from '../widget-shared';
 
 @Component({
   selector: 'pw-video-player-layer',
   standalone: true,
-  imports: [NgStyle, PwIconComponent],
+  imports: [NgStyle, PwIconComponent, PrintQrComponent],
   templateUrl: './video-player-layer.component.html',
   styleUrls: ['../widget-card.css', './video-player-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,6 +32,7 @@ export class VideoPlayerLayerComponent {
   private readonly assetUrl = inject(AssetUrlService);
   private readonly playback = inject(WidgetPlaybackService, { optional: true });
   private readonly translate = inject(TranslateService, { optional: true });
+  private readonly printContext = inject(PrintContextService);
 
   @Input({ required: true }) layer!: VideoPlayerLayer;
   @Input() locale = 'en-US';
@@ -38,6 +41,15 @@ export class VideoPlayerLayerComponent {
   @ViewChild('trigger') triggerRef?: ElementRef<HTMLElement>;
 
   readonly print = isPrintRender();
+
+  /** Print card: QR code to this panel in the online reader (null: none). */
+  get printLink(): string | null {
+    return this.print ? this.printContext.linkFor(this.panelId) : null;
+  }
+
+  get printLabel(): string {
+    return widgetText(this.translate, 'print_scan_watch');
+  }
 
   get asset(): AssetCatalogItemVideo | null {
     const a = this.manifest.getAsset(this.layer?.assetId ?? '') as AssetCatalogItemVideo | null;

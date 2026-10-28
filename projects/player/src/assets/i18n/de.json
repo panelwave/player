@@ -260,6 +260,11 @@
     "continued_online": "Weiter in der digitalen Ausgabe",
     "embedded_content": "Eingebetteter Inhalt",
     "audio": "Audio",
-    "scroll_region": "Scrollbarer Text"
+    "scroll_region": "Scrollbarer Text",
+    "print_scan_open": "Zum Öffnen scannen",
+    "print_scan_listen": "Zum Anhören scannen",
+    "print_scan_watch": "Zum Ansehen scannen",
+    "print_scan_download": "Zum Herunterladen scannen",
+    "print_attached_page": "Abgedruckt auf Seite {{page}}"
   }
 }

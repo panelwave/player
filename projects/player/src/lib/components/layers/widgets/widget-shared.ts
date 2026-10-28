@@ -30,6 +30,11 @@ export const WIDGET_TEXT_EN: Record<string, string> = {
   embedded_content: 'Embedded content',
   audio: 'Audio',
   scroll_region: 'Scrollable text',
+  print_scan_open: 'Scan to open online',
+  print_scan_listen: 'Scan to listen',
+  print_scan_watch: 'Scan to watch',
+  print_scan_download: 'Scan to download',
+  print_attached_page: 'Printed on page {{page}}',
 };
 
 /** A widget UI string in the reader's language (English without ngx-translate). */

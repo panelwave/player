@@ -17,12 +17,14 @@ import { AssetUrlService } from '../../../../services/asset-url.service';
 import { WidgetPlaybackService } from '../../../../services/widget-playback.service';
 import { fileTypeInfo, formatBytes, isPrintRender, type FileTypeInfo } from '../../../../utils/widget-utils';
 import { PwIconComponent } from '../../../icon/pw-icon.component';
+import { PrintContextService } from '../../../../services/print-context.service';
+import { PrintQrComponent } from '../print-qr/print-qr.component';
 import { localized, widgetRootStyles, widgetText } from '../widget-shared';
 
 @Component({
   selector: 'pw-download-layer',
   standalone: true,
-  imports: [NgStyle, PwIconComponent],
+  imports: [NgStyle, PwIconComponent, PrintQrComponent],
   templateUrl: './download-layer.component.html',
   styleUrls: ['../widget-card.css', './download-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,12 +34,27 @@ export class DownloadLayerComponent {
   private readonly assetUrl = inject(AssetUrlService);
   private readonly playback = inject(WidgetPlaybackService, { optional: true });
   private readonly translate = inject(TranslateService, { optional: true });
+  private readonly printContext = inject(PrintContextService);
 
   @Input({ required: true }) layer!: DownloadLayer;
   @Input() locale = 'en-US';
   @Input() panelId = '';
 
   readonly print = isPrintRender();
+
+  /** Print card: QR code to this panel in the online reader (null: none). */
+  get printLink(): string | null {
+    return this.print ? this.printContext.linkFor(this.panelId) : null;
+  }
+
+  /** Print: the file is appended to the PDF from this page on (null: not appended). */
+  get attachedPage(): number | null {
+    return this.print ? this.printContext.attachmentPage(this.layer?.assetId) : null;
+  }
+
+  get attachedText(): string {
+    return widgetText(this.translate, 'print_attached_page', { page: this.attachedPage });
+  }
 
   get variant(): FileVariant | null {
     const asset = this.manifest.getAsset(this.layer?.assetId ?? '') as AssetCatalogItemFile | null;

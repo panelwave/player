@@ -74,10 +74,22 @@ audio: button + time).
 ## Print renders
 
 The standalone player's `print` option marks `<html class="pw-print">`
-(`isPrintRender()`). Widgets then render a still: the download card without a
-link, the audio waveform without playback, the video poster, the scroll text
-clipped with a "Continued in the digital edition" line when it overflows, and
-the iframe as a card with its URL. Nothing plays and no frame loads.
+(`isPrintRender()`). Widgets then render a static card: the download card
+without a link (with "Printed on page N" when the export appended the file),
+the audio waveform without playback, the video poster, the scroll text shrunk
+to fit its box (zoom down to 0.6, never below 7 pt) and clipped with a
+"Continued in the digital edition" line when it still overflows, and the
+iframe as a card with its URL. Nothing plays and no frame loads.
+
+A widget with `print: "hide"` (schema 1.10) is left out; the artwork shows
+through. The standalone config's `printOptions` (`PrintContextService`) sets
+the rest:
+
+| Option | Effect |
+|---|---|
+| `widgets` | `qr` (default): cards carry a QR code (`pw-print-qr`, black on white, labelled "Scan to listen" / "Scan to watch" / "Scan to download" / "Scan to open online" when there is room) that opens `linkBase?panel=<panel id>` — the panel in the online reader. `card`: no codes. `hide`: every widget is left out, whatever its own setting. |
+| `linkBase` | The work's reader URL (http/https). Without it there are no codes. |
+| `attachments` | Catalog file id → first page of that file appended to the printed document. |
 
 ## Theme
 

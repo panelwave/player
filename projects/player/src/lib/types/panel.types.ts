@@ -394,6 +394,8 @@ export interface WidgetLayerBase extends Layer {
   appearance?: 'card' | 'plain';
   /** Per-layer colour overrides. */
   themeOverrides?: ThemeColors;
+  /** Print renders: `card` (default, a static card, QR code optional) or `hide`. */
+  print?: 'card' | 'hide';
 }
 
 /** A downloadable file (schema 1.10+). */

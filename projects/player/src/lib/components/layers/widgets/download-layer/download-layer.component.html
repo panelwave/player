@@ -32,10 +32,15 @@
         @if (size) {<span class="size">{{ size }}</span>}
       </span>
     }
+    @if (attachedPage) {
+      <span class="attached pw-ellipsis">{{ attachedText }}</span>
+    }
   </span>
   @if (!print) {
     <span class="pw-round-btn action" aria-hidden="true">
       <pw-icon name="lucideDownload" />
     </span>
+  } @else if (printLink) {
+    <pw-print-qr [value]="printLink" [label]="text('print_scan_download')" />
   }
 </a>

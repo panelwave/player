@@ -79,6 +79,14 @@ semver. The reader-facing product changelog lives on the docs site
 - `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
   stay keyed by id in `chapter.panels`; read the id from that key or from
   `panelChange`'s `panelId`.
+- **Content widgets in print renders** (format 1.10 widget `print`): a
+  static card per widget, by default with a QR code that opens the widget's
+  panel in the online reader (`pw-print-qr`, `PrintContextService`, the
+  standalone config's `printOptions`: `widgets` qr / card / hide, `linkBase`,
+  `attachments` → "Printed on page N" on download cards); `print: "hide"`
+  leaves a widget out. Scroll text shrinks to fit its box before it is
+  clipped. `qrModules()` is shared with the share dialog. New strings
+  `widgets.print_*` (en, de).
 - Audio player `keepPlaying`: keeps playing when the reader moves to another
   panel or page. `WidgetPlaybackService.pauseForNavigation()` skips it;
   `park()` / `unpark()` keep its element playing after the widget unmounts

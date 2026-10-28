@@ -5,8 +5,10 @@
  * bottom edge show that there is more; links open in a new tab.
  *
  * Fonts: ui.theme body font → `styleRef` preset (settings.typography.textStyles)
- * → inline `style`. In a print render the box is clipped with a fade and a
- * "continued in the digital edition" line when the text does not fit.
+ * → inline `style`. In a print render the text shrinks to fit its box (down
+ * to PRINT_MIN_SCALE, never below PRINT_MIN_FONT_PX); what still does not
+ * fit is clipped, with a "continued in the digital edition" line and the QR
+ * code to the online reader.
  */
 import {
   AfterViewInit,
@@ -27,15 +29,23 @@ import type { ScrollTextLayer, TextStyle } from '../../../../types';
 import { ManifestService } from '../../../../services/manifest.service';
 import { renderPlainText, renderSafeMarkdown } from '../../../../utils/safe-markdown';
 import { isPrintRender } from '../../../../utils/widget-utils';
+import { PrintContextService } from '../../../../services/print-context.service';
+import { PrintQrComponent } from '../print-qr/print-qr.component';
 import { localized, widgetRootStyles, widgetText } from '../widget-shared';
 
 /** Reference size the `sizePt` of a text style is relative to inside a widget. */
 const BASE_PT = 14;
 
+/** Print: smallest font scale the text shrinks to before it is clipped. */
+export const PRINT_MIN_SCALE = 0.6;
+/** Print: never smaller than this (CSS px; 9.33 px = 7 pt at 96 dpi). */
+export const PRINT_MIN_FONT_PX = 9.33;
+const PRINT_SCALE_STEP = 0.05;
+
 @Component({
   selector: 'pw-scroll-text-layer',
   standalone: true,
-  imports: [NgStyle],
+  imports: [NgStyle, PrintQrComponent],
   templateUrl: './scroll-text-layer.component.html',
   styleUrls: ['../widget-card.css', './scroll-text-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,14 +53,18 @@ const BASE_PT = 14;
 export class ScrollTextLayerComponent implements OnChanges, AfterViewInit, OnDestroy {
   private readonly manifest = inject(ManifestService);
   private readonly translate = inject(TranslateService, { optional: true });
+  private readonly printContext = inject(PrintContextService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   @Input({ required: true }) layer!: ScrollTextLayer;
   @Input() locale = 'en-US';
+  @Input() panelId = '';
 
   @ViewChild('scroller') scrollerRef?: ElementRef<HTMLElement>;
 
   readonly print = isPrintRender();
+  /** Print: font scale the text was shrunk to so it fits its box. */
+  printScale = 1;
   html = '';
   atTop = true;
   atBottom = true;
@@ -70,6 +84,8 @@ export class ScrollTextLayerComponent implements OnChanges, AfterViewInit, OnDes
       this.resize.observe(el);
     }
     this.measure();
+    // Print: fit again once the web fonts are in (their metrics differ).
+    if (this.print && typeof document !== 'undefined') void document.fonts?.ready.then(() => this.measure());
   }
 
   ngOnDestroy(): void {
@@ -90,6 +106,11 @@ export class ScrollTextLayerComponent implements OnChanges, AfterViewInit, OnDes
 
   get continuedText(): string {
     return widgetText(this.translate, 'continued_online');
+  }
+
+  /** Print: QR code to this panel in the online reader (null: none). */
+  get printLink(): string | null {
+    return this.print ? this.printContext.linkFor(this.panelId) : null;
   }
 
   get rootStyles(): Record<string, string> {
@@ -128,9 +149,28 @@ export class ScrollTextLayerComponent implements OnChanges, AfterViewInit, OnDes
     }
   }
 
+  /** Print: shrink the text in steps until it fits (or reaches the minimum size). */
+  private fitForPrint(el: HTMLElement): void {
+    const content = el.querySelector<HTMLElement>('.content');
+    if (!content) return;
+    // `zoom` scales the text with its own (preset / inline) size and line height.
+    content.style.zoom = '1';
+    const base = parseFloat(getComputedStyle(content).fontSize) || 16;
+    let scale = 1;
+    while (el.scrollHeight > el.clientHeight + 1 && scale > PRINT_MIN_SCALE && base * (scale - PRINT_SCALE_STEP) >= PRINT_MIN_FONT_PX) {
+      scale = Math.round((scale - PRINT_SCALE_STEP) * 100) / 100;
+      content.style.zoom = String(scale);
+    }
+    if (scale !== this.printScale) {
+      this.printScale = scale;
+      this.cdr.markForCheck();
+    }
+  }
+
   private measure(): void {
     const el = this.scrollerRef?.nativeElement;
     if (!el) return;
+    if (this.print) this.fitForPrint(el);
     const overflowing = el.scrollHeight > el.clientHeight + 1;
     const atTop = el.scrollTop <= 1;
     const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;

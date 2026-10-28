@@ -7,6 +7,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { LayerRendererComponent } from './layer-renderer.component';
+import { PrintContextService } from '../../services/print-context.service';
 import { ManifestService } from '../../services/manifest.service';
 import type { AssetCatalogItemVideo } from '../../types';
 import type { VideoLayer } from '../../types/panel.types';
@@ -334,6 +335,25 @@ describe('LayerRendererComponent content widget layers (schema 1.10)', () => {
     fixture.componentRef.setInput('variableContext', { shown: true });
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.layer-wrapper')).not.toBeNull();
+  });
+
+  it('leaves out a widget set to print: hide in a print render, and every widget in hide mode', () => {
+    const ctx = TestBed.inject(PrintContextService);
+    component.layer = { ...widget, print: 'hide' } as typeof widget;
+    expect(component.isVisible()).toBeTrue(); // on screen it shows
+    document.documentElement.classList.add('pw-print');
+    try {
+      expect(component.isVisible()).toBeFalse();
+      component.layer = widget;
+      expect(component.isVisible()).toBeTrue();
+      ctx.configure({ widgets: 'hide' });
+      expect(component.isVisible()).toBeFalse();
+      component.layer = background;
+      expect(component.isVisible()).toBeTrue(); // the artwork stays
+    } finally {
+      document.documentElement.classList.remove('pw-print');
+      ctx.configure(undefined);
+    }
   });
 
   it('older kinds ignore visibleIf (unchanged behaviour)', () => {

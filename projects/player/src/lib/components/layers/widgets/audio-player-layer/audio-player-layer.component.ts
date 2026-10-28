@@ -42,6 +42,8 @@ import { WidgetPlaybackService, type WidgetPlaybackHandle } from '../../../../se
 import { ThemeService } from '../../../../services/theme.service';
 import { formatMediaTime, isPrintRender } from '../../../../utils/widget-utils';
 import { PwIconComponent } from '../../../icon/pw-icon.component';
+import { PrintContextService } from '../../../../services/print-context.service';
+import { PrintQrComponent } from '../print-qr/print-qr.component';
 import { localized, ratioFromPointer, widgetInstanceId, widgetRootStyles, widgetText } from '../widget-shared';
 
 /** Music / ambient level while an audio player plays (duckMusic). */
@@ -67,7 +69,7 @@ export function resamplePeaks(peaks: readonly number[], count: number): number[]
 @Component({
   selector: 'pw-audio-player-layer',
   standalone: true,
-  imports: [NgStyle, PwIconComponent],
+  imports: [NgStyle, PwIconComponent, PrintQrComponent],
   templateUrl: './audio-player-layer.component.html',
   styleUrls: ['../widget-card.css', './audio-player-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,6 +81,7 @@ export class AudioPlayerLayerComponent implements OnInit, OnChanges, AfterViewIn
   private readonly playback = inject(WidgetPlaybackService, { optional: true });
   private readonly theme = inject(ThemeService, { optional: true });
   private readonly translate = inject(TranslateService, { optional: true });
+  private readonly printContext = inject(PrintContextService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly zone = inject(NgZone);
 
@@ -91,6 +94,11 @@ export class AudioPlayerLayerComponent implements OnInit, OnChanges, AfterViewIn
   @ViewChild('track') trackRef?: ElementRef<HTMLElement>;
 
   readonly print = isPrintRender();
+
+  /** Print card: QR code to this panel in the online reader (null: none). */
+  get printLink(): string | null {
+    return this.print ? this.printContext.linkFor(this.panelId) : null;
+  }
   playing = false;
   currentTime = 0;
   /** Seconds; from the media once known, else the catalog durationMs. */

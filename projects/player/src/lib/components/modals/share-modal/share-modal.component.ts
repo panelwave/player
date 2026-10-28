@@ -18,7 +18,7 @@ import {
 } from '@angular/core';
 
 import { TranslatePipe } from '@ngx-translate/core';
-import { encode } from 'uqr';
+import { qrModules } from '../../../utils/qr';
 import { PwIconComponent } from '../../icon/pw-icon.component';
 
 /**
@@ -242,28 +242,10 @@ export class ShareModalComponent implements OnChanges, OnDestroy {
 
   /** Encode the share URL as a QR code (medium error correction, 4-module quiet zone). */
   private generateQrCode(): void {
-    if (!this.shareUrl) {
-      this.qrPath = '';
-      this.qrSize = 0;
-      return;
-    }
-    try {
-      const qr = encode(this.shareUrl, { ecc: 'M', border: 4 });
-      let path = '';
-      qr.data.forEach((row, y) => {
-        row.forEach((dark, x) => {
-          if (dark) {
-            path += `M${x} ${y}h1v1h-1z`;
-          }
-        });
-      });
-      this.qrPath = path;
-      this.qrSize = qr.size;
-    } catch {
-      // Too long to encode: no code rather than a broken one.
-      this.qrPath = '';
-      this.qrSize = 0;
-    }
+    // Too long to encode (or no URL): no code rather than a broken one.
+    const qr = qrModules(this.shareUrl, 4);
+    this.qrPath = qr?.path ?? '';
+    this.qrSize = qr?.size ?? 0;
   }
 
   /**

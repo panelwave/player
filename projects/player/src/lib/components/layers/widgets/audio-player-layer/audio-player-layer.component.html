@@ -46,4 +46,7 @@
       <div class="time pw-muted" aria-hidden="true">{{ timeText }}</div>
     }
   </div>
+  @if (printLink) {
+    <pw-print-qr [value]="printLink" [label]="text('print_scan_listen')" />
+  }
 </div>

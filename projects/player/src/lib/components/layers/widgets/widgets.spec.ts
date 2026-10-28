@@ -9,6 +9,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ManifestService } from '../../../services/manifest.service';
 import { AudioEngineService } from '../../../services/audio-engine.service';
 import { WidgetPlaybackService, type WidgetEvent } from '../../../services/widget-playback.service';
+import { PrintContextService } from '../../../services/print-context.service';
 import type { AssetCatalogItem, PanelWaveManifest } from '../../../types';
 import { DownloadLayerComponent } from './download-layer/download-layer.component';
 import { AudioPlayerLayerComponent, resamplePeaks } from './audio-player-layer/audio-player-layer.component';
@@ -411,6 +412,64 @@ describe('content widgets', () => {
       link.dispatchEvent(evt);
       expect(evt.defaultPrevented).toBeTrue();
       expect(open).toHaveBeenCalledWith('https://example.org/x', '_blank', 'noopener,noreferrer');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  describe('print cards (widget print, schema 1.10)', () => {
+    const READER = 'https://read.panelwave.org/acme/meanders';
+    beforeEach(() => document.documentElement.classList.add('pw-print'));
+    afterEach(() => {
+      document.documentElement.classList.remove('pw-print');
+      TestBed.inject(PrintContextService).configure(undefined);
+    });
+
+    function printed<T>(component: Type<T>, layer: Record<string, unknown>, options: Record<string, unknown>) {
+      const ctx = setup(component);
+      TestBed.inject(PrintContextService).configure(options);
+      ctx.fixture.componentRef.setInput('layer', layer);
+      ctx.fixture.componentRef.setInput('panelId', 'ch1-p008');
+      ctx.fixture.detectChanges();
+      return el(ctx.fixture);
+    }
+
+    it('a download card carries a QR code to its panel and the page of the appended file', () => {
+      const card = printed(DownloadLayerComponent, { kind: 'download', id: 'd1', assetId: 'file-1', width: 400, height: 96 },
+        { linkBase: READER, attachments: { 'file-1': 12 } });
+      expect(card.querySelector('pw-print-qr')?.getAttribute('data-href')).toBe(`${READER}?panel=ch1-p008`);
+      expect(card.querySelector('pw-print-qr svg path')?.getAttribute('d')).toMatch(/^M/);
+      expect(card.querySelector('.attached')?.textContent).toContain('Printed on page 12');
+      expect(card.querySelector('.action')).toBeNull();
+    });
+
+    it('the audio, video and embedded page cards say what the code does', () => {
+      const audio = printed(AudioPlayerLayerComponent, { kind: 'audioPlayer', id: 'a1', assetId: 'aud-1', width: 500, height: 140 }, { linkBase: READER });
+      expect(audio.querySelector('pw-print-qr')?.textContent).toContain('Scan to listen');
+      expect(audio.querySelector('audio')).toBeNull(); // nothing to play on paper
+      TestBed.resetTestingModule();
+      document.documentElement.classList.add('pw-print');
+      const iframe = printed(IframeLayerComponent, { kind: 'iframe', id: 'i1', width: 500, height: 300, src: 'https://maps.example.org/embed', title: { 'en-US': 'Map' } }, { linkBase: READER });
+      expect(iframe.querySelector('pw-print-qr')?.textContent).toContain('Scan to open online');
+      expect(iframe.querySelector('iframe')).toBeNull();
+    });
+
+    it('cards without codes when the export asks for none or has no reader link', () => {
+      const card = printed(DownloadLayerComponent, { kind: 'download', id: 'd1', assetId: 'file-1', width: 400, height: 96 }, { widgets: 'card', linkBase: READER });
+      expect(card.querySelector('pw-print-qr')).toBeNull();
+      expect(card.querySelector('.name')).not.toBeNull();
+    });
+
+    it('scroll text shrinks to fit its box in print, never below the minimum size', () => {
+      const ctx = setup(ScrollTextLayerComponent);
+      const host = ctx.fixture.nativeElement as HTMLElement;
+      host.style.cssText = 'display:block;width:300px;height:160px;font-size:16px';
+      ctx.fixture.componentRef.setInput('layer', { kind: 'scrollText', id: 's1', width: 300, height: 160, text: { 'en-US': Array(12).fill('A line of background text that wraps.').join('\n\n') } });
+      ctx.fixture.detectChanges();
+      (ctx.fixture.componentInstance as unknown as { measure(): void }).measure();
+      const comp = ctx.fixture.componentInstance;
+      expect(comp.printScale).toBeLessThan(1);
+      expect(comp.printScale).toBeGreaterThanOrEqual(0.6);
+      expect((host.querySelector('.content') as HTMLElement).style.zoom).toBe(String(comp.printScale));
     });
   });
 

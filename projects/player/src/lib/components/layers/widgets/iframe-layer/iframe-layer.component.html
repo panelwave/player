@@ -21,7 +21,11 @@
       <div class="placeholder blocked" role="note">{{ text('blocked_insecure') }}</div>
     } @else {
       <div class="placeholder pw-muted">
-        <pw-icon class="placeholder-icon" name="lucideGlobe" />
+        @if (printLink) {
+          <pw-print-qr class="placeholder-qr" [value]="printLink" [label]="text('print_scan_open')" />
+        } @else {
+          <pw-icon class="placeholder-icon" name="lucideGlobe" />
+        }
         <span class="pw-ellipsis">{{ hostName }}</span>
         @if (print) {
           <span class="url">{{ layer.src }}</span>

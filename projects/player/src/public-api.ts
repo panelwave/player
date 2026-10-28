@@ -177,6 +177,9 @@ export { VideoPlayerLayerComponent } from './lib/components/layers/widgets/video
 export { ScrollTextLayerComponent } from './lib/components/layers/widgets/scroll-text-layer/scroll-text-layer.component';
 export { IframeLayerComponent } from './lib/components/layers/widgets/iframe-layer/iframe-layer.component';
 export { VideoModalComponent } from './lib/components/modals/video-modal/video-modal.component';
+export { PrintQrComponent } from './lib/components/layers/widgets/print-qr/print-qr.component';
+export { PrintContextService, type PrintOptions, type PrintWidgetMode } from './lib/services/print-context.service';
+export { qrModules, type QrModules } from './lib/utils/qr';
 export { renderSafeMarkdown, renderPlainText, escapeHtml } from './lib/utils/safe-markdown';
 export {
   isLayerVisible,

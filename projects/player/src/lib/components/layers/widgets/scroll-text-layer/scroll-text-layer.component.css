@@ -99,3 +99,21 @@
   font-size: 0.8em;
   font-style: italic;
 }
+
+/* Print: the line and a small QR code to the online reader on the right. */
+.continued.with-qr {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pw-gap);
+}
+
+.continued-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.continued pw-print-qr.continued-qr {
+  height: 4.2em;
+  aspect-ratio: 1;
+}

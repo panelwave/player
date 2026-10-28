@@ -89,3 +89,16 @@ button.pw-card:disabled {
     display: none;
   }
 }
+
+/* Print: the QR code in the top right corner of the poster, on a white tile. */
+.poster-qr {
+  position: absolute;
+  top: var(--pw-pad);
+  right: var(--pw-pad);
+  height: 46%;
+  padding: 0.25em;
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 0.35em;
+  --pw-theme-on-surface-muted: #374151;
+}

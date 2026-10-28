@@ -49,6 +49,7 @@ Config (`PANELWAVE_CONFIG` / `panelwave.config.json`), all optional:
 | `reducedMotion` | `false` (or the OS setting) | Hold animations at their end state, no autoplay |
 | `chapters` | — | Per-chapter embed defaults `{ autoplay?, poster? }`, keyed by chapter id or uuid (see below) |
 | `print` | `false` | Static print render: implies no cover, no toolbar, page view and reduced motion, and adds the class `pw-print` to `<html>` for a print stylesheet. The CMS PDF export prints every page this way. |
+| `printOptions` | — | Only with `print`: how content widgets print — `{ widgets: 'qr' \| 'card' \| 'hide', linkBase: '<reader URL>', attachments: { '<file id>': <page> } }`, see [CONTENT_WIDGETS.md](CONTENT_WIDGETS.md#print-renders). |
 
 Start language, first match wins: `?locale=` (or `?lang=`) in the URL, the
 config's `locale`, `meta.default_locale`. Matching accepts the language alone

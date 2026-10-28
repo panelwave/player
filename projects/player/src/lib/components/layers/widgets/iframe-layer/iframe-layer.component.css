@@ -62,6 +62,10 @@
   background: var(--pw-theme-surface-muted, #374151);
 }
 
+.placeholder pw-print-qr.placeholder-qr {
+  height: 58%;
+}
+
 .placeholder-icon {
   font-size: 2em;
 }

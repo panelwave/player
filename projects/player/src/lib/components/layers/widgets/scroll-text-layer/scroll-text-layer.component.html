@@ -14,7 +14,10 @@
     (scroll)="onScroll()">
     <div class="content" [ngStyle]="textStyles" [innerHTML]="html"></div>
   </div>
-  @if (print && overflowing) {
-    <div class="continued pw-muted">{{ continuedText }}</div>
+  @if (print && (overflowing || printLink)) {
+    <div class="continued pw-muted" [class.with-qr]="!!printLink">
+      @if (overflowing) {<span class="continued-text">{{ continuedText }}</span>}
+      @if (printLink) {<pw-print-qr class="continued-qr" [value]="printLink" />}
+    </div>
   }
 </div>

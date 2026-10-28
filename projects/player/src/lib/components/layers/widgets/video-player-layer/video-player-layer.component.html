@@ -22,6 +22,9 @@
         @if (duration) {<span class="duration">{{ duration }}</span>}
       </span>
     }
+    @if (printLink) {
+      <span class="poster-qr"><pw-print-qr [value]="printLink" [label]="printLabel" /></span>
+    }
   </button>
 } @else {
   <button
@@ -37,5 +40,8 @@
     <span class="pw-round-btn" aria-hidden="true"><pw-icon name="lucidePlay" /></span>
     <span class="label pw-ellipsis" aria-hidden="true">{{ title }}</span>
     @if (duration) {<span class="duration pw-muted" aria-hidden="true">{{ duration }}</span>}
+    @if (printLink) {
+      <pw-print-qr [value]="printLink" [label]="printLabel" />
+    }
   </button>
 }
