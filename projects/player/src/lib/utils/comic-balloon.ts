@@ -641,8 +641,11 @@ export class ComicBalloon {
       }
     }
 
-    // Find base points (connector/open tails are drawn narrower than pointed tails)
-    const tailHalfWidth = this.options.openTail ? 5 : (cornerRadius === 0 ? 5 : 8);
+    // Find base points (connector/open tails are drawn narrower than pointed
+    // tails). Design px, scaled like the config: a slim tail — 8 px base at
+    // font size 12 (the old fixed 16 px looked right only where the editor
+    // drew it unscaled on a big frame).
+    const tailHalfWidth = (this.options.openTail ? 3 : (cornerRadius === 0 ? 3 : 4)) * (this.options.renderScale || 1);
     let idx1 = (centerIdx - 1 + numFilteredPoints) % numFilteredPoints;
     let idx2 = (centerIdx + 1) % numFilteredPoints;
     const centerPt = filteredPoints[centerIdx];

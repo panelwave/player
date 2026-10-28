@@ -411,12 +411,12 @@ describe('ComicBalloon', () => {
       expect(fd).toBe(sd + ' Z');
       expect(sd.endsWith('Z')).toBeFalse();
 
-      // tail axis is vertical -> ends are +-5px horizontally around the tip
+      // tail axis is vertical -> ends are +-3px (the connector half-width) horizontally around the tip
       const pts = linePoints(sd);
       const ends = [pts[0], pts[pts.length - 1]].sort((a, b) => a.x - b.x);
       expect(ends).toEqual([
-        { x: 65, y: 150 },
-        { x: 75, y: 150 },
+        { x: 67, y: 150 },
+        { x: 73, y: 150 },
       ]);
       expect(sd).not.toContain('70.00 150.00');
     });
@@ -427,8 +427,8 @@ describe('ComicBalloon', () => {
       const pts = linePoints(sd);
       const ends = [pts[0], pts[pts.length - 1]].sort((a, b) => a.y - b.y);
       expect(ends).toEqual([
-        { x: -60, y: 35 },
-        { x: -60, y: 45 },
+        { x: -60, y: 37 },
+        { x: -60, y: 43 },
       ]);
       // the stroke still walks the whole balloon body, leaving only the tail gap open
       expect(pts.length).toBeGreaterThan(100);
@@ -444,7 +444,7 @@ describe('ComicBalloon', () => {
         const [end2, higherBase, lowerBase, end1] = [pts[0], pts[1], pts[n - 2], pts[n - 1]];
         expect(dist(end1, lowerBase)).withContext(JSON.stringify(tip)).toBeLessThanOrEqual(dist(end2, lowerBase));
         expect(dist(end2, higherBase)).withContext(JSON.stringify(tip)).toBeLessThanOrEqual(dist(end1, higherBase));
-        expect(dist(end1, end2)).toBeCloseTo(10, 1);
+        expect(dist(end1, end2)).toBeCloseTo(6, 1); // 2 × the 3 px connector half-width
       }
     });
 
@@ -494,14 +494,22 @@ describe('ComicBalloon', () => {
       }
     });
 
-    it('uses a narrow (5px) tail base for rectangles', () => {
+    it('uses a narrow (3px half-width) tail base for rectangles', () => {
       make({ cornerRadius: 0 }).render('Box', { x: 70, y: 150 });
       const pts = linePoints(paths()[0].getAttribute('d')!);
       const tipIdx = pts.findIndex((p) => p.x === 70 && p.y === 150);
       const baseWidth = Math.abs(pts[tipIdx + 1].x - pts[tipIdx - 1].x);
-      // two base points >= 5px either side of the centre sample (vs >= 8px for rounded balloons)
-      expect(baseWidth).toBeGreaterThanOrEqual(9.9);
-      expect(baseWidth).toBeLessThan(16);
+      // two base points >= 3px either side of the centre sample (vs >= 4px for rounded balloons)
+      expect(baseWidth).toBeGreaterThanOrEqual(5.9);
+      expect(baseWidth).toBeLessThan(10);
+    });
+
+    it('scales the tail base with renderScale (design px, like the CMS editor draws a scaled config)', () => {
+      make({ cornerRadius: 0, renderScale: 2 }).render('Box', { x: 70, y: 150 });
+      const pts = linePoints(paths()[0].getAttribute('d')!);
+      const tipIdx = pts.findIndex((p) => p.x === 70 && p.y === 150);
+      const baseWidth = Math.abs(pts[tipIdx + 1].x - pts[tipIdx - 1].x);
+      expect(baseWidth).toBeGreaterThanOrEqual(11.9);
     });
 
     it('snaps near-edge points to the cut edges', () => {
