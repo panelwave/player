@@ -13,7 +13,7 @@ import { PanelAnimationDirective } from './panel-animation.directive';
       [pwPanelAnimationKey]="key"
       [pwPanelAnimationReducedMotion]="reducedMotion"
       [pwPanelAnimationStatic]="isStatic">
-      <div class="pw-panel-camera" [style]="cameraStyle">
+      <div class="pw-panel-camera">
         <div data-layer-id="l1" class="layer"></div>
         <div data-layer-id="l2" class="layer"></div>
         <div data-layer-id="l3" class="layer" style="opacity: 0.4;"></div>
@@ -26,8 +26,6 @@ class HostComponent {
   key = 'p1';
   reducedMotion = false;
   isStatic = false;
-  /** The player's stylesheet: the camera fills the panel box. */
-  cameraStyle = 'position: absolute; inset: 0;';
 }
 
 describe('PanelAnimationDirective', () => {
@@ -209,16 +207,6 @@ describe('PanelAnimationDirective', () => {
       flushFrame(0);
       expect(camera().style.transform).toBe('translate(-200px, -150px) scale(2)');
       expect(frames.size).toBe(0);
-    });
-
-    it('measures the camera box, not the slot, when the artwork is letterboxed (page view)', () => {
-      // A 2:1 artwork box centred in the 400 x 300 slot.
-      host.cameraStyle = 'position: absolute; inset: 0; margin: auto; width: 400px; height: 200px;';
-      host.animations = pushIn;
-      host.reducedMotion = true;
-      fixture.detectChanges();
-      flushFrame(0);
-      expect(camera().style.transform).toBe('translate(-200px, -100px) scale(2)');
     });
 
     it('shows a framing without a duration (static zoom)', () => {

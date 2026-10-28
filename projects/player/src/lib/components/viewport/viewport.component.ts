@@ -1083,27 +1083,6 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Artwork box of a page-view panel in pixels: the largest box of the
-   * panel's artwork aspect inside its slot, centred — where `.pw-panel-camera`
-   * (and with it layers, speech bubbles and hotspots) sits. The editor fits a
-   * panel's content into its page frame the same way; a slot of another
-   * shape letterboxes the artwork instead of stretching its overlays.
-   */
-  getPageArtBox(placement: PanelPlacement, panel: Panel): { width: number; height: number } {
-    const slotWidth = this.getPagePanelWidth(placement);
-    const slotHeight = this.getPagePanelHeight(placement);
-    if (!(slotWidth > 0) || !(slotHeight > 0)) return { width: 0, height: 0 };
-    const aspect = this.artAspectOf(panel);
-    const width = Math.min(slotWidth, slotHeight * aspect);
-    return { width, height: width / aspect };
-  }
-
-  /** Artwork aspect (w / h) of a panel; sizes its page-view artwork box (--pw-art-aspect). */
-  artAspectOf(panel: Panel): number {
-    return panelArtworkAspect(panel.layers ?? [], (id) => this.manifestService.getAsset(id));
-  }
-
-  /**
    * Re-emit a hotspot activation with the owning panel id attached
    */
   onHotspotActivate(evt: { hotspot: Hotspot; x: number; y: number }, panelId: string | null): void {
@@ -1117,21 +1096,8 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    */
   onPanelContainerClick(event: MouseEvent, panelId: string | null): void {
     if (!this.interactive) return;
-    const host = event.currentTarget as HTMLElement;
-    const hostRect = host.getBoundingClientRect();
-    // Relative to the artwork box (the camera's layout box, without a camera
-    // move's transform): in page view a slot of another shape letterboxes it.
-    const camera = host.querySelector<HTMLElement>(':scope > .pw-panel-camera');
-    const sx = camera && host.offsetWidth > 0 ? hostRect.width / host.offsetWidth : 1;
-    const sy = camera && host.offsetHeight > 0 ? hostRect.height / host.offsetHeight : 1;
-    const r = camera && camera.offsetWidth > 0 && camera.offsetHeight > 0
-      ? {
-          left: hostRect.left + camera.offsetLeft * sx,
-          top: hostRect.top + camera.offsetTop * sy,
-          width: camera.offsetWidth * sx,
-          height: camera.offsetHeight * sy,
-        }
-      : hostRect;
+    const el = event.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
     this.deadClick.emit({
       x: Math.min(1, Math.max(0, (event.clientX - r.left) / r.width)),

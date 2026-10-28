@@ -169,7 +169,6 @@
                     <div class="branch-placeholder" aria-hidden="true"></div>
                   } @else if (getLeavingPanel(placement.panelId); as panelData) {
                     <div class="panel-content"
-                         [style.--pw-art-aspect]="artAspectOf(panelData)"
                          [style.clip-path]="getPanelContentClipPath(placement)"
                          [style.transform]="getPanelContentTransform(placement)"
                          [pwPanelAnimation]="panelData.animations"
@@ -198,8 +197,8 @@
                             <pw-speech-bubbles
                               [bubbles]="panelData.speechBubbles"
                               [locale]="locale"
-                              [containerWidth]="getPageArtBox(placement, panelData).width"
-                              [containerHeight]="getPageArtBox(placement, panelData).height"
+                              [containerWidth]="getPagePanelWidth(placement)"
+                              [containerHeight]="getPagePanelHeight(placement)"
                               [readingScale]="getPageReadingScale(placement)"
                               [anchorTailTip]="true"
                               [workBalloonConfig]="workBalloonConfig"
@@ -256,7 +255,6 @@
                 <div class="branch-placeholder"></div>
               } @else if (getPanel(placement.panelId); as panelData) {
                 <div class="panel-content"
-                     [style.--pw-art-aspect]="artAspectOf(panelData)"
                      [style.clip-path]="getPanelContentClipPath(placement)"
                      [style.transform]="getPanelContentTransform(placement)"
                      [pwPanelAnimation]="panelData.animations"
@@ -298,8 +296,8 @@
                           [hotspots]="panelData.hotspots"
                           [bubbles]="panelData.speechBubbles ?? []"
                           [locale]="locale"
-                          [containerWidth]="getPageArtBox(placement, panelData).width"
-                          [containerHeight]="getPageArtBox(placement, panelData).height"
+                          [containerWidth]="getPagePanelWidth(placement)"
+                          [containerHeight]="getPagePanelHeight(placement)"
                           [context]="variableContext"
                           (hotspotActivate)="onHotspotActivate($event, placement.panelId)">
                         </pw-hotspots-overlay>
@@ -310,8 +308,8 @@
                         <pw-speech-bubbles
                           [bubbles]="panelData.speechBubbles"
                           [locale]="locale"
-                          [containerWidth]="getPageArtBox(placement, panelData).width"
-                          [containerHeight]="getPageArtBox(placement, panelData).height"
+                          [containerWidth]="getPagePanelWidth(placement)"
+                          [containerHeight]="getPagePanelHeight(placement)"
                           [readingScale]="getPageReadingScale(placement)"
                           [anchorTailTip]="true"
                           [workBalloonConfig]="workBalloonConfig"
