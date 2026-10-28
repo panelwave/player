@@ -504,9 +504,10 @@ describe('SpeechBubblesComponent body anchoring', () => {
       expect(tip.y - bodyBottom()).toBeCloseTo(45, 0);
     });
 
-    it('lowers the boost until a tip-anchored body fits its panel instead of moving the tip', () => {
+    it('slides a boosted, tip-anchored balloon inside its panel at full size and re-aims the tail', () => {
       // A narrow phone-like panel; the base scale would letter 12 px × 0.2 = 2.4 px,
-      // the 9 px floor asks for 0.75 — too big for a balloon whose tip sits near the top.
+      // the 9 px floor asks for 0.75 — the balloon whose tip sits near the top
+      // would cross the panel's top border at that size.
       component.containerWidth = 375;
       component.containerHeight = 211;
       component.anchorTailTip = true;
@@ -519,19 +520,25 @@ describe('SpeechBubblesComponent body anchoring', () => {
       })];
       component.renderAllBalloons();
       const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
-      const scale = parseFloat(/scale\(([\d.]+)\)/.exec(w.style.transform)![1]);
-      expect(scale).toBeGreaterThan(0.18); // never below the artwork scale (0.188)
-      expect(scale).toBeLessThan(0.75);
-      // Body inside the panel …
+      // Lettered at the floor like every other balloon …
+      expect(w.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
+      // … the body inside the panel …
       const fo = w.querySelector('foreignObject') as SVGForeignObjectElement;
-      const top = toContainer({ x: 0, y: 0 }).y;
-      expect(top).toBeGreaterThanOrEqual(-0.5);
-      expect(bodyBottom()).toBeLessThanOrEqual(211 + 0.5);
       expect(fo).toBeTruthy();
-      // … and the tip still where the editor put it.
-      const tip = bottomTip();
+      expect(toContainer({ x: 0, y: 0 }).y).toBeGreaterThanOrEqual(-0.5);
+      expect(bodyBottom()).toBeLessThanOrEqual(211 + 0.5);
+      // … and the tail re-aimed: it no longer points straight down (180°),
+      // its tip still lands on the authored tip.
+      const path = w.querySelector('svg path') as SVGPathElement;
+      expect(path).toBeTruthy();
       const art = artworkLetteringScale(375, 211);
-      expect(tip.y).toBeCloseTo(0.12 * 211 + 45 * art, 0);
+      const authoredTipY = 0.12 * 211 + 45 * art;
+      const vb = ((w.querySelector('svg') as SVGSVGElement).getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      // The SVG box still contains the authored tip's y.
+      const top = toContainer({ x: 0, y: vb[1] }).y;
+      const bottom = toContainer({ x: 0, y: vb[1] + vb[3] }).y;
+      expect(authoredTipY).toBeGreaterThanOrEqual(top - 1);
+      expect(authoredTipY).toBeLessThanOrEqual(bottom + 1);
     });
 
     it('without anchorTailTip (panel view) the body stays centred on the box', () => {

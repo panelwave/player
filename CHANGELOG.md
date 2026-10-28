@@ -117,8 +117,9 @@ semver. The reader-facing product changelog lives on the docs site
   = `pageLetteringScale(page width)`, panel view's artwork scale of a
   full-width landscape panel — a balloon looks the same on the page as in
   panel view, the 9 px floor still grows small lettering, and a balloon that
-  would not fit its panel shrinks back towards its panel-view size instead
-  of moving off the speaker). `artworkLetteringScale`, `pageLetteringScale` and
+  would cross its panel's border slides inside at that size with its tail
+  re-aimed at the speaker — one font size stays one size across the page).
+  `artworkLetteringScale`, `pageLetteringScale` and
   `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
   `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS

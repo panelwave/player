@@ -30,7 +30,7 @@ import type {
 import { ComicBalloon } from '../../../utils/comic-balloon';
 import type { TailOptions } from '../../../utils/comic-balloon';
 import { DEFAULT_BALLOON_CONFIG, mergeBalloonConfig, balloonConfigToRenderOptions, balloonConfigToTailOptions, artworkLetteringScale } from '../../../utils/balloon-config';
-import { placeGrownBody, tailConfigToTip } from '../../../utils/balloon-geometry';
+import { placeGrownBody, tailConfigToTip, tailTipToTailConfig } from '../../../utils/balloon-geometry';
 import { ManifestService } from '../../../services/manifest.service';
 
 /** Smallest rendered lettering size in CSS px (balloons grow to keep text readable on small pages). */
@@ -382,44 +382,6 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
             )
           : null;
 
-        // A boosted, tip-anchored balloon must still fit its panel: lower the
-        // boost — down to the base scale, or to the panel-view size the author
-        // placed inside (the artwork scale, below the base on a page) — until
-        // it does, instead of moving the body — and with it the tip — off the
-        // speaker. The box checked is the SVG's (body + stroke padding + tail,
-        // as the clamp below sees it); taking the tail at the balloon's full
-        // length is conservative, the counter-scaled tail is shorter. A balloon
-        // that does not fit even then is clamped below, as before.
-        const floorScale = Math.min(baseScale, authoredScale);
-        if (authoredTip && scale > floorScale * 1.001) {
-          const vbNow = (result.svg?.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
-          const padded = vbNow.length === 4 && vbNow.every((v) => Number.isFinite(v));
-          const padLeft = padded ? -vbNow[0] : 0;
-          const padTop = padded ? -vbNow[1] : 0;
-          const padRight = padded ? vbNow[2] + vbNow[0] - result.width : 0;
-          const padBottom = padded ? vbNow[3] + vbNow[1] - result.height : 0;
-          const bodyFits = (s: number): boolean => {
-            const local = tailConfigToTip(
-              { cx: 0, cy: 0, width: result.width, height: result.height },
-              { position: Number(tailOpts!.position), length: this.scaleTailWithBoost ? tailLength : tailLength * baseScale / s },
-              cornerRadius,
-            );
-            const left = authoredTip.x - local.x * s - (result.width / 2 + padLeft) * s;
-            const top = authoredTip.y - local.y * s - (result.height / 2 + padTop) * s;
-            return left >= -0.5 && top >= -0.5
-              && left + (result.width + padLeft + padRight) * s <= this.containerWidth + 0.5
-              && top + (result.height + padTop + padBottom) * s <= this.containerHeight + 0.5;
-          };
-          if (!bodyFits(scale) && bodyFits(floorScale)) {
-            let lo = floorScale;
-            let hi = scale;
-            for (let i = 0; i < 10; i++) {
-              const mid = (lo + hi) / 2;
-              if (bodyFits(mid)) lo = mid; else hi = mid;
-            }
-            scale = lo;
-          }
-        }
         let renderedTailLength = tailLength;
         if (tipAnchored && !this.scaleTailWithBoost && scale > baseScale * 1.001) {
           renderedTailLength = tailLength * baseScale / scale;
@@ -428,8 +390,8 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : svgWidth;
           svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : svgHeight;
         }
-        const visualW = svgWidth * scale;
-        const visualH = svgHeight * scale;
+        let visualW = svgWidth * scale;
+        let visualH = svgHeight * scale;
 
         // Auto-grow (schema 1.8 textFit): when the text needed more room than
         // the authored size, the engine grew the body. Place the grown body
@@ -461,8 +423,8 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         // from the SVG centre, in balloon px (the body starts at viewBox 0,0).
         const vb = (result.svg?.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
         const hasViewBox = vb.length === 4 && vb.every((v) => Number.isFinite(v));
-        const bodyOffsetX = hasViewBox ? (-vb[0] + result.width / 2) - svgWidth / 2 : 0;
-        const bodyOffsetY = hasViewBox ? (-vb[1] + result.height / 2) - svgHeight / 2 : 0;
+        let bodyOffsetX = hasViewBox ? (-vb[0] + result.width / 2) - svgWidth / 2 : 0;
+        let bodyOffsetY = hasViewBox ? (-vb[1] + result.height / 2) - svgHeight / 2 : 0;
 
         // Anchor the body at the shape box's center (shifted for a grown
         // body) — but edges the authored box touches stay glued to the panel
@@ -488,6 +450,35 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           else if (boxRight >= this.containerWidth - eps) centerX = this.containerWidth - visualW / 2;
           if (boxTop <= eps) centerY = visualH / 2;
           else if (boxBottom >= this.containerHeight - eps) centerY = this.containerHeight - visualH / 2;
+        }
+
+        // A tip-anchored balloon that would cross the panel border keeps its
+        // lettering size (one font size is one size across a page) and SLIDES
+        // inside; its tail is re-aimed at the authored tip, as a letterer
+        // would. Connectors keep the centre rule.
+        if (authoredTip && tailOpts) {
+          const slidX = clampCenter(centerX, visualW, this.containerWidth);
+          const slidY = clampCenter(centerY, visualH, this.containerHeight);
+          if (Math.abs(slidX - centerX) > 0.5 || Math.abs(slidY - centerY) > 0.5) {
+            const bodyCx = slidX + bodyOffsetX * scale;
+            const bodyCy = slidY + bodyOffsetY * scale;
+            const aimed = tailTipToTailConfig(
+              { cx: 0, cy: 0, width: result.width, height: result.height },
+              (authoredTip.x - bodyCx) / scale, (authoredTip.y - bodyCy) / scale, cornerRadius,
+            );
+            result = new ComicBalloon(balloonContainer, usedOpts)
+              .render(text, { ...tailOpts, position: aimed.position, length: Math.max(8, aimed.length) } as TailOptions);
+            svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : svgWidth;
+            svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : svgHeight;
+            const vb2 = (result.svg?.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
+            const hasViewBox2 = vb2.length === 4 && vb2.every((v) => Number.isFinite(v));
+            bodyOffsetX = hasViewBox2 ? (-vb2[0] + result.width / 2) - svgWidth / 2 : 0;
+            bodyOffsetY = hasViewBox2 ? (-vb2[1] + result.height / 2) - svgHeight / 2 : 0;
+            visualW = svgWidth * scale;
+            visualH = svgHeight * scale;
+            centerX = bodyCx - bodyOffsetX * scale;
+            centerY = bodyCy - bodyOffsetY * scale;
+          }
         }
         // A balloon bigger than its authored box (small screens) must not be
         // pushed across the panel border and clipped: keep it inside the panel.
