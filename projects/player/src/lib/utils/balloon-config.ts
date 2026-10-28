@@ -55,14 +55,21 @@ export function artworkLetteringScale(width: number, height: number): number {
 }
 
 /**
+ * Page view letters a page at this share of panel view's scale (a page
+ * reads a little smaller than the panel shown full-frame — the CMS editor's
+ * rule); on small pages the MIN_LETTERING_PX floor decides instead.
+ */
+export const PAGE_LETTERING_FACTOR = 0.75;
+
+/**
  * Page view's uniform lettering scale for a page `pageWidth` CSS px wide:
- * panel view's artwork scale of a full-width landscape (16:9) panel of that
- * page — pageWidth × 9/16 / 1123 — so a balloon looks the same on the page
- * as in panel view and one font size is one size across the page.
+ * PAGE_LETTERING_FACTOR × panel view's artwork scale of a full-width
+ * landscape (16:9) panel of that page (pageWidth × 9/16 / 1123) — one font
+ * size is one size across the page, a balloon keeps its panel-view look.
  * pw-speech-bubbles raises small results to its MIN_LETTERING_PX floor.
  */
 export function pageLetteringScale(pageWidth: number): number {
-  return artworkLetteringScale(pageWidth, pageWidth * 9 / 16);
+  return PAGE_LETTERING_FACTOR * artworkLetteringScale(pageWidth, pageWidth * 9 / 16);
 }
 
 /**

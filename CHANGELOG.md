@@ -114,9 +114,10 @@ semver. The reader-facing product changelog lives on the docs site
   along with the body there), and lowers that boost until the
   body fits inside the panel instead of moving it off the speaker. Page view
   letters every panel of a page at ONE scale, as in print (`getPageReadingScale`
-  = `pageLetteringScale(page width)`, panel view's artwork scale of a
-  full-width landscape panel — a balloon looks the same on the page as in
-  panel view, the 9 px floor still grows small lettering, and a balloon that
+  = `pageLetteringScale(page width)`, `PAGE_LETTERING_FACTOR` 0.75 × panel
+  view's artwork scale of a full-width landscape panel — a balloon keeps its
+  panel-view look, a little smaller (font size 12 is 17 px on a Bigscreen
+  page), the 9 px floor still grows small lettering, and a balloon that
   would cross its panel's border slides inside at that size with its tail
   re-aimed at the speaker — one font size stays one size across the page).
   `artworkLetteringScale`, `pageLetteringScale` and

@@ -357,9 +357,9 @@ describe('ViewportComponent', () => {
       fixture.detectChanges();
       const canvas = fixture.nativeElement.querySelector('.pt-frame .page-canvas') as HTMLElement;
       const pageWidth = spyOnProperty(canvas, 'clientWidth', 'get').and.returnValue(794);
-      // An A4 page: 794 × 9/16 / 1123 ≈ 0.40 — a page-high panel and a small one alike.
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(794 * 9 / 16 / 1123, 5);
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(794 * 9 / 16 / 1123, 5);
+      // An A4 page: 0.75 × 794 × 9/16 / 1123 ≈ 0.30 — a page-high panel and a small one alike.
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(0.75 * 794 * 9 / 16 / 1123, 5);
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(0.75 * 794 * 9 / 16 / 1123, 5);
       // A Bigscreen page (its panel view's 1.92) on a 1300 px screen: never
       // above the screen scale (a page larger than the screen).
       pageWidth.and.returnValue(3840);
