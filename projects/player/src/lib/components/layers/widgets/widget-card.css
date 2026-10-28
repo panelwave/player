@@ -1,0 +1,113 @@
+/*
+ * Shared look of the content widget layers (schema 1.10+). Every value comes
+ * from the work theme (--pw-theme-*, see ThemeService) with the dark default
+ * as fallback, so a widget also renders sensibly outside a player shell.
+ * Sizes are em of --pw-widget-font (set by the layer renderer: scales with the
+ * panel, clamped 11–20 px); radius and border are plain CSS px.
+ */
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-size: var(--pw-widget-font, 14px);
+  line-height: 1.3;
+  color: var(--pw-theme-on-surface, #f9fafb);
+  font-family: var(--pw-theme-font-ui, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  --pw-pad: calc(0.75em * var(--pw-theme-density, 1));
+  --pw-gap: calc(0.6em * var(--pw-theme-density, 1));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pw-card {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: var(--pw-pad);
+  display: flex;
+  align-items: center;
+  gap: var(--pw-gap);
+  overflow: hidden;
+  background: var(--pw-theme-surface, #1f2937);
+  color: var(--pw-theme-on-surface, #f9fafb);
+  border: var(--pw-theme-border-width, 1px) solid var(--pw-theme-border, #4b5563);
+  border-radius: var(--pw-theme-radius, 12px);
+  box-shadow: var(--pw-theme-shadow, 0 4px 16px rgba(0, 0, 0, 0.18));
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+
+.pw-card.plain {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.pw-muted {
+  color: var(--pw-theme-on-surface-muted, #d1d5db);
+}
+
+.pw-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pw-round-btn {
+  flex: none;
+  width: 2.4em;
+  height: 2.4em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--pw-theme-accent, #f59e0b);
+  color: var(--pw-theme-on-accent, #111827);
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.pw-round-btn pw-icon {
+  font-size: 1.15em;
+}
+
+.pw-round-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pw-icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 0.3em;
+  border: none;
+  border-radius: calc(var(--pw-theme-radius, 12px) / 2);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pw-icon-btn:hover {
+  background: color-mix(in srgb, var(--pw-theme-on-surface, #f9fafb) 12%, transparent);
+}
+
+:host :focus-visible {
+  outline: 2px solid var(--pw-theme-focus, #93c5fd);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

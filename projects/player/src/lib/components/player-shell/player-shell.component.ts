@@ -106,6 +106,9 @@ import { branchVisibility, buildBranchGraph, type BranchGraph } from '../../util
 import { ShareModalComponent } from '../modals/share-modal/share-modal.component';
 import { CommentsDrawerComponent } from '../modals/comments-drawer/comments-drawer.component';
 import { PwIconComponent } from '../icon/pw-icon.component';
+import { ThemeService, type PwThemeOverride } from '../../services/theme.service';
+import { WidgetPlaybackService, type VideoModalRequest, type WidgetEvent } from '../../services/widget-playback.service';
+import { VideoModalComponent } from '../modals/video-modal/video-modal.component';
 
 /**
  * Factory function for TranslateLoader
@@ -151,7 +154,7 @@ export interface EntitlementAdapter {
  */
 @Component({
     selector: 'pw-player-shell',
-    providers: [CanvasCameraService],
+    providers: [CanvasCameraService, ThemeService, WidgetPlaybackService],
     imports: [
     TranslatePipe,
     ViewportComponent,
@@ -169,7 +172,8 @@ export interface EntitlementAdapter {
     BranchChooserComponent,
     ShareModalComponent,
     CommentsDrawerComponent,
-    PwIconComponent
+    PwIconComponent,
+    VideoModalComponent
 ],
     templateUrl: './player-shell.component.html',
     styleUrls: ['./player-shell.component.css'],
@@ -398,6 +402,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    */
   @Input() trackingContext?: Record<string, string | number | boolean>;
 
+  /**
+   * Host-side widget theme on top of the manifest's `ui.theme` (schema
+   * 1.10+), e.g. a live theme preview in an authoring tool. Fields set here
+   * win; the manifest is not changed. Applied live.
+   */
+  @Input() themeOverride?: PwThemeOverride | null;
+
   /** Manifest id of the chapter `chapterScope` resolved to (set on load). */
   scopedChapterId?: string;
 
@@ -468,6 +479,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    * the chapter). Not emitted for an off-screen suspension.
    */
   @Output() autoplayChange = new EventEmitter<boolean>();
+
+  /**
+   * A reader acted on a content widget layer (schema 1.10+): `download`,
+   * `play` / `pause` / `ended` (audio player, video modal), `open` / `close`
+   * (video modal, iframe shown).
+   */
+  @Output() widgetEvent = new EventEmitter<WidgetEvent>();
 
   /**
    * Camera moved in canvas view (throttled).
@@ -844,6 +862,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private readonly preloadService = inject(PreloadService);
   private readonly imageCache = inject(ImageCacheService);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly themeService = inject(ThemeService);
+  readonly widgetPlayback = inject(WidgetPlaybackService);
+  /** Autoplay reached its advance while a widget played: advance once it stops. */
+  private autoplayHeldByWidget = false;
+  /** The open video modal of a `videoPlayer` widget (schema 1.10+), or null. */
+  videoModal: VideoModalRequest | null = null;
 
   /** The player is shown in fullscreen (kept in sync with the browser, Esc included). */
   isFullscreen = false;
@@ -863,8 +887,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   ngOnInit(): void {
     this.initialized = true;
     this.toolbarVisible = this.showToolbar;
+    this.themeService.attach(this.host.nativeElement);
+    this.themeService.setOverride(this.themeOverride);
     this.watchReducedMotion();
     this.subscribeToVideoSignals();
+    this.subscribeToWidgets();
     this.observeVisibility();
     this.initializePlayer();
     // pagehide fires for both tab close and navigation (incl. bfcache) —
@@ -889,6 +916,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     if (changes['locale']) {
       this.applyLocale();
+    }
+    if (changes['themeOverride']) {
+      this.themeService.setOverride(this.themeOverride);
     }
     if (changes['entitlementSnapshot']) {
       if (!this.entitlementSnapshot && !this.httpEntitlement) {
@@ -1047,6 +1077,64 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       .subscribe(() => this.onVideoQueueComplete());
   }
 
+  /**
+   * Content widgets (schema 1.10+): reader actions go out as `widgetEvent`
+   * and analytics (`download`, `widgetPlay`, `widgetOpen`); a playing widget
+   * holds autoplay, which advances once the widget stops.
+   */
+  private subscribeToWidgets(): void {
+    this.widgetPlayback.events$.pipe(takeUntil(this.destroy$)).subscribe((event) => {
+      const panelId = event.panelId || this.getCurrentPanelId() || undefined;
+      const payload = { ...event, panelId };
+      this.widgetEvent.emit(payload);
+      const tracked = event.type === 'download' ? 'download'
+        : event.type === 'play' ? 'widgetPlay'
+        : event.type === 'open' ? 'widgetOpen'
+        : null;
+      if (tracked) {
+        this.trackingService.track(tracked, {
+          panelId,
+          chapterId: this.currentChapter?.id,
+          layerId: event.layerId,
+          kind: event.kind,
+          ...(event.assetId ? { assetId: event.assetId } : {}),
+        });
+      }
+    });
+    this.widgetPlayback.videoRequests$.pipe(takeUntil(this.destroy$)).subscribe((request) => {
+      this.videoModal = request;
+      this.cdr.markForCheck();
+    });
+    this.widgetPlayback.active$.pipe(takeUntil(this.destroy$)).subscribe((active) => {
+      if (!active && this.autoplayHeldByWidget) {
+        this.autoplayHeldByWidget = false;
+        if (this.autoplayEnabled) {
+          this.startAutoplay();
+          this.cdr.markForCheck();
+        }
+      }
+    });
+  }
+
+  /**
+   * Live widget theme from a host (embed `setTheme`, protocol v3) — same
+   * effect as the `themeOverride` input; `null` clears it.
+   */
+  setThemeOverride(theme: PwThemeOverride | null): void {
+    this.themeOverride = theme;
+    this.themeService.setOverride(theme);
+  }
+
+  /** Close the video modal and give focus back to the widget that opened it. */
+  closeVideoModal(): void {
+    const returnFocus = this.videoModal?.returnFocus;
+    this.videoModal = null;
+    this.cdr.markForCheck();
+    if (returnFocus?.isConnected) {
+      setTimeout(() => returnFocus.focus(), 0);
+    }
+  }
+
   /** Panel-view auto-advance for video panels (§4.5). */
   private onVideoPassComplete(videoId: string): void {
     if (
@@ -1101,6 +1189,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       } else {
         throw new Error('No manifest or manifestUrl provided');
       }
+
+      // Widget theme (schema 1.10+ ui.theme, branding as fallback).
+      this.themeService.setUi(this.manifestService.getManifest()?.ui);
 
       // Register the manifest's variable definitions: initializes defaults
       // and arms type validation + the read-only guard for every later
@@ -1389,10 +1480,19 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     this.stateSubscribed = true;
     // Listen to panel changes
+    // The previously emitted panel: navigateToPanel sets this.currentPanel
+    // before the state emits, so comparing against it never saw a change.
+    let previousPanel: Panel | null = null;
     this.playerState.currentPanel$
       .pipe(takeUntil(this.destroy$))
       .subscribe((panel) => {
         if (panel && this.currentChapter) {
+          if (previousPanel && panel !== previousPanel) {
+            // Leaving a panel stops its audio / video widgets (audio players
+            // with keepPlaying play on).
+            this.widgetPlayback.pauseForNavigation();
+          }
+          previousPanel = panel;
           this.currentPanel = panel;
           // Resolve variants before emitting so consumers (and the
           // tracked event) see the effective panel state.
@@ -2729,6 +2829,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (event.key === 'Escape' && this.cameFromDialog(event)) {
       return;
     }
+    // Keys pressed in a content widget's key-using parts (scroll box, audio
+    // slider, form fields) belong to the widget; Enter / Space activate its
+    // focused button or link. Other keys — the arrows after clicking Play —
+    // still navigate the story.
+    if (this.widgetOwnsKey(event)) {
+      return;
+    }
 
     switch (event.key) {
       case 'ArrowRight':
@@ -2791,13 +2898,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
   /** Dialogs the reader can dismiss with Escape (paywall/age gate excluded). */
   private closableDialogOpen(): boolean {
-    return this.actionModalVisible || this.branchChooserVisible || this.shareVisible
+    return !!this.videoModal || this.actionModalVisible || this.branchChooserVisible || this.shareVisible
       || this.commentsVisible || this.extrasVisible || this.charactersVisible
       || this.languageModalVisible || this.settingsVisible || this.tocVisible;
   }
 
   /** Close the most recently layered dialog (nested ones first). */
   private closeTopDialog(): void {
+    if (this.videoModal) { this.closeVideoModal(); return; }
     if (this.actionModalVisible) { this.actionModalVisible = false; return; }
     if (this.branchChooserVisible) { this.branchChooserVisible = false; return; }
     if (this.shareVisible) { this.shareVisible = false; return; }
@@ -2812,8 +2920,22 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private static readonly DIALOG_HOSTS = new Set([
     'PW-ACTION-MODAL', 'PW-BRANCH-CHOOSER', 'PW-CHARACTER-ROSTER', 'PW-COMMENTS-DRAWER',
     'PW-EXTRAS-VIEWER', 'PW-LANGUAGE-MODAL', 'PW-SETTINGS-MODAL', 'PW-SHARE-MODAL',
-    'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY',
+    'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY', 'PW-VIDEO-MODAL',
   ]);
+
+  private widgetOwnsKey(event: KeyboardEvent): boolean {
+    const path = event.composedPath().filter((node): node is Element => node instanceof Element);
+    const widgetAt = path.findIndex((el) => el.hasAttribute('data-pw-widget'));
+    if (widgetAt < 0) return false;
+    const inside = path.slice(0, widgetAt + 1);
+    const usesKeys = inside.some(
+      (el) =>
+        el.hasAttribute('data-pw-owns-keys') ||
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' ||
+        (el as HTMLElement).isContentEditable
+    );
+    return usesKeys || event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar';
+  }
 
   private cameFromDialog(event: KeyboardEvent): boolean {
     return event.composedPath().some(
@@ -2936,6 +3058,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.startAutoplayProgress();
 
     this.autoplayTimer = setTimeout(() => {
+      // A reader listening to an audio player / watching the video modal is
+      // not interrupted: the advance waits until the widget stops.
+      if (this.autoplayEnabled && this.widgetPlayback.isActive()) {
+        this.autoplayTimer = undefined;
+        this.autoplayHeldByWidget = true;
+        return;
+      }
       // Continue autoplay if still enabled
       if (this.autoplayEnabled) {
         void this.autoplayAdvance().then(() => {
@@ -3043,6 +3172,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       clearTimeout(this.autoplayTimer);
       this.autoplayTimer = undefined;
     }
+    this.autoplayHeldByWidget = false;
     this.pendingVideoPasses.clear();
     this.clearVideoWatchdog();
     this.stopAutoplayProgress();

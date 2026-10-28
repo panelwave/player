@@ -1,0 +1,46 @@
+<a
+  class="pw-card pw-download"
+  [class.plain]="plain"
+  [class.unavailable]="!href"
+  [ngStyle]="rootStyles"
+  [attr.href]="print || !href ? null : href"
+  [attr.download]="print || !href ? null : fileName"
+  [attr.target]="print || !href ? null : '_blank'"
+  [attr.rel]="print || !href ? null : 'noopener'"
+  [attr.aria-label]="ariaLabel"
+  [attr.aria-disabled]="!href ? 'true' : null"
+  (click)="onActivate()">
+  @if (showIcon) {
+    <span class="file-icon" aria-hidden="true">
+      <svg viewBox="0 0 40 48" focusable="false">
+        <path class="sheet" d="M4 2h22l10 10v32a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+        <path class="fold" d="M26 2v8a2 2 0 0 0 2 2h8" />
+        <rect class="badge" x="0" y="26" width="40" height="14" rx="3" [attr.fill]="type.color" />
+        <text class="badge-label" x="20" y="36.5" text-anchor="middle">{{ type.label }}</text>
+      </svg>
+    </span>
+  }
+  <span class="text">
+    @if (title) {
+      <span class="title pw-muted pw-ellipsis">{{ title }}</span>
+    }
+    <span class="name pw-ellipsis">{{ fileName }}</span>
+    @if (description || size) {
+      <span class="meta pw-muted pw-ellipsis">
+        @if (description) {<span class="description">{{ description }}</span>}
+        @if (description && size) {<span class="sep" aria-hidden="true"> · </span>}
+        @if (size) {<span class="size">{{ size }}</span>}
+      </span>
+    }
+    @if (attachedPage) {
+      <span class="attached pw-ellipsis">{{ attachedText }}</span>
+    }
+  </span>
+  @if (!print) {
+    <span class="pw-round-btn action" aria-hidden="true">
+      <pw-icon name="lucideDownload" />
+    </span>
+  } @else if (printLink) {
+    <pw-print-qr [value]="printLink" [label]="text('print_scan_download')" />
+  }
+</a>

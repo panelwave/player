@@ -129,6 +129,8 @@ export class AudioEngineService {
 
   /** Master mute flag (independent of the master volume). */
   private readonly masterMutedSubject = new BehaviorSubject<boolean>(false);
+  /** Per-bus duck factors (1 = none), see {@link setRoleDuck}. */
+  private readonly duckFactors = new Map<AudioRole, number>();
 
   /** Muted buses (independent of their volumes). */
   private mutedRoles = new Set<AudioRole>();
@@ -362,6 +364,32 @@ export class AudioEngineService {
    */
   getRoleVolume(role: AudioRole): number {
     return this.roleVolumes.get(role) ?? 1.0;
+  }
+
+  /**
+   * Duck one bus (schema 1.10 audio player widgets lower music and ambient
+   * while they play): `factor` 0..1 multiplies the bus gain on top of the
+   * reader's volume and mute, 1 = no ducking. Ramps over `rampMs` so the
+   * music fades instead of jumping.
+   */
+  setRoleDuck(role: AudioRole, factor: number, rampMs = 250): void {
+    const next = Math.max(0, Math.min(1, factor));
+    if (next >= 1) {
+      this.duckFactors.delete(role);
+    } else {
+      this.duckFactors.set(role, next);
+    }
+    const gainNode = this.roleGains.get(role);
+    if (!gainNode || !this.audioContext) return;
+    const now = this.audioContext.currentTime;
+    gainNode.gain.cancelScheduledValues?.(now);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+    gainNode.gain.linearRampToValueAtTime(this.effectiveRoleGain(role), now + Math.max(0, rampMs) / 1000);
+  }
+
+  /** Current duck factor of a bus (1 = not ducked). */
+  getRoleDuck(role: AudioRole): number {
+    return this.duckFactors.get(role) ?? 1;
   }
 
   /**
@@ -647,7 +675,7 @@ export class AudioEngineService {
   }
 
   private effectiveRoleGain(role: AudioRole): number {
-    return this.mutedRoles.has(role) ? 0 : this.getRoleVolume(role);
+    return this.mutedRoles.has(role) ? 0 : this.getRoleVolume(role) * (this.duckFactors.get(role) ?? 1);
   }
 
   private applyMasterGain(): void {

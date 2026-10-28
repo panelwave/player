@@ -96,6 +96,8 @@
             (ageVerified)="onShellEvent('ageVerified', $event)"
             (likeChange)="onShellEvent('likeChange', $event)"
             (bookmarkChange)="onShellEvent('bookmarkChange', $event)"
+            (widgetEvent)="onShellEvent('widgetEvent', $event)"
+            [themeOverride]="themeOverride"
             (error)="onError($event)">
           </pw-player-shell>
         </div>

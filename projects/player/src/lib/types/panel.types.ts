@@ -348,9 +348,118 @@ export interface PluginLayer extends Layer {
 }
 
 /**
+ * Content widget layer kinds (schema 1.10+): reader-facing UI drawn by the
+ * player with `ui.theme`, placed like any layer in the reference space.
+ */
+export type WidgetLayerKind = 'download' | 'audioPlayer' | 'videoPlayer' | 'scrollText' | 'iframe';
+
+/** Every widget kind, for `kind` checks. */
+export const WIDGET_LAYER_KINDS: readonly WidgetLayerKind[] = ['download', 'audioPlayer', 'videoPlayer', 'scrollText', 'iframe'];
+
+/** Whether a layer is one of the content widget kinds (schema 1.10+). */
+export function isWidgetLayer(layer: { kind?: unknown } | null | undefined): layer is WidgetLayer {
+  return !!layer && (WIDGET_LAYER_KINDS as readonly unknown[]).includes(layer.kind);
+}
+
+/** Colour tokens of the reader-facing widgets (schema 1.10+ `ThemeColors`). */
+export interface ThemeColors {
+  surface?: string;
+  onSurface?: string;
+  surfaceMuted?: string;
+  onSurfaceMuted?: string;
+  accent?: string;
+  onAccent?: string;
+  border?: string;
+  focus?: string;
+  track?: string;
+  progress?: string;
+  waveform?: string;
+  waveformProgress?: string;
+  link?: string;
+  /** `#rrggbbaa` allowed. */
+  backdrop?: string;
+}
+
+/** Fields shared by the content widget layers (schema 1.10+ `WidgetLayerCommon`). */
+export interface WidgetLayerBase extends Layer {
+  kind: WidgetLayerKind;
+  /** Box in the layer reference space (required for widgets). */
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  /** Heading / accessible name. */
+  title?: LocalizedString;
+  /** `card` (default) or `plain`. */
+  appearance?: 'card' | 'plain';
+  /** Per-layer colour overrides. */
+  themeOverrides?: ThemeColors;
+  /** Print renders: `card` (default, a static card, QR code optional) or `hide`. */
+  print?: 'card' | 'hide';
+}
+
+/** A downloadable file (schema 1.10+). */
+export interface DownloadLayer extends WidgetLayerBase {
+  kind: 'download';
+  assetId: AssetRef;
+  fileName?: LocalizedString;
+  description?: LocalizedString;
+  showIcon?: boolean;
+  showSize?: boolean;
+}
+
+/** A visible audio player with waveform and seeking (schema 1.10+). */
+export interface AudioPlayerLayer extends WidgetLayerBase {
+  kind: 'audioPlayer';
+  assetId: AssetRef;
+  showWaveform?: boolean;
+  showTime?: boolean;
+  duckMusic?: boolean;
+  startAtMs?: number;
+  /**
+   * Keep playing when the reader moves to another panel or page (default
+   * false: playback stops when the reader leaves the panel).
+   */
+  keepPlaying?: boolean;
+}
+
+/** A video opening in a modal player (schema 1.10+). */
+export interface VideoPlayerLayer extends WidgetLayerBase {
+  kind: 'videoPlayer';
+  assetId: AssetRef;
+  trigger?: 'poster' | 'button';
+  autoplayInModal?: boolean;
+  showDuration?: boolean;
+}
+
+/** A box of longer text scrolling in its bounds (schema 1.10+). */
+export interface ScrollTextLayer extends WidgetLayerBase {
+  kind: 'scrollText';
+  text: LocalizedString;
+  format?: 'plain' | 'markdown';
+  styleRef?: string;
+  style?: TextStyle;
+}
+
+export type IframeAllow = 'fullscreen' | 'autoplay' | 'encrypted-media' | 'picture-in-picture' | 'clipboard-write';
+
+/** An embedded external page (schema 1.10+). */
+export interface IframeLayer extends WidgetLayerBase {
+  kind: 'iframe';
+  src: string;
+  title: LocalizedString;
+  allow?: IframeAllow[];
+  sandbox?: 'default' | 'strict' | 'none';
+  lazy?: boolean;
+  showOpenLink?: boolean;
+}
+
+export type WidgetLayer = DownloadLayer | AudioPlayerLayer | VideoPlayerLayer | ScrollTextLayer | IframeLayer;
+
+/**
  * Layer kind discriminator
  */
-export type LayerKind = 'image' | 'video' | 'text' | 'audio' | 'plugin' | 'hotspot' | 'button' | 'svg' | 'shape' | 'group';
+export type LayerKind = 'image' | 'video' | 'text' | 'audio' | 'plugin' | 'hotspot' | 'button' | 'svg' | 'shape' | 'group' | WidgetLayerKind;
 
 /**
  * Text styling configuration

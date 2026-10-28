@@ -8,6 +8,35 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- **Content widget layers** (format 1.10, docs/CONTENT_WIDGETS.md): five new
+  layer kinds drawn by the player with the work theme — `download` (file card
+  with type icon, localized name, size; `pw-download-layer`), `audioPlayer`
+  (play/pause, waveform from the catalog peaks, position, click/drag/keyboard
+  seeking, ducks music + ambient; `pw-audio-player-layer`), `videoPlayer`
+  (poster or button opening `pw-video-modal`: custom controls, scrub bar with
+  buffered range, mute, fullscreen, focus trap; `pw-video-player-layer`),
+  `scrollText` (localized text, plain or a safe Markdown subset, fades, links
+  in a new tab; `pw-scroll-text-layer`) and `iframe` (https only, sandbox
+  presets, `allow` allowlist, lazy mounting, open-in-new-tab;
+  `pw-iframe-layer`). Widgets scale with the panel (clamped 11–20 px base
+  font), keep clicks / touches / wheel to themselves, honour `visibleIf`,
+  render a still state in print renders (`html.pw-print`) and play one at a
+  time; autoplay waits while one plays.
+- **Widget theme**: `ThemeService` resolves `ui.theme` (light / dark / auto,
+  14 colour tokens, ui + body fonts, shape, density; `ui.branding` as
+  fallback) into `--pw-theme-*` custom properties scoped to the player
+  instance with zero specificity, so host CSS can override them. The action
+  modal, choice buttons, branch chooser and toasts use the tokens too. New
+  shell input `themeOverride` and method `setThemeOverride()`.
+- `widgetEvent` output (`download`, `play`, `pause`, `ended`, `open`,
+  `close`) and the analytics events `download`, `widgetPlay`, `widgetOpen`.
+- Embed protocol **v3**: inbound `setTheme`, the `widgetEvent` event.
+- `AudioEngineService.setRoleDuck()` (bus duck factor on top of volume and
+  mute); `file` asset category with `filesBase`; `waveform` on audio items.
+- Exports: the five widget components, `VideoModalComponent`,
+  `ThemeService` + `resolveTheme` / `themeCssVariables` / colour helpers,
+  `WidgetPlaybackService`, `renderSafeMarkdown`, widget utils.
+- Demo: "Content Widgets" work (`assets/widgets-manifest.json`).
 - **Chapter embeds** (docs/MULTI_CHAPTER_EMBED.md). New shell input
   `chapterScope` (a chapter's manifest `id` or CMS `chapterId`) plays only
   that chapter: it starts at its entry, next / previous and page turns stop at
@@ -50,6 +79,22 @@ semver. The reader-facing product changelog lives on the docs site
 - `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
   stay keyed by id in `chapter.panels`; read the id from that key or from
   `panelChange`'s `panelId`.
+- **Content widgets in print renders** (format 1.10 widget `print`): a
+  static card per widget, by default with a QR code that opens the widget's
+  panel in the online reader (`pw-print-qr`, `PrintContextService`, the
+  standalone config's `printOptions`: `widgets` qr / card / hide, `linkBase`,
+  `attachments` → "Printed on page N" on download cards); `print: "hide"`
+  leaves a widget out. Scroll text shrinks to fit its box before it is
+  clipped. `qrModules()` is shared with the share dialog. New strings
+  `widgets.print_*` (en, de).
+  In print renders every widget is laid out at its design size and zoomed
+  to its box (`PrintFitDirective`), so a small card on the A4 page keeps its
+  icon, name and size instead of the compact on-screen variant.
+- Audio player `keepPlaying`: keeps playing when the reader moves to another
+  panel or page. `WidgetPlaybackService.pauseForNavigation()` skips it;
+  `park()` / `unpark()` keep its element playing after the widget unmounts
+  and hand it back when it mounts again. The `<audio>` element is now created
+  in code (it can outlive the widget); `unregister()` takes the handle.
 
 ### Removed
 - The unused `@ngx-translate/http-loader` dependency of the repository (the
@@ -57,9 +102,40 @@ semver. The reader-facing product changelog lives on the docs site
   `TranslateLoader`). The published package is unchanged.
 
 ### Fixed
+- **Panel-view balloons scale with the artwork and keep their tails on the
+  faces.** Lettering used the screen height (`host height / 1123`), so a panel
+  shown narrower than the screen — a narrow window, a phone, any letterboxed
+  panel — kept full-size balloons that covered the artwork, their tails off
+  the speakers. Panel view now letters at `artworkLetteringScale(panel box)`
+  = max(box height, box width × 9/16) / 1123 (the CMS editor's panel-view
+  rule; unchanged for artwork filling a 16:9 screen), raises small lettering
+  to the 9 px floor with the balloon **anchored on its authored tail tip**
+  (`anchorTailTip` now in panel view too; `scaleTailWithBoost` grows the tail
+  along with the body there), and lowers that boost until the
+  body fits inside the panel instead of moving it off the speaker. Page view
+  letters every panel of a page at ONE scale, as in print (`getPageReadingScale`
+  = `pageLetteringScale(page width)`, `PAGE_LETTERING_FACTOR` 0.75 × panel
+  view's artwork scale of a full-width landscape panel — a balloon keeps its
+  panel-view look, a little smaller (font size 12 is 17 px on a Bigscreen
+  page), the 9 px floor still grows small lettering, and a balloon that
+  would cross its panel's border slides inside at that size with its tail
+  re-aimed at the speaker — one font size stays one size across the page).
+  `artworkLetteringScale`, `pageLetteringScale` and
+  `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
+  `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS
   preview iframe), its first navigation matched no route and logged NG04002
   on every load.
+- **Audio player widgets stop when the reader moves on.** The panel-change
+  pause never fired (the shell compared the new panel with itself), so audio
+  kept playing while its panel stayed on screen — canvas neighbours, page
+  view. Widget handles are now kept per instance, so a page transition's
+  second copy of a widget no longer drops the live one.
+- **Arrow keys navigate after clicking a widget button.** Every key pressed
+  inside a widget was ignored, so after clicking Play → did nothing. Only the
+  parts that use keys keep them (`data-pw-owns-keys`: the audio seek slider,
+  the scroll box; form fields); Enter / Space stay with the focused button.
+
 
 ## [1.8.0] — 2026-10-19
 

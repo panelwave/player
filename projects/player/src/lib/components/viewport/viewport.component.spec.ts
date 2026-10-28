@@ -349,24 +349,41 @@ describe('ViewportComponent', () => {
       expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
     });
 
-    it('page-view panels letter at their share of the page, like the editor', () => {
+    it('page-view panels all letter at the page\'s uniform scale (a full-width landscape panel\'s artwork scale), like the editor', () => {
       hostWidth(2560, 1300);
       fixture.componentRef.setInput('viewMode', 'page');
       fixture.componentRef.setInput('panels', mockPanels);
       fixture.componentRef.setInput('page', onePanelPage);
       fixture.detectChanges();
       const canvas = fixture.nativeElement.querySelector('.pt-frame .page-canvas') as HTMLElement;
-      spyOnProperty(canvas, 'clientHeight', 'get').and.returnValue(1123);
-      // A quarter-width, third-height panel letters at max(w, h) = 1/3 of the
-      // full-frame scale (its artwork shown full-frame is 3× larger).
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(1 / 3, 5);
-      // A full-page panel keeps the full-frame scale.
-      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(1, 5);
+      const pageWidth = spyOnProperty(canvas, 'clientWidth', 'get').and.returnValue(794);
+      // An A4 page: 0.75 × 794 × 9/16 / 1123 ≈ 0.30 — a page-high panel and a small one alike.
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(0.75 * 794 * 9 / 16 / 1123, 5);
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(0.75 * 794 * 9 / 16 / 1123, 5);
+      // A Bigscreen page (its panel view's 1.92) on a 1300 px screen: never
+      // above the screen scale (a page larger than the screen).
+      pageWidth.and.returnValue(3840);
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(1300 / 1123, 5);
     });
 
-    it('panel view keeps the screen-height scale (the host box, not its clientHeight)', () => {
-      hostWidth(390, 844);
+    it('panel view letters proportionally to the panel box (the artwork as shown)', () => {
       component.viewMode = 'panel';
+      const width = spyOn(component, 'getContainerWidth');
+      const height = spyOn(component, 'getContainerHeight');
+      // 16:9 artwork filling a 16:9 screen: the screen-height scale.
+      width.and.returnValue(1920);
+      height.and.returnValue(1080);
+      expect(component.getPanelReadingScale()).toBeCloseTo(1080 / 1123, 5);
+      // The same panel in a narrow window: balloons shrink with the artwork.
+      width.and.returnValue(960);
+      height.and.returnValue(540);
+      expect(component.getPanelReadingScale()).toBeCloseTo(540 / 1123, 5);
+      // A panorama counts as 16:9 tall.
+      width.and.returnValue(1920);
+      height.and.returnValue(480);
+      expect(component.getPanelReadingScale()).toBeCloseTo(1080 / 1123, 5);
+      // The page-view scale still follows the host box.
+      hostWidth(390, 844);
       expect(component.getReadingScale()).toBeCloseTo(844 / 1123, 5);
     });
   });

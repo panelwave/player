@@ -47,6 +47,7 @@ rules (graph, variables, paywall, tracking) into behaviour.
 | `pauseAutoplayWhenHidden` | `boolean` | `true` | Suspend autoplay while less than half of the player (or half the viewport, for a taller player) is on screen, or the tab is hidden; resume from the start of the current panel's dwell time when it is back. A page-view video queue that finished meanwhile turns the page on return. |
 | `trackingContext` | `Record<string, string \| number \| boolean>` | — | Extra fields of the analytics `session_start` event — the reader app sends `{ embedHost }` (origin of the embedding page) for embeds. Read on (re)load. |
 | `imageCacheBudgetMb` | `number` | `100` | Decoded-image cache budget in MB. Each iframe has its own cache, so chapter embeds use a smaller one (32). |
+| `themeOverride` | `PwThemeOverride` (`UITheme`) \| `null` | — | Widget theme on top of the manifest's `ui.theme` (format 1.10): fields set here win, e.g. a live theme preview. Applied live. |
 
 Inputs may change after init: `manifest` / `manifestUrl` reload the work
 (position, non-persistent variables, open overlays and autoplay reset),
@@ -70,9 +71,13 @@ Inputs may change after init: `manifest` / `manifestUrl` reload the work
 | `ageVerified` | `AgeVerificationResult` | The reader answered an age gate. |
 | `likeChange` | `{ workId: string; liked: boolean }` | Like toggled (persisted on the device). |
 | `bookmarkChange` | `{ workId, chapterId, panelId, bookmarked }` | Bookmark set/cleared (persisted on the device, resumed on load). |
+| `widgetEvent` | `WidgetEvent`: `{ type: 'download' \| 'play' \| 'pause' \| 'ended' \| 'open' \| 'close'; layerId; kind; panelId?; assetId? }` | A reader acted on a content widget layer (format 1.10): a download, audio player / video modal playback, the video modal or an iframe shown. Tracked as `download`, `widgetPlay`, `widgetOpen`. |
 | `error` | `Error` | Load or navigation failure. |
 
 ### Methods
+
+`setThemeOverride(theme | null)` — set or clear the live widget theme (the
+embed bridge's `setTheme`).
 
 `refreshEntitlements(snapshot?)` — re-check access after the host reports a
 completed purchase; drops the paywall when the gated panel is now accessible.

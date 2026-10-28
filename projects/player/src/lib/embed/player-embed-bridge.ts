@@ -64,6 +64,7 @@ const FORWARDED_OUTPUTS = [
   'ageVerified',
   'likeChange',
   'bookmarkChange',
+  'widgetEvent',
   'error',
 ] as const;
 
@@ -267,6 +268,12 @@ export class PlayerEmbedBridge {
         // The reader interacted with the host page: sound that the autoplay
         // policy held back may start now (the iframe has allow="autoplay").
         this.gesture.markInteracted();
+        break;
+      case 'setTheme':
+        // v3: live widget theme (e.g. the CMS theme manager's preview).
+        if (message.theme === null || (message.theme && typeof message.theme === 'object')) {
+          shell?.setThemeOverride(message.theme);
+        }
         break;
     }
   }

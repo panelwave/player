@@ -21,10 +21,16 @@ import type {
   AssetCatalogItemVideo,
   VideoVariant,
   ImageVariant,
+  WidgetLayerBase,
 } from '../../types';
 import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { VideoLayerComponent, type LayerViewMode } from '../layers/video-layer/video-layer.component';
+import { DownloadLayerComponent } from '../layers/widgets/download-layer/download-layer.component';
+import { AudioPlayerLayerComponent } from '../layers/widgets/audio-player-layer/audio-player-layer.component';
+import { VideoPlayerLayerComponent } from '../layers/widgets/video-player-layer/video-player-layer.component';
+import { ScrollTextLayerComponent } from '../layers/widgets/scroll-text-layer/scroll-text-layer.component';
+import { IframeLayerComponent } from '../layers/widgets/iframe-layer/iframe-layer.component';
 import {
   resolvePlayMode,
   resolveStartMode,
@@ -32,6 +38,20 @@ import {
 } from '../../utils/video-config-utils';
 import { selectImageVariantForWidth } from '../../utils/image-variant-utils';
 import { layerBoxPercent, layerReferenceOf, type LayerReference } from '../../utils/layer-reference';
+import { isWidgetLayer } from '../../types/panel.types';
+import type { VariableContext } from '../../types/variable.types';
+import { isLayerVisible, isPrintRender } from '../../utils/widget-utils';
+import { PrintContextService } from '../../services/print-context.service';
+import { PrintFitDirective, type PrintFitSize } from '../../directives/print-fit.directive';
+
+/**
+ * Base text size of content widgets (schema 1.10+) in reference px: the
+ * widget scales with the panel, clamped so it stays readable on a phone and
+ * does not balloon on a 4K screen. Everything inside a widget is sized in em.
+ */
+export const WIDGET_BASE_FONT_REF = 18;
+export const WIDGET_FONT_MIN_PX = 11;
+export const WIDGET_FONT_MAX_PX = 20;
 
 /**
  * Layer Renderer Component
@@ -39,7 +59,16 @@ import { layerBoxPercent, layerReferenceOf, type LayerReference } from '../../ut
  */
 @Component({
     selector: 'pw-layer-renderer',
-    imports: [CommonModule, VideoLayerComponent],
+    imports: [
+      CommonModule,
+      VideoLayerComponent,
+      DownloadLayerComponent,
+      AudioPlayerLayerComponent,
+      VideoPlayerLayerComponent,
+      ScrollTextLayerComponent,
+      IframeLayerComponent,
+      PrintFitDirective,
+    ],
     templateUrl: './layer-renderer.component.html',
     styleUrls: ['./layer-renderer.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -47,6 +76,7 @@ import { layerBoxPercent, layerReferenceOf, type LayerReference } from '../../ut
 export class LayerRendererComponent {
   private manifestService = inject(ManifestService);
   private readonly assetUrl = inject(AssetUrlService);
+  private readonly printContext = inject(PrintContextService);
 
   /**
    * Layer to render
@@ -123,6 +153,12 @@ export class LayerRendererComponent {
   @Input() placementX = 0;
 
   /**
+   * Story variables for `visibleIf` (content widget layers, schema 1.10+).
+   * Without a context every layer is shown.
+   */
+  @Input() variableContext: VariableContext | null = null;
+
+  /**
    * Layer clicked
    */
   @Output() layerClick = new EventEmitter<{ layerId: string; x: number; y: number }>();
@@ -148,6 +184,14 @@ export class LayerRendererComponent {
       if (this.layer.kind === 'text') {
         styles['container-type'] = 'size';
       }
+      if (this.isWidget()) {
+        // Widgets: the box is a size container named pw-widget (compact
+        // variants query its width); the base font scales with the box.
+        styles['container-type'] = 'size';
+        styles['container-name'] = 'pw-widget';
+        const boxHeightRef = (box.height / 100) * reference.height;
+        styles['--pw-widget-font'] = this.widgetFontSize(boxHeightRef);
+      }
     } else {
       // Legacy hosts (no panelLayers): raw px offsets, full-panel size.
       styles['left'] = layer['x'] !== undefined ? `${layer['x']}px` : '0';
@@ -169,7 +213,50 @@ export class LayerRendererComponent {
     return styles;
   }
 
+  /** Whether the layer is a content widget (schema 1.10+). */
+  isWidget(): boolean {
+    return isWidgetLayer(this.layer);
+  }
+
+  /**
+   * Whether the layer is shown. Content widgets honour `visibleIf`; the
+   * older kinds keep their behaviour (always rendered).
+   */
+  isVisible(): boolean {
+    if (!this.isWidget()) return true;
+    // Print renders leave out widgets set to `print: "hide"` (or all of them).
+    if (isPrintRender() && this.printContext.hides(this.layer as WidgetLayerBase)) return false;
+    return isLayerVisible(this.layer, this.variableContext);
+  }
+
+  /**
+   * CSS font-size of a widget box `boxHeightRef` reference px tall:
+   * WIDGET_BASE_FONT_REF reference px, i.e. `base × 100cqh / boxHeightRef`,
+   * clamped to WIDGET_FONT_MIN_PX … WIDGET_FONT_MAX_PX. Resolved by the
+   * widget's own element (the wrapper is its size container).
+   */
+  widgetFontSize(boxHeightRef: number): string {
+    if (!(boxHeightRef > 0)) return `${WIDGET_FONT_MIN_PX + 3}px`;
+    const scaled = `calc(${WIDGET_BASE_FONT_REF} * 100cqh / ${Math.round(boxHeightRef * 100) / 100})`;
+    return `clamp(${WIDGET_FONT_MIN_PX}px, ${scaled}, ${WIDGET_FONT_MAX_PX}px)`;
+  }
+
   /** Reference space of the owning panel (cached per layers array), or null. */
+  /** Print renders: the widget's design size (its reference-space box), else null. */
+  printFitSize(): PrintFitSize | null {
+    if (!this.isWidget() || !isPrintRender()) return null;
+    const reference = this.layerReference();
+    if (!reference) return null;
+    const box = layerBoxPercent(this.layer, reference);
+    const width = (box.width / 100) * reference.width;
+    const height = (box.height / 100) * reference.height;
+    if (!(width > 0) || !(height > 0)) return null;
+    const cached = this.printFitCache;
+    if (cached && cached.width === width && cached.height === height) return cached;
+    return (this.printFitCache = { width, height });
+  }
+  private printFitCache: PrintFitSize | null = null;
+
   private layerReference(): LayerReference | null {
     const layers = this.panelLayers;
     if (!layers || layers.length === 0) return null;
@@ -534,12 +621,46 @@ export class LayerRendererComponent {
   }
 
   /**
+   * Wrapper click: a click inside a content widget belongs to the widget —
+   * it must not reach the panel (tap-to-advance, toolbar toggle). Other
+   * interactive layers emit `layerClick` as before.
+   */
+  onWrapperClick(event: MouseEvent): void {
+    if (this.isWidget()) {
+      event.stopPropagation();
+      return;
+    }
+    if (this.isInteractive()) {
+      this.onLayerClick(event);
+    }
+  }
+
+  /**
+   * Presses and touches inside a widget stay in the widget: the viewport
+   * would otherwise start a pan/swipe (and its touchmove preventDefault
+   * would stop a scroll box from scrolling), the canvas would capture the
+   * pointer.
+   */
+  onWidgetGesture(event: Event): void {
+    if (this.isWidget()) {
+      event.stopPropagation();
+    }
+  }
+
+  /** Wheel inside a widget scrolls the widget; Ctrl/Cmd + wheel still zooms. */
+  onWidgetWheel(event: WheelEvent): void {
+    if (this.isWidget() && !event.ctrlKey && !event.metaKey) {
+      event.stopPropagation();
+    }
+  }
+
+  /**
    * Check if layer is interactive
    */
   isInteractive(): boolean {
     // Note: 'hotspot' and 'button' are not in the current LayerKind type
     // This method is kept for future compatibility
     const kind = this.layer.kind as string;
-    return kind === 'hotspot' || kind === 'button';
+    return kind === 'hotspot' || kind === 'button' || this.isWidget();
   }
 }

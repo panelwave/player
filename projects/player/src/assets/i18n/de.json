@@ -238,5 +238,33 @@
     "cover_open": "Cover anzeigen",
     "start_reading": "Cover – Lesen beginnen",
     "chapter_n": "Kapitel {{n}}"
+  },
+  "widgets": {
+    "download": "Herunterladen",
+    "download_file": "{{name}} herunterladen",
+    "file_size": "Dateigröße",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "play_title": "{{title}} abspielen",
+    "seek": "Wiedergabeposition",
+    "mute": "Stumm",
+    "unmute": "Ton an",
+    "fullscreen": "Vollbild",
+    "exit_fullscreen": "Vollbild beenden",
+    "close": "Schließen",
+    "video": "Video",
+    "watch_video": "Video ansehen: {{title}}",
+    "loading": "Wird geladen…",
+    "open_new_tab": "In neuem Tab öffnen",
+    "blocked_insecure": "Diese Einbettung ist blockiert: Es können nur sichere (https) Adressen angezeigt werden.",
+    "continued_online": "Weiter in der digitalen Ausgabe",
+    "embedded_content": "Eingebetteter Inhalt",
+    "audio": "Audio",
+    "scroll_region": "Scrollbarer Text",
+    "print_scan_open": "Zum Öffnen scannen",
+    "print_scan_listen": "Zum Anhören scannen",
+    "print_scan_watch": "Zum Ansehen scannen",
+    "print_scan_download": "Zum Herunterladen scannen",
+    "print_attached_page": "Abgedruckt auf Seite {{page}}"
   }
 }

@@ -3,6 +3,7 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { SpeechBubblesComponent, clampCenter, MIN_LETTERING_PX } from './speech-bubbles.component';
 import { ManifestService } from '../../../services/manifest.service';
+import { artworkLetteringScale } from '../../../utils/balloon-config';
 import type { SpeechBubble } from '../../../types';
 
 const asBubble = (b: object): SpeechBubble => b as SpeechBubble;
@@ -460,13 +461,18 @@ describe('SpeechBubblesComponent body anchoring', () => {
       balloonConfig: { fontFamily: 'Arial, sans-serif', fontSize: 12, tail: { position: 180, length: 60 } },
     });
 
-    it('puts the tail tip on the authored tip (box edge + tail length)', () => {
+    // The editor's panel view letters the 800 × 1100 panel at this scale; the
+    // authored tip is the stored box with the tail at that scale, whatever
+    // scale the body is lettered at here.
+    const artScale = artworkLetteringScale(800, 1100);
+
+    it('puts the tail tip on the authored tip (box edge + tail length at the artwork scale)', () => {
       component.anchorTailTip = true;
       component.bubbles = [bubble()];
       component.renderAllBalloons();
       const tip = bottomTip();
       expect(tip.x).toBeCloseTo(320, 0);
-      expect(tip.y).toBeCloseTo(440 + 60, 0);
+      expect(tip.y).toBeCloseTo(440 + 60 * artScale, 0);
     });
 
     it('a readability boost grows the body, not the tail, and the tip stays put', () => {
@@ -478,9 +484,61 @@ describe('SpeechBubblesComponent body anchoring', () => {
       expect(w.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
       const tip = bottomTip();
       expect(tip.x).toBeCloseTo(320, 0);
-      expect(tip.y).toBeCloseTo(440 + 60 * 0.5, 0);
+      expect(tip.y).toBeCloseTo(440 + 60 * artScale, 0);
       // Visible tail = authored length at the base scale (60 × 0.5), not × 0.75.
       expect(tip.y - bodyBottom()).toBeCloseTo(30, 0);
+    });
+
+    it('panel view (scaleTailWithBoost) grows the tail with the body, tip kept', () => {
+      component.anchorTailTip = true;
+      component.scaleTailWithBoost = true;
+      component.readingScale = 0.5; // boosted to the 9 px floor (scale 0.75)
+      component.bubbles = [bubble()];
+      component.renderAllBalloons();
+      const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+      expect(w.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
+      const tip = bottomTip();
+      expect(tip.x).toBeCloseTo(320, 0);
+      expect(tip.y).toBeCloseTo(440 + 60 * artScale, 0);
+      // Visible tail = authored length × the displayed scale (60 × 0.75), not × 0.5.
+      expect(tip.y - bodyBottom()).toBeCloseTo(45, 0);
+    });
+
+    it('slides a boosted, tip-anchored balloon inside its panel at full size and re-aims the tail', () => {
+      // A narrow phone-like panel; the base scale would letter 12 px × 0.2 = 2.4 px,
+      // the 9 px floor asks for 0.75 — the balloon whose tip sits near the top
+      // would cross the panel's top border at that size.
+      component.containerWidth = 375;
+      component.containerHeight = 211;
+      component.anchorTailTip = true;
+      component.readingScale = 0.2;
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Fourteen coming! Bus into the barrier, multiple crush injuries.' },
+        shape: { x: 0.3, y: 0.02, w: 0.2, h: 0.1 }, // box 112..187 × 4..25
+        balloonConfig: { fontFamily: 'Arial, sans-serif', fontSize: 12, maxWidth: 200, maxHeight: 100, tail: { position: 180, length: 45 } },
+      })];
+      component.renderAllBalloons();
+      const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+      // Lettered at the floor like every other balloon …
+      expect(w.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
+      // … the body inside the panel …
+      const fo = w.querySelector('foreignObject') as SVGForeignObjectElement;
+      expect(fo).toBeTruthy();
+      expect(toContainer({ x: 0, y: 0 }).y).toBeGreaterThanOrEqual(-0.5);
+      expect(bodyBottom()).toBeLessThanOrEqual(211 + 0.5);
+      // … and the tail re-aimed: it no longer points straight down (180°),
+      // its tip still lands on the authored tip.
+      const path = w.querySelector('svg path') as SVGPathElement;
+      expect(path).toBeTruthy();
+      const art = artworkLetteringScale(375, 211);
+      const authoredTipY = 0.12 * 211 + 45 * art;
+      const vb = ((w.querySelector('svg') as SVGSVGElement).getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      // The SVG box still contains the authored tip's y.
+      const top = toContainer({ x: 0, y: vb[1] }).y;
+      const bottom = toContainer({ x: 0, y: vb[1] + vb[3] }).y;
+      expect(authoredTipY).toBeGreaterThanOrEqual(top - 1);
+      expect(authoredTipY).toBeLessThanOrEqual(bottom + 1);
     });
 
     it('without anchorTailTip (panel view) the body stays centred on the box', () => {

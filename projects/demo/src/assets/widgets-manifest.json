@@ -1,0 +1,468 @@
+{
+  "panelwave": {
+    "version": "1.10.0",
+    "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
+    "generator": "panelwave-widgets-demo/1.0"
+  },
+  "meta": {
+    "id": "demo-content-widgets",
+    "title": {
+      "en-US": "Content Widgets",
+      "de-DE": "Inhalts-Widgets"
+    },
+    "description": {
+      "en-US": "Download, audio player, video in a modal, scroll text and an embedded page on one panel (schema 1.10).",
+      "de-DE": "Download, Audio-Player, Video im Modal, Scrolltext und eingebettete Seite auf einem Panel (Schema 1.10)."
+    },
+    "locales": [
+      "en-US",
+      "de-DE"
+    ],
+    "default_locale": "en-US"
+  },
+  "assets": {
+    "catalog": [
+      {
+        "id": "img-bg",
+        "category": "image",
+        "alt": {
+          "en-US": "A valley with a river",
+          "de-DE": "Ein Tal mit einem Fluss"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/1036/2048/1152",
+            "w": 2048,
+            "h": 1152
+          }
+        ]
+      },
+      {
+        "id": "file-worksheet",
+        "category": "file",
+        "variants": [
+          {
+            "src": "assets/widgets/worksheet-3.pdf",
+            "mime": "application/pdf",
+            "sizeBytes": 699,
+            "fileName": "Worksheet 3.pdf"
+          }
+        ]
+      },
+      {
+        "id": "aud-interview",
+        "category": "audio",
+        "role": "voiceover",
+        "durationMs": 8000,
+        "waveform": [
+          0.253,
+          0.312,
+          0.37,
+          0.429,
+          0.478,
+          0.538,
+          0.588,
+          0.593,
+          0.644,
+          0.7,
+          0.742,
+          0.786,
+          0.822,
+          0.857,
+          0.859,
+          0.891,
+          0.92,
+          0.945,
+          0.964,
+          0.979,
+          0.99,
+          0.991,
+          0.998,
+          1.0,
+          0.999,
+          0.997,
+          0.989,
+          0.977,
+          0.961,
+          0.939,
+          0.939,
+          0.918,
+          0.887,
+          0.851,
+          0.814,
+          0.774,
+          0.73,
+          0.727,
+          0.684,
+          0.633,
+          0.581,
+          0.53,
+          0.471,
+          0.414,
+          0.415,
+          0.355,
+          0.296,
+          0.322,
+          0.379,
+          0.437,
+          0.439,
+          0.498,
+          0.555,
+          0.602,
+          0.655,
+          0.702,
+          0.747,
+          0.748,
+          0.791,
+          0.832,
+          0.867,
+          0.897,
+          0.926,
+          0.947,
+          0.949,
+          0.969,
+          0.982,
+          0.993,
+          0.997,
+          0.999,
+          0.999,
+          0.996,
+          0.987,
+          0.989,
+          0.976,
+          0.957,
+          0.934,
+          0.911,
+          0.88,
+          0.843,
+          0.843,
+          0.805,
+          0.765,
+          0.728,
+          0.674,
+          0.623,
+          0.57,
+          0.567,
+          0.518,
+          0.459,
+          0.402,
+          0.344,
+          0.285,
+          0.275,
+          0.335,
+          0.396,
+          0.449,
+          0.508,
+          0.561,
+          0.612,
+          0.614,
+          0.665,
+          0.715,
+          0.757,
+          0.806,
+          0.837,
+          0.872,
+          0.897,
+          0.904,
+          0.93,
+          0.955,
+          0.971,
+          0.984,
+          0.994,
+          0.998,
+          0.998,
+          0.999,
+          0.998,
+          0.993,
+          0.985,
+          0.97,
+          0.952,
+          0.929,
+          0.927,
+          0.899,
+          0.872,
+          0.848,
+          0.799,
+          0.756,
+          0.71,
+          0.711,
+          0.662,
+          0.614,
+          0.559,
+          0.505,
+          0.447,
+          0.397,
+          0.332,
+          0.335,
+          0.287,
+          0.348,
+          0.404,
+          0.461,
+          0.522,
+          0.525,
+          0.572,
+          0.625,
+          0.675,
+          0.721,
+          0.765,
+          0.802,
+          0.808,
+          0.845,
+          0.879,
+          0.909,
+          0.935,
+          0.956,
+          0.977,
+          0.979,
+          0.987,
+          0.995,
+          1.0,
+          0.999,
+          0.998,
+          0.992,
+          0.982,
+          0.981,
+          0.968,
+          0.948,
+          0.924,
+          0.898,
+          0.866,
+          0.83,
+          0.789,
+          0.789,
+          0.747,
+          0.7,
+          0.654,
+          0.603,
+          0.549,
+          0.493,
+          0.491,
+          0.437,
+          0.383,
+          0.321,
+          0.299,
+          0.356,
+          0.358,
+          0.416,
+          0.473,
+          0.53,
+          0.583,
+          0.635,
+          0.685,
+          0.689,
+          0.732,
+          0.776,
+          0.824,
+          0.852,
+          0.887
+        ],
+        "variants": [
+          {
+            "src": "assets/widgets/interview.mp3",
+            "mime": "audio/mpeg"
+          }
+        ]
+      },
+      {
+        "id": "vid-lecture",
+        "category": "video",
+        "durationMs": 4000,
+        "variants": [
+          {
+            "src": "assets/video/video-demo-b.mp4",
+            "mime": "video/mp4",
+            "w": 640,
+            "h": 360
+          }
+        ],
+        "poster": {
+          "src": "assets/video/video-demo-b-poster.jpg"
+        }
+      }
+    ]
+  },
+  "settings": {
+    "typography": {
+      "textStyles": {
+        "body": {
+          "font": "Georgia",
+          "sizePt": 14
+        }
+      }
+    }
+  },
+  "ui": {
+    "branding": {
+      "accentColor": "#0e7490"
+    },
+    "theme": {
+      "mode": "light",
+      "colors": {
+        "surface": "#fffdf7",
+        "onSurface": "#1f2937",
+        "surfaceMuted": "#f3efe4",
+        "onSurfaceMuted": "#57534e",
+        "accent": "#0e7490",
+        "border": "#d6d0c2",
+        "waveform": "#a8a29e",
+        "link": "#0e7490",
+        "backdrop": "#0f172acc"
+      },
+      "fonts": {
+        "ui": {
+          "family": "Inter",
+          "fallback": "system-ui, sans-serif"
+        },
+        "body": {
+          "family": "Georgia",
+          "fallback": "serif"
+        }
+      },
+      "shape": {
+        "radius": 10,
+        "borderWidth": 1,
+        "shadow": "soft"
+      }
+    }
+  },
+  "chapters": [
+    {
+      "id": "ch-widgets",
+      "title": {
+        "en-US": "Why rivers meander",
+        "de-DE": "Warum Flüsse mäandern"
+      },
+      "pages": [
+        {
+          "id": "pg-widgets",
+          "title": {
+            "en-US": "Learning page",
+            "de-DE": "Lernseite"
+          },
+          "layout": {
+            "format": "bigscreen-landscape",
+            "canvasSize": {
+              "width": 1920,
+              "height": 1080
+            },
+            "placements": [
+              {
+                "panelId": "pw-1",
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              }
+            ]
+          },
+          "readingOrder": [
+            "pw-1"
+          ]
+        }
+      ],
+      "panels": {
+        "pw-1": {
+          "title": {
+            "en-US": "The river",
+            "de-DE": "Der Fluss"
+          },
+          "durationMs": 4000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-bg",
+              "assetId": "img-bg",
+              "z": 0
+            },
+            {
+              "kind": "scrollText",
+              "id": "ly-text",
+              "z": 10,
+              "x": 60,
+              "y": 60,
+              "width": 620,
+              "height": 560,
+              "format": "markdown",
+              "styleRef": "body",
+              "title": {
+                "en-US": "Background",
+                "de-DE": "Hintergrund"
+              },
+              "text": {
+                "en-US": "## Meanders\n\nA river bends because water flows **faster** on the outside of a curve. There it erodes the bank; on the inside it slows down and drops sand and gravel.\n\n- erosion on the *outer* bank\n- deposition on the *inner* bank\n- the bend slowly wanders downstream\n\nOver centuries a meander can grow so far that its neck breaks through, leaving an **oxbow lake** behind.\n\n### Try it\n\n1. Download the worksheet.\n2. Listen to the interview.\n3. Watch the short lecture.\n\nRead more on [Wikipedia](https://en.wikipedia.org/wiki/Meander).",
+                "de-DE": "## Mäander\n\nEin Fluss biegt sich, weil das Wasser in der Außenkurve **schneller** fließt. Dort trägt es das Ufer ab; innen wird es langsamer und lagert Sand und Kies ab.\n\n- Erosion am *Prallhang*\n- Ablagerung am *Gleithang*\n- die Schleife wandert langsam flussabwärts\n\nÜber Jahrhunderte kann ein Mäander so weit wachsen, dass sein Hals durchbricht – zurück bleibt ein **Altarm**.\n\n### Ausprobieren\n\n1. Arbeitsblatt herunterladen.\n2. Interview anhören.\n3. Kurzen Vortrag ansehen.\n\nMehr bei [Wikipedia](https://de.wikipedia.org/wiki/M%C3%A4ander)."
+              }
+            },
+            {
+              "kind": "download",
+              "id": "ly-download",
+              "z": 11,
+              "x": 60,
+              "y": 660,
+              "width": 620,
+              "height": 110,
+              "assetId": "file-worksheet",
+              "fileName": {
+                "en-US": "Worksheet 3.pdf",
+                "de-DE": "Arbeitsblatt 3.pdf"
+              },
+              "description": {
+                "en-US": "Print and fill in",
+                "de-DE": "Ausdrucken und ausfüllen"
+              }
+            },
+            {
+              "kind": "audioPlayer",
+              "id": "ly-audio",
+              "z": 12,
+              "x": 760,
+              "y": 60,
+              "width": 620,
+              "height": 150,
+              "assetId": "aud-interview",
+              "title": {
+                "en-US": "Interview with the hydrologist",
+                "de-DE": "Interview mit der Hydrologin"
+              }
+            },
+            {
+              "kind": "videoPlayer",
+              "id": "ly-video",
+              "z": 13,
+              "x": 760,
+              "y": 250,
+              "width": 620,
+              "height": 349,
+              "assetId": "vid-lecture",
+              "title": {
+                "en-US": "Lecture: meanders in 5 minutes",
+                "de-DE": "Vortrag: Mäander in 5 Minuten"
+              }
+            },
+            {
+              "kind": "iframe",
+              "id": "ly-map",
+              "z": 14,
+              "x": 1420,
+              "y": 60,
+              "width": 380,
+              "height": 560,
+              "src": "https://www.openstreetmap.org/export/embed.html?bbox=11.55,48.10,11.62,48.15&layer=mapnik",
+              "title": {
+                "en-US": "Map of the Isar",
+                "de-DE": "Karte der Isar"
+              },
+              "allow": [
+                "fullscreen"
+              ]
+            }
+          ]
+        }
+      },
+      "graph": {
+        "entry": "pw-1",
+        "edges": []
+      }
+    }
+  ]
+}

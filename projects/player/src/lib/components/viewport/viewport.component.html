@@ -40,6 +40,7 @@
                 @for (layer of leavingPanel.layers; track layer.id) {
                   <pw-layer-renderer
                     [layer]="layer"
+                    [variableContext]="variableContext"
                     [panelLayers]="leavingPanel.layers"
                     [locale]="locale"
                     [viewMode]="viewMode"
@@ -56,7 +57,9 @@
                     [locale]="locale"
                     [containerWidth]="getContainerWidth()"
                     [containerHeight]="getContainerHeight()"
-                    [readingScale]="getReadingScale()"
+                    [readingScale]="getPanelReadingScale()"
+                    [anchorTailTip]="true"
+                    [scaleTailWithBoost]="true"
                     [workBalloonConfig]="workBalloonConfig"
                     [characters]="characters">
                   </pw-speech-bubbles>
@@ -85,6 +88,7 @@
                 @for (layer of panel.layers; track layer.id) {
                   <pw-layer-renderer
                     [layer]="layer"
+                    [variableContext]="variableContext"
                     [panelLayers]="panel.layers"
                     [locale]="locale"
                     [viewMode]="viewMode"
@@ -116,7 +120,9 @@
                     [locale]="locale"
                     [containerWidth]="getContainerWidth()"
                     [containerHeight]="getContainerHeight()"
-                    [readingScale]="getReadingScale()"
+                    [readingScale]="getPanelReadingScale()"
+                    [anchorTailTip]="true"
+                    [scaleTailWithBoost]="true"
                     [workBalloonConfig]="workBalloonConfig"
                     [characters]="characters">
                   </pw-speech-bubbles>
@@ -179,6 +185,7 @@
                           @for (layer of panelData.layers; track layer.id) {
                             <pw-layer-renderer
                               [layer]="layer"
+                              [variableContext]="variableContext"
                               [panelLayers]="panelData.layers"
                               [locale]="locale"
                               [viewMode]="viewMode"
@@ -198,6 +205,7 @@
                               [containerHeight]="getPagePanelHeight(placement)"
                               [readingScale]="getPageReadingScale(placement)"
                               [anchorTailTip]="true"
+                              [scaleTailWithBoost]="true"
                               [workBalloonConfig]="workBalloonConfig"
                               [characters]="characters">
                             </pw-speech-bubbles>
@@ -270,6 +278,7 @@
                       @for (layer of panelData.layers; track layer.id) {
                         <pw-layer-renderer
                           [layer]="layer"
+                          [variableContext]="variableContext"
                           [panelLayers]="panelData.layers"
                           [locale]="locale"
                           [altText]="getAltText(layer)"
@@ -308,6 +317,7 @@
                           [containerHeight]="getPagePanelHeight(placement)"
                           [readingScale]="getPageReadingScale(placement)"
                           [anchorTailTip]="true"
+                          [scaleTailWithBoost]="true"
                           [workBalloonConfig]="workBalloonConfig"
                           [characters]="characters">
                         </pw-speech-bubbles>

@@ -103,6 +103,7 @@ All configuration is passed as individual inputs on the shell component (see [Co
 
 ### ✅ Content & Media
 - **Layer System** - Image, video, text, audio, plugin layers
+- **Content Widgets** (format 1.10) - `download`, `audioPlayer` (waveform + seeking), `videoPlayer` (modal), `scrollText` (safe Markdown) and `iframe` (sandboxed) layers, styled work-wide by `ui.theme` through `--pw-theme-*` custom properties (override them on `pw-player-shell` from host CSS, or use the `themeOverride` input). See [docs/CONTENT_WIDGETS.md](docs/CONTENT_WIDGETS.md)
 - **Video Panels** - Sequenced multi-video playback (`VideoSequencerService`) with per-work/per-panel playback defaults (play mode, start mode, muted; format 1.1)
 - **Speech Bubbles** - Comic-book balloon rendering (normal, thought, shout, whisper, connector, cut-top variants) with configurable tails, hide-border effects, and per-character/per-bubble style overrides
 - **Style Presets** - Work-level `settings.typography.textStyles` / `balloonPresets` referenced via `styleRef` on text layers and speech bubbles (format 1.3)
@@ -340,6 +341,7 @@ lazily loaded players, one chapter each:
 ## 📚 Documentation
 
 - [Standalone package](docs/STANDALONE.md) - Self-hosting a work: package layout, boot rules, build guards
+- [Content widgets](docs/CONTENT_WIDGETS.md) - Download / audio / video / scroll text / iframe layers and the widget theme (`ui.theme`, `--pw-theme-*`)
 - [Library README](projects/player/README.md) - Public API, components, and usage
 - [Library Structure](projects/player/STRUCTURE.md) - Directory organization
 - [Balloon Renderer Sync](docs/BALLOON_RENDERER_SYNC.md) - Keeping ComicBalloon in sync with the CMS

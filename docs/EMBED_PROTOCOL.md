@@ -16,7 +16,9 @@ Protocol v1 (player 1.7) made the bridge two-way and stopped restarting the
 story on every control change. **v2 (player 1.9) is backward compatible**:
 `config.chapterScope` / `showToolbar`, `setOptions.showToolbar`, the inbound
 `hostGesture`, the `chapterComplete` and `autoplayChange` events and three
-`pw:state` fields. `pw:hello` reports `protocol: 2`.
+`pw:state` fields. **v3 (player 1.10)** adds the inbound `setTheme` and the
+`widgetEvent` event (content widget layers). `pw:hello` reports
+`protocol: 3`.
 
 Source (library, exported from `@panelwave/player`):
 `projects/player/src/lib/embed/` — `embed-protocol.ts` (types, helpers),
@@ -53,7 +55,7 @@ standalone page speaks the bridge only over http(s), never from `file://`.
 |---------|------|
 | `{ type: 'pw:hello', protocol: 1 }` | On load, before any config. Hosts that get it know the bridge speaks v1. |
 | `{ type: 'pw:ready' }` | The shell's `ready` output: the work is loaded and positioned. |
-| `{ type: 'pw:event', name, data }` | Every shell output: `ready`, `panelChange`, `chapterChange`, `chapterComplete` (v2), `autoplayChange` (v2), `locationChange`, `variableChange`, `localeChange`, `navigationAttempt`, `cameraChange`, `paywallAction`, `ageVerified`, `likeChange`, `bookmarkChange`, `error`. |
+| `{ type: 'pw:event', name, data }` | Every shell output: `ready`, `panelChange`, `chapterChange`, `chapterComplete` (v2), `autoplayChange` (v2), `widgetEvent` (v3), `locationChange`, `variableChange`, `localeChange`, `navigationAttempt`, `cameraChange`, `paywallAction`, `ageVerified`, `likeChange`, `bookmarkChange`, `error`. |
 | `{ type: 'pw:state', data }` | In reply to `getState`, and ~100 ms (debounced) after `ready`, every navigation/event above (except `cameraChange`), every inbound change and every error. |
 
 Event payloads are the shell's, except where the shell emits whole manifest
@@ -99,6 +101,7 @@ unused copy) and `preloadStatus` from `PreloadService.getQueueStatus()`.
 | `{ type: 'setOptions', data }` | Live shell inputs, see the table below. |
 | `{ type: 'getState' }` | Replies with `pw:state` immediately. |
 | `{ type: 'restart' }` | Same work from the start with the current config (locale, entitlements, options, last `variables`). Reader / standalone: `reload()` of the shell. |
+| `{ type: 'setTheme', theme }` | v3: live widget theme (`UITheme`: `mode`, `colors`, `fonts`, `shape`, `density`) on top of the manifest's `ui.theme`; `theme: null` clears it. No restart. The CMS theme manager previews with it. |
 | `{ type: 'hostGesture' }` | v2: the reader interacted with the host page. Marks the player's `UserGestureService` as interacted, so sound the browser's autoplay policy held back is retried (the iframe needs `allow="autoplay"`). |
 
 ### `config`

@@ -30,6 +30,7 @@ export type {
   PaywallProduct,
   Tracking,
   UISettings,
+  UITheme,
   LocalizedString,
   LocaleCode,
   OutputFormat,
@@ -53,6 +54,16 @@ export type {
   PanelAudioRole,
   PluginLayer,
   LayerKind,
+  WidgetLayerKind,
+  WidgetLayerBase,
+  WidgetLayer,
+  DownloadLayer,
+  AudioPlayerLayer,
+  VideoPlayerLayer,
+  ScrollTextLayer,
+  IframeLayer,
+  IframeAllow,
+  ThemeColors,
   TextStyle,
   Transform,
   SpeechBubble,
@@ -112,6 +123,8 @@ export type {
   AssetCatalogItemJson,
   JsonVariant,
   AssetCatalogItemPluginPayload,
+  AssetCatalogItemFile,
+  FileVariant,
   AssetVariant,
   AssetReference,
 } from './asset.types';
@@ -164,6 +177,7 @@ export type {
 } from './variable.types';
 
 export { RESERVED_NAMESPACES } from './variable.types';
+export { WIDGET_LAYER_KINDS, isWidgetLayer } from './panel.types';
 
 // Player types
 export type {

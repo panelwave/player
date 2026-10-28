@@ -77,6 +77,16 @@ describe('standalone boot', () => {
       });
       expect(normalizeConfig({ print: 'yes' }).print).toBeUndefined();
     });
+
+    it('keeps valid print options for the widget cards, only with print', () => {
+      const config = normalizeConfig({
+        print: true,
+        printOptions: { widgets: 'qr', linkBase: 'https://read.panelwave.org/acme/w', attachments: { 'file-1': 4, bad: -1, worse: 'x' } },
+      });
+      expect(config.printOptions).toEqual({ widgets: 'qr', linkBase: 'https://read.panelwave.org/acme/w', attachments: { 'file-1': 4 } });
+      expect(normalizeConfig({ print: true, printOptions: { widgets: 'all', linkBase: 'javascript:x' } }).printOptions).toBeUndefined();
+      expect(normalizeConfig({ printOptions: { widgets: 'hide' } }).printOptions).toBeUndefined();
+    });
   });
 
   it('pageIdFromSearch reads ?page= and rejects malformed ids', () => {

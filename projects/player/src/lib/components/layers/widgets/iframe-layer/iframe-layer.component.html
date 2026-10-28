@@ -1,0 +1,36 @@
+<div class="pw-card pw-iframe" [class.plain]="plain" [ngStyle]="rootStyles">
+  <div class="header">
+    <pw-icon class="globe pw-muted" name="lucideGlobe" />
+    <span class="title pw-ellipsis">{{ title }}</span>
+    @if (showOpenLink && !print) {
+      <a
+        class="pw-icon-btn open"
+        [href]="layer.src"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.aria-label]="text('open_new_tab') + ': ' + title">
+        <span class="open-label">{{ text('open_new_tab') }}</span>
+        <pw-icon name="lucideExternalLink" />
+      </a>
+    }
+  </div>
+  <div class="frame-box">
+    @if (mounted) {
+      <div #frameHost class="frame-host"></div>
+    } @else if (verdict !== 'ok') {
+      <div class="placeholder blocked" role="note">{{ text('blocked_insecure') }}</div>
+    } @else {
+      <div class="placeholder pw-muted">
+        @if (printLink) {
+          <pw-print-qr class="placeholder-qr" [value]="printLink" [label]="text('print_scan_open')" />
+        } @else {
+          <pw-icon class="placeholder-icon" name="lucideGlobe" />
+        }
+        <span class="pw-ellipsis">{{ hostName }}</span>
+        @if (print) {
+          <span class="url">{{ layer.src }}</span>
+        }
+      </div>
+    }
+  </div>
+</div>

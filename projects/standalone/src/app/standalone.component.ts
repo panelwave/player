@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { PlayerEmbedBridge, PlayerShellComponent, type EmbedOptions, type PanelWaveManifest } from 'player';
+import { PlayerEmbedBridge, PlayerShellComponent, PrintContextService, type EmbedOptions, type PanelWaveManifest } from 'player';
 import {
   DEFAULT_CONFIG,
   PLACEHOLDER_TITLE,
@@ -41,6 +41,7 @@ export class StandaloneComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly bridge = inject(PlayerEmbedBridge);
+  private readonly printContext = inject(PrintContextService);
 
   readonly state = signal<State>('loading');
   readonly manifest = signal<PanelWaveManifest | null>(null);
@@ -133,6 +134,7 @@ export class StandaloneComponent implements OnInit, OnDestroy {
     }
     // Print renders (CMS PDF export) get a hook for their print stylesheet.
     document.documentElement.classList.toggle('pw-print', !!config.print);
+    this.printContext.configure(config.print ? config.printOptions : undefined);
     this.manifest.set(manifest);
     // The CMS export writes the title into index.html; a hand-built package
     // keeps the placeholder, so name the tab after the work instead.

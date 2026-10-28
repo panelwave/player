@@ -272,6 +272,16 @@
         </pw-action-modal>
       }
 
+      @if (videoModal) {
+        <pw-video-modal
+          [visible]="true"
+          [layer]="videoModal.layer"
+          [panelId]="videoModal.panelId"
+          [locale]="locale"
+          (close)="closeVideoModal()">
+        </pw-video-modal>
+      }
+
       @if (shareVisible) {
         <pw-share-modal
           [visible]="shareVisible"

@@ -1,13 +1,22 @@
+@if (isVisible()) {
 <div 
   class="layer-wrapper"
   [ngStyle]="getLayerStyles()"
   [style.transform]="getTransformStyle()"
-  [class.interactive]="isInteractive()"
+  [class.interactive]="isInteractive() && !isWidget()"
+  [class.layer-widget]="isWidget()"
   [attr.data-layer-id]="layer.id"
   [attr.data-layer-kind]="layer.kind"
-  [tabindex]="isInteractive() ? 0 : -1"
-  (click)="isInteractive() ? onLayerClick($event) : null"
-  (keydown.enter)="isInteractive() ? onLayerClick($any($event)) : null">
+  [attr.data-pw-widget]="isWidget() ? layer.kind : null"
+  [attr.tabindex]="isWidget() ? null : (isInteractive() ? 0 : -1)"
+  (click)="onWrapperClick($event)"
+  (keydown.enter)="isInteractive() && !isWidget() ? onLayerClick($any($event)) : null"
+  (pointerdown)="onWidgetGesture($event)"
+  (mousedown)="onWidgetGesture($event)"
+  (touchstart)="onWidgetGesture($event)"
+  (touchmove)="onWidgetGesture($event)"
+  (touchend)="onWidgetGesture($event)"
+  (wheel)="onWidgetWheel($event)">
 
   <!-- Image Layer -->
   @if (layer.kind === 'image') {
@@ -57,6 +66,40 @@
     </div>
   }
 
+  <!-- Content widget layers (schema 1.10+); in print renders laid out at
+       their design size and zoomed to the box (PrintFitDirective). -->
+  <ng-template #widgetContent>
+    @switch (layer.kind) {
+      @case ('download') {
+        <pw-download-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('audioPlayer') {
+        <pw-audio-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('videoPlayer') {
+        <pw-video-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('scrollText') {
+        <pw-scroll-text-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('iframe') {
+        <pw-iframe-layer
+          [layer]="$any(layer)"
+          [locale]="locale"
+          [panelId]="panelId"
+          [viewActive]="viewActive"
+          [viewMode]="viewMode" />
+      }
+    }
+  </ng-template>
+  @if (isWidget()) {
+    @if (printFitSize(); as fit) {
+      <div [pwPrintFit]="fit"><ng-container *ngTemplateOutlet="widgetContent" /></div>
+    } @else {
+      <ng-container *ngTemplateOutlet="widgetContent" />
+    }
+  }
+
   <!-- Hotspot Layer -->
   @if (layer.kind === 'hotspot') {
     <div 
@@ -99,3 +142,4 @@
     </div>
   }
 </div>
+}

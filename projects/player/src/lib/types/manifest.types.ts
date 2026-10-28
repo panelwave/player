@@ -708,9 +708,33 @@ export interface Tracking {
 }
 
 /**
+ * Work-wide look of the reader-facing widgets (schema 1.10+ `ui.theme`).
+ */
+export interface UITheme {
+  /** Built-in default palette (default `dark`); `auto` follows prefers-color-scheme. */
+  mode?: 'light' | 'dark' | 'auto';
+  colors?: import('./panel.types').ThemeColors;
+  fonts?: {
+    ui?: { family: string; fallback?: string };
+    body?: { family: string; fallback?: string };
+  };
+  shape?: {
+    /** CSS px 0–32 (default 12) */
+    radius?: number;
+    /** CSS px 0–4 (default 1) */
+    borderWidth?: number;
+    shadow?: 'none' | 'soft' | 'hard';
+  };
+  density?: 'regular' | 'compact';
+}
+
+/**
  * UI customization settings
  */
 export interface UISettings {
+  /** Widget theme (schema 1.10+) */
+  theme?: UITheme;
+
   /** Branding configuration (optional) */
   branding?: {
     /** Primary brand color (hex) */

@@ -41,6 +41,7 @@ import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/ima
 import { pageAspectRatio } from '../../utils/page-format-utils';
 import { resolvePageBackground } from '../../utils/page-background';
 import { panelArtworkAspect } from '../../utils/layer-reference';
+import { artworkLetteringScale, pageLetteringScale } from '../../utils/balloon-config';
 
 /**
  * Performance metrics interface
@@ -978,10 +979,21 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Balloon lettering scale: the player viewport height relative to the DIN A4
-   * authoring frame (1123 px). Bubble text keeps the same comfortable reading
-   * size on every screen — larger players get moderately larger lettering,
-   * phones get smaller — instead of growing proportionally with the panel.
+   * Panel-view base lettering scale: proportional to the panel box (the
+   * artwork as shown), like the CMS editor's panel view — balloons keep their
+   * size and place on the artwork when the window narrows or on a phone,
+   * instead of staying screen-height sized and covering the panel.
+   * pw-speech-bubbles raises small results to its legibility floor with the
+   * tail tip kept on the speaker (anchorTailTip).
+   */
+  getPanelReadingScale(): number {
+    return artworkLetteringScale(this.getContainerWidth(), this.getContainerHeight());
+  }
+
+  /**
+   * Page-view lettering scale: the player viewport height relative to the DIN
+   * A4 authoring frame (1123 px), capped by the page height — pages letter
+   * somewhat larger than panel view, like the editor's page view.
    */
   getReadingScale(): number {
     const host = this.elementRef.nativeElement as HTMLElement;
@@ -1002,16 +1014,21 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Lettering scale for one page-view panel. Mirrors the editor's page view:
-   * a balloon is lettered for the panel shown full-frame (getReadingScale)
-   * and then shrinks with the panel's share of the page — the frame→page
-   * content scale, max(w, h) of the placement — so it keeps the same share of
-   * its panel as in the editor. pw-speech-bubbles raises it to the
-   * MIN_LETTERING_PX floor so small panels stay readable.
+   * Base lettering scale of a page-view panel: the page's UNIFORM lettering
+   * scale (every panel of the page the same — font size 15 is one size in a
+   * page-high panel and in a small one, as in print): panel view's artwork
+   * scale of a full-width landscape panel of the page (pageLetteringScale of
+   * the page canvas width, never above the screen scale), as the editor's
+   * page view letters it. pw-speech-bubbles raises it to the MIN_LETTERING_PX
+   * floor with the tail tip kept, and shrinks a balloon back towards its
+   * panel-view size when it would not fit its panel.
    */
-  getPageReadingScale(placement: PanelPlacement): number {
-    const contentScale = Math.max(placement.w || 0, placement.h || 0);
-    return this.getReadingScale() * (contentScale > 0 ? Math.min(1, contentScale) : 1);
+  getPageReadingScale(_placement: PanelPlacement): number {
+    const host = this.elementRef.nativeElement as HTMLElement;
+    const h = host.getBoundingClientRect().height;
+    const screen = h > 0 ? h / 1123 : Number.POSITIVE_INFINITY;
+    const canvas = host.querySelector('.pt-frame .page-canvas') as HTMLElement | null;
+    return Math.min(screen, pageLetteringScale(canvas?.clientWidth ?? 0));
   }
 
   /**

@@ -1,4 +1,4 @@
-import type { PanelWaveManifest } from 'player';
+import type { PanelWaveManifest, PrintOptions } from 'player';
 import { normalizeOrigin, parseChapterRef, parseEmbedFlag, parseSecondsPerPanel } from 'player';
 
 /**
@@ -30,6 +30,12 @@ export interface StandaloneConfig {
    * `<html>` so a print stylesheet can target it.
    */
   print?: boolean;
+  /**
+   * Content widgets in a print render (only with `print`): `widgets` qr /
+   * card / hide, `linkBase` the work's reader URL for the QR codes,
+   * `attachments` catalog file id → page number of the appended file.
+   */
+  printOptions?: PrintOptions;
   /**
    * Per-chapter defaults for chapter embeds (keyed by manifest chapter id or
    * CMS chapter uuid), written by the CMS export from the chapters' embed
@@ -95,8 +101,27 @@ export function normalizeConfig(raw: unknown): StandaloneConfig {
     config.showToolbar = false;
     config.viewMode = 'page';
     config.reducedMotion = true;
+    const printOptions = normalizePrintOptions(r['printOptions']);
+    if (printOptions) config.printOptions = printOptions;
   }
   return config;
+}
+
+/** `printOptions`: known modes, an http(s) link base and positive page numbers only. */
+function normalizePrintOptions(raw: unknown): PrintOptions | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: PrintOptions = {};
+  if (r['widgets'] === 'qr' || r['widgets'] === 'card' || r['widgets'] === 'hide') out.widgets = r['widgets'];
+  if (typeof r['linkBase'] === 'string' && /^https?:\/\//i.test(r['linkBase'])) out.linkBase = r['linkBase'];
+  if (r['attachments'] && typeof r['attachments'] === 'object' && !Array.isArray(r['attachments'])) {
+    const pages: Record<string, number> = {};
+    for (const [id, page] of Object.entries(r['attachments'] as Record<string, unknown>)) {
+      if (typeof page === 'number' && Number.isInteger(page) && page > 0) pages[id] = page;
+    }
+    if (Object.keys(pages).length) out.attachments = pages;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /** `chapters` map: valid keys and fields only; undefined when nothing is left. */
