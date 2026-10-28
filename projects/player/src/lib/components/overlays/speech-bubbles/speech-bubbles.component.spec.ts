@@ -110,6 +110,25 @@ describe('SpeechBubblesComponent', () => {
       expect(wrapper.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
     });
 
+    it('measures the 9 px floor on screen (screenScale): a zoomed-out canvas panel boosts more', () => {
+      component.containerWidth = 1024; // a canvas placement in world units
+      component.containerHeight = 576;
+      component.readingScale = 1; // 12 px in container units …
+      component.screenScale = 0.25; // … shown at a quarter: 3 px on screen
+      component.bubbles = [asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Hi' },
+        shape: { x: 0.4, y: 0.4, w: 0.2, h: 0.15 },
+        balloonConfig: { fontSize: 12 },
+      })];
+
+      component.renderAllBalloons();
+
+      const [wrapper] = renderedWrappers();
+      // 12 px × scale × 0.25 = 9 px on screen → scale 3
+      expect(wrapper.style.transform).toBe(`scale(${MIN_LETTERING_PX / (12 * 0.25)})`);
+    });
+
     it('applies no transform at reading scale 1', () => {
       component.bubbles = [asBubble({
         id: 'b1',

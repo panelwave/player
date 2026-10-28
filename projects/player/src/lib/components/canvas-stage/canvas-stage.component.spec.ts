@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 
 import { CanvasStageComponent, CANVAS_PANEL_BUDGET } from './canvas-stage.component';
+import { artworkLetteringScale } from '../../utils/balloon-config';
 import { CanvasCameraService } from '../../services/canvas-camera.service';
 import { ManifestService } from '../../services/manifest.service';
 import { PreloadService } from '../../services/preload.service';
@@ -324,6 +325,36 @@ describe('CanvasStageComponent', () => {
       camera.jumpTo({ x: 512, y: 288, zoom: 2 });
       (component as unknown as { onCameraSettled(): void }).onCameraSettled();
       expect(component.targetWidthFor('p0')).toBeGreaterThan(atZoom1);
+    });
+
+    it('letters balloons like panel view: with the placement artwork, tip-anchored, floor on screen', () => {
+      const canvas: CanvasLayout = {
+        placements: { a: { x: 0, y: 0, w: 1024, h: 576 }, b: { x: 1100, y: 0, w: 400, h: 900 } },
+      };
+      const talking = {
+        layers: [],
+        speechBubbles: [{ id: 'b1', text: { 'en-US': 'Hi' }, shape: { x: 0.1, y: 0.1, w: 0.3, h: 0.2 } }],
+      } as unknown as Panel;
+      component.speechEnabled = true;
+      setInputs(canvas, { a: talking, b: talking }, 'a');
+      camera.setViewportSize(1000, 1000);
+
+      // The scale is the panel-view artwork rule on the placement's world
+      // size — independent of the stage height and of the zoom.
+      expect(component.getReadingScale(canvas.placements['a'])).toBeCloseTo(artworkLetteringScale(1024, 576), 6);
+      expect(component.getReadingScale(canvas.placements['b'])).toBeCloseTo(artworkLetteringScale(400, 900), 6);
+
+      // The 9 px floor is measured on screen: balloons get the settled zoom.
+      camera.jumpTo({ x: 512, y: 288, zoom: 0.25 });
+      (component as unknown as { onCameraSettled(): void }).onCameraSettled();
+      fixture.detectChanges();
+      expect(component.settledZoom).toBe(0.25);
+      const bubbles = fixture.debugElement.query((de) => de.name === 'pw-speech-bubbles');
+      expect(bubbles).toBeTruthy();
+      expect(bubbles.componentInstance.screenScale).toBe(0.25);
+      expect(bubbles.componentInstance.readingScale).toBeCloseTo(artworkLetteringScale(1024, 576), 6);
+      expect(bubbles.componentInstance.anchorTailTip).toBeTrue();
+      expect(bubbles.componentInstance.scaleTailWithBoost).toBeTrue();
     });
 
     it('marks non-current panels aria-hidden and inert', () => {

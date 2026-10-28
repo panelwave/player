@@ -97,6 +97,14 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
   @Input() readingScale = 1;
 
   /**
+   * CSS px on screen per container px (default 1). Canvas view renders each
+   * panel at its placement size in world units and zooms the whole plane
+   * with one transform, so it passes the camera's (settled) zoom: the
+   * MIN_LETTERING_PX floor is a size on screen, not in container units.
+   */
+  @Input() screenScale = 1;
+
+  /**
    * Place a tailed balloon by its AUTHORED tail tip (the speaker on the
    * artwork) instead of centring its body on the stored box, and keep the
    * tail at its authored length when the MIN_LETTERING_PX floor boosts the
@@ -196,6 +204,7 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
       changes['containerWidth'] ||
       changes['containerHeight'] ||
       changes['readingScale'] ||
+      changes['screenScale'] ||
       changes['anchorTailTip'] ||
       changes['scaleTailWithBoost'] ||
       changes['workBalloonConfig'] ||
@@ -359,10 +368,12 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         // against broken measurements.
         const baseScale = Math.min(4, Math.max(0.05, this.readingScale || 1));
         let scale = baseScale;
-        // Never letter below MIN_LETTERING_PX: on a page shown small the balloon
-        // grows just enough (still anchored and kept inside the panel below).
+        // Never letter below MIN_LETTERING_PX on screen: on a page shown small
+        // (or a zoomed-out canvas) the balloon grows just enough (still
+        // anchored and kept inside the panel below).
+        const screenScale = this.screenScale > 0 ? this.screenScale : 1;
         if (config.fontSize > 0) {
-          scale = Math.max(scale, MIN_LETTERING_PX / config.fontSize);
+          scale = Math.max(scale, MIN_LETTERING_PX / (config.fontSize * screenScale));
         }
         // Too wide for its panel at that size: re-wrap the text to the panel
         // width (more lines, natural height) rather than shrink the lettering.

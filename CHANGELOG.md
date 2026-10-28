@@ -144,6 +144,16 @@ semver. The reader-facing product changelog lives on the docs site
   `artworkLetteringScale`, `pageLetteringScale` and
   `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
   `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
+  **Canvas view** letters the same way: each placement at
+  `artworkLetteringScale(placement)` on its world size (so the balloons scale
+  with the artwork at every zoom, as the same panel letters in panel view at
+  that size on screen), tip-anchored with the tail growing along. It used the
+  stage height / 1123 with the body centred on the box, so a panel framed by
+  the camera carried balloons up to twice their panel-view size, tails off the
+  faces. New `pw-speech-bubbles` input `screenScale` (CSS px on screen per
+  container px, default 1): the canvas stage passes the camera's settled zoom
+  (`settledZoom`), so the 9 px readability floor is a size on screen — a
+  zoomed-out panel grows its balloons just enough to stay readable.
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS
   preview iframe), its first navigation matched no route and logged NG04002
   on every load.

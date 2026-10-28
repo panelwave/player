@@ -89,7 +89,10 @@
                   [locale]="locale"
                   [containerWidth]="entry.placement.w"
                   [containerHeight]="entry.placement.h"
-                  [readingScale]="getReadingScale()"
+                  [readingScale]="getReadingScale(entry.placement)"
+                  [screenScale]="settledZoom"
+                  [anchorTailTip]="true"
+                  [scaleTailWithBoost]="true"
                   [workBalloonConfig]="workBalloonConfig"
                   [characters]="characters">
                 </pw-speech-bubbles>

@@ -46,6 +46,7 @@ import { ManifestService } from '../../services/manifest.service';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/image-variant-utils';
+import { artworkLetteringScale } from '../../utils/balloon-config';
 import { LayerRendererComponent } from '../layer-renderer/layer-renderer.component';
 import { PanelAnimationDirective } from '../../directives/panel-animation.directive';
 import { BubbleClockDirective } from '../../directives/bubble-clock.directive';
@@ -144,6 +145,13 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
   /** Current world transform CSS for `.canvas-world`. */
   worldTransform = '';
 
+  /**
+   * Camera zoom at the last settle (screen px per world unit). Balloons take
+   * it as `screenScale` so their 9 px readability floor is measured on
+   * screen; it follows the camera on settle, never per frame.
+   */
+  settledZoom = 1;
+
   /** Placements currently mounted (virtualized working set). */
   stagePlacements: StagePlacement[] = [];
 
@@ -194,6 +202,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
       if (placement) {
         this.camera.jumpTo(this.camera.frameForPlacement(placement));
       }
+      this.settledZoom = this.camera.state.zoom;
       this.approached.clear();
       this.variantWidths.clear();
     }
@@ -259,6 +268,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Zoom settled: re-resolve image variants and warm neighbor assets. */
   private onCameraSettled(): void {
+    this.settledZoom = this.camera.state.zoom;
     this.updateVariantWidths();
     this.preloadNeighbors();
     this.cdr.markForCheck();
@@ -553,10 +563,15 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     };
   }
 
-  /** Balloon lettering scale (same DIN-A4 reference as the panel viewport). */
-  getReadingScale(): number {
-    const h = this.elementRef.nativeElement.clientHeight || 0;
-    return h > 0 ? h / 1123 : 1;
+  /**
+   * Balloon lettering scale of a placement: panel view's artwork rule
+   * (artworkLetteringScale) on the placement's world size. A placement is
+   * a panel box in world units and the plane is zoomed as a whole, so the
+   * balloons scale with the artwork at every zoom — exactly as the same
+   * panel letters in panel view at that size on screen.
+   */
+  getReadingScale(placement: CanvasPlacement): number {
+    return artworkLetteringScale(placement.w, placement.h);
   }
 
   isCurrent(panelId: string): boolean {
