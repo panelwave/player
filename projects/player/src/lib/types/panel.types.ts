@@ -414,6 +414,11 @@ export interface AudioPlayerLayer extends WidgetLayerBase {
   showTime?: boolean;
   duckMusic?: boolean;
   startAtMs?: number;
+  /**
+   * Keep playing when the reader moves to another panel or page (default
+   * false: playback stops when the reader leaves the panel).
+   */
+  keepPlaying?: boolean;
 }
 
 /** A video opening in a modal player (schema 1.10+). */

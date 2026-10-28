@@ -7,10 +7,15 @@
  *
  * It never autoplays and is not panel background audio (`kind: "audio"` is):
  * it plays through its own `<audio>` element (no Web Audio routing, so no
- * CORS requirement on the file), pauses when the reader leaves the panel,
- * plays one-at-a-time with the other widgets, follows the reader's master
- * mute and — `duckMusic`, default on — lowers music and ambient while it
- * plays.
+ * CORS requirement on the file), pauses when the reader leaves the panel —
+ * unless `keepPlaying`: then it plays on while the reader reads ahead, its
+ * element handed to WidgetPlaybackService when the widget unmounts and taken
+ * back when it mounts again —, plays one-at-a-time with the other widgets,
+ * follows the reader's master mute and — `duckMusic`, default on — lowers
+ * music and ambient while it plays.
+ *
+ * The `<audio>` element is created in code (not in the template) so it can
+ * outlive the widget.
  */
 import {
   AfterViewInit,
@@ -20,6 +25,7 @@ import {
   ElementRef,
   Input,
   NgZone,
+  OnChanges,
   OnDestroy,
   OnInit,
   ViewChild,
@@ -32,7 +38,7 @@ import type { AssetCatalogItemAudio, AudioPlayerLayer, AudioVariant } from '../.
 import { ManifestService } from '../../../../services/manifest.service';
 import { AssetUrlService } from '../../../../services/asset-url.service';
 import { AudioEngineService } from '../../../../services/audio-engine.service';
-import { WidgetPlaybackService } from '../../../../services/widget-playback.service';
+import { WidgetPlaybackService, type WidgetPlaybackHandle } from '../../../../services/widget-playback.service';
 import { ThemeService } from '../../../../services/theme.service';
 import { formatMediaTime, isPrintRender } from '../../../../utils/widget-utils';
 import { PwIconComponent } from '../../../icon/pw-icon.component';
@@ -66,7 +72,7 @@ export function resamplePeaks(peaks: readonly number[], count: number): number[]
   styleUrls: ['../widget-card.css', './audio-player-layer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestroy {
+export class AudioPlayerLayerComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   private readonly manifest = inject(ManifestService);
   private readonly assetUrl = inject(AssetUrlService);
   private readonly engine = inject(AudioEngineService);
@@ -80,7 +86,7 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   @Input() locale = 'en-US';
   @Input() panelId = '';
 
-  @ViewChild('audio') audioRef?: ElementRef<HTMLAudioElement>;
+  @ViewChild('audioHost') audioHostRef?: ElementRef<HTMLElement>;
   @ViewChild('wave') waveRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('track') trackRef?: ElementRef<HTMLElement>;
 
@@ -97,16 +103,30 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   private resize?: ResizeObserver;
   private subs = new Subscription();
   private id = '';
+  /** The playing element (created here, or taken back from the playback service). */
+  private audioEl: HTMLAudioElement | null = null;
+  private handle: WidgetPlaybackHandle | null = null;
+  private readonly listeners: [string, () => void][] = [
+    ['loadedmetadata', () => this.onLoadedMetadata()],
+    ['durationchange', () => this.onLoadedMetadata()],
+    ['play', () => this.onPlay()],
+    ['pause', () => this.onPause()],
+    ['ended', () => this.onEnded()],
+    ['timeupdate', () => this.onTimeUpdate()],
+    ['waiting', () => this.onWaiting(true)],
+    ['playing', () => this.onWaiting(false)],
+    ['canplay', () => this.onWaiting(false)],
+  ];
 
   ngOnInit(): void {
     this.id = widgetInstanceId(this.panelId, this.layer.id);
     this.duration = (this.asset?.durationMs ?? 0) / 1000;
     this.currentTime = (this.layer.startAtMs ?? 0) / 1000;
-    this.playback?.register({ id: this.id, pause: () => this.pause() });
+    this.handle = { id: this.id, pause: () => this.pause(), keepPlaying: () => this.layer?.keepPlaying === true };
+    this.playback?.register(this.handle);
     this.subs.add(
       this.engine.masterMuted$.subscribe((muted) => {
-        const audio = this.audioRef?.nativeElement;
-        if (audio) audio.muted = muted;
+        if (this.audioEl) this.audioEl.muted = muted;
       })
     );
     if (this.theme) {
@@ -114,9 +134,17 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
     }
   }
 
+  ngOnChanges(): void {
+    // A new file (the CMS preview edits the layer): reload, unless it plays on.
+    const audio = this.audioEl;
+    if (audio && this.src && audio.getAttribute('src') !== this.src && audio.paused) {
+      audio.src = this.src;
+      this.startApplied = false;
+    }
+  }
+
   ngAfterViewInit(): void {
-    const audio = this.audioRef?.nativeElement;
-    if (audio) audio.muted = this.engine.isMasterMuted();
+    this.mountAudio();
     const canvas = this.waveRef?.nativeElement;
     if (canvas && typeof ResizeObserver !== 'undefined') {
       this.zone.runOutsideAngular(() => {
@@ -128,12 +156,58 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   ngOnDestroy(): void {
-    this.pause();
     this.stopFrames();
     this.resize?.disconnect();
     this.subs.unsubscribe();
-    this.playback?.unregister(this.id);
+    const audio = this.audioEl;
+    this.audioEl = null;
+    if (audio) {
+      for (const [type, fn] of this.listeners) audio.removeEventListener(type, fn);
+      if (this.playing && !audio.paused && this.layer?.keepPlaying && this.playback) {
+        // Plays on while the reader reads ahead; the service keeps it ducked.
+        this.playback.park(this.id, { audio, ducked: this.ducked, event: this.eventTemplate() });
+        this.ducked = false;
+      } else {
+        audio.pause();
+        audio.remove();
+        if (this.playing) this.playback?.notifyStopped(this.id);
+      }
+    }
+    if (this.handle) this.playback?.unregister(this.handle);
     this.unduck();
+  }
+
+  /** Create the `<audio>` element — or take back the one that played on while unmounted. */
+  private mountAudio(): void {
+    const host = this.audioHostRef?.nativeElement;
+    if (!host || this.print || !this.src) return;
+    const parked = this.playback?.unpark(this.id) ?? null;
+    let audio: HTMLAudioElement;
+    if (parked && parked.audio.getAttribute('src') === this.src) {
+      audio = parked.audio;
+      this.ducked = parked.ducked;
+      this.startApplied = true;
+      if (Number.isFinite(audio.duration) && audio.duration > 0) this.duration = audio.duration;
+      this.currentTime = audio.currentTime;
+    } else {
+      if (parked) {
+        parked.audio.pause();
+        parked.audio.remove();
+      }
+      audio = document.createElement('audio');
+      audio.preload = 'metadata';
+      audio.src = this.src;
+    }
+    // Moved here within the same task: a playing element does not pause.
+    host.appendChild(audio);
+    for (const [type, fn] of this.listeners) audio.addEventListener(type, fn);
+    audio.muted = this.engine.isMasterMuted();
+    this.audioEl = audio;
+    if (!audio.paused) {
+      this.playing = true;
+      this.startFrames();
+      this.cdr.markForCheck();
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -224,7 +298,7 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   async play(): Promise<void> {
-    const audio = this.audioRef?.nativeElement;
+    const audio = this.audioEl;
     if (!audio || this.print || !this.src) return;
     this.playback?.notifyPlaying(this.id);
     try {
@@ -237,12 +311,12 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   pause(): void {
-    const audio = this.audioRef?.nativeElement;
+    const audio = this.audioEl;
     if (audio && !audio.paused) audio.pause();
   }
 
   onLoadedMetadata(): void {
-    const audio = this.audioRef?.nativeElement;
+    const audio = this.audioEl;
     if (!audio) return;
     if (Number.isFinite(audio.duration) && audio.duration > 0) this.duration = audio.duration;
     if (!this.startApplied) {
@@ -283,7 +357,7 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   onTimeUpdate(): void {
-    const audio = this.audioRef?.nativeElement;
+    const audio = this.audioEl;
     if (!audio || this.seeking) return;
     this.currentTime = audio.currentTime;
     this.cdr.markForCheck();
@@ -295,13 +369,16 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private emit(type: 'play' | 'pause' | 'ended'): void {
-    this.playback?.emit({
-      type,
+    this.playback?.emit({ type, ...this.eventTemplate() });
+  }
+
+  private eventTemplate() {
+    return {
       layerId: this.layer.id,
-      kind: 'audioPlayer',
+      kind: 'audioPlayer' as const,
       panelId: this.panelId || undefined,
       assetId: typeof this.layer.assetId === 'string' ? this.layer.assetId : undefined,
-    });
+    };
   }
 
   private duck(): void {
@@ -325,7 +402,7 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
   seekTo(seconds: number): void {
     const t = Math.max(0, Math.min(this.duration || 0, seconds));
     this.currentTime = t;
-    const audio = this.audioRef?.nativeElement;
+    const audio = this.audioEl;
     if (audio && Number.isFinite(t)) {
       try {
         audio.currentTime = t;
@@ -381,7 +458,7 @@ export class AudioPlayerLayerComponent implements OnInit, AfterViewInit, OnDestr
     if (this.frame || typeof requestAnimationFrame === 'undefined') return;
     this.zone.runOutsideAngular(() => {
       const tick = () => {
-        const audio = this.audioRef?.nativeElement;
+        const audio = this.audioEl;
         if (audio && !this.seeking) this.currentTime = audio.currentTime;
         this.draw();
         this.frame = requestAnimationFrame(tick);

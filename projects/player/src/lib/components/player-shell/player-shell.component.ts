@@ -1480,14 +1480,19 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     this.stateSubscribed = true;
     // Listen to panel changes
+    // The previously emitted panel: navigateToPanel sets this.currentPanel
+    // before the state emits, so comparing against it never saw a change.
+    let previousPanel: Panel | null = null;
     this.playerState.currentPanel$
       .pipe(takeUntil(this.destroy$))
       .subscribe((panel) => {
         if (panel && this.currentChapter) {
-          if (panel !== this.currentPanel) {
-            // Leaving a panel stops its audio / video widgets.
-            this.widgetPlayback.pauseAll();
+          if (previousPanel && panel !== previousPanel) {
+            // Leaving a panel stops its audio / video widgets (audio players
+            // with keepPlaying play on).
+            this.widgetPlayback.pauseForNavigation();
           }
+          previousPanel = panel;
           this.currentPanel = panel;
           // Resolve variants before emitting so consumers (and the
           // tracked event) see the effective panel state.

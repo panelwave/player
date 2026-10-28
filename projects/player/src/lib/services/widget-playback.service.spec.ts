@@ -41,10 +41,61 @@ describe('WidgetPlaybackService', () => {
   });
 
   it('unregistering the playing widget clears playback', () => {
-    service.register({ id: 'a', pause: () => undefined });
+    const a = { id: 'a', pause: () => undefined };
+    service.register(a);
     service.notifyPlaying('a');
-    service.unregister('a');
+    service.unregister(a);
     expect(service.isActive()).toBeFalse();
+  });
+
+  it('keeps a second instance of the same widget registered when the first unmounts (page transition)', () => {
+    const live = { id: 'p1::a', pause: jasmine.createSpy('live') };
+    const outgoing = { id: 'p1::a', pause: jasmine.createSpy('outgoing') };
+    service.register(live);
+    service.register(outgoing);
+    service.unregister(outgoing);
+    service.pauseForNavigation();
+    expect(live.pause).toHaveBeenCalled();
+  });
+
+  it('a panel change pauses every widget except keepPlaying audio', () => {
+    const stays = { id: 'a', pause: jasmine.createSpy('a'), keepPlaying: () => true };
+    const stops = { id: 'b', pause: jasmine.createSpy('b'), keepPlaying: () => false };
+    service.register(stays);
+    service.register(stops);
+    service.notifyPlaying('a');
+    service.pauseForNavigation();
+    expect(stays.pause).not.toHaveBeenCalled();
+    expect(stops.pause).toHaveBeenCalled();
+    expect(service.isActive()).toBeTrue(); // still playing: autoplay keeps waiting
+    service.pauseAll(); // the video modal stops it too
+    expect(stays.pause).toHaveBeenCalled();
+  });
+
+  it('keeps a parked element playing in a hidden holder and hands it back', () => {
+    const events: WidgetEvent[] = [];
+    service.events$.subscribe((e) => events.push(e));
+    const audio = document.createElement('audio');
+    service.park('p1::a', { audio, ducked: true, event: { layerId: 'a', kind: 'audioPlayer', panelId: 'p1' } });
+    expect(audio.parentElement?.hasAttribute('data-pw-parked-audio')).toBeTrue();
+    expect(service.isActive()).toBeTrue();
+    service.pauseForNavigation(); // still plays on
+    expect(service.unpark('p1::a')?.audio).toBe(audio);
+    expect(service.unpark('p1::a')).toBeNull();
+    expect(events).toEqual([]);
+  });
+
+  it('stops a parked element when another widget starts, and reports the pause', () => {
+    const events: WidgetEvent[] = [];
+    service.events$.subscribe((e) => events.push(e));
+    const audio = document.createElement('audio');
+    const pause = spyOn(audio, 'pause').and.callFake(() => audio.dispatchEvent(new Event('pause')));
+    service.park('p1::a', { audio, ducked: false, event: { layerId: 'a', kind: 'audioPlayer', panelId: 'p1' } });
+    service.notifyPlaying('p2::b');
+    expect(pause).toHaveBeenCalled();
+    expect(audio.isConnected).toBeFalse();
+    expect(service.unpark('p1::a')).toBeNull();
+    expect(events.map((e) => e.type)).toEqual(['pause']);
   });
 
   it('ignores stop notifications of a widget that is not playing', () => {

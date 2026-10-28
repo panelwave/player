@@ -1,19 +1,6 @@
 <div class="pw-card pw-audio" [class.plain]="plain" [class.playing]="playing" [ngStyle]="rootStyles">
-  @if (!print && src) {
-    <audio
-      #audio
-      [src]="src"
-      preload="metadata"
-      (loadedmetadata)="onLoadedMetadata()"
-      (durationchange)="onLoadedMetadata()"
-      (play)="onPlay()"
-      (pause)="onPause()"
-      (ended)="onEnded()"
-      (timeupdate)="onTimeUpdate()"
-      (waiting)="onWaiting(true)"
-      (playing)="onWaiting(false)"
-      (canplay)="onWaiting(false)"></audio>
-  }
+  <!-- The <audio> element (created in code, see mountAudio). -->
+  <span #audioHost class="audio-host" hidden></span>
 
   <button
     type="button"

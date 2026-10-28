@@ -257,6 +257,66 @@ describe('content widgets', () => {
       expect(fixture.componentInstance.pause).toHaveBeenCalled();
     });
 
+    /** Fake a playing element (headless audio without a file never really plays). */
+    function startPlaying(fixture: ComponentFixture<AudioPlayerLayerComponent>): HTMLAudioElement {
+      const audio = el(fixture).querySelector('audio') as HTMLAudioElement;
+      let paused = true;
+      Object.defineProperty(audio, 'paused', { configurable: true, get: () => paused });
+      spyOn(audio, 'pause').and.callFake(() => {
+        paused = true;
+        audio.dispatchEvent(new Event('pause'));
+      });
+      paused = false;
+      audio.dispatchEvent(new Event('play'));
+      return audio;
+    }
+
+    it('stops when the reader moves to another panel (default)', () => {
+      const { fixture } = make();
+      const audio = startPlaying(fixture);
+      TestBed.inject(WidgetPlaybackService).pauseForNavigation();
+      expect(audio.pause).toHaveBeenCalled();
+      expect(fixture.componentInstance.playing).toBeFalse();
+    });
+
+    it('keeps playing through a panel change with keepPlaying', () => {
+      const { fixture, playback } = make({ keepPlaying: true });
+      const audio = startPlaying(fixture);
+      playback.pauseForNavigation();
+      expect(audio.pause).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.playing).toBeTrue();
+    });
+
+    it('with keepPlaying, plays on after unmounting and resumes in the widget when it mounts again', () => {
+      const { fixture, playback } = make({ keepPlaying: true });
+      const audio = startPlaying(fixture);
+      fixture.destroy(); // the panel left the screen
+      expect(audio.pause).not.toHaveBeenCalled();
+      expect(audio.isConnected).toBeTrue();
+      expect(playback.isActive()).toBeTrue();
+      expect(engine.setRoleDuck).not.toHaveBeenCalledWith('music', 1); // music stays lowered
+
+      const again = TestBed.createComponent(AudioPlayerLayerComponent);
+      again.componentRef.setInput('layer', { kind: 'audioPlayer', id: 'a1', assetId: 'aud-1', width: 500, height: 140, keepPlaying: true });
+      again.componentRef.setInput('panelId', 'p1');
+      again.detectChanges();
+      expect(el(again).querySelector('audio')).toBe(audio);
+      expect(again.componentInstance.playing).toBeTrue();
+      again.componentInstance.toggle(); // the reader pauses it in the widget
+      expect(again.componentInstance.playing).toBeFalse();
+      expect(engine.setRoleDuck).toHaveBeenCalledWith('music', 1);
+      expect(playback.isActive()).toBeFalse();
+    });
+
+    it('without keepPlaying, stops when it unmounts', () => {
+      const { fixture, playback } = make();
+      const audio = startPlaying(fixture);
+      fixture.destroy();
+      expect(audio.pause).toHaveBeenCalled();
+      expect(audio.isConnected).toBeFalse();
+      expect(playback.isActive()).toBeFalse();
+    });
+
     it('follows the master mute', () => {
       const { fixture } = make();
       engine.setMasterMuted(true);

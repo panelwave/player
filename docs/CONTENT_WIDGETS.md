@@ -34,8 +34,17 @@ audio: button + time).
   `preventDefault` cannot block a scroll box. Ctrl/Cmd + wheel still zooms.
 - Keys pressed inside `[data-pw-widget]` never trigger story shortcuts.
 - `WidgetPlaybackService` (one per shell) lets one audio/video widget play at
-  a time, pauses all widgets on every panel change, and holds autoplay while a
-  widget plays or the video modal is open — the advance happens once it stops.
+  a time, pauses the widgets on every panel change (`pauseForNavigation()`,
+  also when their panel stays on screen: page view, canvas neighbours), and
+  holds autoplay while a widget plays or the video modal is open — the
+  advance happens once it stops.
+- An audio player with `keepPlaying` is skipped on panel changes. When its
+  panel leaves the screen (panel view, a page turn, a far canvas move) while
+  it plays, the widget hands its `<audio>` element to the service (`park()`),
+  which moves it into a hidden holder within the same task — so it plays on
+  without a gap, still ducked and following the master mute — until it ends,
+  another widget starts or the video modal opens. Mounting again, the widget
+  takes it back (`unpark()`) and shows it playing.
 - The audio player and the modal duck music and ambient to 20 %
   (`AudioEngineService.setRoleDuck`) and follow the reader's master mute.
   They play through their own `<audio>` / `<video>` element, not Web Audio,

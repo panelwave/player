@@ -79,6 +79,11 @@ semver. The reader-facing product changelog lives on the docs site
 - `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
   stay keyed by id in `chapter.panels`; read the id from that key or from
   `panelChange`'s `panelId`.
+- Audio player `keepPlaying`: keeps playing when the reader moves to another
+  panel or page. `WidgetPlaybackService.pauseForNavigation()` skips it;
+  `park()` / `unpark()` keep its element playing after the widget unmounts
+  and hand it back when it mounts again. The `<audio>` element is now created
+  in code (it can outlive the widget); `unregister()` takes the handle.
 
 ### Removed
 - The unused `@ngx-translate/http-loader` dependency of the repository (the
@@ -100,6 +105,12 @@ semver. The reader-facing product changelog lives on the docs site
   clicks report positions on the artwork. Slots of the artwork's own shape
   look the same as before; the lettered PDF export (standalone player)
   follows once it is re-vendored.
+- **Audio player widgets stop when the reader moves on.** The panel-change
+  pause never fired (the shell compared the new panel with itself), so audio
+  kept playing while its panel stayed on screen — canvas neighbours, page
+  view. Widget handles are now kept per instance, so a page transition's
+  second copy of a widget no longer drops the live one.
+
 
 ## [1.8.0] — 2026-10-19
 
