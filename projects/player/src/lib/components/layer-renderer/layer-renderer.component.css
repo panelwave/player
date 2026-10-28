@@ -120,3 +120,13 @@
   height: 100%;
   position: relative;
 }
+
+/* Print renders: the widget at its design size, zoomed to the box
+   (PrintFitDirective); it is the widget's size container. */
+.pw-print-fit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  container-type: size;
+  container-name: pw-widget;
+}

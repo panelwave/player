@@ -66,27 +66,37 @@
     </div>
   }
 
-  <!-- Content widget layers (schema 1.10+) -->
-  @switch (layer.kind) {
-    @case ('download') {
-      <pw-download-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+  <!-- Content widget layers (schema 1.10+); in print renders laid out at
+       their design size and zoomed to the box (PrintFitDirective). -->
+  <ng-template #widgetContent>
+    @switch (layer.kind) {
+      @case ('download') {
+        <pw-download-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('audioPlayer') {
+        <pw-audio-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('videoPlayer') {
+        <pw-video-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('scrollText') {
+        <pw-scroll-text-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
+      }
+      @case ('iframe') {
+        <pw-iframe-layer
+          [layer]="$any(layer)"
+          [locale]="locale"
+          [panelId]="panelId"
+          [viewActive]="viewActive"
+          [viewMode]="viewMode" />
+      }
     }
-    @case ('audioPlayer') {
-      <pw-audio-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
-    }
-    @case ('videoPlayer') {
-      <pw-video-player-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
-    }
-    @case ('scrollText') {
-      <pw-scroll-text-layer [layer]="$any(layer)" [locale]="locale" [panelId]="panelId" />
-    }
-    @case ('iframe') {
-      <pw-iframe-layer
-        [layer]="$any(layer)"
-        [locale]="locale"
-        [panelId]="panelId"
-        [viewActive]="viewActive"
-        [viewMode]="viewMode" />
+  </ng-template>
+  @if (isWidget()) {
+    @if (printFitSize(); as fit) {
+      <div [pwPrintFit]="fit"><ng-container *ngTemplateOutlet="widgetContent" /></div>
+    } @else {
+      <ng-container *ngTemplateOutlet="widgetContent" />
     }
   }
 

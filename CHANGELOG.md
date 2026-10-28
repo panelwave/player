@@ -87,6 +87,9 @@ semver. The reader-facing product changelog lives on the docs site
   leaves a widget out. Scroll text shrinks to fit its box before it is
   clipped. `qrModules()` is shared with the share dialog. New strings
   `widgets.print_*` (en, de).
+  In print renders every widget is laid out at its design size and zoomed
+  to its box (`PrintFitDirective`), so a small card on the A4 page keeps its
+  icon, name and size instead of the compact on-screen variant.
 - Audio player `keepPlaying`: keeps playing when the reader moves to another
   panel or page. `WidgetPlaybackService.pauseForNavigation()` skips it;
   `park()` / `unpark()` keep its element playing after the widget unmounts

@@ -20,7 +20,7 @@ const READER = 'https://read.panelwave.org/acme/meanders';
 const SHOTS = process.env['PRINT_SHOTS'];
 
 /** The demo's widget work on one A4 portrait page, background as an inline SVG (no network). */
-function printManifest(hideAudio = false): Record<string, unknown> {
+function printManifest(hideAudio = false, slotWidth = 0.92): Record<string, unknown> {
   const m = JSON.parse(readFileSync(join(demoAssets, 'widgets-manifest.json'), 'utf8'));
   const bg = m.assets.catalog.find((a: { id: string }) => a.id === 'img-bg');
   bg.variants = [{
@@ -28,7 +28,7 @@ function printManifest(hideAudio = false): Record<string, unknown> {
     w: 2048, h: 1152,
   }];
   const ch = m.chapters[0];
-  ch.pages[0].layout = { format: 'a4-portrait', placements: [{ panelId: 'pw-1', x: 0.04, y: 0.1, w: 0.92, h: 0.52 }] };
+  ch.pages[0].layout = { format: 'a4-portrait', placements: [{ panelId: 'pw-1', x: 0.04, y: 0.1, w: slotWidth, h: slotWidth * 0.565 }] };
   if (hideAudio) ch.panels['pw-1'].layers.find((l: { kind: string }) => l.kind === 'audioPlayer').print = 'hide';
   return m;
 }
@@ -47,14 +47,14 @@ async function serve(dir: string): Promise<{ server: Server; origin: string }> {
   return { server, origin: `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}` };
 }
 
-async function openPrint(page: Page, printOptions: Record<string, unknown> | undefined, hideAudio = false) {
+async function openPrint(page: Page, printOptions: Record<string, unknown> | undefined, hideAudio = false, slotWidth = 0.92) {
   const dir = mkdtempSync(join(tmpdir(), 'pw-print-widgets-'));
   cpSync(skeleton, dir, { recursive: true });
   mkdirSync(join(dir, 'assets'), { recursive: true });
   cpSync(join(demoAssets, 'widgets'), join(dir, 'assets', 'widgets'), { recursive: true });
   cpSync(join(demoAssets, 'video'), join(dir, 'assets', 'video'), { recursive: true });
   const config = { print: true, pageFormat: 'a4-portrait', showCover: false, showToolbar: false, ...(printOptions ? { printOptions } : {}) };
-  writeFileSync(join(dir, 'panelwave.js'), `window.PANELWAVE_CONFIG = ${JSON.stringify(config)};\nwindow.PANELWAVE_MANIFEST = ${JSON.stringify(printManifest(hideAudio))};\n`);
+  writeFileSync(join(dir, 'panelwave.js'), `window.PANELWAVE_CONFIG = ${JSON.stringify(config)};\nwindow.PANELWAVE_MANIFEST = ${JSON.stringify(printManifest(hideAudio, slotWidth))};\n`);
   const { server, origin } = await serve(dir);
   await page.setViewportSize({ width: 794, height: 1123 });
   await page.goto(`${origin}/index.html?page=pg-widgets`);
@@ -84,7 +84,7 @@ test.describe('content widgets in print renders', () => {
       await expect(widget(page, 'download').locator('pw-print-qr a')).toHaveAttribute('href', link);
       await expect(page.locator('.page-canvas iframe')).toHaveCount(0);
       // QR codes stay square.
-      const box = (await widget(page, 'audioPlayer').locator('pw-print-qr svg').boundingBox())!;
+      const box = (await widget(page, 'audioPlayer').locator('pw-print-qr svg rect').boundingBox())!; // the drawn code
       expect(Math.abs(box.width - box.height)).toBeLessThan(1.5);
       if (SHOTS) await page.screenshot({ path: join(SHOTS, 'print-widgets-qr.png') });
     } finally {
@@ -105,6 +105,26 @@ test.describe('content widgets in print renders', () => {
     try {
       await expect(page.locator('.page-canvas [data-pw-widget]')).toHaveCount(0);
       await expect(page.locator('.page-canvas [data-layer-id="ly-bg"]')).toBeVisible();
+    } finally {
+      p.close();
+    }
+  });
+
+  test('a small card on the page prints as a miniature: icon, name and size stay', async ({ page }) => {
+    // A panel a third of the page wide: the download card is ~110 px — on screen it would drop its text.
+    const p = await openPrint(page, { widgets: 'qr', linkBase: READER }, false, 0.33);
+    try {
+      const card = widget(page, 'download');
+      const box = (await card.boundingBox())!;
+      expect(box.width).toBeLessThan(160);
+      for (const part of ['.file-icon', '.name', '.meta', 'pw-print-qr svg']) {
+        await expect(card.locator(part)).toBeVisible();
+        const b = (await card.locator(part).boundingBox())!;
+        expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 1);
+        expect(b.y + b.height).toBeLessThanOrEqual(box.y + box.height + 1);
+      }
+      await expect(card.locator('.name')).toHaveText('Worksheet 3.pdf');
+      if (SHOTS) await card.screenshot({ path: join(SHOTS, 'print-widgets-small.png'), scale: 'device' });
     } finally {
       p.close();
     }

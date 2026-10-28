@@ -42,6 +42,7 @@ import { isWidgetLayer } from '../../types/panel.types';
 import type { VariableContext } from '../../types/variable.types';
 import { isLayerVisible, isPrintRender } from '../../utils/widget-utils';
 import { PrintContextService } from '../../services/print-context.service';
+import { PrintFitDirective, type PrintFitSize } from '../../directives/print-fit.directive';
 
 /**
  * Base text size of content widgets (schema 1.10+) in reference px: the
@@ -66,6 +67,7 @@ export const WIDGET_FONT_MAX_PX = 20;
       VideoPlayerLayerComponent,
       ScrollTextLayerComponent,
       IframeLayerComponent,
+      PrintFitDirective,
     ],
     templateUrl: './layer-renderer.component.html',
     styleUrls: ['./layer-renderer.component.css'],
@@ -240,6 +242,21 @@ export class LayerRendererComponent {
   }
 
   /** Reference space of the owning panel (cached per layers array), or null. */
+  /** Print renders: the widget's design size (its reference-space box), else null. */
+  printFitSize(): PrintFitSize | null {
+    if (!this.isWidget() || !isPrintRender()) return null;
+    const reference = this.layerReference();
+    if (!reference) return null;
+    const box = layerBoxPercent(this.layer, reference);
+    const width = (box.width / 100) * reference.width;
+    const height = (box.height / 100) * reference.height;
+    if (!(width > 0) || !(height > 0)) return null;
+    const cached = this.printFitCache;
+    if (cached && cached.width === width && cached.height === height) return cached;
+    return (this.printFitCache = { width, height });
+  }
+  private printFitCache: PrintFitSize | null = null;
+
   private layerReference(): LayerReference | null {
     const layers = this.panelLayers;
     if (!layers || layers.length === 0) return null;
