@@ -64,6 +64,9 @@ export {
   mergeBalloonConfig,
   balloonConfigToRenderOptions,
   balloonConfigToTailOptions,
+  artworkLetteringScale,
+  LETTERING_BASE_HEIGHT,
+  PAGE_LETTERING_FACTOR,
 } from './balloon-config';
 
 // Comic Balloon renderer

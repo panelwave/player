@@ -35,6 +35,32 @@ export const DEFAULT_BALLOON_CONFIG: BalloonConfig = {
   },
 };
 
+/** Frame height that defines lettering scale 1 (DIN A4 portrait, 794×1123). */
+export const LETTERING_BASE_HEIGHT = 1123;
+
+/**
+ * Base lettering scale for a panel whose artwork is shown at
+ * `width × height` px — the CMS editor's panel-view rule: proportional to the
+ * artwork, so a balloon keeps its size and place ON THE ARTWORK at every
+ * player size (a narrow window or a phone shrinks the balloons with the
+ * panel, their tails stay on the faces). Height-based, with artwork wider
+ * than 16:9 counted as if it were 16:9 tall (a panorama strip must not
+ * collapse the lettering). For artwork filling a 16:9 screen this equals the
+ * screen height / 1123. pw-speech-bubbles raises small results to its
+ * MIN_LETTERING_PX floor, keeping each tail tip in place.
+ */
+export function artworkLetteringScale(width: number, height: number): number {
+  if (!(width > 0) || !(height > 0)) return 1;
+  return Math.max(height, width * 9 / 16) / LETTERING_BASE_HEIGHT;
+}
+
+/**
+ * Page view letters every panel of a page at ONE scale (uniform lettering
+ * across the page, as in print): this share of the page's format scale
+ * (page height / 1123). 0.75 — font size 12 letters 9 px on an A4 page.
+ */
+export const PAGE_LETTERING_FACTOR = 0.75;
+
 /**
  * Merge a partial override onto a base config, producing a complete config.
  * Handles nested tail and hideBorder objects.

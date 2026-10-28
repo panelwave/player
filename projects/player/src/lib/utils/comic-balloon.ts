@@ -61,6 +61,14 @@ export interface BalloonOptions {
   cornerRadius: number;
   fontFamily: string;
   fontSize: number;
+  /**
+   * Factor the pixel values above were scaled by from their design values
+   * (the CMS editor draws a format-scaled config in frame px; the player
+   * renders design values and CSS-scales the SVG). Scales the engine's own
+   * fixed design-px details — text inset, shout spikes, thought bumps — the
+   * same way, so the shape looks the same at every scale. Default 1.
+   */
+  renderScale: number;
   lineHeight: number;
   textAlign: string;
   isThought: boolean;
@@ -150,6 +158,7 @@ export class ComicBalloon {
       fontFamily: options.fontFamily || "'Ames Italic', 'Comic Neue', sans-serif",
       fontSize: options.fontSize || 12,
       lineHeight: options.lineHeight || 1.3,
+      renderScale: options.renderScale || 1,
       textAlign: options.textAlign || 'center',
       isThought: options.isThought || false,
       isShout: options.isShout || false,
@@ -174,8 +183,8 @@ export class ComicBalloon {
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
     this.svg.setAttribute('class', 'comic-balloon-svg');
 
-    // Use the same padding as the canvas drawBalloonText (padding = 14 on each side)
-    const textPadding = 14;
+    // Text inset for wrapping (14 design px on each side), scaled with the config.
+    const textPadding = 14 * (this.options.renderScale || 1);
     const availableWidthFor = (bodyWidth: number) =>
       bodyWidth > 0 ? bodyWidth - textPadding * 2 : 140 - textPadding * 2;
 
@@ -781,11 +790,12 @@ export class ComicBalloon {
   createThoughtBalloonPath(cx: number, cy: number, width: number, height: number): string {
     const rx = width / 2;
     const ry = height / 2;
+    const s = this.options.renderScale || 1;
 
     const perimeter = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
     const avgRadius = (rx + ry) / 2;
-    const sizeFactor = Math.max(0.4, Math.min(1, avgRadius / 80));
-    const targetBumpLength = 35 / sizeFactor;
+    const sizeFactor = Math.max(0.4, Math.min(1, avgRadius / (80 * s)));
+    const targetBumpLength = 35 * s / sizeFactor;
     const bumps = Math.max(6, Math.floor(perimeter / targetBumpLength));
 
     const points: { x: number; y: number }[] = [];
@@ -847,11 +857,14 @@ export class ComicBalloon {
     width: number, height: number,
     tailTip: { x: number; y: number } | null = null
   ): string {
-    const rx = width / 2 + 10;
-    const ry = height / 2 + 10;
+    // Spike geometry in design px (15–30 px spikes every 25 px around a body
+    // inset by 10 px), scaled with the config so a shout keeps its look.
+    const s = this.options.renderScale || 1;
+    const rx = width / 2 + 10 * s;
+    const ry = height / 2 + 10 * s;
 
     const perimeter = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
-    const targetSpikeWidth = 25;
+    const targetSpikeWidth = 25 * s;
     const spikes = Math.max(10, Math.floor(perimeter / targetSpikeWidth));
 
     const points: { x: number; y: number; angle: number }[] = [];
@@ -867,8 +880,8 @@ export class ComicBalloon {
       const isPeak = i % 2 === 0;
       const angleOffset = (pseudoRandom(i) - 0.5) * (Math.PI * 2 / numPoints) * 0.5;
       const angle = t * Math.PI * 2 + angleOffset - Math.PI;
-      const peakOut = 15 + pseudoRandom(i + 100) * 15;
-      const valleyIn = 0 + pseudoRandom(i + 200) * 10;
+      const peakOut = (15 + pseudoRandom(i + 100) * 15) * s;
+      const valleyIn = pseudoRandom(i + 200) * 10 * s;
       const offset = isPeak ? peakOut : -valleyIn;
       const x = cx + (rx + offset) * Math.cos(angle);
       const y = cy + (ry + offset) * Math.sin(angle);

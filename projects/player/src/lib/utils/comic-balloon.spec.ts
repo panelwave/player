@@ -58,6 +58,7 @@ describe('ComicBalloon', () => {
         fontFamily: "'Ames Italic', 'Comic Neue', sans-serif",
         fontSize: 12,
         lineHeight: 1.3,
+        renderScale: 1,
         textAlign: 'center',
         isThought: false,
         isShout: false,

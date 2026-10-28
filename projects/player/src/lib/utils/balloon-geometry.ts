@@ -63,19 +63,21 @@ export function tailConfigToTip(
  */
 export function thoughtTrailCircles(
   bounds: BalloonCenterBounds,
-  tailTip: { x: number; y: number }
+  tailTip: { x: number; y: number },
+  /** Design-px → output-px factor of the balloon (the circles are design px). */
+  scale = 1
 ): { x: number; y: number; r: number }[] {
   const rx = bounds.width / 2;
   const ry = bounds.height / 2;
 
   const angle = Math.atan2(tailTip.y - bounds.cy, tailTip.x - bounds.cx);
-  const edgeX = bounds.cx + (rx + 5) * Math.cos(angle);
-  const edgeY = bounds.cy + (ry + 5) * Math.sin(angle);
+  const edgeX = bounds.cx + (rx + 5 * scale) * Math.cos(angle);
+  const edgeY = bounds.cy + (ry + 5 * scale) * Math.sin(angle);
 
   const dx = tailTip.x - edgeX;
   const dy = tailTip.y - edgeY;
 
-  const sizes = [8, 5, 3];
+  const sizes = [8 * scale, 5 * scale, 3 * scale];
   return sizes.map((r, i) => {
     const t = (i + 1) / sizes.length;
     const adjustedT = 0.2 + t * 0.8;
@@ -222,4 +224,105 @@ export function placeGrownBody(
   }
 
   return { x, y, width: grown.width, height: grown.height };
+}
+
+/**
+ * Rect of a body boosted by `boost` (>= 1) for readability — the same balloon,
+ * larger — so that
+ * 1. a tail balloon keeps its tail tip. With `scaleTail` the whole balloon,
+ *    tail included, is scaled about the tip (a tail of `length × boost` from
+ *    the boosted body ends on the authored tip — panel view). Without it the
+ *    body is scaled about the tip of the balloon drawn with a `length / boost`
+ *    tail, so a tail of the authored `length` from the boosted body ends on
+ *    the authored tip (the body moves away from the speaker, the visible tail
+ *    keeps its length — page view's tail counter-scaling);
+ * 2. glued edges stay on the panel border (overrides 1 on that axis);
+ * 3. a tailless, unglued balloon keeps its centre;
+ * 4. a TAILLESS body stays inside `panel` when one is given (centred on an
+ *    axis it cannot fit). A tail balloon is never moved off its tip here —
+ *    see fitBoostedBody, which lowers the boost instead.
+ * Returns the authored rect itself for boost <= 1.
+ */
+export function placeBoostedBody(
+  authored: BalloonRectLike,
+  boost: number,
+  tail: { position: number; length: number } | null,
+  cornerRadius: number,
+  panel: BalloonRectLike | null,
+  glue: GlueEdges = {},
+  scaleTail = false,
+): BalloonRectLike {
+  if (!(boost > 1.0005)) return { ...authored };
+  const cx = authored.x + authored.width / 2;
+  const cy = authored.y + authored.height / 2;
+  const width = authored.width * boost;
+  const height = authored.height * boost;
+  let x = cx - width / 2;
+  let y = cy - height / 2;
+
+  if (tail) {
+    const bounds = { cx, cy, width: authored.width, height: authored.height };
+    const tip = tailConfigToTip(bounds, tail, cornerRadius);
+    // Scale about the point that must stay: the tip itself when the tail
+    // scales along, else the tip of the shortened tail; then move it onto
+    // the authored tip.
+    const pivot = scaleTail
+      ? tip
+      : tailConfigToTip(bounds, { position: tail.position, length: tail.length / boost }, cornerRadius);
+    x = tip.x + (authored.x - pivot.x) * boost;
+    y = tip.y + (authored.y - pivot.y) * boost;
+  }
+
+  if (glue.left) x = authored.x;
+  else if (glue.right) x = authored.x + authored.width - width;
+  if (glue.top) y = authored.y;
+  else if (glue.bottom) y = authored.y + authored.height - height;
+
+  if (panel && !tail) {
+    if (width >= panel.width) x = panel.x + (panel.width - width) / 2;
+    else x = Math.min(panel.x + panel.width - width, Math.max(panel.x, x));
+    if (height >= panel.height) y = panel.y + (panel.height - height) / 2;
+    else y = Math.min(panel.y + panel.height - height, Math.max(panel.y, y));
+  }
+
+  return { x, y, width, height };
+}
+
+/** True when `rect` lies inside `panel` (half a pixel of tolerance). */
+export function rectInside(rect: BalloonRectLike, panel: BalloonRectLike, eps = 0.5): boolean {
+  return rect.x >= panel.x - eps && rect.y >= panel.y - eps
+    && rect.x + rect.width <= panel.x + panel.width + eps
+    && rect.y + rect.height <= panel.y + panel.height + eps;
+}
+
+/**
+ * placeBoostedBody with the boost lowered (towards 1) until a TAIL balloon's
+ * body fits inside `panel` with its tip kept on the speaker — a balloon must
+ * stay inside its panel, and only the boost is negotiable. When even the
+ * authored body does not fit (the author placed it over the border) the
+ * requested boost is kept and the body may overhang as authored. Returns the
+ * boost actually used.
+ */
+export function fitBoostedBody(
+  authored: BalloonRectLike,
+  boost: number,
+  tail: { position: number; length: number } | null,
+  cornerRadius: number,
+  panel: BalloonRectLike | null,
+  glue: GlueEdges = {},
+  scaleTail = false,
+): { rect: BalloonRectLike; boost: number } {
+  let rect = placeBoostedBody(authored, boost, tail, cornerRadius, panel, glue, scaleTail);
+  if (!panel || !tail || boost <= 1.0005 || rectInside(rect, panel) || !rectInside(authored, panel)) {
+    return { rect, boost: boost > 1.0005 ? boost : 1 };
+  }
+  let lo = 1;
+  let hi = boost;
+  rect = { ...authored };
+  for (let i = 0; i < 10; i++) {
+    const mid = (lo + hi) / 2;
+    const candidate = placeBoostedBody(authored, mid, tail, cornerRadius, panel, glue, scaleTail);
+    if (rectInside(candidate, panel)) { lo = mid; rect = candidate; } else { hi = mid; }
+  }
+  return { rect, boost: lo };
 }

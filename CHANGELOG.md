@@ -102,6 +102,25 @@ semver. The reader-facing product changelog lives on the docs site
   `TranslateLoader`). The published package is unchanged.
 
 ### Fixed
+- **Panel-view balloons scale with the artwork and keep their tails on the
+  faces.** Lettering used the screen height (`host height / 1123`), so a panel
+  shown narrower than the screen — a narrow window, a phone, any letterboxed
+  panel — kept full-size balloons that covered the artwork, their tails off
+  the speakers. Panel view now letters at `artworkLetteringScale(panel box)`
+  = max(box height, box width × 9/16) / 1123 (the CMS editor's panel-view
+  rule; unchanged for artwork filling a 16:9 screen), raises small lettering
+  to the 9 px floor with the balloon **anchored on its authored tail tip**
+  (`anchorTailTip` now in panel view too; `scaleTailWithBoost` grows the tail
+  along with the body there), and lowers that boost until the
+  body fits inside the panel instead of moving it off the speaker. Page view
+  letters every panel of a page at ONE scale, as in print (`getPageReadingScale`
+  = `PAGE_LETTERING_FACTOR` 0.75 × page height / 1123 — font size 12 is 9 px
+  on an A4 page; it no longer shrinks with a panel's share of the page, the
+  9 px floor still grows small panels) and anchors the authored tail tip at
+  the panel's artwork scale, where the editor draws it. `artworkLetteringScale`,
+  `PAGE_LETTERING_FACTOR` and
+  `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
+  `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS
   preview iframe), its first navigation matched no route and logged NG04002
   on every load.
