@@ -32,7 +32,7 @@ audio: button + time).
   (`LayerRendererComponent.onWidgetGesture`): no tap-to-advance, no viewport
   pan or swipe, no canvas pointer capture, and the viewport's `touchmove`
   `preventDefault` cannot block a scroll box. Ctrl/Cmd + wheel still zooms.
-- Keys pressed inside `[data-pw-widget]` never trigger story shortcuts.
+- Keys pressed in a widget's key-using parts (`[data-pw-owns-keys]`: seek slider, scroll box; form fields) never trigger story shortcuts; Enter / Space stay with a focused widget button, other keys (the arrows after clicking Play) navigate.
 - `WidgetPlaybackService` (one per shell) lets one audio/video widget play at
   a time, pauses the widgets on every panel change (`pauseForNavigation()`,
   also when their panel stays on screen: page view, canvas neighbours), and

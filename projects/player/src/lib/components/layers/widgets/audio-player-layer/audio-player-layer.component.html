@@ -22,6 +22,7 @@
       class="seek"
       [class.has-wave]="showWaveform"
       role="slider"
+      data-pw-owns-keys
       [attr.tabindex]="print ? null : 0"
       [attr.aria-label]="title ? text('seek') + ': ' + title : text('seek')"
       aria-valuemin="0"

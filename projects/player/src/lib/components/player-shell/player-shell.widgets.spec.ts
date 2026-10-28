@@ -105,18 +105,32 @@ describe('PlayerShellComponent content widgets', () => {
     expect(nav).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores story shortcuts typed inside a widget', () => {
+  /** A key pressed on `target` inside a widget; returns whether the story navigated. */
+  function pressIn(markup: string, selector: string, key: string): boolean {
     const widget = document.createElement('div');
-    widget.setAttribute('data-pw-widget', 'scrollText');
-    const inner = document.createElement('span');
-    widget.appendChild(inner);
+    widget.setAttribute('data-pw-widget', 'audioPlayer');
+    widget.innerHTML = markup;
     document.body.appendChild(widget);
-    const next = spyOn(shell, 'navigateNext').and.resolveTo();
+    const next = jasmine.isSpy(shell.navigateNext) ? (shell.navigateNext as jasmine.Spy) : spyOn(shell, 'navigateNext').and.resolveTo();
     shell.viewMode = 'panel';
-    const evt = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
-    inner.addEventListener('keydown', (e) => priv().handleKeyboard(e));
-    inner.dispatchEvent(evt);
-    expect(next).not.toHaveBeenCalled();
+    const target = widget.querySelector(selector)!;
+    target.addEventListener('keydown', (e) => priv().handleKeyboard(e as KeyboardEvent));
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
     widget.remove();
+    const navigated = next.calls.count() > 0;
+    next.calls.reset();
+    return navigated;
+  }
+
+  it('keeps keys for the parts of a widget that use them (slider, scroll box, fields)', () => {
+    expect(pressIn('<div role="slider" data-pw-owns-keys tabindex="0"></div>', '[role="slider"]', 'ArrowRight')).toBeFalse();
+    expect(pressIn('<div class="scroller" data-pw-owns-keys tabindex="0"><p>text</p></div>', 'p', 'ArrowRight')).toBeFalse();
+    expect(pressIn('<input type="text" />', 'input', 'ArrowRight')).toBeFalse();
+  });
+
+  it('navigates with the arrows from a widget button (after clicking Play), Enter / Space stay with the button', () => {
+    expect(pressIn('<button class="play">Play</button>', 'button', 'ArrowRight')).toBeTrue();
+    expect(pressIn('<button class="play">Play</button>', 'button', ' ')).toBeFalse();
+    expect(pressIn('<button class="play">Play</button>', 'button', 'Enter')).toBeFalse();
   });
 });

@@ -2829,9 +2829,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     if (event.key === 'Escape' && this.cameFromDialog(event)) {
       return;
     }
-    // Keys pressed inside a content widget (scroll box, audio slider,
-    // iframe card) belong to the widget, not to the story navigation.
-    if (this.cameFromWidget(event)) {
+    // Keys pressed in a content widget's key-using parts (scroll box, audio
+    // slider, form fields) belong to the widget; Enter / Space activate its
+    // focused button or link. Other keys — the arrows after clicking Play —
+    // still navigate the story.
+    if (this.widgetOwnsKey(event)) {
       return;
     }
 
@@ -2921,10 +2923,18 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     'PW-TOC-OVERLAY', 'PW-AGE-GATE', 'PW-PAYWALL-OVERLAY', 'PW-CONTENT-WARNING-OVERLAY', 'PW-VIDEO-MODAL',
   ]);
 
-  private cameFromWidget(event: KeyboardEvent): boolean {
-    return event.composedPath().some(
-      (node) => node instanceof Element && node.hasAttribute('data-pw-widget')
+  private widgetOwnsKey(event: KeyboardEvent): boolean {
+    const path = event.composedPath().filter((node): node is Element => node instanceof Element);
+    const widgetAt = path.findIndex((el) => el.hasAttribute('data-pw-widget'));
+    if (widgetAt < 0) return false;
+    const inside = path.slice(0, widgetAt + 1);
+    const usesKeys = inside.some(
+      (el) =>
+        el.hasAttribute('data-pw-owns-keys') ||
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' ||
+        (el as HTMLElement).isContentEditable
     );
+    return usesKeys || event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar';
   }
 
   private cameFromDialog(event: KeyboardEvent): boolean {

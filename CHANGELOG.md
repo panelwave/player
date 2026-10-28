@@ -110,6 +110,10 @@ semver. The reader-facing product changelog lives on the docs site
   kept playing while its panel stayed on screen — canvas neighbours, page
   view. Widget handles are now kept per instance, so a page transition's
   second copy of a widget no longer drops the live one.
+- **Arrow keys navigate after clicking a widget button.** Every key pressed
+  inside a widget was ignored, so after clicking Play → did nothing. Only the
+  parts that use keys keep them (`data-pw-owns-keys`: the audio seek slider,
+  the scroll box; form fields); Enter / Space stay with the focused button.
 
 
 ## [1.8.0] — 2026-10-19

@@ -97,6 +97,20 @@ test.describe('audio player widgets and navigation', () => {
     await expect.poll(() => anyPlaying(page)).toBe(false);
   });
 
+  test('panel view: the arrow key moves on right after clicking Play (focus on the play button)', async ({ page }) => {
+    await routeWidgets(page, false);
+    await openPlayer(page, '?manifest=assets/widgets-manifest.json');
+    const play = page.locator('.t-frame pw-audio-player-layer').getByRole('button', { name: /Play/ });
+    await play.click();
+    // Chromium and Firefox focus a clicked button (Safari does not): put focus there in every engine.
+    const pause = page.locator('.t-frame pw-audio-player-layer').getByRole('button', { name: /Pause/ });
+    await pause.focus();
+    await expect(pause).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.t-frame pw-audio-player-layer')).toHaveCount(0, { timeout: 10_000 });
+    await expect(page.locator('.t-frame [data-layer-id="ly-pw-2-bg"]')).toBeVisible();
+  });
+
   test('panel view: by default the audio stops when the reader moves on', async ({ page }) => {
     await routeWidgets(page, false);
     await openPlayer(page, '?manifest=assets/widgets-manifest.json');
