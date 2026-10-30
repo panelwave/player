@@ -180,6 +180,12 @@ export function pageIdFromSearch(search: string): string | undefined {
   return value && /^[A-Za-z0-9_.:-]{1,200}$/.test(value) ? value : undefined;
 }
 
+/** The panel to open from `?panel=<manifest panel id>` (panel view); undefined when absent or malformed. */
+export function panelIdFromSearch(search: string): string | undefined {
+  const value = new URLSearchParams(search).get('panel');
+  return value && /^[A-Za-z0-9_.:-]{1,200}$/.test(value) ? value : undefined;
+}
+
 /** The work locale for `wanted`: the exact tag, else the first with the same language (de-AT → de-DE). */
 export function matchLocale(wanted: string | null | undefined, available: readonly string[]): string | undefined {
   if (!wanted) return undefined;

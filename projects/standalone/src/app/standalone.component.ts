@@ -13,6 +13,7 @@ import {
   localizedText,
   normalizeConfig,
   pageIdFromSearch,
+  panelIdFromSearch,
   planBoot,
   type StandaloneConfig,
   type StandaloneWindow,
@@ -49,6 +50,7 @@ export class StandaloneComponent implements OnInit, OnDestroy {
   readonly locale = signal('en-US');
   /** Page from `?page=` (a manifest page id); undefined = the start of the work. */
   readonly pageId = signal<string | undefined>(undefined);
+  readonly panelId = signal<string | undefined>(undefined);
   /** Chapter embed: the chapter the page is locked to. */
   readonly chapterScope = signal<string | undefined>(undefined);
   readonly autoplay = signal(false);
@@ -117,6 +119,7 @@ export class StandaloneComponent implements OnInit, OnDestroy {
     this.config.set(config);
     this.locale.set(locale);
     this.pageId.set(pageIdFromSearch(window.location.search));
+    this.panelId.set(panelIdFromSearch(window.location.search));
     const embed = embedParamsFromSearch(window.location.search, config);
     this.chapterScope.set(embed.chapter);
     this.autoplay.set(embed.autoplay ?? false);

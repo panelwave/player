@@ -8,6 +8,7 @@ import {
   matchLocale,
   normalizeConfig,
   pageIdFromSearch,
+  panelIdFromSearch,
   planBoot,
 } from './boot';
 
@@ -95,6 +96,13 @@ describe('standalone boot', () => {
     expect(pageIdFromSearch('')).toBeUndefined();
     expect(pageIdFromSearch('?page=')).toBeUndefined();
     expect(pageIdFromSearch('?page=%3Cscript%3E')).toBeUndefined();
+  });
+
+  it('panelIdFromSearch reads ?panel= and rejects malformed ids', () => {
+    expect(panelIdFromSearch('?panel=E014')).toBe('E014');
+    expect(panelIdFromSearch('?locale=de&panel=p-3')).toBe('p-3');
+    expect(panelIdFromSearch('?page=pg-1')).toBeUndefined();
+    expect(panelIdFromSearch('?panel=%3Cscript%3E')).toBeUndefined();
   });
 
   it('matchLocale matches exactly, then by language', () => {

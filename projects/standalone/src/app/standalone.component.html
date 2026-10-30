@@ -13,6 +13,7 @@
       [pageFormat]="config().pageFormat ?? 'auto'"
       [initialViewMode]="config().viewMode"
       [initialPageId]="pageId()"
+      [initialPanelId]="panelId()"
       [reducedMotion]="config().reducedMotion ?? false"
       (localeChange)="onLocaleChange($event)" />
   }
