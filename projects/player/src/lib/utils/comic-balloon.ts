@@ -260,7 +260,9 @@ export class ComicBalloon {
       // line above and below the block); rectangles need none. Growth is
       // proportional, so this also widens the body a little.
       const isOval = this.options.isThought || this.options.isShout || this.options.cornerRadius > 0;
-      const ovalRoom = isOval ? 0.5 * this.options.fontSize * this.options.lineHeight : 0;
+      // A Panel Top caption's top is the flat panel border; only its bottom
+      // corners are round, so it needs only the lower quarter line.
+      const ovalRoom = isOval ? (this.options.cutTop ? 0.25 : 0.5) * this.options.fontSize * this.options.lineHeight : 0;
       const fits = (s: number) =>
         naturalHeightAt(authoredWidth * s) * GROWTH_SLACK + ovalRoom <= authoredHeight * s + 0.5;
       if (fits(BALLOON_GROWTH_MAX)) {
@@ -274,6 +276,13 @@ export class ComicBalloon {
         growth = hi;
         balloonWidth = Math.ceil(authoredWidth * growth);
         balloonHeight = Math.ceil(authoredHeight * growth);
+        if (this.options.cutTop) {
+          // A Panel Top caption hangs from the panel border: proportional
+          // growth would leave spare height that, with the text centred,
+          // shows as a gap under the border. Keep the wider body but only the
+          // height the text needs — the caption grows downwards.
+          balloonHeight = Math.max(authoredHeight, Math.ceil(naturalHeightAt(balloonWidth) * GROWTH_SLACK + ovalRoom));
+        }
       } else {
         growth = BALLOON_GROWTH_MAX;
         balloonWidth = Math.ceil(authoredWidth * growth);
