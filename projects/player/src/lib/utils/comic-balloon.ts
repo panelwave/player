@@ -116,7 +116,7 @@ export interface BalloonRenderResult {
   authoredHeight: number;
   /** True when the body is larger than the authored size because the text needed more room. */
   grown: boolean;
-  /** Proportional growth factor applied to the authored size (1 when not grown). */
+  /** Proportional growth factor applied to the authored size (1 when not grown); for a Panel Top caption, which only grows downwards, the height factor. */
   growth: number;
   svg: SVGSVGElement;
   /** True when the text needs more height than the body gives it (textFit 'fixed' only). */
@@ -260,12 +260,17 @@ export class ComicBalloon {
       // line above and below the block); rectangles need none. Growth is
       // proportional, so this also widens the body a little.
       const isOval = this.options.isThought || this.options.isShout || this.options.cornerRadius > 0;
-      // A Panel Top caption's top is the flat panel border; only its bottom
-      // corners are round, so it needs only the lower quarter line.
-      const ovalRoom = isOval ? (this.options.cutTop ? 0.25 : 0.5) * this.options.fontSize * this.options.lineHeight : 0;
+      const ovalRoom = isOval ? 0.5 * this.options.fontSize * this.options.lineHeight : 0;
       const fits = (s: number) =>
         naturalHeightAt(authoredWidth * s) * GROWTH_SLACK + ovalRoom <= authoredHeight * s + 0.5;
-      if (fits(BALLOON_GROWTH_MAX)) {
+      if (this.options.cutTop) {
+        // A Panel Top caption hangs from the panel border: it keeps its
+        // authored width (same side margins, same line length as authored)
+        // and only grows downwards, as tall as the text needs. `growth`
+        // reports the height increase.
+        balloonHeight = Math.max(authoredHeight, Math.ceil(naturalHeightAt(authoredWidth) * GROWTH_SLACK + ovalRoom));
+        growth = balloonHeight / authoredHeight;
+      } else if (fits(BALLOON_GROWTH_MAX)) {
         // Binary search for the smallest factor that fits (monotone: wider = fewer lines).
         let lo = 1;
         let hi = BALLOON_GROWTH_MAX;
@@ -276,13 +281,6 @@ export class ComicBalloon {
         growth = hi;
         balloonWidth = Math.ceil(authoredWidth * growth);
         balloonHeight = Math.ceil(authoredHeight * growth);
-        if (this.options.cutTop) {
-          // A Panel Top caption hangs from the panel border: proportional
-          // growth would leave spare height that, with the text centred,
-          // shows as a gap under the border. Keep the wider body but only the
-          // height the text needs — the caption grows downwards.
-          balloonHeight = Math.max(authoredHeight, Math.ceil(naturalHeightAt(balloonWidth) * GROWTH_SLACK + ovalRoom));
-        }
       } else {
         growth = BALLOON_GROWTH_MAX;
         balloonWidth = Math.ceil(authoredWidth * growth);
