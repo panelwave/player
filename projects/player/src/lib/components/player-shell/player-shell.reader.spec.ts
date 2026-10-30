@@ -325,6 +325,28 @@ describe('PlayerShellComponent reading features (real services)', () => {
       expect(shell.currentPage?.id).toBe('D3');
     });
 
+    it('a page link with a chapter opens that chapter’s page (page ids restart per chapter)', async () => {
+      // CMS friendly page ids (pg-A1, …) count per chapter: c2's pages are also "D1", "D2".
+      const m = buildManifest();
+      m.chapters[1].pages = [page('D1', 'desktop-landscape', ['q1']), page('D2', 'desktop-landscape', ['q2'])] as never;
+      shell.manifest = m;
+      shell.initialPageId = 'D2';
+      shell.chapterScope = 'c2';
+      await init();
+      expect(shell.currentChapter?.id).toBe('c2');
+      expect(shell.currentPage?.layout?.placements?.map((p) => p.panelId)).toEqual(['q2']);
+    });
+
+    it('a page link with a start chapter prefers that chapter’s page', async () => {
+      const m = buildManifest();
+      m.chapters[1].pages = [page('D1', 'desktop-landscape', ['q1']), page('D2', 'desktop-landscape', ['q2'])] as never;
+      shell.manifest = m;
+      shell.initialPageId = 'D2';
+      shell.initialChapterId = 'c2';
+      await init();
+      expect(shell.currentChapter?.id).toBe('c2');
+    });
+
     it('a panel link opens the panel in panel view (chapter looked up)', async () => {
       shell.initialPanelId = 'q2';
       await init();

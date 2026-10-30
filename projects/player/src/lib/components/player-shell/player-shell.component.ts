@@ -3417,9 +3417,16 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
   }
 
-  /** A page by its manifest id, in any chapter and format. */
+  /**
+   * A page by its manifest id, in any chapter and format. Page ids need only
+   * be unique within their chapter (the CMS counts pg-A1, pg-A2, … per
+   * chapter), so the start chapter and the chapter scope are searched first.
+   */
   private findPageById(pageId: string): { chapter: Chapter; page: Page } | undefined {
-    for (const chapter of this.manifestService.getManifest()?.chapters ?? []) {
+    const chapters = this.manifestService.getManifest()?.chapters ?? [];
+    const rank = (chapter: Chapter): number =>
+      chapter.id === this.initialChapterId ? 0 : chapter.id === this.scopedChapterId ? 1 : 2;
+    for (const chapter of [...chapters].sort((a, b) => rank(a) - rank(b))) {
       const page = chapter.pages?.find((candidate) => candidate.id === pageId);
       if (page) {
         return { chapter, page };
