@@ -375,14 +375,20 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
         if (config.fontSize > 0) {
           scale = Math.max(scale, MIN_LETTERING_PX / (config.fontSize * screenScale));
         }
+        // Only the BODY (with its stroke) has to fit the panel: a long tail may
+        // reach across the artwork to its speaker, so it never makes the
+        // lettering shrink or the text re-wrap into a narrow column.
+        const strokeWidth = Number(renderOpts['strokeWidth']) || 2;
+        const bodyWidth = (): number => (result.width > 0 ? result.width + strokeWidth * 2 : svgWidth);
+        const bodyHeight = (): number => (result.height > 0 ? result.height + strokeWidth * 2 : svgHeight);
         // Too wide for its panel at that size: re-wrap the text to the panel
         // width (more lines, natural height) rather than shrink the lettering.
-        // The SVG can run a little wider than maxWidth (stroke, tail), so narrow
+        // The body can run a little wider than maxWidth (stroke), so narrow
         // by the remaining overshoot for up to three passes.
         let maxWidth = Number(renderOpts['maxWidth']) || svgWidth;
         let usedOpts: Record<string, unknown> = renderOpts;
-        for (let pass = 0; pass < 3 && svgWidth > 0 && this.containerWidth > 0 && svgWidth * scale > this.containerWidth + 0.5; pass++) {
-          const narrower = Math.max(40, Math.floor(maxWidth * (this.containerWidth / (svgWidth * scale)) * 0.99));
+        for (let pass = 0; pass < 3 && bodyWidth() > 0 && this.containerWidth > 0 && bodyWidth() * scale > this.containerWidth + 0.5; pass++) {
+          const narrower = Math.max(40, Math.floor(maxWidth * (this.containerWidth / (bodyWidth() * scale)) * 0.99));
           if (narrower >= maxWidth) break;
           maxWidth = narrower;
           usedOpts = { ...renderOpts, maxWidth, maxHeight: 0 };
@@ -390,8 +396,8 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           svgWidth = result.svg?.style.width ? parseFloat(result.svg.style.width) : maxWidth;
           svgHeight = result.svg?.style.height ? parseFloat(result.svg.style.height) : svgHeight;
         }
-        if (svgWidth > 0 && svgHeight > 0) {
-          scale = Math.max(0.05, Math.min(scale, this.containerWidth / svgWidth, this.containerHeight / svgHeight));
+        if (bodyWidth() > 0 && bodyHeight() > 0) {
+          scale = Math.max(0.05, Math.min(scale, this.containerWidth / bodyWidth(), this.containerHeight / bodyHeight()));
         }
 
         // Tip-anchored (anchorTailTip): the tail tip stays on the AUTHORED
@@ -494,16 +500,16 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           else if (boxBottom >= this.containerHeight - eps) centerY = this.containerHeight - visualH / 2;
         }
 
-        // A tip-anchored balloon that would cross the panel border keeps its
+        // A tip-anchored balloon whose body would cross the panel border keeps its
         // lettering size (one font size is one size across a page) and SLIDES
         // inside; its tail is re-aimed at the authored tip, as a letterer
         // would. Connectors keep the centre rule.
         if (authoredTip && tailOpts) {
-          const slidX = clampCenter(centerX, visualW, this.containerWidth);
-          const slidY = clampCenter(centerY, visualH, this.containerHeight);
-          if (Math.abs(slidX - centerX) > 0.5 || Math.abs(slidY - centerY) > 0.5) {
-            const bodyCx = slidX + bodyOffsetX * scale;
-            const bodyCy = slidY + bodyOffsetY * scale;
+          const placedCx = centerX + bodyOffsetX * scale;
+          const placedCy = centerY + bodyOffsetY * scale;
+          const bodyCx = clampCenter(placedCx, bodyWidth() * scale, this.containerWidth);
+          const bodyCy = clampCenter(placedCy, bodyHeight() * scale, this.containerHeight);
+          if (Math.abs(bodyCx - placedCx) > 0.5 || Math.abs(bodyCy - placedCy) > 0.5) {
             const aimed = tailTipToTailConfig(
               { cx: 0, cy: 0, width: result.width, height: result.height },
               (authoredTip.x - bodyCx) / scale, (authoredTip.y - bodyCy) / scale, cornerRadius,
@@ -523,9 +529,15 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           }
         }
         // A balloon bigger than its authored box (small screens) must not be
-        // pushed across the panel border and clipped: keep it inside the panel.
-        centerX = clampCenter(centerX, visualW, this.containerWidth);
-        centerY = clampCenter(centerY, visualH, this.containerHeight);
+        // pushed across the panel border and clipped: keep its body inside the
+        // panel. A balloon that is not anchored on an authored tip keeps its
+        // tail inside too while the whole balloon fits.
+        const keepBody = (center: number, offset: number, whole: number, body: number, extent: number): number =>
+          !authoredTip && whole <= extent
+            ? clampCenter(center, whole, extent)
+            : clampCenter(center + offset, body, extent) - offset;
+        centerX = keepBody(centerX, bodyOffsetX * scale, visualW, bodyWidth() * scale, this.containerWidth);
+        centerY = keepBody(centerY, bodyOffsetY * scale, visualH, bodyHeight() * scale, this.containerHeight);
 
         // The wrapper is scaled about its center, so its visual center lands
         // exactly on (centerX, centerY).

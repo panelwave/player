@@ -91,8 +91,9 @@ describe('SpeechBubblesComponent', () => {
       const [wrapper] = renderedWrappers();
       const scale = parseFloat(/scale\(([\d.]+)\)/.exec(wrapper.style.transform)![1]);
       expect(15 * scale).toBeGreaterThanOrEqual(MIN_LETTERING_PX - 0.01);
-      const svg = wrapper.querySelector('svg') as SVGSVGElement;
-      expect(parseFloat(svg.style.width) * scale).toBeLessThanOrEqual(135 + 0.5);
+      // The body fits the panel (its tail may reach past it).
+      const body = wrapper.querySelector('foreignObject') as SVGForeignObjectElement;
+      expect(parseFloat(body.getAttribute('width') || '0') * scale).toBeLessThanOrEqual(135 + 0.5);
     });
 
     it('never letters below 9 px: small lettering on a small page grows to the floor', () => {
@@ -441,6 +442,27 @@ describe('SpeechBubblesComponent body anchoring', () => {
     });
   }
 
+  it('keeps the lettering of a balloon whose tail is longer than the panel and keeps its body inside', () => {
+    component.containerWidth = 400;
+    component.containerHeight = 300;
+    component.bubbles = [asBubble({
+      id: 'b1',
+      text: { 'en-US': 'Lean on me.' },
+      shape: { x: 0.1, y: 0.4, w: 0.2, h: 0.1 },
+      balloonConfig: { fontFamily: 'Arial, sans-serif', fontSize: 12, tail: { position: 90, length: 600 } },
+    })];
+    component.renderAllBalloons();
+    const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+    const svg = w.querySelector('svg') as SVGSVGElement;
+    expect(parseFloat(svg.style.width)).toBeGreaterThan(400); // the tail alone is wider than the panel
+    expect(w.style.transform).toBe(''); // scale 1: not shrunk
+    const vb = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+    const bw = parseFloat((svg.querySelector('foreignObject') as SVGForeignObjectElement).getAttribute('width') || '0');
+    const bodyLeft = parseFloat(w.style.left) - vb[0];
+    expect(bodyLeft).toBeGreaterThanOrEqual(-0.5);
+    expect(bodyLeft + bw).toBeLessThanOrEqual(400.5);
+  });
+
   describe('page view: anchored on the authored tail tip (anchorTailTip)', () => {
     /** A point of the SVG (viewBox coords) in container px, through the wrapper's centre scale. */
     function toContainer(p: { x: number; y: number }): { x: number; y: number } {
@@ -558,6 +580,41 @@ describe('SpeechBubblesComponent body anchoring', () => {
       const bottom = toContainer({ x: 0, y: vb[1] + vb[3] }).y;
       expect(authoredTipY).toBeGreaterThanOrEqual(top - 1);
       expect(authoredTipY).toBeLessThanOrEqual(bottom + 1);
+    });
+
+    it('a long tail never shrinks or re-wraps the balloon: only the body has to fit the panel', () => {
+      // Phone panel view: 12 px at the artwork scale (~2.3 px) is boosted to
+      // the 9 px floor and the tail grows with it — far wider than the panel.
+      component.containerWidth = 375;
+      component.containerHeight = 211;
+      component.anchorTailTip = true;
+      component.scaleTailWithBoost = true;
+      component.readingScale = artworkLetteringScale(375, 211);
+      const longTail = (tail: object) => asBubble({
+        id: 'b1',
+        text: { 'en-US': 'Tap the language button and every balloon changes.' },
+        shape: { x: 0.05, y: 0.05, w: 0.3, h: 0.15 },
+        balloonConfig: { fontFamily: 'Arial, sans-serif', fontSize: 12, maxWidth: 200, maxHeight: 90, tail },
+      });
+      component.bubbles = [longTail({ enabled: false })];
+      component.renderAllBalloons();
+      const plainWidth = (fixture.nativeElement.querySelector('.speech-bubble-wrapper foreignObject') as SVGForeignObjectElement).getAttribute('width');
+
+      component.bubbles = [longTail({ position: 135, length: 500 })];
+      component.renderAllBalloons();
+      const w = fixture.nativeElement.querySelector('.speech-bubble-wrapper') as HTMLElement;
+      // Lettered at the floor, not shrunk to fit the tail …
+      expect(w.style.transform).toBe(`scale(${MIN_LETTERING_PX / 12})`);
+      // … not re-wrapped into a narrower column …
+      const fo = w.querySelector('foreignObject') as SVGForeignObjectElement;
+      expect(fo.getAttribute('width')).toBe(plainWidth);
+      // … and the body inside the panel.
+      const topLeft = toContainer({ x: 0, y: 0 });
+      const bottomRight = toContainer({ x: parseFloat(fo.getAttribute('width') || '0'), y: parseFloat(fo.getAttribute('height') || '0') });
+      expect(topLeft.x).toBeGreaterThanOrEqual(-0.5);
+      expect(topLeft.y).toBeGreaterThanOrEqual(-0.5);
+      expect(bottomRight.x).toBeLessThanOrEqual(375.5);
+      expect(bottomRight.y).toBeLessThanOrEqual(211.5);
     });
 
     it('without anchorTailTip (panel view) the body stays centred on the box', () => {
