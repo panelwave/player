@@ -311,7 +311,7 @@ export class ThumbnailStripComponent implements OnChanges, AfterViewInit {
   private getPanels(chapter: Chapter): (Panel & { id: string; thumbnail?: string })[] {
     if (!chapter.panels) return [];
     const lookup = (assetId: string): CatalogLike | null =>
-      this.manifestService.getAsset(assetId) as CatalogLike | null;
+      this.manifestService.getAsset(assetId, this.locale) as CatalogLike | null;
     return chapterReadingOrder(chapter)
       .filter((id) => chapter.panels[id])
       .map((id) => {

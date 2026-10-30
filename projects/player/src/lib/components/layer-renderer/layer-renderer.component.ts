@@ -305,7 +305,7 @@ export class LayerRendererComponent {
     // Try to get assetId first (from manifest reference)
     const assetId = (this.layer as Record<string, unknown>)['assetId'];
     if (assetId && typeof assetId === 'string') {
-      const asset = this.manifestService.getAsset(assetId);
+      const asset = this.manifestService.getAsset(assetId, this.locale);
       if (asset && asset.variants && asset.variants.length > 0) {
         // Variant-by-zoom (canvas view): the smallest variant covering the
         // required display width; targetWidth 0 keeps the legacy first pick.

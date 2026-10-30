@@ -997,6 +997,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private applyLocale(): void {
     this.playerState.setLocale(this.locale);
     this.translationService.setLanguage(this.locale);
+    // Cover and extras images can have language versions (schema 1.11).
+    const manifest = this.manifestService.getManifest();
+    if (manifest) {
+      this.resolveCover(manifest);
+      this.buildExtrasList(manifest);
+    }
   }
 
   /** Apply a changed `viewModeOverride` to the running view. */
@@ -1895,7 +1901,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     // An extras-scoped paywall rule the reader does not satisfy locks its block.
     this.extrasList = extrasFromManifest(
       manifest?.extras as Record<string, unknown> | undefined,
-      (assetId) => this.manifestService.getAsset(assetId) as CatalogLike | null,
+      (assetId) => this.manifestService.getAsset(assetId, this.locale) as CatalogLike | null,
       // Character sheets list who is on them (one character, or an ensemble).
       (characterId) => manifest?.meta?.characters?.find((c) => c.id === characterId)?.name
     ).map((extra) => (this.paywallService.isExtraLocked(extra.id) ? { ...extra, gated: true } : extra));
@@ -3788,7 +3794,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
         if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
           continue;
         }
-        const src = this.manifestService.getAsset(layer.assetId)?.variants?.[0]?.src;
+        const src = this.manifestService.getAsset(layer.assetId, this.locale)?.variants?.[0]?.src;
         if (src) {
           this.preloadService.add({ id: src, type: 'image', url: this.assetUrl.resolve(src, 'image'), priority: 'high', panelId });
         }
@@ -3798,7 +3804,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
 
   /** Resolve the cover image from `meta.cover` / `extras.cover` through the asset catalog. */
   private resolveCover(manifest: PanelWaveManifest | null): void {
-    const lookup = (assetId: string): CatalogLike | null => this.manifestService.getAsset(assetId) as CatalogLike | null;
+    const lookup = (assetId: string): CatalogLike | null =>
+      this.manifestService.getAsset(assetId, this.locale) as CatalogLike | null;
     const win = typeof window !== 'undefined' ? window : undefined;
     const screenWidth = (win?.innerWidth || 1280) * (win?.devicePixelRatio || 1);
     this.coverUrl = this.assetUrl.resolve(coverImageSrc(manifest, lookup, screenWidth), 'image');

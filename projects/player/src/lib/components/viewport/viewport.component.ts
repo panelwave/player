@@ -712,7 +712,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
         if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
           continue;
         }
-        const asset = this.manifestService.getAsset(layer.assetId);
+        const asset = this.manifestService.getAsset(layer.assetId, this.locale);
         const variant = selectImageVariantForWidth(asset?.variants as never, target.width);
         if (variant?.src) {
           this.preloadService.add({

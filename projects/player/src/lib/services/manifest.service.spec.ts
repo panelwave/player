@@ -409,6 +409,37 @@ describe('ManifestService', () => {
       expect(asset).toBeNull();
     });
 
+    it('narrows an image with language versions to the reader\'s locale', (done) => {
+      const manifest = {
+        ...validManifest,
+        meta: { ...validManifest.meta, default_locale: 'en-US' },
+        assets: {
+          catalog: [
+            {
+              id: 'img-sign',
+              category: 'image' as const,
+              variants: [
+                { src: 'sign.png', w: 1024, h: 576 },
+                { src: 'schild.png', w: 1024, h: 576, locale: 'de-DE' },
+              ],
+            },
+          ],
+        },
+      } as PanelWaveManifest;
+      service.loadManifestFromObject(manifest).subscribe(() => {
+        expect(service.getAsset('img-sign', 'de-DE')?.variants.map((v) => v.src)).toEqual(['schild.png']);
+        expect(service.getAsset('img-sign', 'fr-FR')?.variants.map((v) => v.src)).toEqual(['sign.png']);
+        // Without a locale: the catalog item as authored; repeated lookups are cached.
+        expect(service.getAsset('img-sign')?.variants.length).toBe(2);
+        expect(service.getAsset('img-sign', 'de-DE')).toBe(service.getAsset('img-sign', 'de-DE'));
+        done();
+      });
+    });
+
+    it('returns images without language versions as they are', () => {
+      expect(service.getAsset('img-1', 'de-DE')).toBe(service.getAsset('img-1'));
+    });
+
     it('should check if asset exists', () => {
       expect(service.hasAsset('img-1')).toBe(true);
       expect(service.hasAsset('non-existent')).toBe(false);

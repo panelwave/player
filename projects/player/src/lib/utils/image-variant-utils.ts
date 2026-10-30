@@ -38,6 +38,47 @@ export function selectImageVariantForWidth(
 }
 
 /**
+ * Narrow an image's variants to one language (schema 1.11
+ * `ImageVariant.locale`) before choosing by width: the reader's exact
+ * locale, else the first locale of the same base language (a de-AT reader
+ * gets de-DE), else the variants without a locale, else the work's default
+ * locale (exact, then same language), else all variants. Images without any
+ * localized variant come back unchanged.
+ */
+export function localizeImageVariants<T extends { locale?: string }>(
+  variants: T[] | undefined,
+  locale: string | undefined,
+  defaultLocale?: string
+): T[] {
+  if (!variants || variants.length === 0 || !variants.some((variant) => variant.locale)) {
+    return variants ?? [];
+  }
+  const lower = (code: string) => code.toLowerCase();
+  const language = (code: string) => lower(code).split('-')[0];
+  const ofLocale = (code: string) => variants.filter((variant) => !!variant.locale && lower(variant.locale) === lower(code));
+  const ofLanguage = (code: string) => {
+    const match = variants.find((variant) => !!variant.locale && language(variant.locale) === language(code));
+    return match?.locale ? ofLocale(match.locale) : [];
+  };
+  const neutral = () => variants.filter((variant) => !variant.locale);
+  const candidates: (() => T[])[] = [];
+  if (locale) {
+    candidates.push(() => ofLocale(locale), () => ofLanguage(locale));
+  }
+  candidates.push(neutral);
+  if (defaultLocale) {
+    candidates.push(() => ofLocale(defaultLocale), () => ofLanguage(defaultLocale));
+  }
+  for (const candidate of candidates) {
+    const set = candidate();
+    if (set.length > 0) {
+      return set;
+    }
+  }
+  return variants;
+}
+
+/**
  * Quantize a required width so tiny zoom changes don't thrash variant
  * re-resolution (and never below one step).
  */

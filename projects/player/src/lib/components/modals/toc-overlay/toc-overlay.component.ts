@@ -291,7 +291,7 @@ export class TocOverlayComponent implements OnInit, OnChanges {
       return '';
     }
     const lookup = (assetId: string): CatalogLike | null =>
-      this.manifestService.getAsset(assetId) as CatalogLike | null;
+      this.manifestService.getAsset(assetId, this.locale) as CatalogLike | null;
     return this.assetUrl.resolve(panelThumbnailSrc(panel, lookup), 'image');
   }
 

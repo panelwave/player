@@ -131,6 +131,13 @@ export interface ImageVariant {
   
   /** Pixel density multiplier (optional, e.g., 2 for @2x) */
   density?: number;
+
+  /**
+   * Language version (schema 1.11+): the artwork for readers of this locale
+   * (a sign or lettering drawn into the image). Variants without a locale
+   * serve every language.
+   */
+  locale?: LocaleCode;
 }
 
 /**

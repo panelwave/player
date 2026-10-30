@@ -12,7 +12,10 @@ import type {
   Panel,
   Chapter,
   AssetCatalogItem,
+  ImageVariant,
+  LocaleCode,
 } from '../types';
+import { localizeImageVariants } from '../utils/image-variant-utils';
 
 /**
  * Manifest indexes for fast lookups
@@ -35,6 +38,8 @@ export class ManifestService {
   private indexes: ManifestIndexes | null = null;
   /** Absolute URL the current manifest was fetched from (null for object manifests). */
   private manifestUrl: string | null = null;
+  /** Image assets narrowed to one language, keyed `locale|assetId`. */
+  private localizedAssets = new Map<string, AssetCatalogItem>();
 
   private readonly http = inject(HttpClient);
 
@@ -81,6 +86,7 @@ export class ManifestService {
   private setManifest(manifest: PanelWaveManifest): void {
     this.manifest = manifest;
     this.indexes = this.buildIndexes(manifest);
+    this.localizedAssets.clear();
   }
 
   /**
@@ -113,6 +119,7 @@ export class ManifestService {
     this.manifest = null;
     this.indexes = null;
     this.manifestUrl = null;
+    this.localizedAssets.clear();
   }
 
   /**
@@ -244,14 +251,28 @@ export class ManifestService {
   /**
    * Get an asset by ID
    * @param assetId - Asset identifier
+   * @param locale - The reader's locale: an image with language versions
+   *   (schema 1.11 `ImageVariant.locale`) comes back with only the variants
+   *   for that language (see localizeImageVariants). Omitted: all variants.
    * @returns Asset catalog item, or null if not found
    */
-  getAsset(assetId: string): AssetCatalogItem | null {
+  getAsset(assetId: string, locale?: LocaleCode): AssetCatalogItem | null {
     if (!this.indexes) {
       return null;
     }
 
-    return this.indexes.assets.get(assetId) || null;
+    const asset = this.indexes.assets.get(assetId) || null;
+    if (!asset || !locale || asset.category !== 'image' || !asset.variants?.some((variant) => variant.locale)) {
+      return asset;
+    }
+    const key = `${locale}|${assetId}`;
+    let localized = this.localizedAssets.get(key);
+    if (!localized) {
+      const variants = localizeImageVariants(asset.variants as ImageVariant[], locale, this.manifest?.meta?.default_locale);
+      localized = { ...asset, variants };
+      this.localizedAssets.set(key, localized);
+    }
+    return localized;
   }
 
   /**

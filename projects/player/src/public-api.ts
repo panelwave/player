@@ -116,6 +116,7 @@ export {
   THUMBNAIL_WIDTH,
   panelThumbnailSrc,
   coverImageSrc,
+  localizeImageVariants,
   DEFAULT_PAGE_BACKGROUND,
   resolvePageBackground,
   LOCATION_PARAMS,

@@ -35,6 +35,34 @@ describe('LayerRendererComponent', () => {
     component.layer = videoLayer;
   });
 
+  describe('getImageSrc', () => {
+    it("shows the language version of the artwork for the reader's locale", () => {
+      manifestService.loadManifestFromObject({
+        panelwave: { version: '1.11.0', schema: 'https://panelwave.org/schema/1.0/panelwave.schema.json' },
+        meta: { id: 'w', title: { 'en-US': 'W' }, locales: ['en-US', 'de-DE'], default_locale: 'en-US' },
+        assets: {
+          catalog: [
+            {
+              id: 'floor',
+              category: 'image',
+              variants: [
+                { src: 'https://cdn.test/hello.png', w: 1024, h: 576 },
+                { src: 'https://cdn.test/hallo.png', w: 1024, h: 576, locale: 'de-DE' },
+              ],
+            },
+          ],
+        },
+        chapters: [{ id: 'c1', panels: { p1: { layers: [] } }, graph: { entry: 'p1', edges: [] } }],
+      } as any).subscribe();
+      component.layer = { kind: 'image', id: 'img-1', assetId: 'floor' };
+
+      component.locale = 'de-DE';
+      expect(component.getImageSrc()).toBe('https://cdn.test/hallo.png');
+      component.locale = 'en-US';
+      expect(component.getImageSrc()).toBe('https://cdn.test/hello.png');
+    });
+  });
+
   describe('getVideoPoster', () => {
     it('resolves the poster src from the catalog asset', () => {
       const asset: AssetCatalogItemVideo = {
