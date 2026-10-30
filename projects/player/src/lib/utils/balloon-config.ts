@@ -62,14 +62,31 @@ export function artworkLetteringScale(width: number, height: number): number {
 export const PAGE_LETTERING_FACTOR = 0.75;
 
 /**
+ * Pages wider than Desktop (Bigscreen) hold more panels per page, so the
+ * factor eases from PAGE_LETTERING_FACTOR at PAGE_LETTERING_WIDE_FROM CSS px
+ * down to PAGE_LETTERING_FACTOR_WIDE at PAGE_LETTERING_WIDE_AT (the CMS
+ * editor's rule, so editor and reader letter a page alike).
+ */
+export const PAGE_LETTERING_FACTOR_WIDE = 0.6;
+export const PAGE_LETTERING_WIDE_FROM = 1920;
+export const PAGE_LETTERING_WIDE_AT = 3840;
+
+/** The page share for a page `pageWidth` CSS px wide (see PAGE_LETTERING_FACTOR_WIDE). */
+export function pageLetteringFactor(pageWidth: number): number {
+  if (!(pageWidth > PAGE_LETTERING_WIDE_FROM)) return PAGE_LETTERING_FACTOR;
+  const t = Math.min(1, (pageWidth - PAGE_LETTERING_WIDE_FROM) / (PAGE_LETTERING_WIDE_AT - PAGE_LETTERING_WIDE_FROM));
+  return PAGE_LETTERING_FACTOR + (PAGE_LETTERING_FACTOR_WIDE - PAGE_LETTERING_FACTOR) * t;
+}
+
+/**
  * Page view's uniform lettering scale for a page `pageWidth` CSS px wide:
- * PAGE_LETTERING_FACTOR × panel view's artwork scale of a full-width
+ * pageLetteringFactor × panel view's artwork scale of a full-width
  * landscape (16:9) panel of that page (pageWidth × 9/16 / 1123) — one font
  * size is one size across the page, a balloon keeps its panel-view look.
  * pw-speech-bubbles raises small results to its MIN_LETTERING_PX floor.
  */
 export function pageLetteringScale(pageWidth: number): number {
-  return PAGE_LETTERING_FACTOR * artworkLetteringScale(pageWidth, pageWidth * 9 / 16);
+  return pageLetteringFactor(pageWidth) * artworkLetteringScale(pageWidth, pageWidth * 9 / 16);
 }
 
 /**

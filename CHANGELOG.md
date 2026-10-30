@@ -7,6 +7,15 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Changed
+- **Page view letters wide pages smaller.** `pageLetteringScale` eases its
+  share of panel view's scale from 0.75 (pages up to 1920 CSS px) to 0.6 at
+  3840 px (new `pageLetteringFactor`, `PAGE_LETTERING_FACTOR_WIDE`,
+  `PAGE_LETTERING_WIDE_FROM` / `_AT`): Bigscreen pages hold more panels
+  per page, so their balloons crowded the art. A Bigscreen page letters at
+  ≈ 1.15 instead of 1.44; every narrower page and panel view are unchanged.
+  Same rule as the CMS editor.
+
 ### Added
 - **Per-language artwork** (format 1.11 `ImageVariant.locale`): an image
   asset can carry language versions of itself (a sign, a title card,

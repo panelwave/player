@@ -360,9 +360,12 @@ describe('ViewportComponent', () => {
       // An A4 page: 0.75 × 794 × 9/16 / 1123 ≈ 0.30 — a page-high panel and a small one alike.
       expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(0.75 * 794 * 9 / 16 / 1123, 5);
       expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 0.25, h: 1 / 3, z: 0 })).toBeCloseTo(0.75 * 794 * 9 / 16 / 1123, 5);
-      // A Bigscreen page (its panel view's 1.92) on a 1300 px screen: never
-      // above the screen scale (a page larger than the screen).
+      // A Bigscreen page letters at 0.6 × 2160 / 1123 ≈ 1.15 (pages wider than
+      // Desktop ease to the 0.6 share), just under this 1300 px screen's 1.16.
       pageWidth.and.returnValue(3840);
+      expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(0.6 * 2160 / 1123, 5);
+      // A page far larger than the screen: never above the screen scale.
+      pageWidth.and.returnValue(7680);
       expect(component.getPageReadingScale({ panelId: 'p1', x: 0, y: 0, w: 1, h: 1, z: 0 })).toBeCloseTo(1300 / 1123, 5);
     });
 
