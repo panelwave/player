@@ -349,7 +349,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
         if (layer.kind !== 'image' || typeof layer.assetId !== 'string') {
           continue;
         }
-        const asset = this.manifestService.getAsset(layer.assetId);
+        const asset = this.manifestService.getAsset(layer.assetId, this.locale);
         const variant = selectImageVariantForWidth(asset?.variants as never, width);
         if (variant?.src) {
           this.preloadService.add({
@@ -523,7 +523,7 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
     if (!assetId) {
       return '';
     }
-    const asset = this.manifestService.getAsset(assetId);
+    const asset = this.manifestService.getAsset(assetId, this.locale);
     return this.assetUrlService.resolve(asset?.variants?.[0]?.src, 'image');
   }
 

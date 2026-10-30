@@ -8,6 +8,18 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Added
+- **Per-language artwork** (format 1.11 `ImageVariant.locale`): an image
+  asset can carry language versions of itself (a sign, a title card,
+  lettering drawn into the image). `ManifestService.getAsset(id, locale)`
+  narrows an image's variants to the reader's language — exact locale, then
+  the same base language, then the variants without a locale, then
+  `meta.default_locale`, then all — before the width choice, so each
+  language keeps its own width ladder. Image layers (panel, page and canvas
+  view), canvas decorations and backgrounds, preloading, thumbnails, the
+  table of contents, the cover and the extras all pass the reader's locale;
+  switching the language swaps the artwork, cover and extras. Images without
+  language versions are returned unchanged. New export:
+  `localizeImageVariants`.
 - **Timed speech balloons** (format 1.10 `SpeechBubble.showAtMs`): a balloon
   can wait for its line. It is laid out with the others but hidden
   (`pw-bubble-pending`, `aria-hidden`, out of the tab order) until its panel's

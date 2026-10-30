@@ -98,6 +98,7 @@ export {
 
 export {
   selectImageVariantForWidth,
+  localizeImageVariants,
   quantizeTargetWidth,
 } from './image-variant-utils';
 

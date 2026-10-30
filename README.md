@@ -375,7 +375,7 @@ component completion reports under `docs/archive/player/repo-history/`.
 
 ### 📐 Format Support
 
-The player renders **PanelWave manifest format 1.7** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
+The player renders **PanelWave manifest format 1.11** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
 
 | Format | Feature | Player support |
 |--------|---------|----------------|
@@ -389,6 +389,10 @@ The player renders **PanelWave manifest format 1.7** (the schema lives at `schem
 | 1.6 | Layer keyframe animations (`animations.keyframes` / `loop`) | ✅ |
 | 1.6 | Several alternative covers (`extras.alt_cover` as an array) and ensemble character sheets (`characterIds`) | ✅ |
 | 1.7 | Chapter graphs may have no edges (the chapter then follows its reading order); `x-` extension properties on panels and extras blocks | ✅ |
+| 1.8 | Balloons grow with their text (`BalloonConfig.textFit`) | ✅ |
+| 1.9 | `paywallAction` tracking event | ✅ |
+| 1.10 | Content widget layers, `file` assets, `ui.theme`, timed balloons (`showAtMs`) | ✅ |
+| 1.11 | Per-language artwork (`ImageVariant.locale`): image layers, covers, extras and thumbnails show the reader's language version | ✅ |
 | 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ✅ |
 
 ---
