@@ -169,13 +169,13 @@ describe('BubbleVoiceService', () => {
     flush();
   }));
 
-  it('reads several shown panels in the order they were shown', fakeAsync(() => {
+  it('reads panels shown together in the order they were attached (reading order), whichever clock started first', fakeAsync(() => {
     const clockA = new BubbleClock(() => now);
     const clockB = new BubbleClock(() => now);
     service.attach('pA', panel({ id: 'a', audioAssetId: 'v-a' }), clockA);
     service.attach('pB', panel({ id: 'b', audioAssetId: 'v-b' }), clockB);
-    clockA.start();
     clockB.start();
+    clockA.start();
     tick();
     expect(playedIds()).toEqual(['voice:pA:a']);
     endCurrent();

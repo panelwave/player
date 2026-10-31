@@ -76,6 +76,9 @@ export class BubbleVoiceService implements OnDestroy {
 
   private locale: string | undefined;
 
+  /** Pending coalesced `tick` (see scheduleTick). */
+  private tickTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Assets already warned about (missing / not audio), to keep the console quiet. */
   private readonly warned = new Set<string>();
 
@@ -134,7 +137,7 @@ export class BubbleVoiceService implements OnDestroy {
     session.subscription = clock.changes$.subscribe((state) => this.onClockChange(session, state));
     this.sessions.push(session);
     if (clock.state === 'running') {
-      this.tick();
+      this.scheduleTick();
     }
     return () => this.detach(session);
   }
@@ -178,6 +181,10 @@ export class BubbleVoiceService implements OnDestroy {
   /** Stop everything and forget every panel (shell teardown). */
   stopAll(): void {
     this.blocked = null;
+    if (this.tickTimer !== null) {
+      clearTimeout(this.tickTimer);
+      this.tickTimer = null;
+    }
     this.stopSpeaking(0);
     for (const session of this.sessions) {
       this.clearTimer(session);
@@ -203,7 +210,7 @@ export class BubbleVoiceService implements OnDestroy {
 
   private onClockChange(session: VoiceSession, state: BubbleClock['state']): void {
     if (state === 'running') {
-      this.tick();
+      this.scheduleTick();
       return;
     }
     // Paused (scrolled away, tab hidden, video paused), reset or done: the
@@ -221,6 +228,22 @@ export class BubbleVoiceService implements OnDestroy {
       this.blocked = null;
     }
     this.tick();
+  }
+
+  /**
+   * Run `tick` after the current task. Panels that are shown in the same
+   * frame (a page's panels scrolling into view) are all running by then, so
+   * they read in the order they were attached — reading order — and not in
+   * the order their observers happened to fire.
+   */
+  private scheduleTick(): void {
+    if (this.tickTimer !== null) {
+      return;
+    }
+    this.tickTimer = setTimeout(() => {
+      this.tickTimer = null;
+      this.tick();
+    }, 0);
   }
 
   /**
