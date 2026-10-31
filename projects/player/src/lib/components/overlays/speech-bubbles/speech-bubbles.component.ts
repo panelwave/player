@@ -36,6 +36,8 @@ import { placeGrownBody, tailConfigToTip, tailTipToTailConfig } from '../../../u
 import { ManifestService } from '../../../services/manifest.service';
 import { BubbleClockDirective } from '../../../directives/bubble-clock.directive';
 import { bubbleShowAtMs } from '../../../utils/bubble-timing-utils';
+import { bubbleAudioAssetId } from '../../../utils/bubble-voice-utils';
+import { BubbleVoiceService } from '../../../services/bubble-voice.service';
 import { shouldReduceMotion } from '../../../utils/animation-utils';
 import { isPrintRender } from '../../../utils/widget-utils';
 
@@ -172,6 +174,9 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
    * Without one (outgoing copies, standalone use) every balloon shows at once.
    */
   private clockHost = inject(BubbleClockDirective, { optional: true });
+
+  /** Speaks a balloon's line again when it is tapped (format 1.12). */
+  private voices = inject(BubbleVoiceService, { optional: true });
 
   private clockSubscription: Subscription | null = null;
 
@@ -553,9 +558,12 @@ export class SpeechBubblesComponent implements OnChanges, AfterViewInit, OnDestr
           event.stopPropagation();
           this.bubbleClick.emit(bubble);
 
-          // Emit audio play if bubble has an audio asset
-          if (bubble.audioAssetId) {
-            this.bubbleAudioPlay.emit({ bubble, audioAssetId: bubble.audioAssetId as string });
+          // A tap on a voiced balloon speaks its line again (format 1.12) —
+          // and tells the host, which may play it its own way.
+          const audioAssetId = bubbleAudioAssetId(bubble);
+          if (audioAssetId) {
+            this.voices?.replay(bubble);
+            this.bubbleAudioPlay.emit({ bubble, audioAssetId });
           }
         });
 

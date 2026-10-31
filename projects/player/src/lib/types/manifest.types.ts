@@ -465,6 +465,12 @@ export interface UIDefaults {
   
   /** Enable SFX by default (optional, default: true) */
   sfxDefault?: boolean;
+
+  /**
+   * Spoken lines on by default (optional, default: true; schema 1.12+): seeds
+   * the reader's Voices toggle — speech-bubble audio and voiceover tracks.
+   */
+  voicesDefault?: boolean;
   
   /** Enable scrolling mode by default (optional, default: true) */
   scrollingDefault?: boolean;
@@ -757,6 +763,12 @@ export interface UISettings {
     
     /** Show SFX toggle */
     showSfxToggle?: boolean;
+
+    /** Show speech-bubble toggle */
+    showSpeechToggle?: boolean;
+
+    /** Show the Voices toggle (schema 1.12+) */
+    showVoicesToggle?: boolean;
   };
 }
 

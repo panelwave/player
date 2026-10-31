@@ -63,6 +63,11 @@ export class ToolbarComponent {
   @Input() sfxEnabled = true;
 
   /**
+   * Voices enabled (spoken lines of the balloons, voiceover bus)
+   */
+  @Input() voicesEnabled = true;
+
+  /**
    * Autoplay enabled
    */
   @Input() autoplayEnabled = false;
@@ -155,6 +160,11 @@ export class ToolbarComponent {
    * Toggle SFX
    */
   @Output() toggleSfx = new EventEmitter<void>();
+
+  /**
+   * Toggle voices
+   */
+  @Output() toggleVoices = new EventEmitter<void>();
 
   /**
    * Toggle autoplay
@@ -281,6 +291,13 @@ export class ToolbarComponent {
    */
   onToggleSfx(): void {
     this.toggleSfx.emit();
+  }
+
+  /**
+   * Handle voices toggle
+   */
+  onToggleVoices(): void {
+    this.toggleVoices.emit();
   }
 
   /**

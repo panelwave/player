@@ -21,6 +21,7 @@ describe('SettingsModalComponent', () => {
     speech: true,
     audio: true,
     sfx: true,
+    voices: true,
     autoplay: false,
     secondsPerPanel: 5,
     mangaMode: false,
@@ -104,8 +105,8 @@ describe('SettingsModalComponent', () => {
       expect(options.map((o) => o.value)).toEqual(['en-US', 'de-DE']);
       expect(q<HTMLSelectElement>('#locale-select')?.value).toBe('en-US');
       const boxes = qa<HTMLInputElement>('.setting-checkbox');
-      // mangaMode, reducedMotion, highContrast, speech, audio, sfx, autoplay
-      expect(boxes.map((b) => b.checked)).toEqual([false, false, false, true, true, true, false]);
+      // mangaMode, reducedMotion, highContrast, speech, audio, sfx, voices, autoplay
+      expect(boxes.map((b) => b.checked)).toEqual([false, false, false, true, true, true, true, false]);
       expect(q<HTMLInputElement>('#seconds-input')?.value).toBe('5');
     });
   });

@@ -20,9 +20,13 @@
  * - **Any other panel:** starts when the panel is shown (the panel animation
  *   rule, `observePanelShown`), pauses while it is scrolled away or the tab is
  *   hidden.
- * - **Done right away** (every balloon shown): no timed balloon on the panel,
- *   reduced motion, print renders, static copies (the outgoing panel of a
- *   transition).
+ * - **Done right away** (every balloon shown): print renders, static copies
+ *   (the outgoing panel of a transition), a panel with neither timed nor
+ *   voiced balloons. Reduced motion, or no timed balloon, makes every balloon
+ *   due at once (`markAllDue`) while the clock keeps following the panel.
+ * - **Spoken lines** (`SpeechBubble.audioAssetId`, format 1.12): a panel
+ *   with voiced balloons is attached to `BubbleVoiceService` while its clock
+ *   runs, so each line plays when its balloon appears.
  * - A new `pwBubbleClockKey` (another panel shown in the same host) restarts
  *   it from 0. Other input changes restart it only when they change how it
  *   runs (timed balloons appear / disappear, the video layers change).
@@ -34,6 +38,8 @@ import { Directive, ElementRef, Input, NgZone, OnChanges, OnDestroy, inject } fr
 import type { Panel } from '../types';
 import { BubbleClock } from '../utils/bubble-clock';
 import { hasTimedBubbles, panelVideoLayerIds } from '../utils/bubble-timing-utils';
+import { hasVoicedBubbles } from '../utils/bubble-voice-utils';
+import { BubbleVoiceService } from '../services/bubble-voice.service';
 import { observePanelShown } from '../utils/panel-visibility';
 import { shouldReduceMotion } from '../utils/animation-utils';
 import { isPrintRender } from '../utils/widget-utils';
@@ -48,6 +54,7 @@ const VIDEO_SELECTOR = 'pw-video-layer video';
 export class BubbleClockDirective implements OnChanges, OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly zone = inject(NgZone);
+  private readonly voices = inject(BubbleVoiceService);
 
   /** The shown panel: its balloons and video layers decide how the clock runs. */
   @Input('pwBubbleClock') panel: Pick<Panel, 'speechBubbles' | 'layers'> | null | undefined;
@@ -86,6 +93,7 @@ export class BubbleClockDirective implements OnChanges, OnDestroy {
       this.pwBubbleClockStatic ? 's' : '',
       this.isReducedMotion() ? 'r' : '',
       hasTimedBubbles(this.panel) ? 't' : '',
+      hasVoicedBubbles(this.panel) ? 'v' : '',
       panelVideoLayerIds(this.panel).join(','),
     ].join('|');
   }
@@ -97,9 +105,17 @@ export class BubbleClockDirective implements OnChanges, OnDestroy {
   private restart(): void {
     this.teardown();
     this.clock.reset();
-    if (this.pwBubbleClockStatic || this.isReducedMotion() || isPrintRender() || !hasTimedBubbles(this.panel)) {
+    const timed = !this.isReducedMotion() && hasTimedBubbles(this.panel);
+    const voiced = hasVoicedBubbles(this.panel);
+    if (this.pwBubbleClockStatic || isPrintRender() || (!timed && !voiced)) {
       this.clock.finish();
       return;
+    }
+    // No timed balloon (or reduced motion): every balloon at once, but the
+    // clock still follows the panel so its spoken lines play when it is shown.
+    if (!timed) this.clock.markAllDue();
+    if (voiced && this.panel) {
+      this.cleanups.push(this.voices.attach(this.pwBubbleClockKey, this.panel, this.clock));
     }
     const hasVideo = panelVideoLayerIds(this.panel).length > 0;
     this.zone.runOutsideAngular(() => (hasVideo ? this.followVideo() : this.followVisibility()));

@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import type { Panel } from '../types';
 import { BubbleClockDirective } from './bubble-clock.directive';
 import { SpeechBubblesComponent } from '../components/overlays/speech-bubbles/speech-bubbles.component';
+import { BubbleVoiceService } from '../services/bubble-voice.service';
 
 const timedBubbles = [
   { id: 'b1', text: { 'en-US': 'You came back.' }, shape: { x: 0.55, y: 0.05, w: 0.35, h: 0.2 } },
@@ -14,6 +15,8 @@ const timedBubbles = [
 const imagePanel = { layers: [{ id: 'bg', kind: 'image' }], speechBubbles: timedBubbles } as unknown as Panel;
 const videoPanel = { layers: [{ id: 'clip', kind: 'video' }], speechBubbles: timedBubbles } as unknown as Panel;
 const untimedPanel = { layers: [], speechBubbles: [timedBubbles[0]] } as unknown as Panel;
+const voicedUntimedPanel = { layers: [], speechBubbles: [{ ...timedBubbles[0], audioAssetId: 'voice-b1' }] } as unknown as Panel;
+const voicedTimedPanel = { layers: [], speechBubbles: [{ ...timedBubbles[0], audioAssetId: 'voice-b1' }, timedBubbles[1]] } as unknown as Panel;
 
 @Component({
   imports: [BubbleClockDirective, SpeechBubblesComponent],
@@ -50,6 +53,8 @@ describe('BubbleClockDirective', () => {
   let host: HostComponent;
   let observerCallback: IntersectionObserverCallback | null;
   let originalObserver: typeof IntersectionObserver;
+  let detach: jasmine.Spy;
+  let voices: { attach: jasmine.Spy; replay: jasmine.Spy };
 
   const clock = () => host.directive.clock;
   const el = (selector: string): HTMLMediaElement => fixture.nativeElement.querySelector(selector) as HTMLMediaElement;
@@ -90,9 +95,11 @@ describe('BubbleClockDirective', () => {
       observe(): void { /* driven by setShown() */ }
       disconnect(): void { observerCallback = null; }
     };
+    detach = jasmine.createSpy('detach');
+    voices = { attach: jasmine.createSpy('attach').and.returnValue(detach), replay: jasmine.createSpy('replay') };
     TestBed.configureTestingModule({
       imports: [HostComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: BubbleVoiceService, useValue: voices }],
     });
     fixture = TestBed.createComponent(HostComponent);
     host = fixture.componentInstance;
@@ -220,6 +227,66 @@ describe('BubbleClockDirective', () => {
       host.panel = videoPanel; // the author added a timed balloon (CMS preview)
       fixture.detectChanges();
       expect(clock().state).toBe('running');
+    });
+  });
+
+  describe('spoken lines (voiced balloons)', () => {
+    it('keeps following the panel for its lines when no balloon is timed: every balloon due, clock running', () => {
+      host.panel = voicedUntimedPanel;
+      fixture.detectChanges();
+      expect(clock().state).toBe('waiting');
+      expect(clock().allDue).toBeTrue();
+      expect(clock().elapsed()).toBe(Number.POSITIVE_INFINITY);
+      expect(voices.attach).toHaveBeenCalledWith('p1', voicedUntimedPanel, clock());
+      setShown(true);
+      expect(clock().state).toBe('running');
+      setShown(false);
+      expect(clock().state).toBe('paused');
+    });
+
+    it('under reduced motion a voiced panel shows every balloon at once but still follows the panel', () => {
+      host.panel = voicedTimedPanel;
+      host.reducedMotion = true;
+      fixture.detectChanges();
+      expect(clock().allDue).toBeTrue();
+      expect(clock().state).toBe('waiting');
+      expect(voices.attach).toHaveBeenCalledTimes(1);
+      setShown(true);
+      expect(clock().state).toBe('running');
+    });
+
+    it('a timed and voiced panel keeps its timing', () => {
+      host.panel = voicedTimedPanel;
+      fixture.detectChanges();
+      expect(clock().allDue).toBeFalse();
+      expect(voices.attach).toHaveBeenCalledTimes(1);
+    });
+
+    it('detaches the lines when another panel is shown in the host and when destroyed', () => {
+      host.panel = voicedUntimedPanel;
+      fixture.detectChanges();
+      expect(detach).not.toHaveBeenCalled();
+      host.key = 'p2';
+      host.panel = { ...voicedUntimedPanel } as Panel;
+      fixture.detectChanges();
+      expect(detach).toHaveBeenCalledTimes(1);
+      expect(voices.attach).toHaveBeenCalledTimes(2);
+      fixture.destroy();
+      expect(detach).toHaveBeenCalledTimes(2);
+    });
+
+    it('attaches nothing for static copies, print renders and silent panels', () => {
+      host.panel = voicedUntimedPanel;
+      host.isStatic = true;
+      fixture.detectChanges();
+      expect(voices.attach).not.toHaveBeenCalled();
+      expect(clock().state).toBe('done');
+
+      host.isStatic = false;
+      host.panel = untimedPanel;
+      fixture.detectChanges();
+      expect(voices.attach).not.toHaveBeenCalled();
+      expect(clock().state).toBe('done');
     });
   });
 

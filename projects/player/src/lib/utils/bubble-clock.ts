@@ -11,7 +11,10 @@
  * - `waiting` — armed, time stands at 0 (panel not shown yet / video not started);
  * - `running` — time advances;
  * - `paused`  — time holds (video paused or buffering, panel scrolled away, tab hidden);
- * - `done`    — every balloon is due (reduced motion, print, no timed balloons).
+ * - `done`    — every balloon is due and the clock has stopped for good (print, static copies, nothing timed or voiced).
+ *
+ * `markAllDue()` makes every balloon due without stopping: the clock still
+ * follows the panel (reduced motion, no timed balloon) for its spoken lines.
  */
 import { Observable, Subject } from 'rxjs';
 
@@ -19,6 +22,7 @@ export type BubbleClockState = 'waiting' | 'running' | 'paused' | 'done';
 
 export class BubbleClock {
   private current: BubbleClockState = 'waiting';
+  private allDueFlag = false;
   private accumulatedMs = 0;
   private runningSince: number | null = null;
   private readonly changesSubject = new Subject<BubbleClockState>();
@@ -34,7 +38,7 @@ export class BubbleClock {
 
   /** Time on the clock in ms; `Infinity` once done, so every balloon is due. */
   elapsed(): number {
-    if (this.current === 'done') return Number.POSITIVE_INFINITY;
+    if (this.current === 'done' || this.allDueFlag) return Number.POSITIVE_INFINITY;
     const live = this.runningSince === null ? 0 : Math.max(0, this.now() - this.runningSince);
     return this.accumulatedMs + live;
   }
@@ -54,16 +58,31 @@ export class BubbleClock {
     this.transition('paused');
   }
 
-  /** Make every balloon due (reduced motion, print, nothing timed). */
+  /** Make every balloon due and stop for good (print, static copies, nothing timed or voiced). */
   finish(): void {
     if (this.current === 'done') return;
     this.runningSince = null;
     this.transition('done');
   }
 
+  /**
+   * Every balloon is due at once (reduced motion, no timed balloon), but the
+   * clock keeps running with the panel: the spoken lines of the balloons
+   * (`BubbleVoiceService`) still follow the panel being shown.
+   */
+  markAllDue(): void {
+    this.allDueFlag = true;
+  }
+
+  /** Whether every balloon is due regardless of the time (`markAllDue` or done). */
+  get allDue(): boolean {
+    return this.allDueFlag || this.current === 'done';
+  }
+
   /** Back to 0, waiting (the panel is shown again). */
   reset(): void {
     const changed = this.current !== 'waiting' || this.accumulatedMs !== 0 || this.runningSince !== null;
+    this.allDueFlag = false;
     this.accumulatedMs = 0;
     this.runningSince = null;
     this.current = 'waiting';

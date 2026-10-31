@@ -8,6 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { PlayerShellComponent } from './player-shell.component';
 import { PlayerStateService } from '../../services/player-state.service';
+import { BubbleVoiceService } from '../../services/bubble-voice.service';
 import { ManifestService } from '../../services/manifest.service';
 import { VariableStoreService } from '../../services/variable-store.service';
 import { FlowEngineService } from '../../services/flow-engine.service';
@@ -40,6 +41,7 @@ describe('PlayerShellComponent content widgets', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PlayerStateService, useValue: {} },
+        { provide: BubbleVoiceService, useValue: { setEnabled: () => undefined, stopAll: () => undefined } },
         { provide: ManifestService, useValue: { getManifest: () => null } },
         { provide: VariableStoreService, useValue: {} },
         { provide: FlowEngineService, useValue: {} },

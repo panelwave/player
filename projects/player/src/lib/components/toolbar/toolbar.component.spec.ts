@@ -36,6 +36,7 @@ describe('ToolbarComponent', () => {
         speech_toggle: 'Toggle speech',
         audio_toggle: 'Toggle audio',
         sfx_toggle: 'Toggle SFX',
+        voices_toggle: 'Toggle voices',
         autoplay_toggle: 'Toggle autoplay',
         decrease_speed: 'Slower',
         increase_speed: 'Faster',
@@ -170,10 +171,11 @@ describe('ToolbarComponent', () => {
   });
 
   describe('toggles', () => {
-    const toggles: [string, 'speechEnabled' | 'audioEnabled' | 'sfxEnabled' | 'thumbnailsVisible'][] = [
+    const toggles: [string, 'speechEnabled' | 'audioEnabled' | 'sfxEnabled' | 'voicesEnabled' | 'thumbnailsVisible'][] = [
       ['Toggle speech', 'speechEnabled'],
       ['Toggle audio', 'audioEnabled'],
       ['Toggle SFX', 'sfxEnabled'],
+      ['Toggle voices', 'voicesEnabled'],
       ['Toggle thumbnails', 'thumbnailsVisible'],
     ];
 
@@ -198,18 +200,22 @@ describe('ToolbarComponent', () => {
       const speech = jasmine.createSpy('speech');
       const audio = jasmine.createSpy('audio');
       const sfx = jasmine.createSpy('sfx');
+      const voices = jasmine.createSpy('voices');
       const thumbs = jasmine.createSpy('thumbs');
       component.toggleSpeech.subscribe(speech);
       component.toggleAudio.subscribe(audio);
       component.toggleSfx.subscribe(sfx);
+      component.toggleVoices.subscribe(voices);
       component.toggleThumbnails.subscribe(thumbs);
       btn('Toggle speech')?.click();
       btn('Toggle audio')?.click();
       btn('Toggle SFX')?.click();
+      btn('Toggle voices')?.click();
       btn('Toggle thumbnails')?.click();
       expect(speech).toHaveBeenCalledTimes(1);
       expect(audio).toHaveBeenCalledTimes(1);
       expect(sfx).toHaveBeenCalledTimes(1);
+      expect(voices).toHaveBeenCalledTimes(1);
       expect(thumbs).toHaveBeenCalledTimes(1);
     });
   });

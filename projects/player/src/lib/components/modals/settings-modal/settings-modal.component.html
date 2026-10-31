@@ -132,6 +132,17 @@
                   <span>{{ 'settings.enable_sfx' | translate }}</span>
                 </label>
               </div>
+
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input
+                    type="checkbox"
+                    class="setting-checkbox"
+                    [ngModel]="preferences.voices"
+                    (ngModelChange)="updatePreference('voices', $event)" />
+                  <span>{{ 'settings.enable_voices' | translate }}</span>
+                </label>
+              </div>
             </div>
 
             <div class="settings-section">

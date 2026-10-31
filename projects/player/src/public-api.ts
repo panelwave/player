@@ -29,6 +29,8 @@ export {
   PANEL_AUDIO_LEAVE_FADE_MS,
   type ResolvedPanelAudio,
 } from './lib/services/panel-audio.service';
+export { BubbleVoiceService, BUBBLE_VOICE_STOP_FADE_MS } from './lib/services/bubble-voice.service';
+export { bubbleAudioAssetId, hasVoicedBubbles, voiceCuesFor, type VoiceCue } from './lib/utils/bubble-voice-utils';
 export { VideoControllerService, type VideoState, type VideoEvent, type VideoStatus } from './lib/services/video-controller.service';
 export { UserGestureService } from './lib/services/user-gesture.service';
 export { VisibilityService, VISIBILITY_THRESHOLD, type VisibilityChange } from './lib/services/visibility.service';
@@ -117,6 +119,7 @@ export {
   panelThumbnailSrc,
   coverImageSrc,
   localizeImageVariants,
+  localizeVariants,
   DEFAULT_PAGE_BACKGROUND,
   resolvePageBackground,
   LOCATION_PARAMS,

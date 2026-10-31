@@ -54,6 +54,23 @@ describe('BubbleClock', () => {
     expect(states).toEqual(['done']);
   });
 
+  it('markAllDue makes every balloon due while the clock keeps following the panel', () => {
+    clock.markAllDue();
+    expect(clock.allDue).toBeTrue();
+    expect(clock.state).toBe('waiting');
+    expect(clock.elapsed()).toBe(Number.POSITIVE_INFINITY);
+    clock.start();
+    expect(clock.state).toBe('running');
+    clock.pause();
+    expect(clock.state).toBe('paused');
+    expect(states).toEqual(['running', 'paused']);
+    clock.reset();
+    expect(clock.allDue).toBeFalse();
+    expect(clock.elapsed()).toBe(0);
+    clock.finish();
+    expect(clock.allDue).toBeTrue();
+  });
+
   it('reset goes back to 0, waiting', () => {
     clock.start();
     now += 2000;

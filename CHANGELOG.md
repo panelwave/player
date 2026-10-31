@@ -8,6 +8,12 @@ semver. The reader-facing product changelog lives on the docs site
 ## [Unreleased]
 
 ### Changed
+- **The Speech toggle only hides the balloons.** It no longer mutes the
+  `voiceover` bus — the new Voices toggle does — so a reader can listen to
+  the lines without reading them. `BubbleClockDirective` keeps a panel's
+  clock running for its spoken lines even when no balloon is timed
+  (`BubbleClock.markAllDue()` makes every balloon due without stopping);
+  the E2E suite runs Chromium with `--autoplay-policy=no-user-gesture-required`.
 - **Page view letters wide pages smaller.** `pageLetteringScale` eases its
   share of panel view's scale from 0.75 (pages up to 1920 CSS px) to 0.6 at
   3840 px (new `pageLetteringFactor`, `PAGE_LETTERING_FACTOR_WIDE`,
@@ -17,6 +23,23 @@ semver. The reader-facing product changelog lives on the docs site
   Same rule as the CMS editor.
 
 ### Added
+- **Spoken lines and the Voices toggle** (format 1.12). A balloon's
+  `audioAssetId` plays when the balloon appears — with the panel, or at its
+  `showAtMs` on the panel clock — one line after another in balloon order,
+  on the `voiceover` bus. The new `BubbleVoiceService` is attached by the
+  `BubbleClockDirective` while a panel is shown; panels shown together (page
+  and canvas view) read in order, a panel that is scrolled away or left stops
+  talking, and a tap on a balloon replays its line. An audio asset with one
+  `AudioVariant` per `locale` plays the reader's language —
+  `ManifestService.getAsset(id, locale)` now narrows audio and video variants
+  like image variants (new export `localizeVariants`; `localizeImageVariants`
+  stays as an alias) — and switching the language re-reads the shown panel.
+  Toolbar and settings get a **Voices** toggle (preference `voices`, seeded
+  from `settings.ui.voicesDefault`, default on; tracking event
+  `voices_toggle`); lines refused by the autoplay policy play on the first
+  gesture. `AudioTrack.onEnded` tells the caller when a one-shot track ended.
+  Exports: `BubbleVoiceService`, `BUBBLE_VOICE_STOP_FADE_MS`,
+  `bubbleAudioAssetId`, `hasVoicedBubbles`, `voiceCuesFor`, `VoiceCue`.
 - **Per-language artwork** (format 1.11 `ImageVariant.locale`): an image
   asset can carry language versions of itself (a sign, a title card,
   lettering drawn into the image). `ManifestService.getAsset(id, locale)`

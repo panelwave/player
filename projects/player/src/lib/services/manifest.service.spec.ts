@@ -440,6 +440,32 @@ describe('ManifestService', () => {
       expect(service.getAsset('img-1', 'de-DE')).toBe(service.getAsset('img-1'));
     });
 
+    it('narrows an audio asset with a line per language to the reader\'s locale (format 1.12 spoken lines)', (done) => {
+      const manifest = {
+        ...validManifest,
+        meta: { ...validManifest.meta, default_locale: 'en-US' },
+        assets: {
+          catalog: [
+            {
+              id: 'voice-b1',
+              category: 'audio' as const,
+              role: 'voiceover' as const,
+              variants: [
+                { src: 'b1.en-US.mp3', locale: 'en-US' },
+                { src: 'b1.de-DE.mp3', locale: 'de-DE' },
+              ],
+            },
+          ],
+        },
+      } as PanelWaveManifest;
+      service.loadManifestFromObject(manifest).subscribe(() => {
+        expect(service.getAsset('voice-b1', 'de-AT')?.variants.map((v) => v.src)).toEqual(['b1.de-DE.mp3']);
+        expect(service.getAsset('voice-b1', 'fr-FR')?.variants.map((v) => v.src)).toEqual(['b1.en-US.mp3']); // the default locale
+        expect(service.getAsset('voice-b1')?.variants.length).toBe(2);
+        done();
+      });
+    });
+
     it('should check if asset exists', () => {
       expect(service.hasAsset('img-1')).toBe(true);
       expect(service.hasAsset('non-existent')).toBe(false);

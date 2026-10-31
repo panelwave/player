@@ -95,6 +95,7 @@ import type { PaywallGate } from '../../types/entitlement.types';
 import { SettingsModalComponent, type Preferences } from '../modals/settings-modal/settings-modal.component';
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
+import { BubbleVoiceService } from '../../services/bubble-voice.service';
 import { SequenceAudioService } from '../../services/sequence-audio.service';
 import { isLockedPanel } from '../../utils/panel-lock';
 import { CharacterRosterComponent } from '../modals/character-roster/character-roster.component';
@@ -764,12 +765,20 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   sfxEnabled = true;
 
   /**
+   * Voices toggle state: the balloons' spoken lines (BubbleVoiceService) and
+   * the voiceover bus. Reader preference when set, else the manifest's
+   * settings.ui.voicesDefault (schema 1.12; default on).
+   */
+  voicesEnabled = true;
+
+  /**
    * Snapshot handed to the settings modal's Preferences tab (rebuilt on open).
    */
   settingsPreferences: Preferences = {
     speech: true,
     audio: true,
     sfx: true,
+    voices: true,
     autoplay: false,
     secondsPerPanel: 5,
     mangaMode: false,
@@ -826,6 +835,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly audioEngine = inject(AudioEngineService);
   private readonly panelAudio = inject(PanelAudioService);
+  private readonly bubbleVoice = inject(BubbleVoiceService);
   private readonly sequenceAudio = inject(SequenceAudioService);
 
   /**
@@ -960,6 +970,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.videoSequencer.reset();
     this.panelAudio.stopAll();
     this.sequenceAudio.stopAll();
+    this.bubbleVoice.stopAll();
     this.endAnalyticsSession();
     this.analyticsSessionStarted = this.analyticsSessionEnded = this.workCompleteTracked = false;
     this.lastTrackedPanelId = undefined;
@@ -1043,6 +1054,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.videoSequencer.reset();
     this.panelAudio.stopAll();
     this.sequenceAudio.stopAll();
+    this.bubbleVoice.stopAll();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -2344,9 +2356,14 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.setSfxEnabled(!this.sfxEnabled);
   }
 
+  onToggleVoices(): void {
+    this.setVoicesEnabled(!this.voicesEnabled);
+  }
+
   /**
-   * Speech bubbles on/off. Also gates the voiceover bus: spoken lines belong
-   * to the bubbles they voice (schema audio roles).
+   * Speech bubbles on/off. Since format 1.12 this only hides the balloons;
+   * their spoken lines follow the Voices toggle, so a reader can listen
+   * without reading.
    */
   setSpeechEnabled(enabled: boolean): void {
     if (this.speechEnabled === enabled) {
@@ -2385,19 +2402,34 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   }
 
   /**
+   * Voices on/off: the balloons' spoken lines (BubbleVoiceService) and the
+   * voiceover bus (narration tracks).
+   */
+  setVoicesEnabled(enabled: boolean): void {
+    if (this.voicesEnabled === enabled) {
+      return;
+    }
+    this.voicesEnabled = enabled;
+    this.playerState.updatePreference('voices', enabled);
+    this.applyAudioPreferences();
+    this.trackingService.track('voices_toggle', { enabled });
+  }
+
+  /**
    * Seed the toggle states once the manifest is loaded: a preference the
    * reader set explicitly (this or an earlier session) wins over the work's
-   * `settings.ui.speechDefault` / `audioDefault` / `sfxDefault`.
+   * `settings.ui.speechDefault` / `audioDefault` / `sfxDefault` / `voicesDefault`.
    */
   private initializeAudioPreferences(manifest: PanelWaveManifest | null): void {
     const ui = manifest?.settings?.ui;
     const prefs = this.playerState.getPreferences();
-    const pick = (key: 'speech' | 'audio' | 'sfx', workDefault: boolean | undefined): boolean =>
+    const pick = (key: 'speech' | 'audio' | 'sfx' | 'voices', workDefault: boolean | undefined): boolean =>
       this.playerState.hasPersistedPreference(key) ? prefs[key] : workDefault !== false;
 
     this.speechEnabled = pick('speech', ui?.speechDefault);
     this.audioEnabled = pick('audio', ui?.audioDefault);
     this.sfxEnabled = pick('sfx', ui?.sfxDefault);
+    this.voicesEnabled = pick('voices', ui?.voicesDefault);
     this.applyAudioPreferences();
   }
 
@@ -2411,7 +2443,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.audioEngine.setRoleVolume('sfx', prefs.sfxVolume ?? 1);
     this.audioEngine.setMasterMuted(!this.audioEnabled);
     this.audioEngine.setRoleMuted('sfx', !this.sfxEnabled);
-    this.audioEngine.setRoleMuted('voiceover', !this.speechEnabled);
+    this.audioEngine.setRoleMuted('voiceover', !this.voicesEnabled);
+    this.bubbleVoice.setEnabled(this.voicesEnabled);
   }
 
   /**
@@ -2424,6 +2457,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.setSpeechEnabled(prefs.speech);
     this.setAudioEnabled(prefs.audio);
     this.setSfxEnabled(prefs.sfx);
+    this.setVoicesEnabled(prefs.voices);
 
     const seconds = Number(prefs.secondsPerPanel);
     if (Number.isFinite(seconds) && seconds > 0 && seconds !== this.secondsPerPanel) {
@@ -2507,6 +2541,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       speech: this.speechEnabled,
       audio: this.audioEnabled,
       sfx: this.sfxEnabled,
+      voices: this.voicesEnabled,
       autoplay: this.autoplayEnabled,
       secondsPerPanel: this.secondsPerPanel,
       mangaMode: prefs.mangaMode,

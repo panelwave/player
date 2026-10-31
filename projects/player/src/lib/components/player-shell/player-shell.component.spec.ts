@@ -23,6 +23,7 @@ import { VideoControllerService } from '../../services/video-controller.service'
 import { VideoSequencerService } from '../../services/video-sequencer.service';
 import { AudioEngineService } from '../../services/audio-engine.service';
 import { PanelAudioService } from '../../services/panel-audio.service';
+import { BubbleVoiceService } from '../../services/bubble-voice.service';
 import { PlayerEvent } from '../../types';
 import type { Chapter, Panel, PanelWaveManifest, PlayerPreferences } from '../../types';
 
@@ -105,6 +106,7 @@ describe('PlayerShellComponent auto-advance', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PlayerStateService, useValue: {} },
+        { provide: BubbleVoiceService, useValue: { setEnabled: () => undefined, stopAll: () => undefined } },
         { provide: ManifestService, useValue: manifestServiceMock },
         { provide: VariableStoreService, useValue: {} },
         { provide: FlowEngineService, useValue: {} },
@@ -776,6 +778,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
   let shell: PlayerShellComponent;
   let engine: jasmine.SpyObj<AudioEngineService>;
   let panelAudio: jasmine.SpyObj<PanelAudioService>;
+  let bubbleVoice: jasmine.SpyObj<BubbleVoiceService>;
   let tracking: { track: jasmine.Spy };
   let manifest: Partial<PanelWaveManifest> | null;
   let prefs: PlayerPreferences;
@@ -804,6 +807,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       speech: true,
       audio: true,
       sfx: true,
+      voices: true,
       autoplay: false,
       secondsPerPanel: 5,
       mangaMode: false,
@@ -841,6 +845,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       'syncPanel',
       'stopAll',
     ]);
+    bubbleVoice = jasmine.createSpyObj<BubbleVoiceService>('BubbleVoiceService', ['setEnabled', 'stopAll', 'attach', 'replay']);
     tracking = { track: jasmine.createSpy('tracking.track') };
 
     TestBed.configureTestingModule({
@@ -863,6 +868,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
         },
         { provide: AudioEngineService, useValue: engine },
         { provide: PanelAudioService, useValue: panelAudio },
+        { provide: BubbleVoiceService, useValue: bubbleVoice },
       ],
     });
     TestBed.overrideComponent(PlayerShellComponent, {
@@ -879,7 +885,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
   describe('initial state', () => {
     it('seeds the toggles from settings.ui defaults when the reader has not chosen', () => {
       manifest = {
-        settings: { ui: { audioDefault: false, sfxDefault: false, speechDefault: true } },
+        settings: { ui: { audioDefault: false, sfxDefault: false, speechDefault: true, voicesDefault: false } },
       } as Partial<PanelWaveManifest>;
 
       priv().initializeAudioPreferences(manifest);
@@ -887,9 +893,11 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       expect(shell.audioEnabled).toBe(false);
       expect(shell.sfxEnabled).toBe(false);
       expect(shell.speechEnabled).toBe(true);
+      expect(shell.voicesEnabled).toBe(false);
       expect(engine.setMasterMuted).toHaveBeenCalledWith(true);
       expect(engine.setRoleMuted).toHaveBeenCalledWith('sfx', true);
-      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', false);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(false);
       // Stored volumes reach the mixer independently of the mute flags.
       expect(engine.setMasterVolume).toHaveBeenCalledWith(0.7);
       expect(engine.setRoleVolume).toHaveBeenCalledWith('sfx', 0.4);
@@ -901,7 +909,10 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       expect(shell.audioEnabled).toBe(true);
       expect(shell.sfxEnabled).toBe(true);
       expect(shell.speechEnabled).toBe(true);
+      expect(shell.voicesEnabled).toBe(true);
       expect(engine.setMasterMuted).toHaveBeenCalledWith(false);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', false);
+      expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(true);
     });
 
     it('a preference the reader set wins over the work default', () => {
@@ -942,13 +953,32 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       expect(tracking.track).toHaveBeenCalledWith('sfx_toggle', { enabled: false });
     });
 
-    it('Speech also gates the voiceover bus', () => {
+    it('Speech only hides the balloons; the voiceover bus follows Voices', () => {
       shell.onToggleSpeech();
 
       expect(shell.speechEnabled).toBe(false);
-      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(shell.voicesEnabled).toBe(true);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', false);
+      expect(engine.setRoleMuted).not.toHaveBeenCalledWith('voiceover', true);
       expect(stateMock.updatePreference).toHaveBeenCalledWith('speech', false);
       expect(tracking.track).toHaveBeenCalledWith('speech_toggle', { enabled: false });
+    });
+
+    it('Voices gates the voiceover bus and the spoken lines, persists and tracks', () => {
+      shell.onToggleVoices();
+
+      expect(shell.voicesEnabled).toBe(false);
+      expect(shell.speechEnabled).toBe(true);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(false);
+      expect(stateMock.updatePreference).toHaveBeenCalledWith('voices', false);
+      expect(tracking.track).toHaveBeenCalledWith('voices_toggle', { enabled: false });
+
+      shell.onToggleVoices();
+
+      expect(shell.voicesEnabled).toBe(true);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', false);
+      expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(true);
     });
 
     it('setting the same value again is a no-op', () => {
@@ -968,15 +998,16 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       shell.onOpenSettings();
 
       expect(shell.settingsPreferences).toEqual(
-        jasmine.objectContaining({ audio: false, sfx: true, speech: true, secondsPerPanel: 7 })
+        jasmine.objectContaining({ audio: false, sfx: true, speech: true, voices: true, secondsPerPanel: 7 })
       );
     });
 
-    it('save applies audio/sfx/speech, timing and persists the rest', () => {
+    it('save applies audio/sfx/speech/voices, timing and persists the rest', () => {
       shell.onPreferencesChange({
         speech: false,
         audio: false,
         sfx: true,
+        voices: false,
         autoplay: false,
         secondsPerPanel: 9,
         mangaMode: true,
@@ -987,9 +1018,11 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       expect(shell.audioEnabled).toBe(false);
       expect(shell.speechEnabled).toBe(false);
       expect(shell.sfxEnabled).toBe(true);
+      expect(shell.voicesEnabled).toBe(false);
       expect(shell.secondsPerPanel).toBe(9);
       expect(engine.setMasterMuted).toHaveBeenCalledWith(true);
       expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(false);
       expect(stateMock.updatePreferences).toHaveBeenCalledWith(
         jasmine.objectContaining({ mangaMode: true, highContrast: true, secondsPerPanel: 9 })
       );
@@ -1047,6 +1080,7 @@ describe('PlayerShellComponent reduced motion', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PlayerStateService, useValue: { preferences$: prefs$, getPreferences: () => prefs$.value } },
+        { provide: BubbleVoiceService, useValue: { setEnabled: () => undefined, stopAll: () => undefined } },
         { provide: ManifestService, useValue: { getManifest: () => null } },
         { provide: VariableStoreService, useValue: {} },
         { provide: FlowEngineService, useValue: {} },

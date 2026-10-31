@@ -27,6 +27,8 @@ export interface AudioTrack {
   fadeOut?: number; // milliseconds
   /** Playback speed (0.25-4; 1 = as recorded). */
   playbackRate?: number;
+  /** Called once when a one-shot track reaches its end (after the engine released it). */
+  onEnded?: () => void;
 }
 
 /**
@@ -608,6 +610,7 @@ export class AudioEngineService {
       active.onEnded = () => {
         if (this.tracks.get(track.id) === active) {
           this.cleanup(track.id);
+          track.onEnded?.();
         }
       };
       audio.addEventListener('ended', active.onEnded);

@@ -167,6 +167,9 @@ export interface PlayerPreferences {
   
   /** Enable sound effects */
   sfx: boolean;
+
+  /** Spoken lines: speech-bubble audio and voiceover tracks (schema 1.12 Voices toggle) */
+  voices: boolean;
   
   /** Enable autoplay */
   autoplay: boolean;

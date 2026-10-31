@@ -27,6 +27,7 @@ export interface Preferences {
   speech: boolean;
   audio: boolean;
   sfx: boolean;
+  voices: boolean;
   autoplay: boolean;
   secondsPerPanel: number;
   mangaMode: boolean;
@@ -61,6 +62,7 @@ export class SettingsModalComponent implements OnInit, OnChanges {
     speech: true,
     audio: true,
     sfx: true,
+    voices: true,
     autoplay: false,
     secondsPerPanel: 5,
     mangaMode: false,
@@ -273,6 +275,7 @@ export class SettingsModalComponent implements OnInit, OnChanges {
       speech: true,
       audio: true,
       sfx: true,
+      voices: true,
       autoplay: false,
       secondsPerPanel: 5,
       mangaMode: false,

@@ -12,10 +12,9 @@ import type {
   Panel,
   Chapter,
   AssetCatalogItem,
-  ImageVariant,
   LocaleCode,
 } from '../types';
-import { localizeImageVariants } from '../utils/image-variant-utils';
+import { localizeVariants } from '../utils/image-variant-utils';
 
 /**
  * Manifest indexes for fast lookups
@@ -251,9 +250,10 @@ export class ManifestService {
   /**
    * Get an asset by ID
    * @param assetId - Asset identifier
-   * @param locale - The reader's locale: an image with language versions
-   *   (schema 1.11 `ImageVariant.locale`) comes back with only the variants
-   *   for that language (see localizeImageVariants). Omitted: all variants.
+   * @param locale - The reader's locale: an asset with language versions
+   *   (schema 1.11 `ImageVariant.locale`; `AudioVariant` / `VideoVariant`
+   *   `locale` for spoken lines and dubbed clips) comes back with only the
+   *   variants for that language (see localizeVariants). Omitted: all variants.
    * @returns Asset catalog item, or null if not found
    */
   getAsset(assetId: string, locale?: LocaleCode): AssetCatalogItem | null {
@@ -262,14 +262,14 @@ export class ManifestService {
     }
 
     const asset = this.indexes.assets.get(assetId) || null;
-    if (!asset || !locale || asset.category !== 'image' || !asset.variants?.some((variant) => variant.locale)) {
+    const variants = asset?.variants as { locale?: string }[] | undefined;
+    if (!asset || !locale || !variants?.some((variant) => variant.locale)) {
       return asset;
     }
     const key = `${locale}|${assetId}`;
     let localized = this.localizedAssets.get(key);
     if (!localized) {
-      const variants = localizeImageVariants(asset.variants as ImageVariant[], locale, this.manifest?.meta?.default_locale);
-      localized = { ...asset, variants };
+      localized = { ...asset, variants: localizeVariants(variants, locale, this.manifest?.meta?.default_locale) } as AssetCatalogItem;
       this.localizedAssets.set(key, localized);
     }
     return localized;

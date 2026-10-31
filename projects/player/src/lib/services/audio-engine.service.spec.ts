@@ -447,6 +447,20 @@ describe('AudioEngineService', () => {
       expect(service.isActive('shot')).toBe(false);
     });
 
+    it('tells the track when it ended, after releasing it', async () => {
+      const onEnded = jasmine.createSpy('onEnded').and.callFake(() => {
+        expect(service.isActive('line')).toBe(false);
+      });
+      await service.play({ id: 'line', url: 'line.mp3', role: 'voiceover', onEnded });
+      const ended = mockAudio.addEventListener.calls
+        .allArgs()
+        .find((args: unknown[]) => args[0] === 'ended')?.[1] as () => void;
+
+      ended();
+
+      expect(onEnded).toHaveBeenCalledTimes(1);
+    });
+
     it('does not attach an ended handler to looping tracks', async () => {
       await service.play({ id: 'loop', url: 'loop.mp3', role: 'ambient', loop: true });
 

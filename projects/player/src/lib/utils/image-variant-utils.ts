@@ -38,14 +38,15 @@ export function selectImageVariantForWidth(
 }
 
 /**
- * Narrow an image's variants to one language (schema 1.11
- * `ImageVariant.locale`) before choosing by width: the reader's exact
- * locale, else the first locale of the same base language (a de-AT reader
- * gets de-DE), else the variants without a locale, else the work's default
- * locale (exact, then same language), else all variants. Images without any
- * localized variant come back unchanged.
+ * Narrow an asset's variants to one language (schema 1.11
+ * `ImageVariant.locale`; `AudioVariant` / `VideoVariant` `locale` for spoken
+ * lines and dubbed clips) before choosing by width or playability: the
+ * reader's exact locale, else the first locale of the same base language (a
+ * de-AT reader gets de-DE), else the variants without a locale, else the
+ * work's default locale (exact, then same language), else all variants.
+ * Assets without any localized variant come back unchanged.
  */
-export function localizeImageVariants<T extends { locale?: string }>(
+export function localizeVariants<T extends { locale?: string }>(
   variants: T[] | undefined,
   locale: string | undefined,
   defaultLocale?: string
@@ -77,6 +78,9 @@ export function localizeImageVariants<T extends { locale?: string }>(
   }
   return variants;
 }
+
+/** `localizeVariants` under its original (image-only) name. */
+export const localizeImageVariants = localizeVariants;
 
 /**
  * Quantize a required width so tiny zoom changes don't thrash variant

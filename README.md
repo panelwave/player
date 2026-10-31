@@ -118,6 +118,7 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Image Cache** - LRU cache with memory budget management
 - **Responsive Images** - Selects the best fit from the manifest's variant ladder (e.g. `w640`–`w2560`) per display size
 - **Audio Engine** - WebAudio mixer with 4 channels (ambient, music, voiceover, SFX)
+- **Spoken Lines** - a balloon's `audioAssetId` plays when the balloon appears, one line after another, in the reader's language (one `AudioVariant` per `locale`); the **Voices** toggle (`settings.ui.voicesDefault`) lets readers listen without reading (format 1.12)
 - **Video Controller** - Single active video policy with state management
 
 ### ✅ Internationalization
@@ -645,6 +646,8 @@ A bubble with `showAtMs` waits for its line: it appears that many milliseconds a
 - Autoplay keeps a panel without video until the last timed balloon has been readable for 2 s. Video panels advance on the video's pass as before.
 
 The player shell wires this up. A host that renders `pw-speech-bubbles` itself puts `[pwBubbleClock]="panel"` and `[pwBubbleClockKey]="panelId"` (`BubbleClockDirective`) on the element around the overlay and the panel's layers; without the directive every balloon shows at once.
+
+A balloon's spoken line (`audioAssetId`, format 1.12) rides on the same directive: while the panel's clock runs, `BubbleVoiceService` plays the lines of its balloons one after another on the `voiceover` bus, in the reader's language (an audio asset with one `AudioVariant` per `locale`). The shell's **Voices** toggle calls `setEnabled()` and mutes the bus with it; a tap on a balloon calls `replay()`. A host without the shell gates it the same way.
 
 ### Interact with Plugins
 

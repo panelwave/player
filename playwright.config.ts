@@ -31,7 +31,7 @@ export default defineConfig({
     {
       name: 'chromium',
       testIgnore: /mobile\..*\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } },
     },
     {
       name: 'firefox',
@@ -46,7 +46,7 @@ export default defineConfig({
     {
       name: 'mobile',
       testMatch: /mobile\..*\.spec\.ts/,
-      use: { ...devices['Pixel 7'] },
+      use: { ...devices['Pixel 7'], launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } },
     },
   ],
   webServer: {

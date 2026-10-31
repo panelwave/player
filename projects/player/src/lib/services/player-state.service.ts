@@ -12,12 +12,13 @@ export const PREFERENCES_STORAGE_KEY = 'pw-preferences';
 
 /**
  * Built-in preference defaults. A work's `settings.ui.*Default` can override
- * the toggle-backed ones (speech/audio/sfx) until the reader sets them.
+ * the toggle-backed ones (speech/audio/sfx/voices) until the reader sets them.
  */
 export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
   speech: true,
   audio: true,
   sfx: true,
+  voices: true,
   autoplay: false,
   secondsPerPanel: 5,
   mangaMode: false,

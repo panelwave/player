@@ -158,6 +158,7 @@ All services are `providedIn: 'root'` unless noted.
 | `PlayerStateService` | Current panel/chapter/locale, reader preferences (`preferences$`, `updatePreference`). |
 | `TrackingService` | `track(type, data)`, consent + whitelist, endpoint batching. |
 | `AudioEngineService` | WebAudio buses (music/sfx/voiceover), master/role mute, fades. |
+| `BubbleVoiceService` | Speaks the balloons' lines (`audioAssetId`, format 1.12) as they appear, one after another, in the reader's language; `setEnabled()` is the Voices toggle, `replay(bubble)` a tap on a balloon. |
 | `PanelAudioService` | Plays `panel.audio` tracks on enter/leave (internal, not exported). |
 | `VideoControllerService` | Single-active-video policy, play/pause state. |
 | `VisibilityService` | IntersectionObserver-based panel visibility (page view). |
