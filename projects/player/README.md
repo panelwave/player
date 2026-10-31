@@ -64,13 +64,14 @@ authoring metadata the player doesn't need).
 npm install @panelwave/player @ngx-translate/core
 ```
 
-Peer dependencies: `@angular/core` and `@angular/common` **^20, ^21 or ^22**,
+Peer dependencies: `@angular/core` and `@angular/common` **^21 or ^22**,
 `@ngx-translate/core` **^17 or ^18**, `rxjs` **^7.8**.
 
-**Angular compatibility.** The package is compiled with Angular 20 in partial
-(linker) mode, so newer Angular versions link it at build time. Every CI run
-installs the packed library into a fresh `ng new` app on Angular 20, 21 and
-22 with ngx-translate 18, and on Angular 20 and 22 with ngx-translate 17
+**Angular compatibility.** The package is compiled with Angular 21 in partial
+(linker) mode, so newer Angular versions link it at build time; apps on
+Angular 20 stay on `@panelwave/player` 1.x. Every CI run installs the packed
+library into a fresh `ng new` app on Angular 21 and 22 with ngx-translate 18,
+and on Angular 21 with ngx-translate 17
 (strict peer resolution, production build, headless render of a sample
 manifest); the player works with zone.js and zoneless change detection (the
 default for new Angular 21+ apps).

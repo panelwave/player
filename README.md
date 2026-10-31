@@ -37,11 +37,12 @@ PanelWave Player is an **Angular library (20, 21 and 22)** that renders interact
 npm install @panelwave/player @ngx-translate/core
 ```
 
-**Compatibility:** Angular **20, 21 and 22** (`@angular/core` / `@angular/common`
-peer range `^20.0.0 || ^21.0.0 || ^22.0.0`), `@ngx-translate/core` ^17 or ^18
+**Compatibility:** Angular **21 and 22** (`@angular/core` / `@angular/common`
+peer range `^21.0.0 || ^22.0.0`; Angular 20 apps stay on `@panelwave/player` 1.x),
+`@ngx-translate/core` ^17 or ^18
 (register it with `provideTranslateService()`, which both majors have; 18 removed
 `TranslateModule`), `rxjs` ^7.8.
-The library is built with Angular 20 in partial-compilation mode and linked by
+The library is built with Angular 21 in partial-compilation mode and linked by
 the host's Angular version; CI proves each supported major with a consumer smoke
 test (`npm run smoke:consumer -- --angular <major>`, see
 [CONTRIBUTING.md](CONTRIBUTING.md)). Zone.js and zoneless apps both work.
@@ -239,8 +240,8 @@ panelwave-player/
 ## 🛠️ Technology Stack
 
 ### Core
-- **Framework:** built with Angular 20 (standalone components); runs on Angular 20, 21 and 22
-- **Language:** TypeScript 5.8+ (strict mode)
+- **Framework:** built with Angular 21 (standalone components); runs on Angular 21 and 22
+- **Language:** TypeScript 5.9+ (strict mode)
 - **State Management:** RxJS BehaviorSubjects
 - **Logic Engine:** json-logic-js (condition evaluation)
 - **Icons:** inlined [Lucide](https://lucide.dev) SVGs (ISC) via the `pw-icon` component — **no icon-library dependency**

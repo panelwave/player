@@ -7,6 +7,16 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Removed
+- **Angular 20 support (breaking, 2.0.0).** The library is built with Angular
+  21 (TypeScript 5.9, ng-packagr 21) and its peer range is
+  `@angular/core` / `@angular/common` `^21.0.0 || ^22.0.0`. A library only
+  links into apps on its own Angular major or newer, and Angular 20 left LTS
+  on 2026-11-28; Angular 20 apps keep using 1.x. The consumer-smoke matrix
+  covers Angular 21 and 22. The demo, reader and standalone apps bootstrap
+  with an explicit `provideZoneChangeDetection()` (Angular 21 apps default to
+  zoneless); the library itself works with either.
+
 ### Changed
 - **The Speech toggle only hides the balloons.** It no longer mutes the
   `voiceover` bus — the new Voices toggle does — so a reader can listen to

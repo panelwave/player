@@ -23,7 +23,7 @@
  *
  * Usage (from the repo root, after `ng build player --configuration production`):
  *   node scripts/consumer-smoke.mjs --angular 22
- *   node scripts/consumer-smoke.mjs --angular 20 --ngx-translate 17
+ *   node scripts/consumer-smoke.mjs --angular 21 --ngx-translate 17
  *   node scripts/consumer-smoke.mjs --angular 21 --tarball ../panelwave-player-x.y.z.tgz --keep
  *
  * Options:

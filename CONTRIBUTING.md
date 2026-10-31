@@ -35,9 +35,9 @@ ng lint player
 
 ```bash
 ng build player --configuration production
-npm run smoke:consumer -- --angular 22            # or 20 / 21
+npm run smoke:consumer -- --angular 22            # or 21
 npm run smoke:consumer -- --angular 22 --zone     # zone.js app instead of zoneless
-npm run smoke:consumer -- --angular 20 --ngx-translate 17   # default: 18
+npm run smoke:consumer -- --angular 21 --ngx-translate 17   # default: 18
 ```
 
 `scripts/consumer-smoke.mjs` packs `dist/player`, generates a fresh app with
@@ -45,11 +45,11 @@ that major's CLI in the OS temp dir, installs the tarball with strict peer
 resolution, wires it up as the package README describes, runs a production
 build and renders the demo manifest in headless Chromium (screenshot in
 `test-results/`). CI runs it for every major in the `@angular/*` peer range
-with the newest `@ngx-translate/core` major, and for the lowest and highest
-Angular major with the older ngx-translate major; when either peer range
+with the newest `@ngx-translate/core` major, and for the lowest Angular major
+with the older ngx-translate major; when either peer range
 changes, change the `consumer-smoke` matrix in `.github/workflows/ci.yml`
 with it. The repo itself builds and tests against the lowest supported
-majors (Angular 20, ngx-translate 17), so only use ngx-translate APIs that
+majors (Angular 21, ngx-translate 17), so only use ngx-translate APIs that
 exist in every supported major (`provideTranslateService`, `TranslatePipe`,
 `setFallbackLang` / `getCurrentLang` / `getFallbackLang`; not
 `TranslateModule` or the `default*` aliases, both gone in 18). Needs a Node version the chosen CLI
@@ -69,7 +69,7 @@ suite for anything that touches the shell, viewport or toolbar.
 
 ## Coding standards
 
-- Angular 20 standalone components, `ChangeDetectionStrategy.OnPush`, signals
+- Angular 21 standalone components, `ChangeDetectionStrategy.OnPush`, signals
   or RxJS as the surrounding code does; `inject()` over constructor injection.
 - Strict TypeScript. No `any` in library code (specs may use it); intentionally
   unused parameters are prefixed with `_`.

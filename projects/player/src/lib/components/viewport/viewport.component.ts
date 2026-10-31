@@ -1829,8 +1829,9 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   /**
    * Handle keyboard navigation (Tab key)
    */
+  // Angular 21 types key-event listener arguments as `Event`.
   @HostListener('keydown.tab', ['$event'])
-  onKeydownTab(event: KeyboardEvent): void {
+  onKeydownTab(event: Event): void {
     if (this.viewMode !== 'page' || !this.page?.readingOrder) return;
     
     event.preventDefault();
@@ -1838,7 +1839,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     const readingOrder = this.page.readingOrder;
     const currentIndex = this.focusedPanelIndex;
     
-    if (event.shiftKey) {
+    if ((event as KeyboardEvent).shiftKey) {
       // Navigate backwards (Shift+Tab)
       const newIndex = currentIndex <= 0 ? readingOrder.length - 1 : currentIndex - 1;
       this.focusPanel(readingOrder[newIndex]);
@@ -1854,7 +1855,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    */
   @HostListener('keydown.arrowRight', ['$event'])
   @HostListener('keydown.arrowDown', ['$event'])
-  onKeydownNext(event: KeyboardEvent): void {
+  onKeydownNext(event: Event): void {
     if (this.viewMode !== 'page' || !this.page?.readingOrder) return;
     
     event.preventDefault();
@@ -1868,7 +1869,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
 
   @HostListener('keydown.arrowLeft', ['$event'])
   @HostListener('keydown.arrowUp', ['$event'])
-  onKeydownPrevious(event: KeyboardEvent): void {
+  onKeydownPrevious(event: Event): void {
     if (this.viewMode !== 'page' || !this.page?.readingOrder) return;
     
     event.preventDefault();

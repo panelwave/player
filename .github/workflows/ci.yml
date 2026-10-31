@@ -110,10 +110,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        angular: [20, 21, 22]
+        angular: [21, 22]
         translate: [18]
         include:
-          - angular: 20
+          - angular: 21
             translate: 17
           - angular: 22
             translate: 17
