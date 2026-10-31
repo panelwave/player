@@ -141,6 +141,18 @@ test.describe('spoken lines', () => {
     await expect.poll(() => plays(page), { timeout: 15000 }).toEqual(['now-en', 'later-en']);
   });
 
+  test('page view: the panels of a page read in order, and a language switch re-reads the page', async ({ page }) => {
+    await stubManifest(page, bubbleVoicesManifest());
+    await openPlayer(page, '', { view: 'default' });
+    await expect(page.locator('pw-viewport .page-canvas').first()).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => plays(page), { timeout: 15000 }).toEqual(['now-en', 'later-en', 'hall']);
+
+    await showToolbar(page);
+    await toolbarButton(page, 'Select language').click();
+    await page.locator('.language-item', { hasText: 'de-DE' }).click();
+    await expect.poll(() => plays(page), { timeout: 15000 }).toEqual(['now-en', 'later-en', 'hall', 'now-de', 'later-de', 'hall']);
+  });
+
   test('a tap on a balloon speaks its line again', async ({ page }) => {
     await stubManifest(page, bubbleVoicesManifest());
     await openPlayer(page);

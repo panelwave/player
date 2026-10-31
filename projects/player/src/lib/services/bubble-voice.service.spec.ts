@@ -184,6 +184,27 @@ describe('BubbleVoiceService', () => {
     flush();
   }));
 
+  it('a later panel waits for the timed line of the panel before it (a page reads in order)', fakeAsync(() => {
+    const clockA = new BubbleClock(() => now);
+    const clockB = new BubbleClock(() => now);
+    service.attach('pA', panel({ id: 'a1', audioAssetId: 'v-a' }, { id: 'a2', audioAssetId: 'v-b', showAtMs: 1000 }), clockA);
+    service.attach('pB', panel({ id: 'b', audioAssetId: 'v-c' }), clockB);
+    clockA.start();
+    clockB.start();
+    tick();
+    expect(playedIds()).toEqual(['voice:pA:a1']);
+    endCurrent();
+    tick();
+    expect(playedIds()).toEqual(['voice:pA:a1']); // a2 is not due yet; b waits its turn
+    now = 1000;
+    tick(1000);
+    expect(playedIds()).toEqual(['voice:pA:a1', 'voice:pA:a2']);
+    endCurrent();
+    tick();
+    expect(playedIds()).toEqual(['voice:pA:a1', 'voice:pA:a2', 'voice:pB:b']);
+    flush();
+  }));
+
   it('a paused panel stops talking and is read again from that line when shown again', fakeAsync(() => {
     const clock = new BubbleClock(() => now);
     service.attach('p1', panel({ id: 'a', audioAssetId: 'v-a' }, { id: 'b', audioAssetId: 'v-b' }), clock);
@@ -253,6 +274,25 @@ describe('BubbleVoiceService', () => {
     tick();
     expect(engine.stop).toHaveBeenCalledWith('voice:p1:a', BUBBLE_VOICE_STOP_FADE_MS);
     expect(played[1].url).toBe('https://cdn.example.com/voice/v-loc.de-DE.mp3');
+    flush();
+  }));
+
+  it('a language switch while a panel is scrolled away re-reads it when it is shown again', fakeAsync(() => {
+    const clock = new BubbleClock(() => now);
+    service.attach('p1', panel({ id: 'a', audioAssetId: 'v-loc' }), clock);
+    clock.start();
+    tick();
+    endCurrent();
+    tick();
+    expect(played.map((t) => t.url)).toEqual(['https://cdn.example.com/voice/v-loc.en-US.mp3']);
+
+    clock.pause();
+    locale$.next('de-DE');
+    tick();
+    expect(engine.play).toHaveBeenCalledTimes(1); // nothing while hidden
+    clock.start();
+    tick();
+    expect(played.map((t) => t.url)).toEqual(['https://cdn.example.com/voice/v-loc.en-US.mp3', 'https://cdn.example.com/voice/v-loc.de-DE.mp3']);
     flush();
   }));
 

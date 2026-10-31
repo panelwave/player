@@ -97,9 +97,10 @@ export class BubbleVoiceService implements OnDestroy {
           return;
         }
         this.locale = locale;
-        // Re-read the current panel in the new language.
+        // Re-read the shown panels in the new language (a panel scrolled away
+        // is read again in it when it comes back).
         this.stopSpeaking(BUBBLE_VOICE_STOP_FADE_MS);
-        this.restartShownSessions();
+        this.restartSessions();
       })
     );
     this.subscriptions.add(
@@ -156,7 +157,7 @@ export class BubbleVoiceService implements OnDestroy {
       }
       return;
     }
-    this.restartShownSessions();
+    this.restartSessions();
   }
 
   isEnabled(): boolean {
@@ -247,42 +248,36 @@ export class BubbleVoiceService implements OnDestroy {
   }
 
   /**
-   * Speak the next due line, if nothing is being spoken: the first unspoken
-   * line whose time has come, across the shown panels in the order they
-   * were shown. Otherwise wait for the earliest line not due yet.
+   * Speak the next line, if nothing is being spoken: the first unspoken
+   * line of the first shown panel (in the order the panels were shown) that
+   * still has one. When that line is not due yet (a timed balloon), wait
+   * for it — the panels after it wait their turn, so a page reads in order.
    */
   private tick(): void {
     if (!this.enabled || this.speaking || this.blocked) {
       return;
     }
-    let next: { session: VoiceSession; cue: VoiceCue; wait: number } | null = null;
     for (const session of this.sessions) {
       this.clearTimer(session);
+    }
+    for (const session of this.sessions) {
       if (session.clock.state !== 'running') {
         continue;
       }
-      const elapsed = session.clock.elapsed();
-      for (const cue of session.cues) {
-        if (session.spoken.has(cue.bubbleId)) {
-          continue;
-        }
-        if (cue.showAtMs <= elapsed) {
-          this.speak(session, cue);
-          return;
-        }
-        const wait = cue.showAtMs - elapsed;
-        if (!next || wait < next.wait) {
-          next = { session, cue, wait };
-        }
-        break; // later lines of this panel come after this one
+      const cue = session.cues.find((candidate) => !session.spoken.has(candidate.bubbleId));
+      if (!cue) {
+        continue;
       }
-    }
-    if (next) {
-      const { session, wait } = next;
+      const elapsed = session.clock.elapsed();
+      if (cue.showAtMs <= elapsed) {
+        this.speak(session, cue);
+        return;
+      }
       session.timer = setTimeout(() => {
         session.timer = null;
         this.tick();
-      }, Math.max(0, wait));
+      }, Math.max(0, cue.showAtMs - elapsed));
+      return;
     }
   }
 
@@ -340,13 +335,14 @@ export class BubbleVoiceService implements OnDestroy {
     }
   }
 
-  /** Read every shown panel from the top (voices turned on, language switched). */
-  private restartShownSessions(): void {
+  /**
+   * Read every panel from the top: the shown ones now, the others when they
+   * are shown again (voices turned on, language switched).
+   */
+  private restartSessions(): void {
     this.blocked = null;
     for (const session of this.sessions) {
-      if (session.clock.state === 'running') {
-        session.spoken.clear();
-      }
+      session.spoken.clear();
     }
     this.tick();
   }

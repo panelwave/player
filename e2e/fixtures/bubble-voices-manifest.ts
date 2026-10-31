@@ -103,6 +103,21 @@ export function bubbleVoicesManifest(options: { voicesDefault?: boolean } = {}) 
       {
         id: 'ch-e2e-voices',
         title: { 'en-US': 'Chapter' },
+        pages: [
+          {
+            id: 'pg-voices',
+            title: { 'en-US': 'Page' },
+            layout: {
+              format: 'desktop-landscape',
+              canvasSize: { width: 1920, height: 1080 },
+              placements: [
+                { panelId: 'pGate', x: 0, y: 0, w: 0.5, h: 1 },
+                { panelId: 'pHall', x: 0.5, y: 0, w: 0.5, h: 1 },
+              ],
+            },
+            readingOrder: ['pGate', 'pHall'],
+          },
+        ],
         panels: {
           pGate: {
             title: { 'en-US': 'Gate' },
