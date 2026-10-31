@@ -467,7 +467,7 @@ export interface UIDefaults {
   sfxDefault?: boolean;
 
   /**
-   * Spoken lines on by default (optional, default: true; schema 1.12+): seeds
+   * Spoken lines on by default (optional, default: false; schema 1.12+): seeds
    * the reader's Voices toggle — speech-bubble audio and voiceover tracks.
    */
   voicesDefault?: boolean;

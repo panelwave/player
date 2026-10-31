@@ -767,9 +767,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   /**
    * Voices toggle state: the balloons' spoken lines (BubbleVoiceService) and
    * the voiceover bus. Reader preference when set, else the manifest's
-   * settings.ui.voicesDefault (schema 1.12; default on).
+   * settings.ui.voicesDefault (schema 1.12; off unless the work sets it).
    */
-  voicesEnabled = true;
+  voicesEnabled = false;
 
   /**
    * Snapshot handed to the settings modal's Preferences tab (rebuilt on open).
@@ -778,7 +778,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     speech: true,
     audio: true,
     sfx: true,
-    voices: true,
+    voices: false,
     autoplay: false,
     secondsPerPanel: 5,
     mangaMode: false,
@@ -2418,7 +2418,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   /**
    * Seed the toggle states once the manifest is loaded: a preference the
    * reader set explicitly (this or an earlier session) wins over the work's
-   * `settings.ui.speechDefault` / `audioDefault` / `sfxDefault` / `voicesDefault`.
+   * `settings.ui.speechDefault` / `audioDefault` / `sfxDefault` (default on) /
+   * `voicesDefault` (default off).
    */
   private initializeAudioPreferences(manifest: PanelWaveManifest | null): void {
     const ui = manifest?.settings?.ui;
@@ -2429,7 +2430,8 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.speechEnabled = pick('speech', ui?.speechDefault);
     this.audioEnabled = pick('audio', ui?.audioDefault);
     this.sfxEnabled = pick('sfx', ui?.sfxDefault);
-    this.voicesEnabled = pick('voices', ui?.voicesDefault);
+    // Voices are off unless the work says otherwise (voicesDefault defaults to false).
+    this.voicesEnabled = this.playerState.hasPersistedPreference('voices') ? prefs.voices : ui?.voicesDefault === true;
     this.applyAudioPreferences();
   }
 

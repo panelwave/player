@@ -57,7 +57,12 @@ const balloon = (id: string, text: string, x: number, audioAssetId?: string, sho
   ...(showAtMs !== undefined ? { showAtMs } : {}),
 });
 
-export function bubbleVoicesManifest(options: { voicesDefault?: boolean } = {}) {
+/**
+ * `voicesDefault` seeds the reader's Voices toggle — the fixture sets it on
+ * (the format default is off; 'omit' leaves the field out).
+ */
+export function bubbleVoicesManifest(options: { voicesDefault?: boolean | 'omit' } = {}) {
+  const voicesDefault = options.voicesDefault === undefined ? true : options.voicesDefault;
   return {
     panelwave: {
       version: '1.12.0',
@@ -71,7 +76,7 @@ export function bubbleVoicesManifest(options: { voicesDefault?: boolean } = {}) 
       default_locale: 'en-US',
     },
     settings: {
-      ui: options.voicesDefault === undefined ? {} : { voicesDefault: options.voicesDefault },
+      ui: voicesDefault === 'omit' ? {} : { voicesDefault },
     },
     assets: {
       catalog: [

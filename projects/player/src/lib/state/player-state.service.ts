@@ -49,7 +49,7 @@ const createInitialState = (): PlayerState => ({
     speech: true,
     audio: true,
     sfx: true,
-    voices: true,
+    voices: false,
     autoplay: false,
     secondsPerPanel: 5,
     mangaMode: false,

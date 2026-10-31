@@ -909,8 +909,19 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       expect(shell.audioEnabled).toBe(true);
       expect(shell.sfxEnabled).toBe(true);
       expect(shell.speechEnabled).toBe(true);
-      expect(shell.voicesEnabled).toBe(true);
+      // Voices are the exception: off unless the work sets voicesDefault.
+      expect(shell.voicesEnabled).toBe(false);
       expect(engine.setMasterMuted).toHaveBeenCalledWith(false);
+      expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', true);
+      expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(false);
+    });
+
+    it('a work with spoken lines turns the voices on through voicesDefault', () => {
+      manifest = { settings: { ui: { voicesDefault: true } } } as Partial<PanelWaveManifest>;
+
+      priv().initializeAudioPreferences(manifest);
+
+      expect(shell.voicesEnabled).toBe(true);
       expect(engine.setRoleMuted).toHaveBeenCalledWith('voiceover', false);
       expect(bubbleVoice.setEnabled).toHaveBeenCalledWith(true);
     });
@@ -954,6 +965,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
     });
 
     it('Speech only hides the balloons; the voiceover bus follows Voices', () => {
+      shell.voicesEnabled = true;
       shell.onToggleSpeech();
 
       expect(shell.speechEnabled).toBe(false);
@@ -965,6 +977,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
     });
 
     it('Voices gates the voiceover bus and the spoken lines, persists and tracks', () => {
+      shell.voicesEnabled = true;
       shell.onToggleVoices();
 
       expect(shell.voicesEnabled).toBe(false);
@@ -998,7 +1011,7 @@ describe('PlayerShellComponent audio / SFX / speech toggles', () => {
       shell.onOpenSettings();
 
       expect(shell.settingsPreferences).toEqual(
-        jasmine.objectContaining({ audio: false, sfx: true, speech: true, voices: true, secondsPerPanel: 7 })
+        jasmine.objectContaining({ audio: false, sfx: true, speech: true, voices: false, secondsPerPanel: 7 })
       );
     });
 

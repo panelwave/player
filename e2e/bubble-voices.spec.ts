@@ -127,6 +127,16 @@ test.describe('spoken lines', () => {
     await expect(toolbarButton(page, "Hear/mute the characters' voices")).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('without settings.ui.voicesDefault the voices start off (the format default)', async ({ page }) => {
+    await stubManifest(page, bubbleVoicesManifest({ voicesDefault: 'omit' }));
+    await openPlayer(page);
+    await expectPanel(page, 'pGate');
+    await expect(balloon(page, 'b-later')).toBeVisible({ timeout: 5000 });
+    expect(await plays(page)).toEqual([]);
+    await showToolbar(page);
+    await expect(toolbarButton(page, "Hear/mute the characters' voices")).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('settings.ui.voicesDefault false starts silent until the reader turns voices on', async ({ page }) => {
     await stubManifest(page, bubbleVoicesManifest({ voicesDefault: false }));
     await openPlayer(page);

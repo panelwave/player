@@ -35,9 +35,9 @@ semver. The reader-facing product changelog lives on the docs site
   like image variants (new export `localizeVariants`; `localizeImageVariants`
   stays as an alias) — and switching the language re-reads the shown panel.
   Toolbar and settings get a **Voices** toggle (preference `voices`, seeded
-  from `settings.ui.voicesDefault`, default on; tracking event
-  `voices_toggle`); lines refused by the autoplay policy play on the first
-  gesture. `AudioTrack.onEnded` tells the caller when a one-shot track ended.
+  from `settings.ui.voicesDefault` — off unless the work sets it; tracking
+  event `voices_toggle`); lines refused by the autoplay policy play on the
+  first gesture. `AudioTrack.onEnded` tells the caller when a one-shot track ended.
   Exports: `BubbleVoiceService`, `BUBBLE_VOICE_STOP_FADE_MS`,
   `bubbleAudioAssetId`, `hasVoicedBubbles`, `voiceCuesFor`, `VoiceCue`.
 - **Per-language artwork** (format 1.11 `ImageVariant.locale`): an image
