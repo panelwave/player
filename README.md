@@ -8,7 +8,7 @@
 [![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
 [![ci](https://github.com/panelwave/player/actions/workflows/ci.yml/badge.svg)](https://github.com/panelwave/player/actions/workflows/ci.yml)
 
-> **Documentation:** [docs.panelwave.org/player/overview](https://docs.panelwave.org/player/overview) · **Live demo:** [panelwave.github.io/player](https://panelwave.github.io/player/) · **npm:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
+> **Documentation:** [docs.panelwave.org/player/overview](https://docs.panelwave.org/player/overview) · **Live demo:** [read.panelwave.org](https://read.panelwave.org/peoplegraphics/47c9ebf3-6f56-4a4d-a75c-fe8c060df192) · **Demo app:** [panelwave.github.io/player](https://panelwave.github.io/player/) · **npm:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
 
 ---
 
@@ -839,7 +839,8 @@ Built with:
 - **Documentation:** https://docs.panelwave.org/player/overview (package README: [projects/player/README.md](projects/player/README.md))
 - **Specifications:** internal docs repo (`docs/technical/player/`)
 - **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
-- **Live demo:** https://panelwave.github.io/player/
+- **Live demo:** https://read.panelwave.org/peoplegraphics/47c9ebf3-6f56-4a4d-a75c-fe8c060df192
+- **Demo app:** https://panelwave.github.io/player/
 - **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.7.0)
 - **Issues:** https://github.com/panelwave/player/issues
 - **Source:** https://github.com/panelwave/player (moved from Bitbucket 2026-09-27)

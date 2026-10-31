@@ -9,7 +9,7 @@ story variables, multilingual text and paywalls, all in one component.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/panelwave/player/blob/master/LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-20%20%7C%2021%20%7C%2022-red)](https://angular.dev)
 
-**[Live demo](https://panelwave.github.io/player/)** ·
+**[Live demo](https://read.panelwave.org/peoplegraphics/47c9ebf3-6f56-4a4d-a75c-fe8c060df192)** ·
 **[Documentation](https://docs.panelwave.org/player/overview)** ·
 **[Format spec](https://github.com/panelwave/schema)** ·
 **[Source](https://github.com/panelwave/player)**
