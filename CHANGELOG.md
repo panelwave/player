@@ -18,6 +18,13 @@ semver. The reader-facing product changelog lives on the docs site
   zoneless); the library itself works with either.
 
 ### Changed
+- **The cover loads faster and no longer shifts the page.** The cover image
+  fills the cover area from the first frame (artwork contained, `object-fit:
+  contain`), so its loading moves nothing (the public reader's whole layout
+  shift, 0.29 on a phone). It now carries a `srcset` of the cover asset's
+  catalog variants with `sizes` = contained in the viewport
+  (`coverImageVariants` / `coverImageSizes`), so the browser picks the file —
+  and the public reader page can preload exactly that file.
 - **The Speech toggle only hides the balloons.** It no longer mutes the
   `voiceover` bus — the new Voices toggle does — so a reader can listen to
   the lines without reading them. `BubbleClockDirective` keeps a panel's
