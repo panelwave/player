@@ -22,6 +22,7 @@ import {
 import { readBootConfig, readEmbedOptions, type ReaderBootConfig } from './boot-config';
 import { forReview } from './review-rules';
 import { readRememberedLocale, rememberLocale, startLocale } from './start-locale';
+import { releaseBootCover, removeBootCover } from './boot-cover';
 
 type State = 'empty' | 'loading' | 'error' | 'ready';
 
@@ -119,6 +120,7 @@ export class ReaderComponent implements OnInit, OnDestroy {
     }
     if (!this.config.manifestUrl) {
       this.state.set('empty');
+      removeBootCover(document);
       return;
     }
     this.state.set('loading');
@@ -142,10 +144,12 @@ export class ReaderComponent implements OnInit, OnDestroy {
           );
           this.manifest.set(this.config.mode === 'review' ? forReview(manifest) : manifest);
           this.state.set('ready');
+          releaseBootCover(document);
         },
         error: () => {
           this.inFlight = false;
           this.state.set('error');
+          removeBootCover(document);
         },
       });
   }
