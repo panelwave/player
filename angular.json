@@ -186,9 +186,6 @@
             "outputPath": "dist/reader",
             "index": "projects/reader/src/index.html",
             "browser": "projects/reader/src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
             "tsConfig": "projects/reader/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
