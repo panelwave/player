@@ -406,8 +406,8 @@ The player renders **PanelWave manifest format 1.11** (the schema lives at `sche
 ```bash
 # Required
 - Node.js 24.x (CI uses 24)
-- npm 11.x (the lockfile is written by npm 11; npm 10 rejects it in `npm ci`)
-- Angular CLI 20+
+- npm 11.19+ (the npm bundled with Node 24.22, which also writes the lockfile; older npm versions such as 10.x or 11.6.x reject it in `npm ci` and rewrite it on `npm install`)
+- Angular CLI 21+
 ```
 
 ### Setup
