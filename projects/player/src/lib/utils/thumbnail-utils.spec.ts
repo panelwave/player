@@ -1,6 +1,6 @@
 import type { Panel, PanelWaveManifest } from '../types';
 import type { CatalogLike } from './extras-utils';
-import { coverImageSrc, panelThumbnailSrc } from './thumbnail-utils';
+import { coverImageSizes, coverImageSrc, coverImageVariants, panelThumbnailSrc } from './thumbnail-utils';
 
 const catalog: Record<string, CatalogLike> = {
   bg: {
@@ -74,6 +74,37 @@ describe('thumbnail-utils', () => {
       expect(coverImageSrc(manifest({}, { cover: { id: 'c', url: 'https://x/c.png', gated: true } }), lookup)).toBe('');
       expect(coverImageSrc(manifest({}), lookup)).toBe('');
       expect(coverImageSrc(null, lookup)).toBe('');
+    });
+  });
+
+  describe('coverImageVariants / coverImageSizes', () => {
+    const manifest = (meta: Record<string, unknown>, extras?: Record<string, unknown>): PanelWaveManifest =>
+      ({ meta, extras, chapters: [] }) as unknown as PanelWaveManifest;
+    const sized: Record<string, CatalogLike> = {
+      cov: { category: 'image', variants: [{ src: 'https://cdn/c-1248.webp', w: 1248, h: 1872 }, { src: 'https://cdn/c-400.webp', w: 400, h: 600 }, { src: 'https://cdn/c.webp' }] } as CatalogLike,
+      clip: { category: 'video', variants: [{ src: 'https://cdn/v.mp4', w: 640 }] },
+    };
+    const sizedLookup = (id: string): CatalogLike | null => sized[id] ?? null;
+
+    it('lists the cover asset’s variants with widths, from meta.cover or the cover block', () => {
+      expect(coverImageVariants(manifest({ cover: 'cov' }), sizedLookup)).toEqual([
+        { src: 'https://cdn/c-1248.webp', w: 1248, h: 1872 },
+        { src: 'https://cdn/c-400.webp', w: 400, h: 600 },
+      ]);
+      expect(coverImageVariants(manifest({}, { cover: { images: [{ assetId: 'cov' }] } }), sizedLookup)).toHaveSize(2);
+    });
+
+    it('is empty for links, videos, gated blocks and no cover', () => {
+      expect(coverImageVariants(manifest({ cover: 'https://x/c.png' }), sizedLookup)).toEqual([]);
+      expect(coverImageVariants(manifest({ cover: 'clip' }), sizedLookup)).toEqual([]);
+      expect(coverImageVariants(manifest({}, { cover: { gated: true, images: [{ assetId: 'cov' }] } }), sizedLookup)).toEqual([]);
+      expect(coverImageVariants(null, sizedLookup)).toEqual([]);
+    });
+
+    it('sizes the cover as contained in the viewport (the reader server builds the same string)', () => {
+      const variants = coverImageVariants(manifest({ cover: 'cov' }), sizedLookup);
+      expect(coverImageSizes(variants)).toBe('min(calc(100vw - 32px), calc((100vh - 32px) * 0.6667))');
+      expect(coverImageSizes([{ src: 'x', w: 640, h: 0 }])).toBe('100vw');
     });
   });
 });

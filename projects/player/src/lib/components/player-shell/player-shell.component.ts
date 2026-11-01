@@ -71,7 +71,7 @@ import { pageFormatsOf, pagesForFormat, pickPageFormat } from '../../utils/page-
 import { resolvePageBackground } from '../../utils/page-background';
 import { locationUrl, type PlayerLocation } from '../../utils/player-location';
 import { workLocales } from '../../utils/work-locales';
-import { coverImageSrc, THUMBNAIL_WIDTH } from '../../utils/thumbnail-utils';
+import { coverImageSizes, coverImageSrc, coverImageVariants, THUMBNAIL_WIDTH } from '../../utils/thumbnail-utils';
 import { AssetUrlService } from '../../services/asset-url.service';
 import { PreloadService } from '../../services/preload.service';
 import { ImageCacheService } from '../../services/image-cache.service';
@@ -727,6 +727,9 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   /** Cover image (screen-sized and thumbnail), empty when the work has none. */
   coverUrl = '';
   coverThumbUrl = '';
+  /** The cover's variants as `srcset` / `sizes` (empty: `coverUrl` alone). */
+  coverSrcset = '';
+  coverSizes = '';
 
   /** The cover is shown in place of the story (before the first panel). */
   coverVisible = false;
@@ -3854,6 +3857,12 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     const screenWidth = (win?.innerWidth || 1280) * (win?.devicePixelRatio || 1);
     this.coverUrl = this.assetUrl.resolve(coverImageSrc(manifest, lookup, screenWidth), 'image');
     this.coverThumbUrl = this.assetUrl.resolve(coverImageSrc(manifest, lookup, THUMBNAIL_WIDTH), 'image');
+    // The browser picks the variant (and can match the reader page's preload).
+    const variants = coverImageVariants(manifest, lookup);
+    this.coverSrcset = variants.length > 1
+      ? variants.map((v) => `${this.assetUrl.resolve(v.src, 'image')} ${v.w}w`).join(', ')
+      : '';
+    this.coverSizes = this.coverSrcset ? coverImageSizes(variants) : '';
   }
 
   /** The work's title in the current locale (cover alt text). */

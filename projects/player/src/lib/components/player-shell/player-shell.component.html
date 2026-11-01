@@ -29,7 +29,8 @@
           type="button"
           [attr.aria-label]="'navigation.start_reading' | translate"
           (click)="hideCover()">
-          <img class="pw-cover-image" [src]="coverUrl" [alt]="workTitle" fetchpriority="high" />
+          <img class="pw-cover-image" [attr.srcset]="coverSrcset || null" [attr.sizes]="coverSizes || null"
+               [src]="coverUrl" [alt]="workTitle" fetchpriority="high" />
         </button>
       }
 

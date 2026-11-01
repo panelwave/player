@@ -95,3 +95,52 @@ export function coverImageSrc(
   const imageId = block.images?.find((image) => typeof image?.assetId === 'string')?.assetId;
   return refSrc(lookup, imageId, width) || refSrc(lookup, block.url, width, true) || refSrc(lookup, block.thumbnail, width, true);
 }
+
+/** A width-described image of the cover (`srcset` candidate). */
+export interface CoverVariant {
+  src: string;
+  w: number;
+  h: number;
+}
+
+/**
+ * The cover's catalog image variants with widths, for a `srcset`: the same
+ * asset coverImageSrc picks (`meta.cover`, else the `extras.cover` image of
+ * a block that is not gated). [] for a cover given as a plain link, a video
+ * or variants without widths.
+ */
+export function coverImageVariants(
+  manifest: PanelWaveManifest | null | undefined,
+  lookup: AssetLookup
+): CoverVariant[] {
+  if (!manifest) return [];
+  const block = (manifest.extras as { cover?: CoverBlockLike } | undefined)?.cover;
+  const blockImage =
+    block && typeof block === 'object' && block.gated !== true
+      ? block.images?.find((image) => typeof image?.assetId === 'string')?.assetId
+      : undefined;
+  for (const ref of [manifest.meta?.cover, blockImage]) {
+    if (typeof ref !== 'string' || !ref) continue;
+    const asset = lookup(ref);
+    if (!asset) continue;
+    if (asset.category === 'video') return [];
+    return (asset.variants ?? [])
+      .map((v) => v as { src?: string; w?: number; h?: number })
+      .filter((v): v is { src: string; w: number; h?: number } => !!v.src && typeof v.w === 'number' && v.w > 0)
+      .map((v) => ({ src: v.src, w: v.w, h: typeof v.h === 'number' && v.h > 0 ? v.h : 0 }));
+  }
+  return [];
+}
+
+/**
+ * `sizes` of the cover image: contained in the viewport minus the cover's
+ * 16 px padding. The public reader server builds the SAME string for its
+ * cover preload (panelwave-cms apps/reader/src/render.ts coverSizes), so the
+ * browser picks the same file for both — keep the two in step.
+ */
+export function coverImageSizes(variants: CoverVariant[]): string {
+  const largest = [...variants].sort((a, b) => b.w - a.w)[0];
+  if (!largest || !largest.h) return '100vw';
+  const ratio = Math.round((largest.w / largest.h) * 10000) / 10000;
+  return `min(calc(100vw - 32px), calc((100vh - 32px) * ${ratio}))`;
+}
