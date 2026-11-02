@@ -184,6 +184,14 @@ semver. The reader-facing product changelog lives on the docs site
   `TranslateLoader`). The published package is unchanged.
 
 ### Fixed
+- **Page view turned into the next chapter with an empty page when its first
+  page had the same id as the page left** (the CMS counts `pg-B1`, `pg-B2`, …
+  per chapter): the shell compared pages by id, so the chapter changed but
+  `currentPage` stayed the old chapter's page, drawn against the new chapter's
+  panels — black boxes until the next turn. Pages are now compared as objects
+  (chapter crossing, panel jumps, page-format changes), and `locationChange`
+  reports a crossing even when the page id stays the same (its key carries the
+  chapter).
 - **Panel-view balloons scale with the artwork and keep their tails on the
   faces.** Lettering used the screen height (`host height / 1123`), so a panel
   shown narrower than the screen — a narrow window, a phone, any letterboxed

@@ -2767,9 +2767,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       return;
     }
     const location = this.currentLocation;
+    // Keyed by chapter too: page ids repeat across chapters (the CMS counts
+    // pg-B1, pg-B2, … per chapter), so a chapter crossing can keep the id.
     const key = location.view === 'page'
-      ? `page|${location.pageId ?? ''}`
-      : `${location.view}|${location.panelId ?? ''}`;
+      ? `page|${location.chapterId ?? ''}|${location.pageId ?? ''}`
+      : `${location.view}|${location.chapterId ?? ''}|${location.panelId ?? ''}`;
     if (key === this.lastLocationKey) {
       return;
     }
@@ -3519,7 +3521,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.syncPanelAudio();
     if (this.viewMode === 'page') {
       const page = this.findPageContainingPanel();
-      if (page && page.id !== this.currentPage?.id) {
+      if (page && page !== this.currentPage) {
         this.currentPage = page;
         this.onPageChanged();
       }
@@ -3545,7 +3547,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     }
     if (this.viewMode === 'page') {
       const page = this.findPageContainingPanel();
-      if (page && page.id !== this.currentPage?.id) {
+      if (page && page !== this.currentPage) {
         this.currentPage = page;
         this.onPageChanged();
       }
@@ -3753,7 +3755,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       return false;
     }
     this.chapterChange.emit(chapter);
-    if (this.currentPage?.id !== page.id) {
+    // Pages are compared as objects, never by id: page ids repeat across
+    // chapters (the CMS counts pg-B1, pg-B2, … per chapter), and an id check
+    // kept the page left behind while the panels were already the new
+    // chapter's — an empty page.
+    if (this.currentPage !== page) {
       this.currentPage = page;
       this.onPageChanged();
     }

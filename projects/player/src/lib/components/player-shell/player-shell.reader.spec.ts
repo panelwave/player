@@ -218,6 +218,45 @@ describe('PlayerShellComponent reading features (real services)', () => {
       expect(shell.currentChapter?.id).toBe('c1');
       expect(shell.currentPage?.id).toBe('D2');
     });
+
+    it('turns into a chapter whose first page carries the id of the page left (CMS ids restart per chapter)', async () => {
+      // The CMS counts pg-B1, pg-B2, … per chapter: c1's only big-screen page
+      // and c2's are both "B1". The page must still change with the chapter.
+      const m = buildManifest();
+      m.chapters[1].pages = [page('D3', 'desktop-landscape', ['q1', 'q2']), page('B1', 'bigscreen-landscape', ['q1', 'q2'])] as never;
+      shell.manifest = m;
+      screen = { w: 3840, h: 2160, dpr: 1 };
+      await init();
+      shell.hideCover();
+      toPageView();
+      expect(shell.currentPage?.id).toBe('B1');
+
+      await shell.navigateToNextPage();
+      expect(shell.currentChapter?.id).toBe('c2');
+      expect(shell.currentPage?.layout?.placements?.map((p) => p.panelId)).toEqual(['q1', 'q2']);
+      expect(shell.currentLocation).toEqual({ view: 'page', chapterId: 'c2', panelId: 'q1', pageId: 'B1' });
+
+      await shell.navigateToPreviousPage();
+      expect(shell.currentChapter?.id).toBe('c1');
+      expect(shell.currentPage?.layout?.placements?.map((p) => p.panelId)).toEqual(['p1', 'p2', 'p3']);
+    });
+
+    it('reports a chapter crossing to the host even when the page id stays the same', async () => {
+      const m = buildManifest();
+      m.chapters[1].pages = [page('B1', 'bigscreen-landscape', ['q1', 'q2'])] as never;
+      shell.manifest = m;
+      screen = { w: 3840, h: 2160, dpr: 1 };
+      await init();
+      shell.hideCover();
+      toPageView();
+      const reported: (string | undefined)[] = [];
+      shell.locationChange.subscribe((location) => reported.push(location.chapterId));
+      shell.ngAfterViewChecked();
+      await shell.navigateToNextPage();
+      shell.ngAfterViewChecked();
+      await flush();
+      expect(reported).toEqual(['c1', 'c2']);
+    });
   });
 
   describe('cover', () => {
