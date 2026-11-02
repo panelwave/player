@@ -3460,21 +3460,42 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   }
 
   /**
-   * A page by its manifest id, in any chapter and format. Page ids need only
-   * be unique within their chapter (the CMS counts pg-A1, pg-A2, … per
-   * chapter), so the start chapter and the chapter scope are searched first.
+   * A page by its manifest id, in any chapter and format. CMS exports since
+   * 2026-11 carry the chapter in the id (`ch2-pg-B1`, unique in the work);
+   * older exports count per chapter (`pg-B1` in every chapter), so the
+   * chapter named by the link, the start chapter and the chapter scope are
+   * searched first. A link of the other generation still opens: `pg-B1`
+   * matches `ch…-pg-B1` by its format part, `ch2-pg-B1` matches chapter 2's
+   * `pg-B1`.
    */
   private findPageById(pageId: string): { chapter: Chapter; page: Page } | undefined {
     const chapters = this.manifestService.getManifest()?.chapters ?? [];
-    const rank = (chapter: Chapter): number =>
-      chapter.id === this.initialChapterId ? 0 : chapter.id === this.scopedChapterId ? 1 : 2;
-    for (const chapter of [...chapters].sort((a, b) => rank(a) - rank(b))) {
-      const page = chapter.pages?.find((candidate) => candidate.id === pageId);
-      if (page) {
-        return { chapter, page };
+    const qualified = /^ch(\d+)-(pg-.+)$/.exec(pageId);
+    const linkedIndex = qualified ? Number(qualified[1]) - 1 : -1;
+    const rank = (chapter: Chapter, index: number): number =>
+      index === linkedIndex ? 0 : chapter.id === this.initialChapterId ? 1 : chapter.id === this.scopedChapterId ? 2 : 3;
+    const ranked = chapters
+      .map((chapter, index) => ({ chapter, rank: rank(chapter, index) }))
+      .sort((a, b) => a.rank - b.rank)
+      .map((entry) => entry.chapter);
+    const find = (matches: (id: string) => boolean): { chapter: Chapter; page: Page } | undefined => {
+      for (const chapter of ranked) {
+        const page = chapter.pages?.find((candidate) => matches(candidate.id));
+        if (page) {
+          return { chapter, page };
+        }
       }
+      return undefined;
+    };
+    const exact = find((id) => id === pageId);
+    if (exact) {
+      return exact;
     }
-    return undefined;
+    const bare = qualified ? qualified[2] : pageId;
+    if (!bare.startsWith('pg-')) {
+      return undefined;
+    }
+    return find((id) => id === bare || id.endsWith(`-${bare}`));
   }
 
   /** The chapter that holds a panel. */

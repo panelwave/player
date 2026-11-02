@@ -18,6 +18,13 @@ semver. The reader-facing product changelog lives on the docs site
   zoneless); the library itself works with either.
 
 ### Changed
+- **Page links across the two generations of CMS page ids.** CMS exports since
+  2026-11 give pages ids that are unique in the work (`ch2-pg-B1`: chapter
+  number as in panel ids, format letter, counter); older exports count per
+  chapter (`pg-B1` in every chapter). `initialPageId` / `?page=` opens either:
+  an exact id first; else `pg-B1` matches `ch…-pg-B1` by its format part and
+  `ch2-pg-B1` matches chapter 2's `pg-B1` — the chapter the link names is
+  searched first, then the start chapter and the chapter scope.
 - **The cover loads faster and no longer shifts the page.** The cover image
   fills the cover area from the first frame (artwork contained, `object-fit:
   contain`), so its loading moves nothing (the public reader's whole layout

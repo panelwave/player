@@ -386,6 +386,37 @@ describe('PlayerShellComponent reading features (real services)', () => {
       expect(shell.currentChapter?.id).toBe('c2');
     });
 
+    it('an older page link (pg-…) opens the page whose id now carries the chapter (ch1-pg-…)', async () => {
+      const m = buildManifest();
+      m.chapters[0].pages = [page('ch1-pg-D1', 'desktop-landscape', ['p1', 'p2']), page('ch1-pg-D2', 'desktop-landscape', ['p3'])] as never;
+      m.chapters[1].pages = [page('ch2-pg-D1', 'desktop-landscape', ['q1', 'q2'])] as never;
+      shell.manifest = m;
+      shell.initialPageId = 'pg-D2';
+      await init();
+      expect(shell.currentChapter?.id).toBe('c1');
+      expect(shell.currentPage?.id).toBe('ch1-pg-D2');
+
+      shell.initialPageId = 'pg-D1';
+      shell.chapterScope = 'c2';
+      shell.manifest = buildManifest();
+      (shell.manifest as PanelWaveManifest).chapters[0].pages = m.chapters[0].pages;
+      (shell.manifest as PanelWaveManifest).chapters[1].pages = m.chapters[1].pages;
+      await shell.reload();
+      expect(shell.currentChapter?.id).toBe('c2');
+      expect(shell.currentPage?.id).toBe('ch2-pg-D1');
+    });
+
+    it('a chapter-qualified page link (ch2-pg-…) opens that chapter’s page on an older export', async () => {
+      const m = buildManifest();
+      m.chapters[0].pages = [page('pg-D1', 'desktop-landscape', ['p1', 'p2', 'p3'])] as never;
+      m.chapters[1].pages = [page('pg-D1', 'desktop-landscape', ['q1', 'q2'])] as never;
+      shell.manifest = m;
+      shell.initialPageId = 'ch2-pg-D1';
+      await init();
+      expect(shell.currentChapter?.id).toBe('c2');
+      expect(shell.currentPage?.layout?.placements?.map((p) => p.panelId)).toEqual(['q1', 'q2']);
+    });
+
     it('a panel link opens the panel in panel view (chapter looked up)', async () => {
       shell.initialPanelId = 'q2';
       await init();

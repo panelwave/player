@@ -55,8 +55,11 @@ Start language, first match wins: `?locale=` (or `?lang=`) in the URL, the
 config's `locale`, `meta.default_locale`. Matching accepts the language alone
 (`?lang=de` → `de-DE`).
 
-Start page: `?page=<page id>` (a manifest page id such as `pg-A3`) opens that
-page in page view, without the cover.
+Start page: `?page=<page id>` (a manifest page id such as `ch1-pg-A3`) opens
+that page in page view, without the cover. CMS exports before 2026-11 count
+page ids per chapter (`pg-A3` in every chapter): such a link opens the first
+chapter's page unless `?chapter=` names one; a `ch2-pg-A3` link opens chapter
+2's `pg-A3` on such an export.
 
 ### Chapter pages and chapter embeds
 
