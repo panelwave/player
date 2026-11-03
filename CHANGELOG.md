@@ -191,6 +191,14 @@ semver. The reader-facing product changelog lives on the docs site
   `TranslateLoader`). The published package is unchanged.
 
 ### Fixed
+- **Page view showed the branches of a choice before it was made when
+  reading started from a link.** The placeholders for the panels behind a
+  choice still ahead (`hiddenPanelIds`) were only computed when a chapter
+  was entered from its start, a hotspot choice or the branch chooser. A
+  `?page=` / `?panel=` link (`initialPageId` / `initialPanelId`) or a resumed
+  bookmark opens through `navigateToPanel`, so every path showed — and the
+  public reader's address bar always carries `?page=`, so each reload did.
+  The shell now computes them as soon as the manifest is loaded.
 - **Page view turned into the next chapter with an empty page when its first
   page had the same id as the page left** (the CMS counts `pg-B1`, `pg-B2`, …
   per chapter): the shell compared pages by id, so the chapter changed but

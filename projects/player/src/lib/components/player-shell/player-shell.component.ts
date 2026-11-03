@@ -1285,6 +1285,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
       // Like / bookmark state for this work, from the device.
       this.restoreSocialState();
 
+      // Placeholders for the branches of choices still ahead, before reading
+      // starts: a page / panel link or a bookmark opens via navigateToPanel,
+      // which (unlike a chapter start) never computes them — the reader's
+      // address bar always carries ?page=, so every reload went that way and
+      // page view showed every branch.
+      this.refreshBranchVisibility();
+
       // Navigate to the initial position. A link (page / panel / chapter)
       // opens right there; otherwise reading starts on the cover — then the
       // first page, or the page the reader's bookmark is on.

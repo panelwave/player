@@ -235,6 +235,31 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
     });
 
+    // The public reader's address bar carries ?page= / ?panel=, so a reload
+    // opens through the link — not through the chapter start.
+    for (const [label, start] of [
+      ['a page link', { initialPageId: 'pg1' }],
+      ['a panel link', { initialPanelId: 'D' }],
+      ['a page link to a later page', { initialPageId: 'pg4' }],
+    ] as const) {
+      it(`keeps the branches of an open choice hidden when reading starts at ${label}`, async () => {
+        Object.assign(shell, start);
+        await change('manifest', branching());
+        expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
+      });
+    }
+
+    it('keeps the branches hidden when reading resumes from a bookmark', async () => {
+      localStorage.setItem('pw-social', JSON.stringify({ 'work-1': { bookmark: { chapterId: 'c1', panelId: 'D' } } }));
+      try {
+        await change('manifest', { ...branching(), meta: { ...branching().meta, id: 'work-1' } });
+        expect(shell.getCurrentPanelId()).toBe('D');
+        expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2', 'c1']);
+      } finally {
+        localStorage.removeItem('pw-social');
+      }
+    });
+
     describe('with the labelled edges the CMS exports for the choice', () => {
       beforeEach(() => {
         // The loaded chapter (page view, on pg1) gains D's two labelled edges.
