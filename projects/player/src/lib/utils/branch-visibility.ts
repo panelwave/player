@@ -18,6 +18,15 @@ import type { Chapter } from '../types';
  * Reachability follows graph edges, hotspot jumps and the player's implicit
  * chapter continuation (a panel without outgoing edges goes on with the next
  * chapter's entry); conditions are not evaluated — a branch is structure.
+ *
+ * Only links that lead FORWARD in the story count. A link back — an overview
+ * panel jumping to earlier scenes, "read it again", a retry loop — is a
+ * revisit, not a path: with it, every option led back to every branch, so
+ * nothing was a branch any more. A link is backward when it goes into an
+ * earlier chapter, or, inside a chapter, when it closes a loop (its target
+ * leads back to it) towards a panel met earlier on the way from the
+ * chapter's entry. Branches of unequal length rejoining are no loop. For the
+ * same reason only forward jump targets make a panel a choice.
  */
 export interface BranchVisibility {
   unchosen: Set<string>;
@@ -39,12 +48,76 @@ function entryOf(chapter: Chapter): string | undefined {
   return entry?.[0] ?? Object.keys(chapter.panels ?? {})[0];
 }
 
+/** The panels a panel's hotspots jump to (goTo), without itself, first occurrence first. */
+function jumpTargets(panelId: string, panel: Chapter['panels'][string] | undefined): string[] {
+  return [...new Set((panel?.hotspots ?? [])
+    .map((hotspot) => (hotspot?.action?.type === 'goTo' ? hotspot.action.to : undefined))
+    .filter((to): to is string => !!to && to !== panelId))];
+}
+
+/**
+ * Decides whether a link leads forward in the story. Chapters are in order;
+ * inside a chapter a link is backward only when it closes a loop (the target
+ * leads back to the source along the chapter's edges and jumps) towards a
+ * panel met earlier breadth-first from the chapter's entry.
+ */
+function forwardTest(chapters: readonly Chapter[]): (from: string, to: string) => boolean {
+  const chapterOf = new Map<string, number>();
+  const rank = new Map<string, number>();
+  const reach = new Map<string, Set<string>>();
+  chapters.forEach((chapter, index) => {
+    const panels = chapter.panels ?? {};
+    const out = new Map<string, string[]>();
+    const add = (from: string, to: string) => {
+      if (!(from in panels) || !(to in panels) || from === to) return;
+      if (!out.has(from)) out.set(from, []);
+      out.get(from)!.push(to);
+    };
+    for (const edge of chapter.graph?.edges ?? []) add(edge.from, edge.to);
+    for (const id of Object.keys(panels)) jumpTargets(id, panels[id]).forEach((to) => add(id, to));
+
+    const walk = (start: string, onVisit?: (id: string) => void): Set<string> => {
+      const seen = new Set([start]);
+      const queue = [start];
+      while (queue.length) {
+        const id = queue.shift()!;
+        onVisit?.(id);
+        for (const to of out.get(id) ?? []) {
+          if (!seen.has(to)) {
+            seen.add(to);
+            queue.push(to);
+          }
+        }
+      }
+      return seen;
+    };
+    const entry = entryOf(chapter);
+    if (entry && entry in panels) walk(entry, (id) => rank.set(id, rank.size));
+    for (const id of Object.keys(panels)) {
+      chapterOf.set(id, index);
+      if (!rank.has(id)) rank.set(id, rank.size);
+      reach.set(id, walk(id));
+    }
+  });
+
+  return (from, to) => {
+    const a = chapterOf.get(from);
+    const b = chapterOf.get(to);
+    if (a === undefined || b === undefined) return true; // outside the work: nothing to compare
+    if (a !== b) return b > a;
+    const closesLoop = reach.get(to)?.has(from) ?? false;
+    return !(closesLoop && (rank.get(to) ?? 0) <= (rank.get(from) ?? 0));
+  };
+}
+
 /** The work's panel graph for branch questions (build once per manifest). */
 export function buildBranchGraph(chapters: readonly Chapter[]): BranchGraph {
   const next = new Map<string, Set<string>>();
   const choices = new Map<string, string[]>();
+  /** Forward in the story — links back (revisits, loops) are left out. */
+  const forward = forwardTest(chapters);
   const link = (from: string, to: string) => {
-    if (!from || !to || from === to) return;
+    if (!from || !to || from === to || !forward(from, to)) return;
     let set = next.get(from);
     if (!set) next.set(from, (set = new Set()));
     set.add(to);
@@ -59,13 +132,12 @@ export function buildBranchGraph(chapters: readonly Chapter[]): BranchGraph {
     const following = chapters[index + 1];
     const followingEntry = following ? entryOf(following) : undefined;
     for (const [panelId, panel] of Object.entries(chapter.panels ?? {})) {
-      const targets = [...new Set((panel?.hotspots ?? [])
-        .map((hotspot) => (hotspot?.action?.type === 'goTo' ? hotspot.action.to : undefined))
-        .filter((to): to is string => !!to && to !== panelId))];
+      const allTargets = jumpTargets(panelId, panel);
+      const targets = allTargets.filter((to) => forward(panelId, to));
       targets.forEach((to) => link(panelId, to));
       if (targets.length >= 2) choices.set(panelId, targets);
       // Chapter end without an edge: the player continues with the next chapter.
-      if (!withEdges.has(panelId) && targets.length === 0 && followingEntry) link(panelId, followingEntry);
+      if (!withEdges.has(panelId) && allTargets.length === 0 && followingEntry) link(panelId, followingEntry);
     }
   });
   return { next, choices, entry: chapters[0] ? entryOf(chapters[0]) : undefined };

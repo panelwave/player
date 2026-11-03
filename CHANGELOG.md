@@ -199,6 +199,15 @@ semver. The reader-facing product changelog lives on the docs site
   bookmark opens through `navigateToPanel`, so every path showed — and the
   public reader's address bar always carries `?page=`, so each reload did.
   The shell now computes them as soon as the manifest is loaded.
+- **A panel that jumps back to earlier scenes no longer undoes every choice
+  in page view.** Branch placeholders are what only some options of a choice
+  lead to; a later overview panel with hotspots back into earlier chapters
+  made every branch reachable from every option, so nothing was hidden (and
+  the overview itself counted as a choice). `buildBranchGraph` now follows
+  only links that lead forward: a link into an earlier chapter, or one that
+  closes a loop inside a chapter towards a panel met earlier, is a revisit.
+  Branches of unequal length still rejoin, and only forward jump targets
+  make a panel a choice.
 - **Page view turned into the next chapter with an empty page when its first
   page had the same id as the page left** (the CMS counts `pg-B1`, `pg-B2`, …
   per chapter): the shell compared pages by id, so the chapter changed but

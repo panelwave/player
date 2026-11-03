@@ -94,6 +94,58 @@ describe('branchVisibility', () => {
     expect(picked.unchosen.has('u')).toBeTrue();
   });
 
+  it('a hub that jumps back into earlier chapters neither cancels a choice nor becomes one', () => {
+    // LINUS: a chapter-4 overview panel jumps back to many earlier panels, so
+    // every branch was reachable from every option again and nothing was hidden.
+    const withHub = [
+      ...chapters.slice(0, 1),
+      { id: 'ch2', graph: { entry: 'e', edges: edges('e>H') }, panels: { e: plain(), H: choice('a', 'D1', 'c1', 'b1', 'e') } },
+    ] as unknown as Chapter[];
+    const g = buildBranchGraph(withHub);
+    expect([...g.choices.keys()].sort()).toEqual(['D1', 'D2']);
+    const open = branchVisibility(g, new Map());
+    expect([...open.hidden].sort()).toEqual(['END1', 'b1', 'b2', 'c1', 'x', 'y', 'y2']);
+    // Jumping back from the hub is no decision: nothing earlier goes off the path.
+    const jumped = branchVisibility(g, new Map([['D1', 'c1'], ['H', 'b1']]));
+    expect([...jumped.unchosen].sort()).toEqual(['b1', 'b2']);
+  });
+
+  it('a branch longer than the other still rejoins (LINUS ch3: shortcut p3, scenic p4 → p5, both → p6)', () => {
+    const uneven = [
+      {
+        id: 'ch3',
+        graph: { entry: 'p1', edges: edges('p1>p2', 'p2>p3', 'p2>p4', 'p3>p6', 'p4>p5', 'p5>p6', 'p6>p7') },
+        panels: { p1: plain(), p2: choice('p3', 'p4'), p3: plain(), p4: plain(), p5: plain(), p6: plain(), p7: plain() },
+      },
+      { id: 'ch4', graph: { entry: 'h1', edges: edges('h1>hub') }, panels: { h1: plain(), hub: choice('p1', 'p4', 'p6', 'h1') } },
+    ] as unknown as Chapter[];
+    const g = buildBranchGraph(uneven);
+    expect([...branchVisibility(g, new Map()).hidden].sort()).toEqual(['p3', 'p4', 'p5']);
+    const scenic = branchVisibility(g, new Map([['p2', 'p4']]));
+    expect([...scenic.unchosen]).toEqual(['p3']);
+    expect([...scenic.hidden]).toEqual(['p3']);
+  });
+
+  it('a loop back inside a chapter (retry) is a revisit, not a way around the choice', () => {
+    const retry = [
+      {
+        id: 'c',
+        graph: { entry: 'a', edges: edges('a>D', 'x>r', 'y>r', 'r>a') },
+        panels: { a: plain(), D: choice('x', 'y'), x: plain(), y: plain(), r: plain() },
+      },
+    ] as unknown as Chapter[];
+    expect([...branchVisibility(buildBranchGraph(retry), new Map()).hidden].sort()).toEqual(['x', 'y']);
+  });
+
+  it('orders a choice before branch panels reached only by its hotspots, whatever the key order', () => {
+    const keyOrder = [
+      { id: 'c', graph: { entry: 'a', edges: edges('a>D', 'p>r', 'q>r') }, panels: { p: plain(), q: plain(), r: plain(), a: plain(), D: choice('p', 'q') } },
+    ] as unknown as Chapter[];
+    const g = buildBranchGraph(keyOrder);
+    expect(g.choices.get('D')).toEqual(['p', 'q']);
+    expect([...branchVisibility(g, new Map()).hidden].sort()).toEqual(['p', 'q']);
+  });
+
   it('a single jump hotspot is not a choice', () => {
     const one = [{ id: 'c', graph: { entry: 'a', edges: [] }, panels: { a: choice('b'), b: plain() } }] as unknown as Chapter[];
     expect(buildBranchGraph(one).choices.size).toBe(0);
