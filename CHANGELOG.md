@@ -5,7 +5,48 @@ All notable changes to `@panelwave/player` are listed here. The format follows
 semver. The reader-facing product changelog lives on the docs site
 (docs.panelwave.org → Changelog); this file tracks the library.
 
+
 ## [Unreleased]
+
+## [2.0.1] — 2026-11-03
+
+### Changed
+- **Page links across the two generations of CMS page ids.** CMS exports since
+  2026-11 give pages ids that are unique in the work (`ch2-pg-B1`: chapter
+  number as in panel ids, format letter, counter); older exports count per
+  chapter (`pg-B1` in every chapter). `initialPageId` / `?page=` opens either:
+  an exact id first; else `pg-B1` matches `ch…-pg-B1` by its format part and
+  `ch2-pg-B1` matches chapter 2's `pg-B1` — the chapter the link names is
+  searched first, then the start chapter and the chapter scope.
+
+### Fixed
+- **Page view showed the branches of a choice before it was made when
+  reading started from a link.** The placeholders for the panels behind a
+  choice still ahead (`hiddenPanelIds`) were only computed when a chapter
+  was entered from its start, a hotspot choice or the branch chooser. A
+  `?page=` / `?panel=` link (`initialPageId` / `initialPanelId`) or a resumed
+  bookmark opens through `navigateToPanel`, so every path showed — and the
+  public reader's address bar always carries `?page=`, so each reload did.
+  The shell now computes them as soon as the manifest is loaded.
+- **A panel that jumps back to earlier scenes no longer undoes every choice
+  in page view.** Branch placeholders are what only some options of a choice
+  lead to; a later overview panel with hotspots back into earlier chapters
+  made every branch reachable from every option, so nothing was hidden (and
+  the overview itself counted as a choice). `buildBranchGraph` now follows
+  only links that lead forward: a link into an earlier chapter, or one that
+  closes a loop inside a chapter towards a panel met earlier, is a revisit.
+  Branches of unequal length still rejoin, and only forward jump targets
+  make a panel a choice.
+- **Page view turned into the next chapter with an empty page when its first
+  page had the same id as the page left** (the CMS counts `pg-B1`, `pg-B2`, …
+  per chapter): the shell compared pages by id, so the chapter changed but
+  `currentPage` stayed the old chapter's page, drawn against the new chapter's
+  panels — black boxes until the next turn. Pages are now compared as objects
+  (chapter crossing, panel jumps, page-format changes), and `locationChange`
+  reports a crossing even when the page id stays the same (its key carries the
+  chapter).
+
+## [2.0.0] — 2026-11-02
 
 ### Removed
 - **Angular 20 support (breaking, 2.0.0).** The library is built with Angular
@@ -18,13 +59,6 @@ semver. The reader-facing product changelog lives on the docs site
   zoneless); the library itself works with either.
 
 ### Changed
-- **Page links across the two generations of CMS page ids.** CMS exports since
-  2026-11 give pages ids that are unique in the work (`ch2-pg-B1`: chapter
-  number as in panel ids, format letter, counter); older exports count per
-  chapter (`pg-B1` in every chapter). `initialPageId` / `?page=` opens either:
-  an exact id first; else `pg-B1` matches `ch…-pg-B1` by its format part and
-  `ch2-pg-B1` matches chapter 2's `pg-B1` — the chapter the link names is
-  searched first, then the start chapter and the chapter scope.
 - **The cover loads faster and no longer shifts the page.** The cover image
   fills the cover area from the first frame (artwork contained, `object-fit:
   contain`), so its loading moves nothing (the public reader's whole layout
@@ -32,19 +66,8 @@ semver. The reader-facing product changelog lives on the docs site
   catalog variants with `sizes` = contained in the viewport
   (`coverImageVariants` / `coverImageSizes`), so the browser picks the file —
   and the public reader page can preload exactly that file.
-- **The Speech toggle only hides the balloons.** It no longer mutes the
-  `voiceover` bus — the new Voices toggle does — so a reader can listen to
-  the lines without reading them. `BubbleClockDirective` keeps a panel's
-  clock running for its spoken lines even when no balloon is timed
-  (`BubbleClock.markAllDue()` makes every balloon due without stopping);
-  the E2E suite runs Chromium with `--autoplay-policy=no-user-gesture-required`.
-- **Page view letters wide pages smaller.** `pageLetteringScale` eases its
-  share of panel view's scale from 0.75 (pages up to 1920 CSS px) to 0.6 at
-  3840 px (new `pageLetteringFactor`, `PAGE_LETTERING_FACTOR_WIDE`,
-  `PAGE_LETTERING_WIDE_FROM` / `_AT`): Bigscreen pages hold more panels
-  per page, so their balloons crowded the art. A Bigscreen page letters at
-  ≈ 1.15 instead of 1.44; every narrower page and panel view are unchanged.
-  Same rule as the CMS editor.
+
+## [1.12.0] — 2026-10-31
 
 ### Added
 - **Spoken lines and the Voices toggle** (format 1.12). A balloon's
@@ -64,6 +87,18 @@ semver. The reader-facing product changelog lives on the docs site
   first gesture. `AudioTrack.onEnded` tells the caller when a one-shot track ended.
   Exports: `BubbleVoiceService`, `BUBBLE_VOICE_STOP_FADE_MS`,
   `bubbleAudioAssetId`, `hasVoicedBubbles`, `voiceCuesFor`, `VoiceCue`.
+
+### Changed
+- **The Speech toggle only hides the balloons.** It no longer mutes the
+  `voiceover` bus — the new Voices toggle does — so a reader can listen to
+  the lines without reading them. `BubbleClockDirective` keeps a panel's
+  clock running for its spoken lines even when no balloon is timed
+  (`BubbleClock.markAllDue()` makes every balloon due without stopping);
+  the E2E suite runs Chromium with `--autoplay-policy=no-user-gesture-required`.
+
+## [1.11.0] — 2026-10-30
+
+### Added
 - **Per-language artwork** (format 1.11 `ImageVariant.locale`): an image
   asset can carry language versions of itself (a sign, a title card,
   lettering drawn into the image). `ManifestService.getAsset(id, locale)`
@@ -76,6 +111,19 @@ semver. The reader-facing product changelog lives on the docs site
   switching the language swaps the artwork, cover and extras. Images without
   language versions are returned unchanged. New export:
   `localizeImageVariants`.
+
+### Changed
+- **Page view letters wide pages smaller.** `pageLetteringScale` eases its
+  share of panel view's scale from 0.75 (pages up to 1920 CSS px) to 0.6 at
+  3840 px (new `pageLetteringFactor`, `PAGE_LETTERING_FACTOR_WIDE`,
+  `PAGE_LETTERING_WIDE_FROM` / `_AT`): Bigscreen pages hold more panels
+  per page, so their balloons crowded the art. A Bigscreen page letters at
+  ≈ 1.15 instead of 1.44; every narrower page and panel view are unchanged.
+  Same rule as the CMS editor.
+
+## [1.10.0] — 2026-10-28
+
+### Added
 - **Timed speech balloons** (format 1.10 `SpeechBubble.showAtMs`): a balloon
   can wait for its line. It is laid out with the others but hidden
   (`pw-bubble-pending`, `aria-hidden`, out of the tab order) until its panel's
@@ -126,6 +174,68 @@ semver. The reader-facing product changelog lives on the docs site
   `ThemeService` + `resolveTheme` / `themeCssVariables` / colour helpers,
   `WidgetPlaybackService`, `renderSafeMarkdown`, widget utils.
 - Demo: "Content Widgets" work (`assets/widgets-manifest.json`).
+- **Content widgets in print renders** (format 1.10 widget `print`): a
+  static card per widget, by default with a QR code that opens the widget's
+  panel in the online reader (`pw-print-qr`, `PrintContextService`, the
+  standalone config's `printOptions`: `widgets` qr / card / hide, `linkBase`,
+  `attachments` → "Printed on page N" on download cards); `print: "hide"`
+  leaves a widget out. Scroll text shrinks to fit its box before it is
+  clipped. `qrModules()` is shared with the share dialog. New strings
+  `widgets.print_*` (en, de).
+  In print renders every widget is laid out at its design size and zoomed
+  to its box (`PrintFitDirective`), so a small card on the A4 page keeps its
+  icon, name and size instead of the compact on-screen variant.
+- Audio player `keepPlaying`: keeps playing when the reader moves to another
+  panel or page. `WidgetPlaybackService.pauseForNavigation()` skips it;
+  `park()` / `unpark()` keep its element playing after the widget unmounts
+  and hand it back when it mounts again. The `<audio>` element is now created
+  in code (it can outlive the widget); `unregister()` takes the handle.
+
+### Fixed
+- **Panel-view balloons scale with the artwork and keep their tails on the
+  faces.** Lettering used the screen height (`host height / 1123`), so a panel
+  shown narrower than the screen — a narrow window, a phone, any letterboxed
+  panel — kept full-size balloons that covered the artwork, their tails off
+  the speakers. Panel view now letters at `artworkLetteringScale(panel box)`
+  = max(box height, box width × 9/16) / 1123 (the CMS editor's panel-view
+  rule; unchanged for artwork filling a 16:9 screen), raises small lettering
+  to the 9 px floor with the balloon **anchored on its authored tail tip**
+  (`anchorTailTip` now in panel view too; `scaleTailWithBoost` grows the tail
+  along with the body there), and lowers that boost until the
+  body fits inside the panel instead of moving it off the speaker. Page view
+  letters every panel of a page at ONE scale, as in print (`getPageReadingScale`
+  = `pageLetteringScale(page width)`, `PAGE_LETTERING_FACTOR` 0.75 × panel
+  view's artwork scale of a full-width landscape panel — a balloon keeps its
+  panel-view look, a little smaller (font size 12 is 17 px on a Bigscreen
+  page), the 9 px floor still grows small lettering, and a balloon that
+  would cross its panel's border slides inside at that size with its tail
+  re-aimed at the speaker — one font size stays one size across the page).
+  `artworkLetteringScale`, `pageLetteringScale` and
+  `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
+  `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
+  **Canvas view** letters the same way: each placement at
+  `artworkLetteringScale(placement)` on its world size (so the balloons scale
+  with the artwork at every zoom, as the same panel letters in panel view at
+  that size on screen), tip-anchored with the tail growing along. It used the
+  stage height / 1123 with the body centred on the box, so a panel framed by
+  the camera carried balloons up to twice their panel-view size, tails off the
+  faces. New `pw-speech-bubbles` input `screenScale` (CSS px on screen per
+  container px, default 1): the canvas stage passes the camera's settled zoom
+  (`settledZoom`), so the 9 px readability floor is a size on screen — a
+  zoomed-out panel grows its balloons just enough to stay readable.
+- **Audio player widgets stop when the reader moves on.** The panel-change
+  pause never fired (the shell compared the new panel with itself), so audio
+  kept playing while its panel stayed on screen — canvas neighbours, page
+  view. Widget handles are now kept per instance, so a page transition's
+  second copy of a widget no longer drops the live one.
+- **Arrow keys navigate after clicking a widget button.** Every key pressed
+  inside a widget was ignored, so after clicking Play → did nothing. Only the
+  parts that use keys keep them (`data-pw-owns-keys`: the audio seek slider,
+  the scroll box; form fields); Enter / Space stay with the focused button.
+
+## [1.9.0] — 2026-10-27
+
+### Added
 - **Chapter embeds** (docs/MULTI_CHAPTER_EMBED.md). New shell input
   `chapterScope` (a chapter's manifest `id` or CMS `chapterId`) plays only
   that chapter: it starts at its entry, next / previous and page turns stop at
@@ -168,22 +278,6 @@ semver. The reader-facing product changelog lives on the docs site
 - `Panel` has the schema's optional `id` (as in `@panelwave/types`). Panels
   stay keyed by id in `chapter.panels`; read the id from that key or from
   `panelChange`'s `panelId`.
-- **Content widgets in print renders** (format 1.10 widget `print`): a
-  static card per widget, by default with a QR code that opens the widget's
-  panel in the online reader (`pw-print-qr`, `PrintContextService`, the
-  standalone config's `printOptions`: `widgets` qr / card / hide, `linkBase`,
-  `attachments` → "Printed on page N" on download cards); `print: "hide"`
-  leaves a widget out. Scroll text shrinks to fit its box before it is
-  clipped. `qrModules()` is shared with the share dialog. New strings
-  `widgets.print_*` (en, de).
-  In print renders every widget is laid out at its design size and zoomed
-  to its box (`PrintFitDirective`), so a small card on the A4 page keeps its
-  icon, name and size instead of the compact on-screen variant.
-- Audio player `keepPlaying`: keeps playing when the reader moves to another
-  panel or page. `WidgetPlaybackService.pauseForNavigation()` skips it;
-  `park()` / `unpark()` keep its element playing after the widget unmounts
-  and hand it back when it mounts again. The `<audio>` element is now created
-  in code (it can outlive the widget); `unregister()` takes the handle.
 
 ### Removed
 - The unused `@ngx-translate/http-loader` dependency of the repository (the
@@ -191,75 +285,9 @@ semver. The reader-facing product changelog lives on the docs site
   `TranslateLoader`). The published package is unchanged.
 
 ### Fixed
-- **Page view showed the branches of a choice before it was made when
-  reading started from a link.** The placeholders for the panels behind a
-  choice still ahead (`hiddenPanelIds`) were only computed when a chapter
-  was entered from its start, a hotspot choice or the branch chooser. A
-  `?page=` / `?panel=` link (`initialPageId` / `initialPanelId`) or a resumed
-  bookmark opens through `navigateToPanel`, so every path showed — and the
-  public reader's address bar always carries `?page=`, so each reload did.
-  The shell now computes them as soon as the manifest is loaded.
-- **A panel that jumps back to earlier scenes no longer undoes every choice
-  in page view.** Branch placeholders are what only some options of a choice
-  lead to; a later overview panel with hotspots back into earlier chapters
-  made every branch reachable from every option, so nothing was hidden (and
-  the overview itself counted as a choice). `buildBranchGraph` now follows
-  only links that lead forward: a link into an earlier chapter, or one that
-  closes a loop inside a chapter towards a panel met earlier, is a revisit.
-  Branches of unequal length still rejoin, and only forward jump targets
-  make a panel a choice.
-- **Page view turned into the next chapter with an empty page when its first
-  page had the same id as the page left** (the CMS counts `pg-B1`, `pg-B2`, …
-  per chapter): the shell compared pages by id, so the chapter changed but
-  `currentPage` stayed the old chapter's page, drawn against the new chapter's
-  panels — black boxes until the next turn. Pages are now compared as objects
-  (chapter crossing, panel jumps, page-format changes), and `locationChange`
-  reports a crossing even when the page id stays the same (its key carries the
-  chapter).
-- **Panel-view balloons scale with the artwork and keep their tails on the
-  faces.** Lettering used the screen height (`host height / 1123`), so a panel
-  shown narrower than the screen — a narrow window, a phone, any letterboxed
-  panel — kept full-size balloons that covered the artwork, their tails off
-  the speakers. Panel view now letters at `artworkLetteringScale(panel box)`
-  = max(box height, box width × 9/16) / 1123 (the CMS editor's panel-view
-  rule; unchanged for artwork filling a 16:9 screen), raises small lettering
-  to the 9 px floor with the balloon **anchored on its authored tail tip**
-  (`anchorTailTip` now in panel view too; `scaleTailWithBoost` grows the tail
-  along with the body there), and lowers that boost until the
-  body fits inside the panel instead of moving it off the speaker. Page view
-  letters every panel of a page at ONE scale, as in print (`getPageReadingScale`
-  = `pageLetteringScale(page width)`, `PAGE_LETTERING_FACTOR` 0.75 × panel
-  view's artwork scale of a full-width landscape panel — a balloon keeps its
-  panel-view look, a little smaller (font size 12 is 17 px on a Bigscreen
-  page), the 9 px floor still grows small lettering, and a balloon that
-  would cross its panel's border slides inside at that size with its tail
-  re-aimed at the speaker — one font size stays one size across the page).
-  `artworkLetteringScale`, `pageLetteringScale` and
-  `LETTERING_BASE_HEIGHT` are exported; `balloon-geometry` gains
-  `placeBoostedBody` / `fitBoostedBody` / `rectInside` (synced from the CMS).
-  **Canvas view** letters the same way: each placement at
-  `artworkLetteringScale(placement)` on its world size (so the balloons scale
-  with the artwork at every zoom, as the same panel letters in panel view at
-  that size on screen), tip-anchored with the tail growing along. It used the
-  stage height / 1123 with the body centred on the box, so a panel framed by
-  the camera carried balloons up to twice their panel-view size, tails off the
-  faces. New `pw-speech-bubbles` input `screenScale` (CSS px on screen per
-  container px, default 1): the canvas stage passes the camera's settled zoom
-  (`settledZoom`), so the 9 px readability floor is a size on screen — a
-  zoomed-out panel grows its balloons just enough to stay readable.
 - Demo: the empty router is gone. Served as `/player/index.html` (the CMS
   preview iframe), its first navigation matched no route and logged NG04002
   on every load.
-- **Audio player widgets stop when the reader moves on.** The panel-change
-  pause never fired (the shell compared the new panel with itself), so audio
-  kept playing while its panel stayed on screen — canvas neighbours, page
-  view. Widget handles are now kept per instance, so a page transition's
-  second copy of a widget no longer drops the live one.
-- **Arrow keys navigate after clicking a widget button.** Every key pressed
-  inside a widget was ignored, so after clicking Play → did nothing. Only the
-  parts that use keys keep them (`data-pw-owns-keys`: the audio seek slider,
-  the scroll box; form fields); Enter / Space stay with the focused button.
-
 
 ## [1.8.0] — 2026-10-19
 
