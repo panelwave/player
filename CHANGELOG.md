@@ -5,7 +5,6 @@ All notable changes to `@panelwave/player` are listed here. The format follows
 semver. The reader-facing product changelog lives on the docs site
 (docs.panelwave.org → Changelog); this file tracks the library.
 
-
 ## [Unreleased]
 
 ## [2.0.1] — 2026-11-03
