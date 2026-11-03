@@ -164,10 +164,10 @@
               @for (placement of getLeavingPagePlacements(); track placement.panelId) {
                 <div
                   class="panel-container"
-                  [style.left.%]="toPercent(placement.x)"
-                  [style.top.%]="toPercent(placement.y)"
-                  [style.width.%]="toPercent(placement.w)"
-                  [style.height.%]="toPercent(placement.h)"
+                  [style.left.%]="toPercent(frameOf(placement).x)"
+                  [style.top.%]="toPercent(frameOf(placement).y)"
+                  [style.width.%]="toPercent(frameOf(placement).w)"
+                  [style.height.%]="toPercent(frameOf(placement).h)"
                   [style.z-index]="placement.z || 0"
                   [style.transform]="getPanelTransform(placement)"
                   [style.transform-origin]="getTransformOrigin(placement)">
@@ -176,8 +176,10 @@
                     <div class="branch-placeholder" aria-hidden="true"></div>
                   } @else if (getLeavingPanel(placement.panelId); as panelData) {
                     <div class="panel-content"
-                         [style.clip-path]="getPanelContentClipPath(placement)"
-                         [style.transform]="getPanelContentTransform(placement)"
+                         [style.left]="panelBoxStyle(placement).left"
+                         [style.top]="panelBoxStyle(placement).top"
+                         [style.width]="panelBoxStyle(placement).width"
+                         [style.height]="panelBoxStyle(placement).height"
                          [pwPanelAnimation]="panelData.animations"
                          [pwPanelAnimationKey]="placement.panelId"
                          [pwPanelAnimationStatic]="true">
@@ -240,10 +242,10 @@
             <div 
               class="panel-container"
               [class.panel-focused]="isPanelFocused(placement.panelId)"
-              [style.left.%]="toPercent(placement.x)"
-              [style.top.%]="toPercent(placement.y)"
-              [style.width.%]="toPercent(placement.w)"
-              [style.height.%]="toPercent(placement.h)"
+              [style.left.%]="toPercent(frameOf(placement).x)"
+              [style.top.%]="toPercent(frameOf(placement).y)"
+              [style.width.%]="toPercent(frameOf(placement).w)"
+              [style.height.%]="toPercent(frameOf(placement).h)"
               [style.z-index]="placement.z || 0"
               [style.transform]="getPanelTransform(placement)"
               [style.transform-origin]="getTransformOrigin(placement)"
@@ -263,8 +265,10 @@
                 <div class="branch-placeholder"></div>
               } @else if (getPanel(placement.panelId); as panelData) {
                 <div class="panel-content"
-                     [style.clip-path]="getPanelContentClipPath(placement)"
-                     [style.transform]="getPanelContentTransform(placement)"
+                     [style.left]="panelBoxStyle(placement).left"
+                     [style.top]="panelBoxStyle(placement).top"
+                     [style.width]="panelBoxStyle(placement).width"
+                     [style.height]="panelBoxStyle(placement).height"
                      [pwPanelAnimation]="panelData.animations"
                      [pwPanelAnimationKey]="placement.panelId"
                      [pwPanelAnimationReducedMotion]="reducedMotion"

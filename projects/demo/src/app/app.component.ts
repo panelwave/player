@@ -167,6 +167,11 @@ export class AppComponent implements OnInit, OnDestroy {
       label: 'Content Widgets',
       url: 'assets/widgets-manifest.json',
     },
+    {
+      id: 'framed',
+      label: 'Framed Placements',
+      url: 'assets/framed-manifest.json',
+    },
   ];
 
   activeDemo = 'sample';

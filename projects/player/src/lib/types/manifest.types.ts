@@ -361,22 +361,27 @@ export interface PageLayout {
 }
 
 /**
- * Panel placement with flexible absolute positioning
+ * Panel placement with flexible absolute positioning. `x`/`y`/`w`/`h` is the
+ * panel's IMAGE BOX (the artwork's aspect ratio, normalized to the page); the
+ * optional `vx`/`vy`/`vw`/`vh` quartet is the FRAME the page shows (schema
+ * 1.13): `(x + vx·w, y + vy·h, vw·w, vh·h)`. The frame must lie on the page,
+ * the box may not — that is how an author enlarges and moves the artwork
+ * behind a fixed frame. See utils/placement-frame.
  */
 export interface PanelPlacement {
   /** Panel ID to place */
   panelId: string;
-  
-  /** X position (normalized: 0 = left edge, 1 = right edge) */
+
+  /** Left edge of the image box (normalized to the page width; −9 … 1 since 1.13) */
   x: number;
-  
-  /** Y position (normalized: 0 = top edge, 1 = bottom edge) */
+
+  /** Top edge of the image box (normalized to the page height; −9 … 1 since 1.13) */
   y: number;
-  
-  /** Width (normalized: 0-1 = 0-100% of page width) */
+
+  /** Width of the image box (1 = the page width; up to 10 since 1.13) */
   w: number;
-  
-  /** Height (normalized: 0-1 = 0-100% of page height) */
+
+  /** Height of the image box (1 = the page height; up to 10 since 1.13) */
   h: number;
   
   /** Z-index for overlapping panels (higher = on top) */
@@ -394,16 +399,16 @@ export interface PanelPlacement {
     y: number;
   };
   
-  /** Visible area X position (normalized 0-1, relative to panel) */
+  /** Frame: left edge of the visible window as a fraction of the box (`vx + vw ≤ 1`). Omitted = whole box. */
   vx?: number;
-  
-  /** Visible area Y position (normalized 0-1, relative to panel) */
+
+  /** Frame: top edge of the visible window as a fraction of the box (`vy + vh ≤ 1`). */
   vy?: number;
-  
-  /** Visible area width (normalized 0-1, relative to panel) */
+
+  /** Frame width as a fraction of the box (zooming the artwork lowers it and raises `w`). */
   vw?: number;
-  
-  /** Visible area height (normalized 0-1, relative to panel) */
+
+  /** Frame height as a fraction of the box. */
   vh?: number;
 }
 

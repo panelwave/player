@@ -42,6 +42,7 @@ import { quantizeTargetWidth, selectImageVariantForWidth } from '../../utils/ima
 import { pageAspectRatio } from '../../utils/page-format-utils';
 import { resolvePageBackground } from '../../utils/page-background';
 import { panelArtworkAspect } from '../../utils/layer-reference';
+import { framesBounds, placementBoxStyle, placementFrame, type BoxStyle, type FrameRect } from '../../utils/placement-frame';
 import { artworkLetteringScale, pageLetteringScale } from '../../utils/balloon-config';
 
 /**
@@ -415,9 +416,10 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Page view shows a panel's whole artwork in its box, as the editor does;
-   * the placement's visible area (vx/vy/vw/vh) only crops on compact screens
-   * (phones), where the page's panels run edge to edge.
+   * A phone-width host (narrower than COMPACT_PAGE_WIDTH): page view fits the
+   * page's frames instead of the whole page (see pageFit), and panel view
+   * centres its crop on the focus rect. Frames themselves apply everywhere
+   * (schema 1.13; player 1.5–2.0 cropped on phones only).
    */
   isCompactHost(): boolean {
     const width = (this.elementRef.nativeElement as HTMLElement).getBoundingClientRect().width;
@@ -1057,23 +1059,20 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   /**
    * Part of the page page view shows (normalized to the page). On phones
    * (host narrower than COMPACT_PAGE_WIDTH) it is the bounding box of the
-   * page's panels: the page margins and the letterbox around the page's own
-   * aspect give way, so the panels run edge to edge — fitted, never cropped.
-   * Elsewhere the whole page, as designed.
+   * page's panel FRAMES (schema 1.13 — the hidden part of a framed panel's
+   * image box takes no screen space): the page margins and the letterbox
+   * around the page's own aspect give way, so the panels run edge to edge —
+   * fitted, never cropped. Elsewhere the whole page, as designed.
    */
-  get pageFit(): { x: number; y: number; w: number; h: number } {
+  get pageFit(): FrameRect {
     const whole = { x: 0, y: 0, w: 1, h: 1 };
     const width = (this.elementRef.nativeElement as HTMLElement).getBoundingClientRect().width;
     const placements = this.page?.layout?.placements ?? [];
     if (!width || width >= COMPACT_PAGE_WIDTH || !placements.length) {
       return whole;
     }
-    const clamp = (v: number) => Math.min(1, Math.max(0, v));
-    const x0 = clamp(Math.min(...placements.map((p) => p.x)));
-    const y0 = clamp(Math.min(...placements.map((p) => p.y)));
-    const x1 = clamp(Math.max(...placements.map((p) => p.x + p.w)));
-    const y1 = clamp(Math.max(...placements.map((p) => p.y + p.h)));
-    return x1 - x0 > 0.01 && y1 - y0 > 0.01 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : whole;
+    const bounds = framesBounds(placements);
+    return bounds && bounds.w > 0.01 && bounds.h > 0.01 ? bounds : whole;
   }
 
   /** Aspect of the box page view fits to the screen (the page, or its panels on phones). */
@@ -1083,7 +1082,10 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Get a page-view panel's rendered width in pixels.
+   * Rendered width in pixels of a page-view panel's IMAGE BOX (`w` of the
+   * page canvas) — the container the panel's layers, bubbles and hotspots are
+   * normalized to, and the width its image variant is chosen for. A framed
+   * placement's frame is smaller (see frameOf).
    */
   getPagePanelWidth(placement: PanelPlacement): number {
     const pageCanvas = this.elementRef.nativeElement.querySelector('.page-canvas');
@@ -1092,7 +1094,7 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Get a page-view panel's rendered height in pixels.
+   * Rendered height in pixels of a page-view panel's image box (see getPagePanelWidth).
    */
   getPagePanelHeight(placement: PanelPlacement): number {
     const pageCanvas = this.elementRef.nativeElement.querySelector('.page-canvas');
@@ -1496,50 +1498,23 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
-   * Get clip-path CSS for panel content (visible area)
-   * Returns inset values to show only the visible portion of the panel
+   * The frame of a page-view placement (schema 1.13): the window of the
+   * panel's image box the page shows — `.panel-container` is positioned and
+   * sized by it (border, hit area, focus ring). An unframed placement's frame
+   * is its box. Normalized to the page.
    */
-  getPanelContentClipPath(placement: PanelPlacement): string {
-    const vx = placement.vx ?? 0;
-    const vy = placement.vy ?? 0;
-    const vw = placement.vw ?? 1;
-    const vh = placement.vh ?? 1;
-
-    // If full panel is visible, no clipping needed; on screens that are not
-    // compact the whole artwork is shown anyway (the visible area is a hint
-    // for small screens, see isCompactHost).
-    if ((vx === 0 && vy === 0 && vw === 1 && vh === 1) || !this.isCompactHost()) {
-      return 'none';
-    }
-    
-    // Calculate inset values as percentages
-    // inset(top right bottom left)
-    const top = vy * 100;
-    const right = (1 - (vx + vw)) * 100;
-    const bottom = (1 - (vy + vh)) * 100;
-    const left = vx * 100;
-    
-    return `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+  frameOf(placement: PanelPlacement): FrameRect {
+    return placementFrame(placement);
   }
 
   /**
-   * Get position offset for panel content (visible area)
-   * Returns translate transform to shift content when visible area is cropped
+   * Inline size and offset of `.panel-content` (the image box) inside its
+   * frame element, in percent of the frame: `1 / vw` wide, shifted left by
+   * `vx / vw`. The frame's `overflow: hidden` clips the rest. For an unframed
+   * placement this is 0 / 0 / 100 % / 100 %.
    */
-  getPanelContentTransform(placement: PanelPlacement): string {
-    const vx = placement.vx ?? 0;
-    const vy = placement.vy ?? 0;
-
-    // If no offset, return none (and never shift on screens that are not compact)
-    if ((vx === 0 && vy === 0) || !this.isCompactHost()) {
-      return 'none';
-    }
-    
-    // Translate content by negative offset to show the visible portion
-    const translateX = -vx * 100;
-    const translateY = -vy * 100;
-    
-    return `translate(${translateX}%, ${translateY}%)`;
+  panelBoxStyle(placement: PanelPlacement): BoxStyle {
+    return placementBoxStyle(placement);
   }
 
   /**
@@ -1581,11 +1556,12 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     canvasWidth: number,
     canvasHeight: number
   ): boolean {
-    // Convert normalized placement to pixel coordinates
-    const panelX = placement.x * canvasWidth;
-    const panelY = placement.y * canvasHeight;
-    const panelWidth = placement.w * canvasWidth;
-    const panelHeight = placement.h * canvasHeight;
+    // Convert the normalized FRAME (the panel as the page shows it) to pixel coordinates
+    const frame = placementFrame(placement);
+    const panelX = frame.x * canvasWidth;
+    const panelY = frame.y * canvasHeight;
+    const panelWidth = frame.w * canvasWidth;
+    const panelHeight = frame.h * canvasHeight;
 
     // If no rotation, simple bounding box check
     if (!placement.r || placement.r === 0) {
@@ -1941,12 +1917,13 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     
     const canvasWidth = canvas.offsetWidth;
     const canvasHeight = canvas.offsetHeight;
-    
-    // Convert normalized to pixel coordinates
-    const left = placement.x * canvasWidth;
-    const top = placement.y * canvasHeight;
-    const width = placement.w * canvasWidth;
-    const height = placement.h * canvasHeight;
+
+    // Convert the normalized frame to pixel coordinates
+    const frame = placementFrame(placement);
+    const left = frame.x * canvasWidth;
+    const top = frame.y * canvasHeight;
+    const width = frame.w * canvasWidth;
+    const height = frame.h * canvasHeight;
     
     return {
       left,
@@ -1975,11 +1952,12 @@ export class ViewportComponent implements OnChanges, OnDestroy {
     const canvas = document.querySelector('.page-canvas') as HTMLElement;
     if (!canvas) return true;
     
-    // Convert normalized to pixel coordinates
-    const panelLeft = placement.x * canvas.offsetWidth;
-    const panelTop = placement.y * canvas.offsetHeight;
-    const panelWidth = placement.w * canvas.offsetWidth;
-    const panelHeight = placement.h * canvas.offsetHeight;
+    // Convert the normalized frame to pixel coordinates
+    const frame = placementFrame(placement);
+    const panelLeft = frame.x * canvas.offsetWidth;
+    const panelTop = frame.y * canvas.offsetHeight;
+    const panelWidth = frame.w * canvas.offsetWidth;
+    const panelHeight = frame.h * canvas.offsetHeight;
 
     // Simple bounding box check (could be enhanced for rotation)
     const panelRight = panelLeft + panelWidth;

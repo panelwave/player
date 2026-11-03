@@ -7,6 +7,23 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Changed
+- **Page view shows a placement's frame on every screen size (schema 1.13).**
+  A page placement's `vx`/`vy`/`vw`/`vh` quartet is the *frame*: the window
+  of the panel's image box (`x`/`y`/`w`/`h`, the artwork's aspect) the page
+  shows. `.panel-container` is now positioned and sized by the frame (border,
+  hit area, focus ring, culling) and `.panel-content` — the box, which layers,
+  bubbles, hotspots and image-variant selection stay normalized to — sits
+  inside it at `1 / vw` of the frame, clipped. Since 1.5.0 the crop applied
+  on phones only (and shifted the window to the box's top-left corner); a
+  desktop reader and the PDF export showed the whole image. Authors can now
+  enlarge and move the artwork behind a fixed frame per format (format 1.13
+  lets the box leave the page: `x`/`y` down to −9, `w`/`h` up to 10). On
+  phones `pageFit` bounds the frames, not the boxes. New
+  `utils/placement-frame` (`placementFrame`, `placementBoxStyle`,
+  `framesBounds`, `isFramedPlacement`); `getPanelContentClipPath` /
+  `getPanelContentTransform` are gone. Demo: "Framed Placements".
+
 ## [2.0.1] — 2026-11-03
 
 ### Changed

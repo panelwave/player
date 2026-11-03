@@ -336,6 +336,36 @@ describe('ViewportComponent', () => {
       expect(component.stageAspect).toBeCloseTo(component.pageAspect, 5);
     });
 
+    // Schema 1.13 framed placements: sample 18's square frame at the page's left
+    // edge, zoomed 2× into the right half of a 16:9 image (box starts left of the page)
+    const framed = {
+      panelId: 'p1', x: -1.2778, y: -0.1468, w: 1.7778, h: 0.7071, vx: 0.71875, vy: 0.25, vw: 0.28125, vh: 0.5,
+    } as PanelPlacement;
+
+    it('phones: fits the frames of framed placements, not their image boxes', () => {
+      hostWidth(390);
+      component.page = { id: 'm2', layout: { format: 'mobile-portrait', placements: [framed] }, readingOrder: ['p1'] } as Page;
+      const fit = component.pageFit;
+      expect([fit.x, fit.y, fit.w, fit.h].map((v) => Math.round(v * 1000) / 1000)).toEqual([0, 0.03, 0.5, 0.354]);
+    });
+
+    it('page view positions the frame and puts the image box inside it (independent of the host width)', () => {
+      const frame = component.frameOf(framed);
+      expect(Math.round(frame.x * 1000) / 1000).toBe(0);
+      expect(Math.round(frame.w * 1000) / 1000).toBe(0.5);
+      expect(component.panelBoxStyle(framed)).toEqual({ left: '-255.556%', top: '-50%', width: '355.556%', height: '200%' });
+      expect(component.panelBoxStyle({ panelId: 'p2', x: 0.1, y: 0.1, w: 0.5, h: 0.5 })).toEqual({ left: '0%', top: '0%', width: '100%', height: '100%' });
+      // Bubbles, hotspots and image variants stay normalized to the BOX (no page canvas mounted here → 0)
+      expect(component.getPagePanelWidth(framed)).toBe(0);
+    });
+
+    it('hit tests and culling use the frame, not the box', () => {
+      // 1000 × 1000 canvas: the frame spans x 0 … 500, y 30 … 383.6
+      expect(component.isPointInRotatedPanel({ x: 250, y: 200 }, framed, 1000, 1000)).toBeTrue();
+      expect(component.isPointInRotatedPanel({ x: 700, y: 200 }, framed, 1000, 1000)).toBeFalse();
+      expect(component.isPointInRotatedPanel({ x: 250, y: 10 }, framed, 1000, 1000)).toBeFalse();
+    });
+
     it('page view letters at page height / 1123, never above the screen-height scale', () => {
       hostWidth(390, 844);
       fixture.componentRef.setInput('viewMode', 'page');

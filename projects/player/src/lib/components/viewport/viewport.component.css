@@ -444,8 +444,15 @@
   }
 }
 
+/*
+ * The panel's image box inside its frame (schema 1.13): the frame element
+ * (.panel-container) clips it; the inline left/top/width/height put the box
+ * at 1/vw of the frame, shifted by -vx/vw. Unframed: 0/0/100 %/100 %.
+ */
 .viewport-page .panel-content {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 100%;
   height: 100%;
 }

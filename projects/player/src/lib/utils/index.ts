@@ -113,6 +113,17 @@ export {
   type VariantContext,
 } from './variant-utils';
 
+// Framed page placements (schema 1.13): frame vs. image box of a PanelPlacement
+export {
+  placementCrop,
+  placementFrame,
+  placementBoxStyle,
+  framesBounds,
+  isFramedPlacement,
+  type FrameRect,
+  type BoxStyle,
+} from './placement-frame';
+
 // Focus-rect placement for panel view (Panel.formatViews[...].minimalFocusRect)
 export {
   OUTPUT_FORMAT_ASPECT,

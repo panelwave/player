@@ -1,0 +1,271 @@
+{
+  "panelwave": {
+    "version": "1.13.0",
+    "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
+    "generator": "panelwave-sample-gen/1.0"
+  },
+  "meta": {
+    "id": "demo-framed-placements",
+    "title": {
+      "en-US": "Framed Placements"
+    },
+    "description": {
+      "en-US": "Three 16:9 panels on an A4 page: the first fills a 1:1 frame at the page's left edge zoomed 2x into the right half of the artwork (its image box starts left of the page), the second shows a 4:1 strip from the middle of the artwork, the third is unframed. Exercises the 1.13.0 frame semantics of vx/vy/vw/vh and the relaxed x/y/w/h ranges."
+    },
+    "creators": [
+      {
+        "role": "writer",
+        "name": "Test Author"
+      }
+    ],
+    "publisher": "Test Publisher",
+    "series": "Test Series",
+    "issue": "#0",
+    "release_date": "2025-01-01",
+    "age_rating": "13+",
+    "tags": [
+      "test",
+      "frames",
+      "format-1.13"
+    ],
+    "locales": [
+      "en-US"
+    ],
+    "default_locale": "en-US",
+    "cover": "img-cover",
+    "characters": [
+      {
+        "id": "char-hero",
+        "name": {
+          "en-US": "The Hero"
+        },
+        "description": {
+          "en-US": "A simple hero character for testing."
+        },
+        "images": {
+          "portrait": "https://i.pravatar.cc/150?img=1"
+        }
+      }
+    ]
+  },
+  "assets": {
+    "catalog": [
+      {
+        "id": "img-cover",
+        "category": "image",
+        "alt": {
+          "en-US": "Test cover"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/100/1200/1600",
+            "w": 1200,
+            "h": 1600,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1",
+        "category": "image",
+        "alt": {
+          "en-US": "Panel 1"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/101/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2",
+        "category": "image",
+        "alt": {
+          "en-US": "Panel 2"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/102/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3",
+        "category": "image",
+        "alt": {
+          "en-US": "Panel 3"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/103/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "id": "ch-1",
+      "title": {
+        "en-US": "Chapter One"
+      },
+      "pages": [
+        {
+          "id": "pg-1",
+          "title": {
+            "en-US": "Frames: square (zoom 2, right half), strip 4:1, whole image"
+          },
+          "layout": {
+            "format": "a4-portrait",
+            "canvasSize": {
+              "width": 794,
+              "height": 1123
+            },
+            "gridHelper": {
+              "cols": 12,
+              "rows": 8,
+              "visible": true,
+              "snapEnabled": true,
+              "snapDistance": 0.01
+            },
+            "placements": [
+              {
+                "panelId": "p1",
+                "x": -1.2778,
+                "y": -0.1468,
+                "w": 1.7778,
+                "h": 0.7071,
+                "vx": 0.71875,
+                "vy": 0.25,
+                "vw": 0.28125,
+                "vh": 0.5
+              },
+              {
+                "panelId": "p2",
+                "x": 0.05,
+                "y": 0.3206,
+                "w": 0.9,
+                "h": 0.3579,
+                "vx": 0,
+                "vy": 0.2777,
+                "vw": 1,
+                "vh": 0.4445
+              },
+              {
+                "panelId": "p3",
+                "x": 0.05,
+                "y": 0.62,
+                "w": 0.9,
+                "h": 0.3579
+              }
+            ]
+          },
+          "readingOrder": [
+            "p1",
+            "p2",
+            "p3"
+          ]
+        }
+      ],
+      "panels": {
+        "p1": {
+          "title": {
+            "en-US": "Panel 1"
+          },
+          "durationMs": 2000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-bg",
+              "assetId": "img-p1",
+              "z": 0
+            }
+          ]
+        },
+        "p2": {
+          "title": {
+            "en-US": "Panel 2"
+          },
+          "durationMs": 2000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-bg",
+              "assetId": "img-p2",
+              "z": 0
+            }
+          ]
+        },
+        "p3": {
+          "title": {
+            "en-US": "Panel 3"
+          },
+          "durationMs": 2000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-bg",
+              "assetId": "img-p3",
+              "z": 0
+            }
+          ]
+        }
+      },
+      "graph": {
+        "entry": "p1",
+        "edges": [
+          {
+            "from": "p1",
+            "to": "p2",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p2",
+            "to": "p3",
+            "transition": {
+              "type": "slide",
+              "dir": "left",
+              "durationMs": 300
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "extras": {
+    "cover": {
+      "id": "ex-cover",
+      "title": {
+        "en-US": "Cover"
+      },
+      "images": [
+        {
+          "assetId": "img-cover",
+          "caption": {
+            "en-US": "Framed placements cover"
+          }
+        }
+      ],
+      "gated": false
+    }
+  },
+  "settings": {
+    "ui": {
+      "autoplayDefault": true,
+      "audioDefault": false
+    }
+  }
+}
