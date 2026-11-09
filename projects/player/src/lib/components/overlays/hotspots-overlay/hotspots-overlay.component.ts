@@ -25,7 +25,7 @@ import type {
   SpeechBubble,
 } from '../../../types';
 import type { VariableContext } from '../../../types';
-import { evaluateJsonLogic, resolveLocalizedString } from '../../../utils';
+import { evaluateJsonLogic, isHotspotSelected, resolveLocalizedString } from '../../../utils';
 
 /**
  * Hotspots Overlay Component
@@ -82,6 +82,12 @@ export class HotspotsOverlayComponent implements OnChanges {
   @Input() showIndicators = true;
 
   /**
+   * The panel the reader's choice on this panel led to (shell `madeChoices`),
+   * or null. Marks the goTo hotspot that took the reader there as selected.
+   */
+  @Input() chosenTarget: string | null = null;
+
+  /**
    * Hotspot activated (click or keyboard). x/y are normalized 0-1
    * panel-relative coordinates of the activation point.
    */
@@ -100,10 +106,22 @@ export class HotspotsOverlayComponent implements OnChanges {
    */
   choiceIds: ReadonlySet<string> = new Set();
 
+  /**
+   * Hotspots whose choice the story still reflects (see utils/hotspot-selection):
+   * shown highlighted with a check mark, so a reader returning to the panel
+   * sees what they picked — vital for setVariables hotspots that stay put.
+   */
+  selectedIds: ReadonlySet<string> = new Set();
+
   ngOnChanges(): void {
     const ctx = this.context;
     this.visibleHotspots = (this.hotspots ?? []).filter(
       (h) => !h.visibleIf || !ctx || evaluateJsonLogic(h.visibleIf, ctx)
+    );
+    this.selectedIds = new Set(
+      this.visibleHotspots
+        .filter((h) => isHotspotSelected(h, ctx, this.chosenTarget))
+        .map((h) => h.id)
     );
     // Hotspot.display (schema 1.7.0): button / area as authored; auto = button for a choice.
     const goTos = (this.hotspots ?? []).filter((h) => h.action?.type === 'goTo');
@@ -150,6 +168,34 @@ export class HotspotsOverlayComponent implements OnChanges {
         return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
       }
     }
+  }
+
+  /**
+   * Check-mark badge of a selected hotspot: a disc inside the top-right
+   * corner of its bounds (inside, so a hotspot at the panel edge is not
+   * clipped), sized to the shape but always legible.
+   */
+  checkBadge(h: Hotspot): { cx: number; cy: number; r: number; path: string } {
+    const b = this.boundsOf(h.shape);
+    const r = Math.max(6, Math.min(14, Math.min(b.width, b.height) * 0.18));
+    const pad = r * 0.4;
+    const cx = b.x + b.width - r - pad;
+    const cy = b.y + r + pad;
+    const p = (dx: number, dy: number) => `${cx + dx * r},${cy + dy * r}`;
+    return { cx, cy, r, path: `M${p(-0.45, 0.02)} L${p(-0.12, 0.35)} L${p(0.48, -0.32)}` };
+  }
+
+  /**
+   * ARIA state of a selected hotspot: a setVariables hotspot is a toggle
+   * (`aria-pressed`), a goTo hotspot marks the path taken (`aria-current`).
+   */
+  ariaPressed(h: Hotspot): string | null {
+    if (!this.interactive || h.action?.type !== 'setVariables') return null;
+    return this.selectedIds.has(h.id) ? 'true' : 'false';
+  }
+
+  ariaCurrent(h: Hotspot): string | null {
+    return h.action?.type === 'goTo' && this.selectedIds.has(h.id) ? 'true' : null;
   }
 
   /** Label font size: fits the button height, readable but never huge. */

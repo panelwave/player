@@ -78,6 +78,7 @@
                   [containerWidth]="entry.placement.w"
                   [containerHeight]="entry.placement.h"
                   [context]="variableContext"
+                  [chosenTarget]="chosenTargetOf(entry.panelId)"
                   [interactive]="interactive && isCurrent(entry.panelId)"
                   (hotspotActivate)="hotspotActivate.emit({ hotspot: $event.hotspot, x: $event.x, y: $event.y, panelId: entry.panelId })">
                 </pw-hotspots-overlay>

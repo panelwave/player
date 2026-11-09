@@ -171,3 +171,88 @@ describe('HotspotsOverlayComponent choice labels lettered as bubbles', () => {
     expect(labels).toEqual(['Push through', 'Wait']);
   });
 });
+
+describe('HotspotsOverlayComponent selected hotspots', () => {
+  let fixture: ComponentFixture<HotspotsOverlayComponent>;
+
+  const option = (id: string, value: string, y: number): Hotspot => ({
+    id,
+    shape: { type: 'rect', x: 0.2, y, w: 0.6, h: 0.08 },
+    label: { 'en-US': `Pick ${value}` },
+    display: 'button',
+    action: { type: 'setVariables', mutations: [{ op: 'set', var: 'pick', value }] },
+  });
+  const goTo = (id: string, to: string, y: number): Hotspot => ({
+    id,
+    shape: { type: 'rect', x: 0.2, y, w: 0.6, h: 0.08 },
+    label: { 'en-US': `Go ${to}` },
+    action: { type: 'goTo', to },
+  });
+  const selected = (): string[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.hotspot-shape.selected')).map((g) =>
+      (g as Element).getAttribute('aria-label') ?? ''
+    );
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [HotspotsOverlayComponent] }).compileComponents();
+    fixture = TestBed.createComponent(HotspotsOverlayComponent);
+    fixture.componentRef.setInput('containerWidth', 1000);
+    fixture.componentRef.setInput('containerHeight', 500);
+  });
+
+  it('marks the setVariables option the variables still reflect, with a check badge and aria-pressed', () => {
+    fixture.componentRef.setInput('hotspots', [option('a', 'tea', 0.7), option('b', 'coffee', 0.8)]);
+    fixture.componentRef.setInput('context', { pick: 'coffee' });
+    fixture.detectChanges();
+    expect(selected()).toEqual(['Pick coffee']);
+    expect(fixture.nativeElement.querySelectorAll('.hotspot-check').length).toBe(1);
+    const groups = fixture.nativeElement.querySelectorAll('.hotspot-shape');
+    expect(groups[0].getAttribute('aria-pressed')).toBe('false');
+    expect(groups[1].getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('moves the selection when the variable changes (options are mutually exclusive)', () => {
+    fixture.componentRef.setInput('hotspots', [option('a', 'tea', 0.7), option('b', 'coffee', 0.8)]);
+    fixture.componentRef.setInput('context', { pick: 'coffee' });
+    fixture.detectChanges();
+    fixture.componentRef.setInput('context', { pick: 'tea' });
+    fixture.detectChanges();
+    expect(selected()).toEqual(['Pick tea']);
+  });
+
+  it('shows nothing selected before the reader chose', () => {
+    fixture.componentRef.setInput('hotspots', [option('a', 'tea', 0.7), option('b', 'coffee', 0.8)]);
+    fixture.componentRef.setInput('context', {});
+    fixture.detectChanges();
+    expect(selected()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('.hotspot-check')).toBeNull();
+  });
+
+  it('marks the goTo choice that led to the chosen target (aria-current)', () => {
+    fixture.componentRef.setInput('hotspots', [goTo('a', 'p8', 0.7), goTo('b', 'p9', 0.8)]);
+    fixture.componentRef.setInput('context', {});
+    fixture.componentRef.setInput('chosenTarget', 'p9');
+    fixture.detectChanges();
+    expect(selected()).toEqual(['Go p9']);
+    const groups = fixture.nativeElement.querySelectorAll('.hotspot-shape');
+    expect(groups[1].getAttribute('aria-current')).toBe('true');
+    expect(groups[1].getAttribute('aria-pressed')).toBeNull();
+  });
+
+  it('a selected invisible area drops the pulse indicator', () => {
+    fixture.componentRef.setInput('hotspots', [{ ...option('a', 'tea', 0.7), display: 'area' }]);
+    fixture.componentRef.setInput('context', { pick: 'tea' });
+    fixture.detectChanges();
+    const g: Element = fixture.nativeElement.querySelector('.hotspot-shape');
+    expect(g.classList).toContain('selected');
+    expect(g.classList).not.toContain('indicator');
+  });
+
+  it('places the check badge inside the top-right corner of the shape', () => {
+    const b = fixture.componentInstance.checkBadge(option('a', 'tea', 0.7));
+    // bounds: x 200, y 350, w 600, h 40 → r = 40 * 0.18 = 7.2, pad = 2.88
+    expect(b.r).toBeCloseTo(7.2, 5);
+    expect(b.cx).toBeCloseTo(800 - 7.2 - 2.88, 5);
+    expect(b.cy).toBeCloseTo(350 + 7.2 + 2.88, 5);
+  });
+});

@@ -678,6 +678,11 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    * view; pages made up of off-path panels only are skipped.
    */
   private madeChoices = new Map<string, string>();
+  /**
+   * Snapshot of `madeChoices` for the views (new identity on every change so
+   * OnPush children see it): marks the goTo hotspot taken as selected.
+   */
+  chosenPaths: ReadonlyMap<string, string> = new Map();
   private branchGraph: { manifest: unknown; graph: BranchGraph } | null = null;
   /** Placeholders in page view (off the path, or behind a choice not made yet). */
   hiddenPanelIds: ReadonlySet<string> = new Set();
@@ -685,6 +690,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   private unchosenPanelIds: ReadonlySet<string> = new Set();
 
   private refreshBranchVisibility(): void {
+    this.chosenPaths = new Map(this.madeChoices);
     const manifest = this.manifestService.getManifest();
     if (!manifest?.chapters?.length) {
       this.hiddenPanelIds = this.unchosenPanelIds = new Set();
@@ -992,6 +998,7 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.viewMode = 'panel';
     this.visitedPanelIds = [];
     this.madeChoices.clear();
+    this.chosenPaths = new Map();
     this.branchGraph = null;
     this.hiddenPanelIds = this.unchosenPanelIds = new Set();
     this.coverVisible = false;

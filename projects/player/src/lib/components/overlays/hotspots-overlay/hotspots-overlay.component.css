@@ -2,6 +2,9 @@
  * Hotspots Overlay Styles
  * Host contract mirrors pw-speech-bubbles (absolute, inset 0, pointer-events
  * none) but stacks BELOW bubbles: bubbles use z-index 20, hotspots 15.
+ *
+ * Shape rules use the child combinator (`> rect`): the check badge of a
+ * selected hotspot is a nested circle and must not pick them up.
  */
 
 :host {
@@ -20,9 +23,9 @@
   display: block;
 }
 
-.hotspot-shape rect,
-.hotspot-shape circle,
-.hotspot-shape polygon {
+.hotspot-shape > rect,
+.hotspot-shape > circle,
+.hotspot-shape > polygon {
   /* Near-invisible fill keeps the whole shape a pointer target */
   fill: rgba(255, 255, 255, 0.001);
   stroke: transparent;
@@ -31,19 +34,19 @@
   cursor: pointer;
 }
 
-.hotspots-svg.non-interactive .hotspot-shape rect,
-.hotspots-svg.non-interactive .hotspot-shape circle,
-.hotspots-svg.non-interactive .hotspot-shape polygon {
+.hotspots-svg.non-interactive .hotspot-shape > rect,
+.hotspots-svg.non-interactive .hotspot-shape > circle,
+.hotspots-svg.non-interactive .hotspot-shape > polygon {
   pointer-events: none;
   cursor: default;
 }
 
-.hotspot-shape:hover rect,
-.hotspot-shape:focus-visible rect,
-.hotspot-shape:hover circle,
-.hotspot-shape:focus-visible circle,
-.hotspot-shape:hover polygon,
-.hotspot-shape:focus-visible polygon {
+.hotspot-shape:hover > rect,
+.hotspot-shape:focus-visible > rect,
+.hotspot-shape:hover > circle,
+.hotspot-shape:focus-visible > circle,
+.hotspot-shape:hover > polygon,
+.hotspot-shape:focus-visible > polygon {
   stroke: rgba(255, 255, 255, 0.85);
   fill: rgba(255, 255, 255, 0.08);
 }
@@ -53,25 +56,82 @@
 }
 
 /* Choice hotspots (2+ goTo targets on the panel) read as labelled buttons. */
-.hotspot-shape.choice rect,
-.hotspot-shape.choice circle,
-.hotspot-shape.choice polygon {
+.hotspot-shape.choice > rect,
+.hotspot-shape.choice > circle,
+.hotspot-shape.choice > polygon {
   fill: var(--pw-theme-surface, rgb(10, 17, 20));
   fill-opacity: 0.78;
   stroke: var(--pw-theme-on-surface, rgba(255, 255, 255, 0.85));
   stroke-width: 1.5;
 }
 
-.hotspot-shape.choice:hover rect,
-.hotspot-shape.choice:focus-visible rect,
-.hotspot-shape.choice:hover circle,
-.hotspot-shape.choice:focus-visible circle,
-.hotspot-shape.choice:hover polygon,
-.hotspot-shape.choice:focus-visible polygon {
+.hotspot-shape.choice:hover > rect,
+.hotspot-shape.choice:focus-visible > rect,
+.hotspot-shape.choice:hover > circle,
+.hotspot-shape.choice:focus-visible > circle,
+.hotspot-shape.choice:hover > polygon,
+.hotspot-shape.choice:focus-visible > polygon {
   fill: var(--pw-theme-surface, rgb(10, 17, 20));
   fill-opacity: 0.92;
   stroke: var(--pw-theme-accent, #ffffff);
   stroke-width: 2.5;
+}
+
+/*
+ * Selected hotspots (the story still reflects the choice): an accent outline
+ * that stays visible without hover, plus the check badge. Invisible areas get
+ * a light accent tint so the picked spot on the artwork is recognisable.
+ */
+.hotspot-shape.selected > rect,
+.hotspot-shape.selected > circle,
+.hotspot-shape.selected > polygon {
+  fill: var(--pw-theme-accent, #f59e0b);
+  fill-opacity: 0.16;
+  stroke: var(--pw-theme-accent, #f59e0b);
+  stroke-width: 2.5;
+}
+
+.hotspot-shape.selected:hover > rect,
+.hotspot-shape.selected:focus-visible > rect,
+.hotspot-shape.selected:hover > circle,
+.hotspot-shape.selected:focus-visible > circle,
+.hotspot-shape.selected:hover > polygon,
+.hotspot-shape.selected:focus-visible > polygon {
+  fill: var(--pw-theme-accent, #f59e0b);
+  fill-opacity: 0.26;
+  stroke: var(--pw-theme-accent, #f59e0b);
+  stroke-width: 3;
+}
+
+/* A selected choice button keeps its readable dark fill. */
+.hotspot-shape.choice.selected > rect,
+.hotspot-shape.choice.selected > circle,
+.hotspot-shape.choice.selected > polygon,
+.hotspot-shape.choice.selected:hover > rect,
+.hotspot-shape.choice.selected:focus-visible > rect,
+.hotspot-shape.choice.selected:hover > circle,
+.hotspot-shape.choice.selected:focus-visible > circle,
+.hotspot-shape.choice.selected:hover > polygon,
+.hotspot-shape.choice.selected:focus-visible > polygon {
+  fill: var(--pw-theme-surface, rgb(10, 17, 20));
+  fill-opacity: 0.92;
+}
+
+.hotspot-check {
+  pointer-events: none;
+}
+
+.hotspot-check circle {
+  fill: var(--pw-theme-accent, #f59e0b);
+  stroke: var(--pw-theme-surface, rgb(10, 17, 20));
+  stroke-width: 1.5;
+}
+
+.hotspot-check path {
+  fill: none;
+  stroke: var(--pw-theme-on-accent, #ffffff);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .hotspot-label-box {
@@ -97,9 +157,9 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.hotspot-shape.indicator rect,
-.hotspot-shape.indicator circle,
-.hotspot-shape.indicator polygon {
+.hotspot-shape.indicator > rect,
+.hotspot-shape.indicator > circle,
+.hotspot-shape.indicator > polygon {
   animation: hotspot-pulse 2.4s ease-in-out infinite;
 }
 
@@ -114,9 +174,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hotspot-shape.indicator rect,
-  .hotspot-shape.indicator circle,
-  .hotspot-shape.indicator polygon {
+  .hotspot-shape.indicator > rect,
+  .hotspot-shape.indicator > circle,
+  .hotspot-shape.indicator > polygon {
     animation: none;
   }
 }

@@ -9,10 +9,13 @@
     <g
       class="hotspot-shape"
       [class.choice]="choiceIds.has(h.id)"
-      [class.indicator]="showIndicators && !choiceIds.has(h.id)"
+      [class.selected]="selectedIds.has(h.id)"
+      [class.indicator]="showIndicators && !choiceIds.has(h.id) && !selectedIds.has(h.id)"
       [attr.role]="interactive ? 'button' : null"
       [attr.tabindex]="interactive ? 0 : null"
       [attr.aria-label]="resolveLabel(h)"
+      [attr.aria-pressed]="ariaPressed(h)"
+      [attr.aria-current]="ariaCurrent(h)"
       (click)="onShapeClick(h, $event)"
       (keydown)="onKeyDown(h, $event)"
     >
@@ -48,6 +51,14 @@
           aria-hidden="true">
           <xhtml:div class="hotspot-label" [style.font-size.px]="choiceFontSize(h)">{{ text }}</xhtml:div>
         </foreignObject>
+      }
+      @if (selectedIds.has(h.id)) {
+        <!-- Selected: a check badge (decorative; the state is in aria-pressed / aria-current). -->
+        @let badge = checkBadge(h);
+        <g class="hotspot-check" aria-hidden="true">
+          <circle [attr.cx]="badge.cx" [attr.cy]="badge.cy" [attr.r]="badge.r" />
+          <path [attr.d]="badge.path" [attr.stroke-width]="badge.r * 0.32" />
+        </g>
       }
     </g>
   }

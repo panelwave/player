@@ -104,6 +104,17 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
 
   @Input() locale: LocaleCode = 'en-US';
   @Input() variableContext: VariableContext | null = null;
+
+  /**
+   * The reader's choices so far: choice panel id → the panel the choice led
+   * to. Marks the goTo hotspot taken on a panel as selected.
+   */
+  @Input() chosenPaths: ReadonlyMap<string, string> = new Map();
+
+  /** The panel the reader's choice on `panelId` led to, if any. */
+  chosenTargetOf(panelId: string): string | null {
+    return this.chosenPaths.get(panelId) ?? null;
+  }
   @Input() speechEnabled = true;
   @Input() workBalloonConfig: BalloonConfig | null = null;
   @Input() characters: Character[] = [];

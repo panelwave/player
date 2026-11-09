@@ -186,5 +186,8 @@ export {
 // Page background color (page view gutters, panel view frame)
 export { DEFAULT_PAGE_BACKGROUND, resolvePageBackground } from './page-background';
 
+// Hotspot selection state (derived from variables and the chosen path)
+export { isHotspotSelected } from './hotspot-selection';
+
 // Navigation thumbnails and the work's cover
 export { THUMBNAIL_WIDTH, panelThumbnailSrc, coverImageSrc } from './thumbnail-utils';

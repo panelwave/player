@@ -213,6 +213,14 @@ describe('PlayerShellComponent behaviour (real services)', () => {
       expect([...shell.hiddenPanelIds].sort()).toEqual(['b1', 'b2']);
     });
 
+    it('hands the chosen path to the views (marks the hotspot taken as selected)', async () => {
+      expect(shell.chosenPaths.size).toBe(0);
+      const before = shell.chosenPaths;
+      await choose('c1');
+      expect(shell.chosenPaths.get('D')).toBe('c1');
+      expect(shell.chosenPaths).not.toBe(before); // new identity for OnPush views
+    });
+
     it('skips pages that are off the chosen path, both ways', async () => {
       await choose('c1');
       await shell.navigateToPreviousPage();

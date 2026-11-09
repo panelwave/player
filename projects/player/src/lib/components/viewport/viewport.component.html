@@ -112,6 +112,7 @@
                     [containerWidth]="getContainerWidth()"
                     [containerHeight]="getContainerHeight()"
                     [context]="variableContext"
+                    [chosenTarget]="chosenTargetOf(currentPanelId)"
                     (hotspotActivate)="onHotspotActivate($event, currentPanelId)">
                   </pw-hotspots-overlay>
                 }
@@ -314,6 +315,7 @@
                           [containerWidth]="getPagePanelWidth(placement)"
                           [containerHeight]="getPagePanelHeight(placement)"
                           [context]="variableContext"
+                          [chosenTarget]="chosenTargetOf(placement.panelId)"
                           (hotspotActivate)="onHotspotActivate($event, placement.panelId)">
                         </pw-hotspots-overlay>
                       }

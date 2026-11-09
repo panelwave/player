@@ -157,6 +157,17 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   @Input() variableContext: VariableContext | null = null;
 
   /**
+   * The reader's choices so far: choice panel id → the panel the choice led
+   * to. Marks the goTo hotspot taken on a panel as selected.
+   */
+  @Input() chosenPaths: ReadonlyMap<string, string> = new Map();
+
+  /** The panel the reader's choice on `panelId` led to, if any. */
+  chosenTargetOf(panelId: string | null | undefined): string | null {
+    return (panelId && this.chosenPaths.get(panelId)) || null;
+  }
+
+  /**
    * Pan X offset (pixels)
    */
   @Input() panX = 0;

@@ -7,6 +7,20 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Added
+- **Selected hotspots stay marked.** A reader who comes back to a panel now
+  sees which option they picked: the hotspot gets an accent outline (a light
+  tint on an invisible area) and a check-mark badge, plus `aria-pressed`
+  (setVariables) / `aria-current` (goTo). The state is derived, not recorded:
+  a hotspot is selected while its `set` / `toggle` / `append` mutations still
+  hold in the variables (so options writing the same variable are mutually
+  exclusive, and persistent variables keep the mark across visits), or — for
+  a goTo without such mutations — while the reader's choice on the panel led
+  to its target. Repeatable actions (`increment`/`decrement`/`remove` only,
+  modal, extras, plugin) never show as selected. New `isHotspotSelected`
+  util; `pw-hotspots-overlay` takes `chosenTarget`, `pw-viewport` and
+  `pw-canvas-stage` take `chosenPaths`.
+
 ### Changed
 - **Page view shows a placement's frame on every screen size (schema 1.13).**
   A page placement's `vx`/`vy`/`vw`/`vh` quartet is the *frame*: the window
