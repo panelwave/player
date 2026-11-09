@@ -45,6 +45,8 @@ test.describe('toolbar features', () => {
   });
 
   test('audio and SFX toggles flip and survive a reload', async ({ page }) => {
+    // Separate toggles only on a large toolbar (≥ 1800px).
+    await page.setViewportSize({ width: 1920, height: 1000 });
     await openPlayer(page);
 
     const audio = toolbarButton(page, 'Mute/unmute audio');
@@ -61,6 +63,44 @@ test.describe('toolbar features', () => {
     await expect(page.locator('pw-player-shell .player-content')).toBeVisible({ timeout: 30_000 });
     await expect(toolbarButton(page, 'Mute/unmute audio')).toHaveAttribute('aria-pressed', 'false');
     await expect(toolbarButton(page, 'Enable/disable sound effects')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('desktop widths merge Audio and SFX into one button', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openPlayer(page);
+
+    const merged = toolbarButton(page, 'Mute/unmute music and sound effects');
+    await expect(merged).toBeVisible();
+    await expect(toolbarButton(page, 'Enable/disable sound effects')).toBeHidden();
+    await expect(merged).toHaveAttribute('aria-pressed', 'true');
+    await merged.click();
+    await expect(merged).toHaveAttribute('aria-pressed', 'false');
+    await merged.click();
+    await expect(merged).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  for (const [width, locale] of [[1504, 'en-US'], [1280, 'en-US'], [1504, 'de-DE'], [1280, 'de-DE'], [1024, 'de-DE']] as const) {
+    test(`the toolbar fits a ${width}px notebook without scrolling (${locale})`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await openPlayer(page);
+      if (locale === 'de-DE') {
+        await toolbarButton(page, 'Select language').click();
+        await page.locator('.language-item', { hasText: 'de-DE' }).click();
+        await expect(page.getByRole('button', { name: 'Sprache auswählen' })).toContainText('de-DE');
+      }
+      const bar = page.locator('pw-toolbar .toolbar');
+      await expect
+        .poll(() => bar.evaluate((el) => el.scrollWidth - el.clientWidth))
+        .toBeLessThanOrEqual(1);
+      await expect(page.locator('pw-toolbar .close-btn')).toBeInViewport();
+    });
+  }
+
+  test('on a phone the close button stays pinned while the icon bar scrolls', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPlayer(page);
+    await expect(page.locator('pw-toolbar .close-btn')).toBeInViewport();
+    await expect(page.locator('pw-toolbar .toolbar .btn-label').first()).toBeHidden();
   });
 
   test('a thumbnail navigates to its panel', async ({ page }) => {

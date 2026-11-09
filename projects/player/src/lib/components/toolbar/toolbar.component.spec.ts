@@ -36,6 +36,7 @@ describe('ToolbarComponent', () => {
         speech_toggle: 'Toggle speech',
         audio_toggle: 'Toggle audio',
         sfx_toggle: 'Toggle SFX',
+        audio_sfx_toggle: 'Toggle music and SFX',
         voices_toggle: 'Toggle voices',
         autoplay_toggle: 'Toggle autoplay',
         decrease_speed: 'Slower',
@@ -217,6 +218,114 @@ describe('ToolbarComponent', () => {
       expect(sfx).toHaveBeenCalledTimes(1);
       expect(voices).toHaveBeenCalledTimes(1);
       expect(thumbs).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('merged Audio + SFX button (desktop and mobile)', () => {
+    const merged = () => btn('Toggle music and SFX') as HTMLButtonElement;
+    let audio: jasmine.Spy;
+    let sfx: jasmine.Spy;
+
+    beforeEach(() => {
+      audio = jasmine.createSpy('audio');
+      sfx = jasmine.createSpy('sfx');
+      component.toggleAudio.subscribe(audio);
+      component.toggleSfx.subscribe(sfx);
+    });
+
+    it('is pressed with both on, mixed with one, off with none', () => {
+      set({ audioEnabled: true, sfxEnabled: true });
+      expect(merged().getAttribute('aria-pressed')).toBe('true');
+      expect(merged().classList).toContain('active');
+      set({ sfxEnabled: false });
+      expect(merged().getAttribute('aria-pressed')).toBe('mixed');
+      expect(merged().classList).toContain('active');
+      set({ audioEnabled: false });
+      expect(merged().getAttribute('aria-pressed')).toBe('false');
+      expect(merged().classList).not.toContain('active');
+      expect(iconName('Toggle music and SFX')).toBe('lucideVolumeX');
+    });
+
+    it('mutes both when both are on', () => {
+      set({ audioEnabled: true, sfxEnabled: true });
+      merged().click();
+      expect(audio).toHaveBeenCalledTimes(1);
+      expect(sfx).toHaveBeenCalledTimes(1);
+    });
+
+    it('mutes only the channel still on', () => {
+      set({ audioEnabled: false, sfxEnabled: true });
+      merged().click();
+      expect(audio).not.toHaveBeenCalled();
+      expect(sfx).toHaveBeenCalledTimes(1);
+    });
+
+    it('turns both on when both are off', () => {
+      set({ audioEnabled: false, sfxEnabled: false });
+      merged().click();
+      expect(audio).toHaveBeenCalledTimes(1);
+      expect(sfx).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('order', () => {
+    const labels = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('.toolbar-btn') as NodeListOf<HTMLElement>).map(
+        (b) => b.getAttribute('aria-label')
+      );
+
+    it('puts Fullscreen right of View, before the language', () => {
+      set({ fullscreenAvailable: true, availableLocales: ['en-US', 'de-DE'] });
+      expect(labels().slice(0, 3)).toEqual(['Toggle view', 'Fullscreen', 'Language']);
+    });
+
+    it('puts Settings right of Extras, at the end of its section', () => {
+      const right = Array.from(
+        fixture.nativeElement.querySelectorAll('.toolbar-right .toolbar-btn') as NodeListOf<HTMLElement>
+      ).map((b) => b.getAttribute('aria-label'));
+      expect(right.slice(-2)).toEqual(['Extras', 'Open settings']);
+    });
+  });
+
+  describe('fit to width', () => {
+    /** Fake a bar whose content shrinks by `step` px per fit level. */
+    function fakeBar(content: number, client: number, step: number): HTMLElement {
+      const container = fixture.nativeElement.querySelector('.toolbar-container') as HTMLElement;
+      const bar = fixture.nativeElement.querySelector('.toolbar') as HTMLElement;
+      const level = () => [1, 2, 3, 4, 5].filter((i) => container.classList.contains(`fit-${i}`)).length;
+      Object.defineProperty(bar, 'scrollWidth', { configurable: true, get: () => content - level() * step });
+      Object.defineProperty(bar, 'clientWidth', { configurable: true, get: () => client });
+      return container;
+    }
+
+    it('applies no fit step when everything fits', () => {
+      const container = fakeBar(1000, 1200, 100);
+      component.fit();
+      expect(component.fitLevel).toBe(0);
+      expect(container.className).not.toContain('fit-');
+    });
+
+    it('applies the smallest cumulative step that fits', () => {
+      const container = fakeBar(1500, 1250, 100); // fits from level 3 (1200)
+      component.fit();
+      expect(component.fitLevel).toBe(3);
+      expect(['fit-1', 'fit-2', 'fit-3'].every((c) => container.classList.contains(c))).toBeTrue();
+      expect(container.classList).not.toContain('fit-4');
+    });
+
+    it('widens again when the bar grows', () => {
+      const container = fakeBar(1500, 1250, 100);
+      component.fit();
+      fakeBar(1500, 1600, 100);
+      component.fit();
+      expect(component.fitLevel).toBe(0);
+      expect(container.classList).not.toContain('fit-1');
+    });
+
+    it('stops at icons only when even that does not fit (the bar scrolls)', () => {
+      fakeBar(3000, 400, 100);
+      component.fit();
+      expect(component.fitLevel).toBe(ToolbarComponent.MAX_FIT_LEVEL);
     });
   });
 

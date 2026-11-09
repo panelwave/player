@@ -19,6 +19,9 @@
   pointer-events: none;
   backdrop-filter: blur(10px);
   overflow: visible;
+  /* The tiers below follow the bar's own width (an embedded player can be
+     narrower than the screen), not the viewport. */
+  container: pw-toolbar / inline-size;
 }
 
 .toolbar-container.visible {
@@ -195,16 +198,24 @@ a.toolbar-btn {
   text-decoration: underline;
 }
 
-/* Close button */
+/*
+ * Close button: pinned to the right edge, so it stays reachable when a
+ * narrow bar scrolls (phones). Opaque colours (the former translucent red
+ * over the bar) so scrolled buttons don't shine through.
+ */
 .toolbar-btn.close-btn {
+  position: sticky;
+  right: 0;
+  z-index: 1;
   margin-left: 8px;
-  background: rgba(255, 0, 0, 0.3);
-  border-color: rgba(255, 0, 0, 0.5);
+  background: rgb(86, 10, 11);
+  border-color: rgb(135, 7, 8);
+  box-shadow: -10px 0 8px rgba(14, 14, 16, 0.94);
 }
 
 .toolbar-btn.close-btn:hover {
-  background: rgba(255, 0, 0, 0.5);
-  border-color: rgba(255, 0, 0, 0.7);
+  background: rgb(135, 7, 8);
+  border-color: rgb(183, 4, 4);
 }
 
 /* Branch indicator */
@@ -360,12 +371,88 @@ a.toolbar-btn {
   font-weight: 600;
 }
 
-/* Responsive mobile layout */
-@media (max-width: 768px) {
-  .toolbar-container {
-    padding: 6px 8px;
+/*
+ * Adaptive tiers, by the toolbar's own width:
+ *   large   (≥ 1800px, e.g. 4K)   every button with its label, Audio and SFX apart
+ *   desktop (769 – 1799px)        Audio + SFX merged, Settings icon only
+ *   mobile  (≤ 768px)             icons only
+ * When the labels still don't fit (notebooks, longer locales, extra buttons),
+ * the component adds cumulative fit-N classes (ToolbarComponent.fit()):
+ *   fit-1 = desktop tier, fit-2 right section icons, fit-3 center section
+ *   icons, fit-4 credit hidden, fit-5 = mobile tier.
+ */
+
+/* Large: the merged Audio button stays hidden. */
+.toolbar-btn.audio-merged {
+  display: none;
+}
+
+/* Desktop tier */
+.fit-1 .toolbar-btn.audio-separate {
+  display: none;
+}
+
+.fit-1 .toolbar-btn.audio-merged {
+  display: flex;
+}
+
+.fit-1 .toolbar-btn.settings-btn {
+  padding: 8px;
+  min-width: 40px;
+  justify-content: center;
+}
+
+.fit-1 .toolbar-btn.settings-btn .btn-label {
+  display: none;
+}
+
+@container pw-toolbar (max-width: 1799.98px) {
+  .toolbar-btn.audio-separate {
+    display: none;
   }
 
+  .toolbar-btn.audio-merged {
+    display: flex;
+  }
+
+  .toolbar-btn.settings-btn {
+    padding: 8px;
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .toolbar-btn.settings-btn .btn-label {
+    display: none;
+  }
+}
+
+/* Fit steps between desktop and mobile */
+.fit-2 .toolbar-right .toolbar-btn,
+.fit-3 .toolbar-center .toolbar-btn {
+  padding: 8px;
+  min-width: 40px;
+  justify-content: center;
+}
+
+.fit-2 .toolbar-right .btn-label,
+.fit-3 .toolbar-center .btn-label,
+.fit-4 .brand-credit {
+  display: none;
+}
+
+/* Mobile tier: icons only (as a fit step, with the full-size buttons) */
+.fit-5 .btn-label {
+  display: none;
+}
+
+.fit-5 .toolbar-left .toolbar-btn {
+  padding: 8px;
+  min-width: 40px;
+  justify-content: center;
+}
+
+/* Mobile tier: icons only */
+@container pw-toolbar (max-width: 768px) {
   .toolbar-brand {
     margin-left: 8px;
     padding-left: 8px;
@@ -380,38 +467,27 @@ a.toolbar-btn {
     gap: 4px;
   }
 
-  .toolbar-btn {
-    padding: 6px 10px;
+  .toolbar-left,
+  .toolbar-right {
+    margin: 0;
+  }
+
+  /* Specific enough to win over the fit-N button rules above. */
+  .toolbar-container .toolbar .toolbar-btn {
+    padding: 6px 8px;
     min-height: 36px;
-    font-size: 12px;
+    min-width: 36px;
+    justify-content: center;
   }
 
   .btn-icon {
     font-size: 16px;
   }
 
-  .btn-label {
-    font-size: 11px;
-  }
-
-  /* Hide labels on mobile to save space */
-  .toolbar-center .btn-label,
-  .toolbar-right .btn-label {
+  .btn-label,
+  .toolbar-btn.settings-btn .btn-label,
+  .brand-credit {
     display: none;
-  }
-
-  .toolbar-btn {
-    padding: 6px 8px;
-    min-width: 36px;
-    justify-content: center;
-  }
-
-  .toolbar-left .toolbar-btn {
-    padding: 6px 10px;
-  }
-
-  .toolbar-left .btn-label {
-    display: inline;
   }
 
   .autoplay-controls {
@@ -436,19 +512,10 @@ a.toolbar-btn {
   }
 }
 
-/* Tablet layout */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .toolbar-btn {
-    padding: 7px 11px;
-    min-height: 38px;
-  }
-
-  .btn-icon {
-    font-size: 17px;
-  }
-
-  .btn-label {
-    font-size: 12px;
+/* The bar's own padding cannot follow its container query. */
+@media (max-width: 768px) {
+  .toolbar-container {
+    padding: 6px 8px;
   }
 }
 

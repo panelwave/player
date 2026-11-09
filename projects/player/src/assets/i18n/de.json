@@ -10,6 +10,7 @@
     "audio_toggle": "Audio stumm/laut schalten",
     "sfx": "SFX",
     "sfx_toggle": "Soundeffekte aktivieren/deaktivieren",
+    "audio_sfx_toggle": "Musik und Soundeffekte stumm/laut schalten",
     "voices": "Stimmen",
     "voices_toggle": "Stimmen der Figuren hören/stumm schalten",
     "autoplay": "Autoplay",

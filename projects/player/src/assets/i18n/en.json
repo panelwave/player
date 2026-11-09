@@ -10,6 +10,7 @@
     "audio_toggle": "Mute/unmute audio",
     "sfx": "SFX",
     "sfx_toggle": "Enable/disable sound effects",
+    "audio_sfx_toggle": "Mute/unmute music and sound effects",
     "voices": "Voices",
     "voices_toggle": "Hear/mute the characters' voices",
     "autoplay": "Autoplay",

@@ -22,6 +22,21 @@ semver. The reader-facing product changelog lives on the docs site
   `pw-canvas-stage` take `chosenPaths`.
 
 ### Changed
+- **Adaptive toolbar: no more scrolling on notebooks.** The toolbar adapts
+  to its own width (container queries, so an embedded player counts its own
+  width, not the screen's): large bars (≥ 1800px, e.g. 4K) keep every label;
+  desktop bars merge Audio and SFX into one Audio button (`aria-pressed`
+  `mixed` when only one is on; it mutes whatever is on, or turns both on —
+  the Settings modal keeps both switches) and show Settings as an icon;
+  mobile bars (≤ 768px) show icons only. When the labels still don't fit
+  (notebooks at 1024–1600px, longer locales, Alt / Choices buttons), the
+  bar goes further step by step only as far as needed: right-section icons,
+  center-section icons, credit hidden, icons only (`ToolbarComponent.fit()`,
+  cumulative `fit-1` … `fit-5` classes; re-fits on resize, input and
+  content changes, and web-font swaps). The close button is pinned to the
+  bar's right edge, so it stays reachable when a phone-width bar scrolls.
+  New order: Fullscreen right of View, Settings right of Extras. New i18n
+  key `toolbar.audio_sfx_toggle`.
 - **Page view shows a placement's frame on every screen size (schema 1.13).**
   A page placement's `vx`/`vy`/`vw`/`vh` quartet is the *frame*: the window
   of the panel's image box (`x`/`y`/`w`/`h`, the artwork's aspect) the page

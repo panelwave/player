@@ -1,5 +1,5 @@
-<div class="toolbar-container" [class.visible]="visible">
-  <div class="toolbar">
+<div #container class="toolbar-container" [class.visible]="visible">
+  <div #bar class="toolbar">
     <!-- Left section: View and navigation controls -->
     <div class="toolbar-section toolbar-left">
       <!-- View toggle (page/panel) -->
@@ -15,18 +15,6 @@
         <span class="btn-label">{{ 'toolbar.view' | translate }}</span>
       </button>
 
-      <!-- Language selector -->
-      @if (availableLocales.length > 1) {
-        <button
-          class="toolbar-btn"
-          type="button"
-          [attr.aria-label]="'toolbar.select_language' | translate"
-          (click)="openLanguage.emit()">
-          <span class="btn-icon"><pw-icon name="lucideGlobe" /></span>
-          <span class="btn-label">{{ locale }}</span>
-        </button>
-      }
-
       <!-- Fullscreen / back to the browser view -->
       @if (fullscreenAvailable) {
         <button
@@ -37,6 +25,19 @@
           [attr.aria-pressed]="fullscreen"
           (click)="toggleFullscreen.emit()">
           <span class="btn-icon"><pw-icon [name]="fullscreen ? 'lucideMinimize' : 'lucideMaximize'" /></span>
+        </button>
+      }
+
+      <!-- Language selector -->
+      @if (availableLocales.length > 1) {
+        <button
+          class="toolbar-btn"
+          type="button"
+          [attr.aria-label]="'toolbar.select_language' | translate"
+          [attr.title]="'toolbar.select_language' | translate"
+          (click)="openLanguage.emit()">
+          <span class="btn-icon"><pw-icon name="lucideGlobe" /></span>
+          <span class="btn-label">{{ locale }}</span>
         </button>
       }
     </div>
@@ -56,9 +57,9 @@
         <span class="btn-label">{{ 'toolbar.speech' | translate }}</span>
       </button>
 
-      <!-- Audio toggle -->
+      <!-- Audio + SFX as two toggles (large toolbars) ... -->
       <button
-        class="toolbar-btn toggle-btn"
+        class="toolbar-btn toggle-btn audio-separate"
         [class.active]="audioEnabled"
         type="button"
         [attr.aria-label]="'toolbar.audio_toggle' | translate"
@@ -69,9 +70,8 @@
         <span class="btn-label">{{ 'toolbar.audio' | translate }}</span>
       </button>
 
-      <!-- SFX toggle -->
       <button
-        class="toolbar-btn toggle-btn"
+        class="toolbar-btn toggle-btn audio-separate"
         [class.active]="sfxEnabled"
         type="button"
         [attr.aria-label]="'toolbar.sfx_toggle' | translate"
@@ -80,6 +80,19 @@
         (click)="onToggleSfx()">
         <span class="btn-icon"><pw-icon name="lucideMusic" /></span>
         <span class="btn-label">{{ 'toolbar.sfx' | translate }}</span>
+      </button>
+
+      <!-- ... or merged into one (desktop and mobile toolbars; the settings keep both switches) -->
+      <button
+        class="toolbar-btn toggle-btn audio-merged"
+        [class.active]="audioEnabled || sfxEnabled"
+        type="button"
+        [attr.aria-label]="'toolbar.audio_sfx_toggle' | translate"
+        [attr.aria-pressed]="audioSfxPressed"
+        [attr.title]="'toolbar.audio_sfx_toggle' | translate"
+        (click)="onToggleAudioAndSfx()">
+        <span class="btn-icon"><pw-icon [name]="audioEnabled || sfxEnabled ? 'lucideVolume2' : 'lucideVolumeX'" /></span>
+        <span class="btn-label">{{ 'toolbar.audio' | translate }}</span>
       </button>
 
       <!-- Voices toggle -->
@@ -177,17 +190,6 @@
         <span class="btn-label">{{ 'toolbar.toc' | translate }}</span>
       </button>
 
-      <!-- Settings -->
-      <button
-        class="toolbar-btn"
-        type="button"
-        [attr.aria-label]="'toolbar.settings_open' | translate"
-        [attr.title]="'toolbar.settings_open' | translate"
-        (click)="onOpenSettings()">
-        <span class="btn-icon"><pw-icon name="lucideSettings" /></span>
-        <span class="btn-label">{{ 'toolbar.settings' | translate }}</span>
-      </button>
-
       <!-- Characters -->
       <button
         class="toolbar-btn"
@@ -234,6 +236,17 @@
         (click)="onOpenExtras()">
         <span class="btn-icon"><pw-icon name="lucideSparkles" /></span>
         <span class="btn-label">{{ 'toolbar.extras' | translate }}</span>
+      </button>
+
+      <!-- Settings (icon only below the large toolbar) -->
+      <button
+        class="toolbar-btn settings-btn"
+        type="button"
+        [attr.aria-label]="'toolbar.settings_open' | translate"
+        [attr.title]="'toolbar.settings_open' | translate"
+        (click)="onOpenSettings()">
+        <span class="btn-icon"><pw-icon name="lucideSettings" /></span>
+        <span class="btn-label">{{ 'toolbar.settings' | translate }}</span>
       </button>
     </div>
 
