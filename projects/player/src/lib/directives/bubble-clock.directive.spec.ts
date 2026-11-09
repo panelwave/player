@@ -27,6 +27,7 @@ const voicedTimedPanel = { layers: [], speechBubbles: [{ ...timedBubbles[0], aud
       style="width: 400px; height: 300px; position: relative;"
       [pwBubbleClock]="panel"
       [pwBubbleClockKey]="key"
+      [pwBubbleClockOrder]="order"
       [pwBubbleClockReducedMotion]="reducedMotion"
       [pwBubbleClockStatic]="isStatic">
       <pw-video-layer><video class="layer-video"></video></pw-video-layer>
@@ -43,6 +44,7 @@ class HostComponent {
   @ViewChild(SpeechBubblesComponent) overlay?: SpeechBubblesComponent;
   panel: Panel | null = imagePanel;
   key = 'p1';
+  order: number | undefined = undefined;
   reducedMotion = false;
   isStatic = false;
   withOverlay = false;
@@ -231,13 +233,20 @@ describe('BubbleClockDirective', () => {
   });
 
   describe('spoken lines (voiced balloons)', () => {
+    it('hands the panel\'s reading-order position to the voices (page view)', () => {
+      host.order = 2;
+      host.panel = voicedUntimedPanel;
+      fixture.detectChanges();
+      expect(voices.attach).toHaveBeenCalledWith('p1', voicedUntimedPanel, clock(), 2);
+    });
+
     it('keeps following the panel for its lines when no balloon is timed: every balloon due, clock running', () => {
       host.panel = voicedUntimedPanel;
       fixture.detectChanges();
       expect(clock().state).toBe('waiting');
       expect(clock().allDue).toBeTrue();
       expect(clock().elapsed()).toBe(Number.POSITIVE_INFINITY);
-      expect(voices.attach).toHaveBeenCalledWith('p1', voicedUntimedPanel, clock());
+      expect(voices.attach).toHaveBeenCalledWith('p1', voicedUntimedPanel, clock(), undefined);
       setShown(true);
       expect(clock().state).toBe('running');
       setShown(false);

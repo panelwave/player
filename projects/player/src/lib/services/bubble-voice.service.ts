@@ -5,16 +5,17 @@
  * 1.12): a line plays on the `voiceover` bus when its balloon appears —
  * at `showAtMs` on the panel's clock, the one timed balloons wait on — and
  * the lines of a panel queue in balloon order, one after another. Several
- * panels shown together (page view, canvas view) read in the order they
- * were shown; a panel that is scrolled away or left stops talking, and
- * entering it again reads it from the top.
+ * panels shown together read in reading order (page view: the page's
+ * `readingOrder`), else in the order they were shown (canvas view); a panel
+ * that is scrolled away or left stops talking, and entering it again reads
+ * it from the top.
  *
  * The clock is the `BubbleClockDirective` on each panel host: it attaches
  * the panel's lines here while the panel is shown and detaches them when
- * the panel changes or is destroyed. The reader's locale picks the variant
- * (an audio asset lists one `AudioVariant` per `locale`; see
- * `ManifestService.getAsset`), so switching the language re-reads the
- * current panel in the new one.
+ * the panel changes or is destroyed. The reader's locale picks the take (an
+ * audio asset lists one `AudioVariant` per `locale`; see `voiceVariantsFor`)
+ * — only takes in that language play, a line without one stays silent — and
+ * switching the language re-reads the current panel in the new one.
  *
  * The reader's Voices toggle (`setEnabled`) stops and starts everything;
  * the shell also mutes the `voiceover` bus with it. Browser autoplay
@@ -30,8 +31,8 @@ import { PlayerStateService } from './player-state.service';
 import { UserGestureService } from './user-gesture.service';
 import { BubbleClock } from '../utils/bubble-clock';
 import { resolveAudioAsset } from '../utils/audio-asset-utils';
-import { voiceCuesFor, type VoiceCue } from '../utils/bubble-voice-utils';
-import type { Panel, SpeechBubble } from '../types';
+import { voiceCuesFor, voiceVariantsFor, type VoiceCue } from '../utils/bubble-voice-utils';
+import type { AssetCatalogItem, Panel, SpeechBubble } from '../types';
 
 /** Fade applied when a line is cut short (panel left, voices turned off, language switched). */
 export const BUBBLE_VOICE_STOP_FADE_MS = 150;
@@ -39,6 +40,10 @@ export const BUBBLE_VOICE_STOP_FADE_MS = 150;
 /** One shown panel with spoken lines. */
 interface VoiceSession {
   key: string;
+  /** Position in the reading order (page view: `Page.readingOrder`); undefined = when shown. */
+  order: number | undefined;
+  /** Attach sequence: ties and unordered panels read in the order they were shown. */
+  seq: number;
   cues: VoiceCue[];
   clock: BubbleClock;
   /** Lines already spoken (or started) since the panel was shown. */
@@ -55,6 +60,13 @@ interface Speaking {
   trackId: string;
 }
 
+/** Reading order first (unordered panels after the ordered ones), then attach order. */
+function compareSessions(a: VoiceSession, b: VoiceSession): number {
+  const ao = a.order ?? Number.POSITIVE_INFINITY;
+  const bo = b.order ?? Number.POSITIVE_INFINITY;
+  return ao !== bo ? ao - bo : a.seq - b.seq;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -64,8 +76,10 @@ export class BubbleVoiceService implements OnDestroy {
   private readonly playerState = inject(PlayerStateService);
   private readonly gesture = inject(UserGestureService);
 
-  /** Attached panels, in the order they were shown. */
+  /** Attached panels, in reading order (then in the order they were shown). */
   private sessions: VoiceSession[] = [];
+
+  private attachSeq = 0;
 
   private speaking: Speaking | null = null;
 
@@ -121,14 +135,21 @@ export class BubbleVoiceService implements OnDestroy {
    * Speak the lines of `panel` while `clock` runs. Returns the detach
    * function; the `BubbleClockDirective` calls it when the panel changes
    * or the host is destroyed.
+   *
+   * `order` is the panel's position in the reading order (page view): the
+   * panels shown together read in that order, whatever order their hosts
+   * were created in (a page's placements are not always listed in reading
+   * order). Without it, panels read in the order they were shown.
    */
-  attach(key: string, panel: Pick<Panel, 'speechBubbles'>, clock: BubbleClock): () => void {
+  attach(key: string, panel: Pick<Panel, 'speechBubbles'>, clock: BubbleClock, order?: number): () => void {
     const cues = voiceCuesFor(panel);
     if (cues.length === 0) {
       return () => undefined;
     }
     const session: VoiceSession = {
       key,
+      order: typeof order === 'number' && Number.isFinite(order) ? order : undefined,
+      seq: this.attachSeq++,
       cues,
       clock,
       spoken: new Set<string>(),
@@ -136,7 +157,7 @@ export class BubbleVoiceService implements OnDestroy {
       subscription: new Subscription(),
     };
     session.subscription = clock.changes$.subscribe((state) => this.onClockChange(session, state));
-    this.sessions.push(session);
+    this.sessions = [...this.sessions, session].sort(compareSessions);
     if (clock.state === 'running') {
       this.scheduleTick();
     }
@@ -307,6 +328,15 @@ export class BubbleVoiceService implements OnDestroy {
           }
         },
       })
+      .then(() => {
+        // Cut short while it was still starting (language switched, voices
+        // off, panel left): the engine registers a track only once it plays,
+        // so stopSpeaking() could not stop it then. Unless a newer line took
+        // the same track id (the same balloon, re-read), which replaced it.
+        if (this.speaking !== current && this.speaking?.trackId !== trackId && this.engine.isActive(trackId)) {
+          void this.engine.stop(trackId, BUBBLE_VOICE_STOP_FADE_MS);
+        }
+      })
       .catch((error: unknown) => {
         if (this.speaking !== current) {
           return;
@@ -366,8 +396,22 @@ export class BubbleVoiceService implements OnDestroy {
     }
   }
 
+  /**
+   * The URL of a line in the reader's language. A line with takes in other
+   * languages only is skipped silently (`voiceVariantsFor`: no fallback to
+   * the work's default language).
+   */
   private resolveUrl(assetId: string): string | null {
-    const asset = this.manifestService.getAsset(assetId, this.locale);
+    const raw = this.manifestService.getAsset(assetId);
+    let asset: AssetCatalogItem | null = raw;
+    const variants = (raw as { variants?: { locale?: string }[] } | null)?.variants;
+    if (raw && variants?.length) {
+      const own = voiceVariantsFor(variants, this.locale);
+      if (own.length === 0) {
+        return null;
+      }
+      asset = { ...raw, variants: own } as AssetCatalogItem;
+    }
     const resolved = resolveAudioAsset(asset, this.manifestService.getManifest()?.assets?.base);
     if ('error' in resolved) {
       if (!this.warned.has(assetId)) {

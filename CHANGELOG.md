@@ -53,6 +53,21 @@ semver. The reader-facing product changelog lives on the docs site
   `framesBounds`, `isFramedPlacement`); `getPanelContentClipPath` /
   `getPanelContentTransform` are gone. Demo: "Framed Placements".
 
+### Fixed
+- **Spoken lines: only the reader's language, in reading order.** A
+  balloon's line now plays only from a take in the reader's language (exact
+  locale, else the same language, else a take without a locale); a line
+  recorded in other languages only stays silent instead of falling back to
+  the work's default language (`voiceVariantsFor`; images keep their
+  fallback). Lines without any localized take still play in every
+  language. In page view the panels shown together queue in the page's
+  `readingOrder` — before, they queued in DOM (z-)order, so a page whose
+  placements were not listed in reading order started with a later panel
+  (new `pwBubbleClockOrder` input, `BubbleVoiceService.attach(…, order)`).
+  A line cut short while still starting (the host's start locale arriving,
+  Voices off, panel left) is now stopped once the engine registers it;
+  before, it played to the end next to the re-read line.
+
 ## [2.0.1] — 2026-11-03
 
 ### Changed

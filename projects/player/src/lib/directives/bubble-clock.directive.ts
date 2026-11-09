@@ -62,6 +62,13 @@ export class BubbleClockDirective implements OnChanges, OnDestroy {
   /** Identity of the shown panel — a change restarts the clock. */
   @Input() pwBubbleClockKey = '';
 
+  /**
+   * Position of the panel in the reading order (page view): the spoken lines
+   * of the panels shown together queue in this order. Unset: in the order
+   * the panels were shown.
+   */
+  @Input() pwBubbleClockOrder: number | undefined;
+
   /** Reduced motion: every balloon at once. Unset: the OS preference. */
   @Input() pwBubbleClockReducedMotion: boolean | undefined;
 
@@ -90,6 +97,7 @@ export class BubbleClockDirective implements OnChanges, OnDestroy {
   private computeSignature(): string {
     return [
       this.pwBubbleClockKey,
+      this.pwBubbleClockOrder ?? '',
       this.pwBubbleClockStatic ? 's' : '',
       this.isReducedMotion() ? 'r' : '',
       hasTimedBubbles(this.panel) ? 't' : '',
@@ -115,7 +123,7 @@ export class BubbleClockDirective implements OnChanges, OnDestroy {
     // clock still follows the panel so its spoken lines play when it is shown.
     if (!timed) this.clock.markAllDue();
     if (voiced && this.panel) {
-      this.cleanups.push(this.voices.attach(this.pwBubbleClockKey, this.panel, this.clock));
+      this.cleanups.push(this.voices.attach(this.pwBubbleClockKey, this.panel, this.clock, this.pwBubbleClockOrder));
     }
     const hasVideo = panelVideoLayerIds(this.panel).length > 0;
     this.zone.runOutsideAngular(() => (hasVideo ? this.followVideo() : this.followVisibility()));

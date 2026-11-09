@@ -36,6 +36,38 @@ export function bubbleAudioAssetId(bubble: Pick<SpeechBubble, 'audioAssetId'> | 
   return '';
 }
 
+/**
+ * The takes of a spoken line a reader in `locale` may hear: the exact
+ * locale, else the same language (a de-AT reader hears de-DE), else a take
+ * without a locale (language-free: a laugh, a scream). Unlike images
+ * (`localizeVariants`) there is NO fallback to the work's default language:
+ * a line not recorded in the reader's language stays silent instead of
+ * speaking another one. A line whose takes carry no locale at all (format
+ * 1.12 without localized takes) is spoken in every language.
+ */
+export function voiceVariantsFor<T extends { locale?: string }>(variants: T[] | undefined, locale: string | undefined): T[] {
+  const all = variants ?? [];
+  if (!all.some((variant) => variant.locale)) {
+    return all;
+  }
+  const neutral = all.filter((variant) => !variant.locale);
+  if (!locale) {
+    return neutral;
+  }
+  const lower = locale.toLowerCase();
+  const exact = all.filter((variant) => variant.locale?.toLowerCase() === lower);
+  if (exact.length > 0) {
+    return exact;
+  }
+  const language = lower.split('-')[0];
+  const sameLanguage = all.find((variant) => variant.locale?.toLowerCase().split('-')[0] === language);
+  if (sameLanguage?.locale) {
+    const match = sameLanguage.locale.toLowerCase();
+    return all.filter((variant) => variant.locale?.toLowerCase() === match);
+  }
+  return neutral;
+}
+
 /** Whether any balloon of the panel has a spoken line. */
 export function hasVoicedBubbles(panel: Pick<Panel, 'speechBubbles'> | null | undefined): boolean {
   return (panel?.speechBubbles ?? []).some((bubble) => bubbleAudioAssetId(bubble) !== '');

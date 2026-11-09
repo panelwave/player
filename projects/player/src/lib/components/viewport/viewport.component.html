@@ -275,6 +275,7 @@
                      [pwPanelAnimationReducedMotion]="reducedMotion"
                      [pwBubbleClock]="panelData"
                      [pwBubbleClockKey]="placement.panelId"
+                     [pwBubbleClockOrder]="voiceOrderOf(placement.panelId)"
                      [pwBubbleClockReducedMotion]="reducedMotion"
                      tabindex="0"
                      (click)="onPanelContainerClick($event, placement.panelId)"

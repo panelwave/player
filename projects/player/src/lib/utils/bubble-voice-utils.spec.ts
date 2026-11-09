@@ -1,4 +1,4 @@
-import { bubbleAudioAssetId, hasVoicedBubbles, voiceCuesFor } from './bubble-voice-utils';
+import { bubbleAudioAssetId, hasVoicedBubbles, voiceCuesFor, voiceVariantsFor } from './bubble-voice-utils';
 import type { Panel } from '../types';
 
 const panel = (speechBubbles: unknown[]): Panel => ({ speechBubbles }) as unknown as Panel;
@@ -42,5 +42,31 @@ describe('bubble voice utils', () => {
     const cues = voiceCuesFor(panel([{ id: 'a', audioAssetId: 'v', showAtMs: -5 }, { id: 'b', audioAssetId: 'v', showAtMs: 1e9 }]));
     expect(cues[0].showAtMs).toBe(0);
     expect(cues[1].showAtMs).toBe(120000);
+  });
+
+  describe('voiceVariantsFor (no fallback to another language)', () => {
+    const v = (locale?: string) => ({ src: `${locale ?? 'x'}.mp3`, ...(locale ? { locale } : {}) });
+    const srcs = (list: { src: string }[]) => list.map((item) => item.src);
+
+    it('picks the exact locale, case-insensitively', () => {
+      expect(srcs(voiceVariantsFor([v('en-US'), v('de-DE')], 'de-de'))).toEqual(['de-DE.mp3']);
+    });
+
+    it('falls back to the same language only', () => {
+      expect(srcs(voiceVariantsFor([v('en-US'), v('de-DE')], 'de-AT'))).toEqual(['de-DE.mp3']);
+    });
+
+    it('stays silent rather than speaking another language', () => {
+      expect(voiceVariantsFor([v('en-US')], 'de-DE')).toEqual([]);
+    });
+
+    it('takes a language-free take when the language has none', () => {
+      expect(srcs(voiceVariantsFor([v('en-US'), v()], 'de-DE'))).toEqual(['x.mp3']);
+    });
+
+    it('speaks unlocalized lines (no take carries a locale) in every language', () => {
+      expect(srcs(voiceVariantsFor([v()], 'de-DE'))).toEqual(['x.mp3']);
+      expect(voiceVariantsFor(undefined, 'de-DE')).toEqual([]);
+    });
   });
 });

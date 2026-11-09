@@ -1466,6 +1466,19 @@ export class ViewportComponent implements OnChanges, OnDestroy {
   }
 
   /**
+   * Page view: where a panel's spoken lines queue (`pwBubbleClockOrder`).
+   * The DOM follows z-order, not reading order, so the voices are told the
+   * page's `readingOrder` position; panels missing from it come after, in
+   * layout order.
+   */
+  voiceOrderOf(panelId: string): number {
+    const index = this.readingOrderIndexOf(panelId);
+    if (index >= 0) return index;
+    const placements = this.page?.layout?.placements ?? [];
+    return (this.page?.readingOrder?.length ?? 0) + Math.max(0, placements.findIndex((p) => p.panelId === panelId));
+  }
+
+  /**
    * Get panels sorted by z-index (lowest to highest for rendering order)
    */
   getSortedPanels(): PanelPlacement[] {
