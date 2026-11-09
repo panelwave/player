@@ -15,6 +15,13 @@
   height: 100%;
   pointer-events: none;
   z-index: 15;
+  /*
+   * Selection colour for picked hotspots. Deliberately NOT the theme accent:
+   * works often use a red/rose accent, which made the persistent selection
+   * read like an error state. Hosts can still override it.
+   */
+  --pw-hotspot-selected: #2563eb;
+  --pw-hotspot-on-selected: #ffffff;
 }
 
 .hotspots-svg {
@@ -78,16 +85,16 @@
 }
 
 /*
- * Selected hotspots (the story still reflects the choice): an accent outline
+ * Selected hotspots (the story still reflects the choice): a blue outline
  * that stays visible without hover, plus the check badge. Invisible areas get
- * a light accent tint so the picked spot on the artwork is recognisable.
+ * a light blue tint so the picked spot on the artwork is recognisable.
  */
 .hotspot-shape.selected > rect,
 .hotspot-shape.selected > circle,
 .hotspot-shape.selected > polygon {
-  fill: var(--pw-theme-accent, #f59e0b);
+  fill: var(--pw-hotspot-selected);
   fill-opacity: 0.16;
-  stroke: var(--pw-theme-accent, #f59e0b);
+  stroke: var(--pw-hotspot-selected);
   stroke-width: 2.5;
 }
 
@@ -97,9 +104,9 @@
 .hotspot-shape.selected:focus-visible > circle,
 .hotspot-shape.selected:hover > polygon,
 .hotspot-shape.selected:focus-visible > polygon {
-  fill: var(--pw-theme-accent, #f59e0b);
+  fill: var(--pw-hotspot-selected);
   fill-opacity: 0.26;
-  stroke: var(--pw-theme-accent, #f59e0b);
+  stroke: var(--pw-hotspot-selected);
   stroke-width: 3;
 }
 
@@ -122,14 +129,14 @@
 }
 
 .hotspot-check circle {
-  fill: var(--pw-theme-accent, #f59e0b);
+  fill: var(--pw-hotspot-selected);
   stroke: var(--pw-theme-surface, rgb(10, 17, 20));
   stroke-width: 1.5;
 }
 
 .hotspot-check path {
   fill: none;
-  stroke: var(--pw-theme-on-accent, #ffffff);
+  stroke: var(--pw-hotspot-on-selected);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
