@@ -12,10 +12,9 @@ semver. The reader-facing product changelog lives on the docs site
   with a red or rose accent, the 2.2.0 selection outline and check badge
   read like an error state. They now use their own tokens,
   `--pw-hotspot-selected` (blue `#2563eb`) and `--pw-hotspot-on-selected`
-  (the check, white). The overlay declares them on itself, so a host
-  overrides them on `pw-hotspots-overlay` (not on `pw-player-shell`), with a
-  selector that outweighs the overlay's emulated `:host` attribute, e.g.
-  `.my-reader pw-hotspots-overlay { --pw-hotspot-selected: … }`.
+  (the check, white). Like the `--pw-theme-*` properties, a host sets them
+  on `pw-player-shell` or any ancestor:
+  `pw-player-shell { --pw-hotspot-selected: #0d9488; }`.
 
 ## [2.2.0] — 2026-11-09
 
