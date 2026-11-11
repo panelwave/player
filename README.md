@@ -3,8 +3,9 @@
 **Open-source Angular library** for rendering interactive graphic novels in the PanelWave JSON format. High-performance, accessible, and extensible player with graph-based navigation, multilingual support, and plugin system.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Angular](https://img.shields.io/badge/Angular-20%20%7C%2021%20%7C%2022-red)](https://angular.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)](https://www.typescriptlang.org/)
+[![Angular](https://img.shields.io/badge/Angular-21%20%7C%2022-red)](https://angular.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+[![Format](https://img.shields.io/badge/format-1.13-blue)](https://panelwave.org/schema/1.0/panelwave.schema.json)
 [![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
 [![ci](https://github.com/panelwave/player/actions/workflows/ci.yml/badge.svg)](https://github.com/panelwave/player/actions/workflows/ci.yml)
 
@@ -14,17 +15,19 @@
 
 ## 🎯 Overview
 
-PanelWave Player is an **Angular library (20, 21 and 22)** that renders interactive graphic novels using the open **PanelWave JSON format**. It provides a complete, production-ready player with advanced features:
+PanelWave Player is an **Angular library (21 and 22)** that renders interactive graphic novels using the open **PanelWave JSON format** (up to format **1.13**). It provides a complete, production-ready player with advanced features:
 
 - **📖 Graph-Based Navigation** - Non-linear storytelling with conditional branching
-- **🗺️ Two View Modes** - Classic panel view and an **infinite-canvas view** with camera pan/zoom (`CanvasStageComponent`, format 1.4)
+- **🗺️ Three View Modes** - Authored **page view** (one page sequence per output format), classic **panel view**, and an **infinite-canvas view** with camera pan/zoom (`CanvasStageComponent`, format 1.4)
 - **🎞️ Video Panels** - Sequenced video layers with per-work/per-panel playback config (format 1.1)
-- **🌍 Multilingual Support** - Runtime language switching with localized assets
+- **🌍 Multilingual Support** - Runtime language switching with localized text, artwork and audio
+- **🗣️ Spoken Lines** - Per-language voice lines on speech balloons with a reader-facing **Voices** toggle (format 1.12)
 - **♿ Accessibility First** - WCAG 2.1 AA compliance, keyboard navigation, screen reader support
-- **🎮 Interactive Layers** - Hotspots, speech bubbles (9 balloon types with SVG rendering), variants, parallax effects
+- **🎮 Interactive Layers** - Hotspots, speech bubbles (9 balloon types with SVG rendering), content widgets, variants, panel animations
 - **🔌 Plugin System** - Sandboxed plugin layers with a host message bus (360° viewer, mega-zoom, mini-games)
-- **💰 Monetization Ready** - Paywall adapter interface for entitlement checks
-- **🎨 Media Rich** - Image caching (responsive variant ladder), WebAudio mixing, video playback, preloading
+- **💰 Monetization Ready** - Manifest-driven paywall and age gates with an entitlement snapshot or adapter
+- **🎨 Media Rich** - Image caching (responsive variant ladder), WebAudio mixing, timeline music, video playback, preloading
+- **📦 Embeddable** - Self-hosting standalone package, chapter embeds and an iframe embed bridge
 - **📊 Analytics** - Tracking service with event hooks
 
 ---
@@ -95,10 +98,12 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Variables** - 5 scopes (global, chapter, page, session, persistent)
 - **History Navigation** - Back/forward with state preservation
 - **Keyboard Shortcuts** - Arrow keys, spacebar, hotkeys
-
+- **Shareable Positions** - The reading position is a URL (`?page=<pageId>` / `?panel=<panelId>`): open one with `initialPageId` / `initialPanelId`, follow it with the `locationChange` output (`parseLocationSearch` / `locationUrl` helpers). Page links of both CMS page-id generations (`pg-B1` per chapter, `ch2-pg-B1` per work) resolve
 - **Chapter embeds** - `chapterScope` locks a player to one chapter; several players (one iframe each) can sit on one host page with lazy loading and autoplay on scroll ([concept](docs/MULTI_CHAPTER_EMBED.md))
+- **Adaptive Toolbar** - The toolbar fits its own width (container queries, so an embedded player counts its own width): labels on large bars, merged Audio button and icon Settings on desktop, icons only on phones, stepping down further only as far as needed on notebooks and longer locales
 
 ### ✅ View Modes
+- **Page View** - The work's authored pages, one page sequence per output format: `pageFormat: 'auto'` picks the format that suits the screen (phone → `mobile-portrait`, 4K → `bigscreen-landscape`, …) and re-picks on resize. A placement's `vx`/`vy`/`vw`/`vh` frame crops the panel's artwork on every screen size, and the artwork may extend past the page behind a fixed frame (format 1.13). Readers switch between page and panel view in the toolbar; `initialViewMode` picks the start
 - **Panel View** - Classic one-panel-at-a-time reading with transitions
 - **Canvas View** - Infinite-canvas spatial mode (format 1.4): panels placed on a 2D stage, camera pan/zoom via `CanvasCameraService`, panel budget culling; select per work/chapter or force via the `viewModeOverride` input
 
@@ -108,7 +113,7 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Video Panels** - Sequenced multi-video playback (`VideoSequencerService`) with per-work/per-panel playback defaults (play mode, start mode, muted; format 1.1)
 - **Speech Bubbles** - Comic-book balloon rendering (normal, thought, shout, whisper, connector, cut-top variants) with configurable tails, hide-border effects, and per-character/per-bubble style overrides
 - **Style Presets** - Work-level `settings.typography.textStyles` / `balloonPresets` referenced via `styleRef` on text layers and speech bubbles (format 1.3)
-- **Hotspots** - Interactive areas (rect, circle, polygon; normalized panel-relative geometry) with all five manifest actions: `goTo` (mutations + transition), `setVariables`, `openExtras` (opens the viewer at the item), `openModal` (localized title/content dialog), `pluginEvent`. Conditional visibility via `visibleIf` (JSON Logic), localized labels/ariaLabels, keyboard activation (Tab + Enter/Space at the shape centroid). Every click is tracked as `hotspot_click {panelId, chapterId, hotspotId?, x, y, hit}` — clicks that miss all hotspots are recorded with `hit: false` (dead clicks) for the CMS click heatmap. Rendered in panel and page views; render-only in canvas view (taps keep edge navigation)
+- **Hotspots** - Interactive areas (rect, circle, polygon; normalized panel-relative geometry) with all five manifest actions: `goTo` (mutations + transition), `setVariables`, `openExtras` (opens the viewer at the item), `openModal` (localized title/content dialog), `pluginEvent`. Conditional visibility via `visibleIf` (JSON Logic), localized labels/ariaLabels, keyboard activation (Tab + Enter/Space at the shape centroid). A reader who returns to a panel sees the option they picked: the selected hotspot gets an outline and a check badge plus `aria-pressed` / `aria-current`, derived from the variables its mutations still hold (or, for a plain `goTo`, from the path the reader took; `isHotspotSelected`). Every click is tracked as `hotspot_click {panelId, chapterId, hotspotId?, x, y, hit}` — clicks that miss all hotspots are recorded with `hit: false` (dead clicks) for the CMS click heatmap. Rendered in panel and page views; render-only in canvas view (taps keep edge navigation)
 - **Focus Rects** - In panel view a panel larger than the screen (a landscape panel on a phone) is cropped around its `formatViews[format].minimalFocusRect` instead of its middle; the panel shrinks only when the rect itself does not fit. The rect of the format whose frame is closest to the screen's shape applies
 - **Panel Animations** - One animation per panel (`animations`), in every view mode:
   - *Layer keyframes* (`animations.keyframes`, format 1.6): opacity, offset, scale, rotation, blur, brightness, contrast and saturation per layer, with per-keyframe easing
@@ -119,12 +124,13 @@ All configuration is passed as individual inputs on the shell component (see [Co
 - **Image Cache** - LRU cache with memory budget management
 - **Responsive Images** - Selects the best fit from the manifest's variant ladder (e.g. `w640`–`w2560`) per display size
 - **Audio Engine** - WebAudio mixer with 4 channels (ambient, music, voiceover, SFX)
-- **Spoken Lines** - a balloon's `audioAssetId` plays when the balloon appears, one line after another, in the reader's language (one `AudioVariant` per `locale`); the **Voices** toggle (`settings.ui.voicesDefault`) lets readers listen without reading (format 1.12)
+- **Timeline Audio** - `chapter.sequenceAudio` music and ambience follow the reader at the offset of the panel being entered, keep playing inside their range and fade out on leaving it; `span: 'work'` continues across chapters (`SequenceAudioService`)
+- **Spoken Lines** - a balloon's `audioAssetId` plays when the balloon appears, one line after another in reading order, in the reader's language (one `AudioVariant` per `locale`; a line without a take in the reader's language stays silent). The **Voices** toggle (`settings.ui.voicesDefault`, off unless the work sets it) lets readers listen without reading, and a tap on a balloon replays its line (format 1.12)
 - **Video Controller** - Single active video policy with state management
 
 ### ✅ Internationalization
 - **Multilingual** - Localized strings with fallback chains
-- **Asset Localization** - Per-locale images, audio, video, subtitles
+- **Asset Localization** - Per-locale images (format 1.11: image layers, covers, extras and thumbnails show the reader's language version), audio, video, subtitles
 - **Runtime Switching** - Change language without reload
 - **RTL Support** - Right-to-left language support
 
@@ -172,66 +178,88 @@ panelwave-player/
 │   │       │   ├── export.types.ts
 │   │       │   └── entitlement.types.ts
 │   │       │
-│   │       ├── services/          # Core services (18 services)
-│   │       │   ├── player-state.service.ts
+│   │       ├── services/          # Core services (26 services)
 │   │       │   ├── manifest.service.ts
 │   │       │   ├── variable-store.service.ts
 │   │       │   ├── flow-engine.service.ts
-│   │       │   ├── variant.service.ts
+│   │       │   ├── hotspot-action.service.ts     # goTo / setVariables / modal / extras / plugin actions
+│   │       │   ├── paywall.service.ts            # Gate evaluation, purchase options
+│   │       │   ├── entitlement.service.ts
 │   │       │   ├── image-cache.service.ts
-│   │       │   ├── audio-engine.service.ts
+│   │       │   ├── preload.service.ts
+│   │       │   ├── asset-url.service.ts
+│   │       │   ├── audio-engine.service.ts       # WebAudio mixer (4 buses)
+│   │       │   ├── panel-audio.service.ts        # Per-panel sounds
+│   │       │   ├── sequence-audio.service.ts     # Timeline music / ambience
+│   │       │   ├── bubble-voice.service.ts       # Spoken lines (format 1.12)
 │   │       │   ├── video-controller.service.ts
-│   │       │   ├── video-sequencer.service.ts   # Sequenced video panels
-│   │       │   ├── canvas-camera.service.ts     # Canvas-view camera
+│   │       │   ├── video-sequencer.service.ts    # Sequenced video panels
+│   │       │   ├── widget-playback.service.ts    # Content widget playback
+│   │       │   ├── canvas-camera.service.ts      # Canvas-view camera
+│   │       │   ├── theme.service.ts              # ui.theme → --pw-theme-* properties
+│   │       │   ├── print-context.service.ts      # Print / PDF renders
 │   │       │   ├── user-gesture.service.ts
 │   │       │   ├── visibility.service.ts
-│   │       │   ├── preload.service.ts
 │   │       │   ├── tracking.service.ts
-│   │       │   ├── entitlement.service.ts
 │   │       │   ├── plugin-host.service.ts
 │   │       │   ├── export.service.ts
-│   │       │   └── translation.service.ts
+│   │       │   ├── translation.service.ts
+│   │       │   └── player-state.service.ts
 │   │       │
-│   │       ├── state/             # Internal state store
+│   │       ├── state/             # PlayerStateService (reading position, mode, preferences)
+│   │       ├── entitlement/       # Paywall evaluator, HTTP entitlement adapter
+│   │       ├── embed/             # Embed bridge (postMessage protocol v2)
+│   │       ├── directives/        # Bubble clock, panel animation, print fit
 │   │       │
-│   │       ├── components/        # UI components (30+ components)
+│   │       ├── components/        # UI components
 │   │       │   ├── player-shell/     # Main container (pw-player-shell)
-│   │       │   ├── viewport/         # Panel-view renderer
+│   │       │   ├── viewport/         # Page- and panel-view renderer
 │   │       │   ├── canvas-stage/     # Infinite-canvas renderer
 │   │       │   ├── layer-renderer/   # Shared layer rendering
-│   │       │   ├── layers/           # Image, video, text, plugin layers
+│   │       │   ├── layers/           # Image, video, text, plugin and content-widget layers
 │   │       │   ├── overlays/         # Hotspots, speech bubbles, paywall, age gate, …
-│   │       │   ├── toolbar/          # Bottom controls
+│   │       │   ├── locked-panel/     # Placeholder for gated panels
+│   │       │   ├── toolbar/          # Bottom controls (adaptive)
 │   │       │   ├── modals/           # Settings, ToC, language, share, extras, …
 │   │       │   ├── icon/             # Inline Lucide SVG icons (pw-icon)
 │   │       │   ├── plugin-sandbox/   # Sandboxed plugin host
-│   │       │   ├── variant-selector/ # Variant picker
 │   │       │   └── helpers/          # Shared UI elements
 │   │       │
-│   │       └── utils/             # Helper functions
-│   │           ├── locale-utils.ts
-│   │           ├── asset-utils.ts
-│   │           ├── json-logic-utils.ts
-│   │           ├── animation-utils.ts
-│   │           ├── comic-balloon.ts        # SVG balloon renderer
+│   │       └── utils/             # Helper functions (selection)
+│   │           ├── comic-balloon.ts        # SVG balloon renderer (synced from the CMS)
+│   │           ├── balloon-geometry.ts     # Balloon layout (synced from the CMS)
 │   │           ├── balloon-config.ts       # Balloon config cascade
-│   │           ├── video-config-utils.ts   # Video playback defaults
-│   │           ├── image-variant-utils.ts  # Responsive variant selection
+│   │           ├── bubble-clock.ts         # Timed balloons (showAtMs)
+│   │           ├── bubble-voice-utils.ts   # Voice cues per panel
+│   │           ├── placement-frame.ts      # Page placement frames (format 1.13)
+│   │           ├── page-format-utils.ts    # Output format per screen
+│   │           ├── reading-order.ts
+│   │           ├── branch-visibility.ts    # Page-view placeholders for unchosen branches
+│   │           ├── hotspot-selection.ts    # Selected-hotspot state
+│   │           ├── player-location.ts      # ?page= / ?panel= URLs
+│   │           ├── image-variant-utils.ts  # Responsive / per-language variant selection
+│   │           ├── keyframe-animation.ts   # Layer keyframes
+│   │           ├── camera-move.ts          # Panel camera moves
+│   │           ├── safe-markdown.ts        # scrollText widget rendering
+│   │           ├── json-logic-utils.ts
+│   │           ├── locale-utils.ts
 │   │           └── translation-loader.ts
 │   │
 │   ├── reader/                    # Public reader app (read.panelwave.org frontend)
+│   ├── standalone/                # Self-hosting player page (npm run build:standalone)
+│   ├── embed-loader/              # panelwave-embed.js (chapter embeds on a host page)
 │   └── demo/                      # Demo application
 │       └── src/
 │           └── assets/            # Sample manifests
 │
-├── docs/
-│   └── BALLOON_RENDERER_SYNC.md  # Keeping ComicBalloon in sync with the CMS
-│
-├── .editorconfig
-├── .prettierrc
-├── eslint.config.js
+├── docs/                          # API reference, embeds, widgets, standalone, balloon sync
+├── e2e/                           # Playwright specs
+├── scripts/                       # Standalone / embed-loader builds, consumer smoke test
+├── CHANGELOG.md
 ├── angular.json
+├── eslint.config.js
 ├── package.json
+├── playwright.config.ts
 └── tsconfig.json
 ```
 
@@ -240,7 +268,7 @@ panelwave-player/
 ## 🛠️ Technology Stack
 
 ### Core
-- **Framework:** built with Angular 21 (standalone components); runs on Angular 21 and 22
+- **Framework:** built with Angular 21 (standalone components); runs on Angular 21 and 22, with Zone.js or zoneless
 - **Language:** TypeScript 5.9+ (strict mode)
 - **State Management:** RxJS BehaviorSubjects
 - **Logic Engine:** json-logic-js (condition evaluation)
@@ -258,7 +286,7 @@ panelwave-player/
 
 ### Development
 - **Build:** ng-packagr (library packaging)
-- **Testing:** Jasmine (unit), Karma (runner)
+- **Testing:** Jasmine (unit), Karma (runner), Playwright (E2E)
 - **Linting:** ESLint with Angular rules
 - **Formatting:** Prettier
 
@@ -342,11 +370,15 @@ lazily loaded players, one chapter each:
 
 ## 📚 Documentation
 
+- [API reference](docs/API.md) - Public exports of `@panelwave/player`
 - [Standalone package](docs/STANDALONE.md) - Self-hosting a work: package layout, boot rules, build guards
+- [Chapter embeds](docs/MULTI_CHAPTER_EMBED.md) - One player per chapter on a host page, `panelwave-embed.js` attributes, events and JS API
+- [Embed bridge protocol](docs/EMBED_PROTOCOL.md) - postMessage protocol (v2) between an embedded player and its host
 - [Content widgets](docs/CONTENT_WIDGETS.md) - Download / audio / video / scroll text / iframe layers and the widget theme (`ui.theme`, `--pw-theme-*`)
-- [Library README](projects/player/README.md) - Public API, components, and usage
-- [Library Structure](projects/player/STRUCTURE.md) - Directory organization
 - [Balloon Renderer Sync](docs/BALLOON_RENDERER_SYNC.md) - Keeping ComicBalloon in sync with the CMS
+- [Library README](projects/player/README.md) - Package README shown on npm
+- [Library Structure](projects/player/STRUCTURE.md) - Directory organization
+- [CHANGELOG.md](CHANGELOG.md) - Release notes per version
 
 Planning documents and the per-component implementation reports live in the
 internal PanelWave docs repo (not part of this repository): specs and the
@@ -373,15 +405,16 @@ component completion reports under `docs/archive/player/repo-history/`.
 | Phase | Component | Status |
 |-------|-----------|--------|
 | 7 | Testing & QA | 🔄 In Progress |
-| 8 | Documentation & Deployment | 🔄 In Progress (npm, CI and demo deploy done 2026-09-27) |
+| 8 | Documentation & Deployment | 🔄 In Progress (npm, CI and demo deploy since 2026-09-27; public reader on read.panelwave.org) |
 
 ### 📐 Format Support
 
-The player renders **PanelWave manifest format 1.11** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
+The player renders **PanelWave manifest format 1.13** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
 
 | Format | Feature | Player support |
 |--------|---------|----------------|
 | 1.0 | Base format | ✅ |
+| 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ✅ |
 | 1.1 | Video panels (sequenced video layers, playback config) | ✅ |
 | 1.2 | Edge-transition inheritance (`outputPresets.defaultTransition`), optional `mime` | ✅ |
 | 1.3 | Typography style presets (`textStyles` / `balloonPresets` + `styleRef`) | ✅ |
@@ -391,11 +424,12 @@ The player renders **PanelWave manifest format 1.11** (the schema lives at `sche
 | 1.6 | Layer keyframe animations (`animations.keyframes` / `loop`) | ✅ |
 | 1.6 | Several alternative covers (`extras.alt_cover` as an array) and ensemble character sheets (`characterIds`) | ✅ |
 | 1.7 | Chapter graphs may have no edges (the chapter then follows its reading order); `x-` extension properties on panels and extras blocks | ✅ |
-| 1.8 | Balloons grow with their text (`BalloonConfig.textFit`) | ✅ |
+| 1.8 | Balloons grow with their text (`BalloonConfig.textFit`); work-wide timeline audio (`sequenceAudio` `span: 'work'`) | ✅ |
 | 1.9 | `paywallAction` tracking event | ✅ |
 | 1.10 | Content widget layers, `file` assets, `ui.theme`, timed balloons (`showAtMs`) | ✅ |
 | 1.11 | Per-language artwork (`ImageVariant.locale`): image layers, covers, extras and thumbnails show the reader's language version | ✅ |
-| 1.0 | Camera move (`animations.startViewportRect` / `endViewportRect`) | ✅ |
+| 1.12 | Spoken lines (`audioAssetId` with per-locale `AudioVariant`s), Voices toggle (`settings.ui.voicesDefault`, `settings.ui.controls.showVoicesToggle`) | ✅ |
+| 1.13 | Framed page placements: the `vx`/`vy`/`vw`/`vh` frame crops on every screen size, and the image box may leave the page (`x`/`y` ≥ −9, `w`/`h` ≤ 10) | ✅ |
 
 ---
 
@@ -474,12 +508,26 @@ ng test player --code-coverage
 
 # Single run (CI mode)
 ng test player --watch=false --browsers=ChromeHeadless
+
+# The other projects CI tests
+ng test reader --watch=false --browsers=ChromeHeadless
+ng test standalone --watch=false --browsers=ChromeHeadless
+npm run test:embed-loader          # embed loader logic (node --test)
+npm run test:standalone-build      # standalone build script guards
+
+# Pack the built library, install it into a fresh `ng new` app of the given
+# major (strict peers, warning-free production build) and render a sample work
+# in headless Chromium. Run after `ng build player --configuration production`.
+npm run smoke:consumer -- --angular 22   # or --angular 21
 ```
 
 #### E2E tests (Playwright)
 
 The E2E suite drives the demo app (started automatically on port 4222) and is
-hermetic — external image hosts are stubbed. Specs live in `e2e/`.
+hermetic — external image hosts are stubbed. Specs live in `e2e/`. The demo
+consumes the built library from `dist/player`, so run `ng build player` after
+library changes; `e2e/standalone-package.spec.ts` additionally needs
+`npm run build:standalone`.
 
 ```bash
 npm run e2e       # chromium + mobile (Pixel 7) projects
@@ -534,8 +582,9 @@ cd dist/player && npm pack --dry-run
 
 | Workflow | Runs on | What it does |
 |---|---|---|
-| `ci.yml` | push to `master`, PRs | lint, unit tests, library build, Playwright E2E (in the `mcr.microsoft.com/playwright` image, whose tag must match the locked `@playwright/test` version) |
-| `ci.yml` (reader steps) | same | lints, tests and builds the public reader app (`projects/reader`) after the library build |
+| `ci.yml` | push to `master`, PRs | lint, unit tests with coverage, embed loader (tests, type check, 6 KB gzip budget), library build, Playwright E2E (in the `mcr.microsoft.com/playwright` image, whose tag must match the locked `@playwright/test` version) |
+| `ci.yml` (reader / standalone steps) | same | lints, tests and builds the public reader app (`projects/reader`) and the standalone player (`projects/standalone`, incl. its classic-script build guards) after the library build |
+| `ci.yml` (`consumer-smoke`) | same | matrix over Angular 21 and 22: installs the built library into a fresh app of that major and renders a work |
 | `demo-pages.yml` | push to `master` | builds the demo app and deploys it to [panelwave.github.io/player](https://panelwave.github.io/player/) |
 | `size-limit.yml` | PRs | fails when the FESM bundle, minified + gzipped (what a host ships), exceeds 180 KB |
 | `release.yml` | manual | npm release (above) |
@@ -557,7 +606,7 @@ import { PanelWaveManifest } from '@panelwave/player';
 
 const manifest: PanelWaveManifest = {
   panelwave: {
-    version: '1.4.0',
+    version: '1.13.0',
     schema: 'https://panelwave.org/schema/1.0/panelwave.schema.json',
   },
   meta: { /* ... */ },
@@ -712,7 +761,7 @@ constructor(private playerState: PlayerStateService) {
 
 ## 🔧 Component API
 
-`PlayerShellComponent` (selector `pw-player-shell`) is configured via inputs. All of them may change after init: a new `manifest` / `manifestUrl` reloads the work (position, non-persistent variables, open overlays and autoplay reset), `entitlementSnapshot` re-evaluates the gates, and `locale`, `viewModeOverride`, `showToolbar`, `reducedMotion`, `secondsPerPanel` and `autoplay` apply live. (`initialVariables`, `initialChapterId` / `initialPanelId` and the entitlement endpoint are read on (re)load.)
+`PlayerShellComponent` (selector `pw-player-shell`) is configured via inputs. All of them may change after init: a new `manifest` / `manifestUrl` reloads the work (position, non-persistent variables, open overlays and autoplay reset), `entitlementSnapshot` re-evaluates the gates, and `locale`, `viewModeOverride`, `showToolbar`, `reducedMotion`, `secondsPerPanel`, `autoplay` and `themeOverride` apply live. (`initialVariables`, `initialChapterId` / `initialPanelId` / `initialPageId` / `initialViewMode`, `chapterScope`, `trackingContext` and the entitlement endpoint are read on (re)load.)
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -724,7 +773,10 @@ constructor(private playerState: PlayerStateService) {
 | `initialVariables` | `Record<string, unknown>` | — | Seed variables once at start (may set `readOnly` ones, e.g. a verified `user.age`) |
 | `locale` | `LocaleCode` | `'en-US'` | Initial locale |
 | `initialChapterId` | `string` | — | Start at a specific chapter |
-| `initialPanelId` | `string` | — | Start at a specific panel |
+| `initialPanelId` | `string` | — | Start at a specific panel (the chapter is looked up when `initialChapterId` is unset); opens in panel view |
+| `initialPageId` | `string` | — | Start at a page (e.g. from a `?page=` link) in page view; on a screen with another page format the page showing the same panels opens. Wins over `initialPanelId` |
+| `initialViewMode` | `'page' \| 'panel'` | page view when the work has pages | View to open in |
+| `shareUrl` | `string` | current address + position | Link the share dialog offers |
 | `autoplay` | `boolean` | `false` | Start auto-advancing (the reader's toolbar toggle takes over afterwards) |
 | `secondsPerPanel` | `number` | `5` | Autoplay time for panels without an authored `durationMs` (and the cover). Autoplay plays each panel for its `durationMs` from the CMS timeline until the reader picks a speed in the toolbar; then this value applies to every panel |
 | `pageFormat` | `'auto' \| OutputFormat` | `'auto'` | Page view shows one page sequence per output format: `'auto'` picks the authored format that suits the screen (phone → `mobile-portrait`, 4K → `bigscreen-landscape`, …) and re-picks on resize; a format id forces that sequence when the work has pages for it |
@@ -735,6 +787,8 @@ constructor(private playerState: PlayerStateService) {
 | `chapterScope` | `string` | — | Play only this chapter (manifest `id` or CMS `chapterId`): no chapter jumps, ToC lists only it. For chapter embeds, see [docs/MULTI_CHAPTER_EMBED.md](docs/MULTI_CHAPTER_EMBED.md) |
 | `pauseAutoplayWhenHidden` | `boolean` | `true` | Suspend autoplay while the player is less than half on screen or its tab is hidden |
 | `imageCacheBudgetMb` | `number` | `100` | Decoded-image cache budget (lower it with several players on one page) |
+| `trackingContext` | `Record<string, string \| number \| boolean>` | — | Extra fields for the analytics `session_start` event (e.g. `embedHost` for chapter embeds) |
+| `themeOverride` | `PwThemeOverride \| null` | — | Host-side widget theme on top of the manifest's `ui.theme` (format 1.10+); fields set here win, the manifest is not changed |
 
 And emits these outputs:
 
@@ -743,11 +797,14 @@ And emits these outputs:
 | `ready` | `void` | Manifest loaded, player ready |
 | `panelChange` | `PlayerPanelChangeEvent`: `{ panel, chapter, panelId, previousPanelId? }` | Navigation to a new panel; `panelId` is its key in `chapter.panels`, `previousPanelId` the panel before it (unset for the first panel after a load) |
 | `chapterChange` | `Chapter` | Chapter boundary crossed |
+| `locationChange` | `PlayerLocation` | Reading position changed (cover, page, panel or canvas); keep it in the address bar with `locationUrl` so positions can be bookmarked and shared |
 | `localeChange` | `LocaleCode` | Language switched |
 | `variableChange` | `{ key, value }` | A story variable changed |
 | `navigationAttempt` | `{ direction, target?, blocked? }` | Any navigation attempt; `blocked: 'outside-scope'` when a jump left the `chapterScope` |
 | `chapterComplete` | `{ chapterId, panelId, isLastChapter }` | The reader reached a chapter's end panel (page view: its last page), once per chapter visit |
-| `cameraChange` | `CameraState` | Canvas-view camera moved |
+| `autoplayChange` | `boolean` | Autoplay switched on or off (toolbar, `autoplay` input, or the end of the work / scoped chapter); not for an off-screen suspension |
+| `widgetEvent` | `WidgetEvent` | Reader acted on a content widget: `download`, `play` / `pause` / `ended`, `open` / `close` (format 1.10+) |
+| `cameraChange` | `CameraState` | Canvas-view camera moved (throttled) |
 | `paywallAction` | `{ action, gate, productId? }` | Reader clicks Buy (`purchase`) / Subscribe (`subscribe`) / Sign in (`login`) / Maybe later (`dismiss`) on the paywall |
 | `ageVerified` | `AgeVerificationResult` | Reader answers an age gate |
 | `likeChange` / `bookmarkChange` | `{ workId, … }` | Like or bookmark toggled (also persisted locally) |
@@ -791,13 +848,15 @@ chore: Build/tooling changes
 
 ## 📈 Performance Targets
 
-| Metric | Target | Current (2026-09) |
-|--------|--------|--------|
-| Bundle size (minified + gzipped) | ≤180KB (`size-limit` in CI) | 106KB (raw FESM gzipped: 192KB) |
-| Lighthouse Performance | >85 | desktop ✓; mobile 74 (accepted for 1.0) |
-| Accessibility | no serious/critical axe violations | ✓ every modal, overlay and view (`e2e/accessibility.spec.ts`) |
-| Test Coverage | >80% statements | 80.4% (1539 unit specs) |
-| Frame Rate / memory | no long frames, no heap growth | ✓ guarded by `e2e/performance.spec.ts` |
+| Metric | Target | Guarded by | Last measured |
+|--------|--------|------------|---------------|
+| Bundle size (minified + gzipped) | ≤180KB | `size-limit` workflow on every PR (fails above budget) | 110KB (2026-09-30) |
+| Lighthouse Performance | >85 | manual run | desktop ✓; mobile 74, accepted for 1.0 (2026-09-26) |
+| Accessibility | no serious/critical axe violations | `e2e/accessibility.spec.ts` (every modal, overlay and view) | ✓ in CI |
+| Test Coverage | >80% statements | coverage report uploaded by CI | 80.4% (2026-09-27); 2154 unit specs (2026-10-28) |
+| Frame Rate / memory | no long frames, no heap growth | `e2e/performance.spec.ts` | ✓ in CI |
+
+The CI run summaries carry the current bundle size and coverage.
 
 ---
 
@@ -818,7 +877,7 @@ chore: Build/tooling changes
 
 **MIT License**
 
-Copyright (c) 2025 PanelWave Project
+Copyright (c) 2025-2026 PanelWave Project
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -845,18 +904,41 @@ Built with:
 - **npm Package:** [@panelwave/player](https://www.npmjs.com/package/@panelwave/player)
 - **Live demo:** https://read.panelwave.org/peoplegraphics/47c9ebf3-6f56-4a4d-a75c-fe8c060df192
 - **Demo app:** https://panelwave.github.io/player/
-- **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.7.0)
+- **Schema:** https://panelwave.org/schema/1.0/panelwave.schema.json (manifest format 1.13.0)
+- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 - **Issues:** https://github.com/panelwave/player/issues
 - **Source:** https://github.com/panelwave/player (moved from Bitbucket 2026-09-27)
 
 ---
 
-**Version:** 1.0.1 on npm (Phase 6 complete + format 1.1–1.5 features; 1.6–1.7 on master, unreleased)  
-**Last Updated:** 2026-09-27  
-**Status:** Released (1.x); Testing & QA ongoing
+**Version:** 2.2.0 on npm (format 1.13)  
+**Last Updated:** 2026-11-11  
+**Status:** Released (2.x; Angular 20 apps stay on 1.x); Testing & QA ongoing
 
-### Recent Updates
-- **2026-09-27:** Published on npm as `@panelwave/player` (1.0.0, then 1.0.1 via the release workflow with trusted publishing + provenance); repo moved to GitHub; CI, E2E and GitHub Pages demo live; package README rewritten
+### Releases
+
+Full notes per version in [CHANGELOG.md](CHANGELOG.md).
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| 2.2.0 | 2026-11-09 | Selected hotspots stay marked; adaptive toolbar (no scrolling on notebooks); spoken lines only in the reader's language, in reading order |
+| 2.1.0 | 2026-11-04 | Page view crops to a placement's frame on every screen size (format 1.13) |
+| 2.0.1 | 2026-11-03 | Page links of both CMS page-id generations; branch placeholders stay hidden when reading starts from a link |
+| 2.0.0 | 2026-11-02 | **Breaking:** built with Angular 21, peers `^21 \|\| ^22` (Angular 20 dropped); cover with `srcset` and a fixed box (no layout shift) |
+| 1.12.0 | 2026-10-31 | Spoken lines and the Voices toggle (format 1.12) |
+| 1.11.0 | 2026-10-30 | Per-language artwork (format 1.11) |
+| 1.10.0 | 2026-10-28 | Content widget layers, widget theme (`ui.theme`), timed balloons (`showAtMs`) |
+| 1.9.0 | 2026-10-27 | Chapter embeds (`chapterScope`), embed bridge protocol v2, `panelwave-embed.js` loader |
+| 1.8.0 | 2026-10-19 | Layers sit where the CMS editor put them |
+| 1.7.0 | 2026-10-18 | Embed bridge protocol v1 |
+| 1.6.0 / 1.6.1 | 2026-10-16 | Timeline audio (`sequenceAudio`); cross-origin audio in CORS mode |
+| 1.5.0 | 2026-10-14 | Standalone player package; balloons grow with their text; panel view fills the screen |
+| 1.3.0 | 2026-10-04 | Reading position as a URL (`?page=` / `?panel=`, `locationChange`); on-device QR share; fullscreen button |
+| 1.2.0 | 2026-09-29 | `panelChange` carries `panelId` / `previousPanelId`; Angular 21 and 22 accepted as peers |
+| 1.1.0 | 2026-09-27 | Paywall products and product lists (format 1.6); inputs apply live after init |
+| 1.0.0 / 1.0.1 | 2026-09-27 | First npm release via the release workflow (trusted publishing + provenance); repo moved to GitHub; CI, E2E and GitHub Pages demo live |
+
+### Before 1.0
 - **2026-07-25:** Responsive image variant selection (variant ladder `w640`–`w2560`, `image-variant-utils`)
 - **2026-07-24:** Infinite-canvas view mode (format 1.4): `CanvasStageComponent`, `CanvasCameraService`, `viewModeOverride` input, `cameraChange` output
 - **2026-07 (mid):** Typography style presets (format 1.3): `settings.typography.textStyles` / `balloonPresets` with `styleRef` cascade

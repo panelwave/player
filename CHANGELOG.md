@@ -7,6 +7,18 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Fixed
+- **Selected hotspots are marked in blue, not in the theme accent.** In works
+  with a red or rose accent, the 2.2.0 selection outline and check badge
+  read like an error state. They now use their own tokens,
+  `--pw-hotspot-selected` (blue `#2563eb`) and `--pw-hotspot-on-selected`
+  (the check, white). The overlay declares them on itself, so a host
+  overrides them on `pw-hotspots-overlay` (not on `pw-player-shell`), with a
+  selector that outweighs the overlay's emulated `:host` attribute, e.g.
+  `.my-reader pw-hotspots-overlay { --pw-hotspot-selected: … }`.
+
+## [2.2.0] — 2026-11-09
+
 ### Added
 - **Selected hotspots stay marked.** A reader who comes back to a panel now
   sees which option they picked: the hotspot gets an accent outline (a light
@@ -37,21 +49,6 @@ semver. The reader-facing product changelog lives on the docs site
   bar's right edge, so it stays reachable when a phone-width bar scrolls.
   New order: Fullscreen right of View, Settings right of Extras. New i18n
   key `toolbar.audio_sfx_toggle`.
-- **Page view shows a placement's frame on every screen size (schema 1.13).**
-  A page placement's `vx`/`vy`/`vw`/`vh` quartet is the *frame*: the window
-  of the panel's image box (`x`/`y`/`w`/`h`, the artwork's aspect) the page
-  shows. `.panel-container` is now positioned and sized by the frame (border,
-  hit area, focus ring, culling) and `.panel-content` — the box, which layers,
-  bubbles, hotspots and image-variant selection stay normalized to — sits
-  inside it at `1 / vw` of the frame, clipped. Since 1.5.0 the crop applied
-  on phones only (and shifted the window to the box's top-left corner); a
-  desktop reader and the PDF export showed the whole image. Authors can now
-  enlarge and move the artwork behind a fixed frame per format (format 1.13
-  lets the box leave the page: `x`/`y` down to −9, `w`/`h` up to 10). On
-  phones `pageFit` bounds the frames, not the boxes. New
-  `utils/placement-frame` (`placementFrame`, `placementBoxStyle`,
-  `framesBounds`, `isFramedPlacement`); `getPanelContentClipPath` /
-  `getPanelContentTransform` are gone. Demo: "Framed Placements".
 
 ### Fixed
 - **Spoken lines: only the reader's language, in reading order.** A
@@ -67,6 +64,25 @@ semver. The reader-facing product changelog lives on the docs site
   A line cut short while still starting (the host's start locale arriving,
   Voices off, panel left) is now stopped once the engine registers it;
   before, it played to the end next to the re-read line.
+
+## [2.1.0] — 2026-11-04
+
+### Changed
+- **Page view shows a placement's frame on every screen size (schema 1.13).**
+  A page placement's `vx`/`vy`/`vw`/`vh` quartet is the *frame*: the window
+  of the panel's image box (`x`/`y`/`w`/`h`, the artwork's aspect) the page
+  shows. `.panel-container` is now positioned and sized by the frame (border,
+  hit area, focus ring, culling) and `.panel-content` — the box, which layers,
+  bubbles, hotspots and image-variant selection stay normalized to — sits
+  inside it at `1 / vw` of the frame, clipped. Since 1.5.0 the crop applied
+  on phones only (and shifted the window to the box's top-left corner); a
+  desktop reader and the PDF export showed the whole image. Authors can now
+  enlarge and move the artwork behind a fixed frame per format (format 1.13
+  lets the box leave the page: `x`/`y` down to −9, `w`/`h` up to 10). On
+  phones `pageFit` bounds the frames, not the boxes. New
+  `utils/placement-frame` (`placementFrame`, `placementBoxStyle`,
+  `framesBounds`, `isFramedPlacement`); `getPanelContentClipPath` /
+  `getPanelContentTransform` are gone. Demo: "Framed Placements".
 
 ## [2.0.1] — 2026-11-03
 
@@ -882,7 +898,15 @@ helpers.
   overlay and view; heap-stability and frame-rate guards; E2E for speech,
   audio/SFX toggles, thumbnails, table of contents and persisted settings.
 
-[Unreleased]: https://github.com/panelwave/player/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/panelwave/player/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/panelwave/player/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/panelwave/player/compare/v2.0.1...v2.1.0
+[2.0.1]: https://github.com/panelwave/player/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/panelwave/player/compare/v1.12.0...v2.0.0
+[1.12.0]: https://github.com/panelwave/player/compare/v1.11.0...v1.12.0
+[1.11.0]: https://github.com/panelwave/player/compare/v1.10.0...v1.11.0
+[1.10.0]: https://github.com/panelwave/player/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/panelwave/player/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/panelwave/player/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/panelwave/player/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/panelwave/player/compare/v1.6.0...v1.6.1
