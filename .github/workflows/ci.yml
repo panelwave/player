@@ -105,8 +105,13 @@ jobs:
   # newest @ngx-translate/core major; the older one runs on the lowest and
   # highest Angular major. Keep the matrix in step with the @angular/* and
   # @ngx-translate/core peer ranges in projects/player/package.json.
+  # Runs in the Playwright image like the jobs above: it ships Node 24 and the
+  # locked Chromium, so the job never touches the runner's apt or the browser
+  # CDN (on 2026-11-11 `playwright install --with-deps` failed in all four
+  # cells because the runners couldn't resolve the Ubuntu archive mirrors).
   consumer-smoke:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.62.1-jammy
     strategy:
       fail-fast: false
       matrix:
@@ -120,16 +125,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
       - name: Install
         run: npm ci
-
-      - name: Playwright Chromium
-        run: npx playwright install --with-deps chromium
 
       - name: Build library
         run: npx ng build player --configuration production

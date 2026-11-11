@@ -584,7 +584,7 @@ cd dist/player && npm pack --dry-run
 |---|---|---|
 | `ci.yml` | push to `master`, PRs | lint, unit tests with coverage, embed loader (tests, type check, 6 KB gzip budget), library build, Playwright E2E (in the `mcr.microsoft.com/playwright` image, whose tag must match the locked `@playwright/test` version) |
 | `ci.yml` (reader / standalone steps) | same | lints, tests and builds the public reader app (`projects/reader`) and the standalone player (`projects/standalone`, incl. its classic-script build guards) after the library build |
-| `ci.yml` (`consumer-smoke`) | same | matrix over Angular 21 and 22: installs the built library into a fresh app of that major and renders a work |
+| `ci.yml` (`consumer-smoke`) | same | matrix over Angular 21 and 22: installs the built library into a fresh app of that major and renders a work (same Playwright image as E2E) |
 | `demo-pages.yml` | push to `master` | builds the demo app and deploys it to [panelwave.github.io/player](https://panelwave.github.io/player/) |
 | `size-limit.yml` | PRs | fails when the FESM bundle, minified + gzipped (what a host ships), exceeds 180 KB |
 | `release.yml` | manual | npm release (above) |
