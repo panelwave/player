@@ -55,6 +55,8 @@ import { isLockedPanel } from '../../utils/panel-lock';
 import { PaywallService } from '../../services/paywall.service';
 import { SpeechBubblesComponent } from '../overlays/speech-bubbles/speech-bubbles.component';
 import { HotspotsOverlayComponent } from '../overlays/hotspots-overlay/hotspots-overlay.component';
+import { PanelBorderComponent } from '../panel-border/panel-border.component';
+import { resolvePanelBorder, type ResolvedPanelBorder } from '../../utils/panel-border';
 
 /** A placement prepared for rendering. */
 export interface StagePlacement {
@@ -81,7 +83,7 @@ const CAMERA_EMIT_INTERVAL_MS = 100;
 
 @Component({
   selector: 'pw-canvas-stage',
-  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective, BubbleClockDirective, LockedPanelComponent],
+  imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PanelAnimationDirective, BubbleClockDirective, LockedPanelComponent, PanelBorderComponent],
   templateUrl: './canvas-stage.component.html',
   styleUrls: ['./canvas-stage.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -490,6 +492,14 @@ export class CanvasStageComponent implements OnInit, OnChanges, OnDestroy {
   // --------------------------------------------------------------------------
   // Template helpers
   // --------------------------------------------------------------------------
+
+  /**
+   * The border of a placed panel (format 1.14.0): its own `border` over the
+   * work's `settings.typography.panel_border_style`. Drawn in world px.
+   */
+  panelBorderOf(panel: Panel | null | undefined): ResolvedPanelBorder {
+    return resolvePanelBorder(this.manifestService.getManifest()?.settings?.typography?.panel_border_style, panel?.border);
+  }
 
   placementStyle(entry: StagePlacement): Record<string, string> {
     const p = entry.placement;

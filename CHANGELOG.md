@@ -7,7 +7,29 @@ semver. The reader-facing product changelog lives on the docs site
 
 ## [Unreleased]
 
+### Added
+- **Panel borders (format 1.14).** The player now draws the line around
+  every panel — in page, panel and canvas view, and therefore in every print
+  export (PDF, CBZ, webtoon, EPUB, KDP) rendered through the standalone
+  player. The work's `settings.typography.panel_border_style` sets it
+  (default `#000000`, thickness 2, `solid`); `Panel.border` overrides it field
+  by field; thickness 0 or style `none` = no border. Styles: `solid`,
+  `dashed`, `dotted`, `double`, `rough` (hand-inked, seeded by the panel id),
+  `wavy` (dream outline), plus a corner `radius`. Lengths are px of the
+  page's output-format frame and scale with the page (panel view: as the page
+  would show on the same screen). The line lies inside the frame, above the
+  artwork and balloons; a radius, `rough` and `wavy` clip the artwork to the
+  outline. New `pw-panel-border` component and `panel-border` utils
+  (`resolvePanelBorder`, `panelBorderShape`, `panelBorderClipPath`,
+  `formatFramePx`, … — synced from the CMS editor like the balloon engine).
+  Demo work "Panel Borders" (format sample 19).
+
 ### Fixed
+- **Page view: no more half hairline around panels.** A page-view panel had
+  a black background under a 90 % transparent 1 px border; the hairline this
+  made sat outside the frame, so on phones (page fitted to its panels) its
+  right and lower edge were cut off, and print exports removed it. The frame
+  now has neither — the configured panel border replaces it.
 - **Selected hotspots are marked in blue, not in the theme accent.** In works
   with a red or rose accent, the 2.2.0 selection outline and check badge
   read like an error state. They now use their own tokens,

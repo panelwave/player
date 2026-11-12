@@ -88,6 +88,7 @@ export type {
   HotspotOpenModalAction,
   HotspotPluginEventAction,
   PanelVariant,
+  PanelBorderSettings,
   PanelAnimations,
   AnimationKeyframe,
   AnimatableProperty,

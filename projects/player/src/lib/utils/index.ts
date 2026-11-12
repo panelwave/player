@@ -186,6 +186,24 @@ export {
 // Page background color (page view gutters, panel view frame)
 export { DEFAULT_PAGE_BACKGROUND, resolvePageBackground } from './page-background';
 
+// Panel borders (format 1.14.0; synced from the CMS editor)
+export {
+  DEFAULT_PANEL_BORDER,
+  PANEL_BORDER_STYLES,
+  FORMAT_FRAME_PX,
+  resolvePanelBorder,
+  panelBorderHasLine,
+  panelBorderShape,
+  panelBorderClipPath,
+  formatFramePx,
+  pageScaleOnScreen,
+  type PanelBorderLineStyle,
+  type ResolvedPanelBorder,
+  type PanelBorderShape,
+  type PanelBorderStroke,
+  type PanelBorderClip,
+} from './panel-border';
+
 // Hotspot selection state (derived from variables and the chosen path)
 export { isHotspotSelected } from './hotspot-selection';
 

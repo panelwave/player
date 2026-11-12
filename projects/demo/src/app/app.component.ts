@@ -172,6 +172,11 @@ export class AppComponent implements OnInit, OnDestroy {
       label: 'Framed Placements',
       url: 'assets/framed-manifest.json',
     },
+    {
+      id: 'borders',
+      label: 'Panel Borders',
+      url: 'assets/panel-borders-manifest.json',
+    },
   ];
 
   activeDemo = 'sample';

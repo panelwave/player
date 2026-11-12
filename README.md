@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-21%20%7C%2022-red)](https://angular.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
-[![Format](https://img.shields.io/badge/format-1.13-blue)](https://panelwave.org/schema/1.0/panelwave.schema.json)
+[![Format](https://img.shields.io/badge/format-1.14-blue)](https://panelwave.org/schema/1.0/panelwave.schema.json)
 [![npm](https://img.shields.io/npm/v/@panelwave/player.svg)](https://www.npmjs.com/package/@panelwave/player)
 [![ci](https://github.com/panelwave/player/actions/workflows/ci.yml/badge.svg)](https://github.com/panelwave/player/actions/workflows/ci.yml)
 
@@ -15,7 +15,7 @@
 
 ## 🎯 Overview
 
-PanelWave Player is an **Angular library (21 and 22)** that renders interactive graphic novels using the open **PanelWave JSON format** (up to format **1.13**). It provides a complete, production-ready player with advanced features:
+PanelWave Player is an **Angular library (21 and 22)** that renders interactive graphic novels using the open **PanelWave JSON format** (up to format **1.14**). It provides a complete, production-ready player with advanced features:
 
 - **📖 Graph-Based Navigation** - Non-linear storytelling with conditional branching
 - **🗺️ Three View Modes** - Authored **page view** (one page sequence per output format), classic **panel view**, and an **infinite-canvas view** with camera pan/zoom (`CanvasStageComponent`, format 1.4)
@@ -105,6 +105,7 @@ All configuration is passed as individual inputs on the shell component (see [Co
 ### ✅ View Modes
 - **Page View** - The work's authored pages, one page sequence per output format: `pageFormat: 'auto'` picks the format that suits the screen (phone → `mobile-portrait`, 4K → `bigscreen-landscape`, …) and re-picks on resize. A placement's `vx`/`vy`/`vw`/`vh` frame crops the panel's artwork on every screen size, and the artwork may extend past the page behind a fixed frame (format 1.13). Readers switch between page and panel view in the toolbar; `initialViewMode` picks the start
 - **Panel View** - Classic one-panel-at-a-time reading with transitions
+- **Panel Borders** (format 1.14) - The line around every panel in page, panel and canvas view and in print: the work's `settings.typography.panel_border_style` (default black, 2, solid), overridden per panel by `Panel.border`. Styles `solid`, `dashed`, `dotted`, `double`, `rough` (hand-inked), `wavy` (dream) and `none`, plus a corner `radius`; thickness 0 = no border. Lengths are px of the page's format frame (A4 794 × 1123, …) and scale with the page; the line lies inside the frame (`pw-panel-border`, geometry synced from the CMS editor)
 - **Canvas View** - Infinite-canvas spatial mode (format 1.4): panels placed on a 2D stage, camera pan/zoom via `CanvasCameraService`, panel budget culling; select per work/chapter or force via the `viewModeOverride` input
 
 ### ✅ Content & Media
@@ -232,6 +233,7 @@ panelwave-player/
 │   │           ├── bubble-clock.ts         # Timed balloons (showAtMs)
 │   │           ├── bubble-voice-utils.ts   # Voice cues per panel
 │   │           ├── placement-frame.ts      # Page placement frames (format 1.13)
+│   │           ├── panel-border.ts         # Panel border resolution + shapes (format 1.14, synced from the CMS)
 │   │           ├── page-format-utils.ts    # Output format per screen
 │   │           ├── reading-order.ts
 │   │           ├── branch-visibility.ts    # Page-view placeholders for unchosen branches
@@ -409,7 +411,7 @@ component completion reports under `docs/archive/player/repo-history/`.
 
 ### 📐 Format Support
 
-The player renders **PanelWave manifest format 1.13** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
+The player renders **PanelWave manifest format 1.14** (the schema lives at `schema/1.0/` and is versioned via its `title`/`panelwave.version`):
 
 | Format | Feature | Player support |
 |--------|---------|----------------|
@@ -430,6 +432,7 @@ The player renders **PanelWave manifest format 1.13** (the schema lives at `sche
 | 1.11 | Per-language artwork (`ImageVariant.locale`): image layers, covers, extras and thumbnails show the reader's language version | ✅ |
 | 1.12 | Spoken lines (`audioAssetId` with per-locale `AudioVariant`s), Voices toggle (`settings.ui.voicesDefault`, `settings.ui.controls.showVoicesToggle`) | ✅ |
 | 1.13 | Framed page placements: the `vx`/`vy`/`vw`/`vh` frame crops on every screen size, and the image box may leave the page (`x`/`y` ≥ −9, `w`/`h` ≤ 10) | ✅ |
+| 1.14 | Panel borders: work `panel_border_style` + per-panel `Panel.border`, styles `double` / `rough` / `wavy`, corner `radius`; drawn in every view (default black, 2, solid) | ✅ |
 
 ---
 
@@ -606,7 +609,7 @@ import { PanelWaveManifest } from '@panelwave/player';
 
 const manifest: PanelWaveManifest = {
   panelwave: {
-    version: '1.13.0',
+    version: '1.14.0',
     schema: 'https://panelwave.org/schema/1.0/panelwave.schema.json',
   },
   meta: { /* ... */ },

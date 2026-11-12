@@ -1,0 +1,482 @@
+{
+  "panelwave": {
+    "version": "1.14.0",
+    "schema": "https://panelwave.org/schema/1.0/panelwave.schema.json",
+    "generator": "panelwave-sample-gen/1.0"
+  },
+  "meta": {
+    "id": "work-panel-borders",
+    "title": {
+      "en-US": "Panel Borders"
+    },
+    "description": {
+      "en-US": "Eight 16:9 panels on an A4 page, one per panel border style (format 1.14.0): the work default (settings.typography.panel_border_style: near-black, 3 px, solid) and per-panel overrides via Panel.border — dashed, dotted, double, rough, wavy (blue), rounded corners, and a borderless panel with rounded corners (thickness 0, radius 16)."
+    },
+    "creators": [
+      {
+        "role": "writer",
+        "name": "Test Author"
+      }
+    ],
+    "publisher": "Test Publisher",
+    "series": "Test Series",
+    "issue": "#0",
+    "release_date": "2025-01-01",
+    "age_rating": "13+",
+    "tags": [
+      "test",
+      "borders",
+      "format-1.14"
+    ],
+    "locales": [
+      "en-US"
+    ],
+    "default_locale": "en-US",
+    "cover": "img-cover"
+  },
+  "assets": {
+    "catalog": [
+      {
+        "id": "img-cover",
+        "category": "image",
+        "alt": {
+          "en-US": "Test cover"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/100/1200/1600",
+            "w": 1200,
+            "h": 1600,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p1",
+        "category": "image",
+        "alt": {
+          "en-US": "Work default (inherits)"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/110/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p2",
+        "category": "image",
+        "alt": {
+          "en-US": "Dashed"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/111/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p3",
+        "category": "image",
+        "alt": {
+          "en-US": "Dotted"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/112/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p4",
+        "category": "image",
+        "alt": {
+          "en-US": "Double"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/113/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p5",
+        "category": "image",
+        "alt": {
+          "en-US": "Rough (hand-drawn)"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/114/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p6",
+        "category": "image",
+        "alt": {
+          "en-US": "Wavy (dream)"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/115/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p7",
+        "category": "image",
+        "alt": {
+          "en-US": "Rounded corners"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/116/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      },
+      {
+        "id": "img-p8",
+        "category": "image",
+        "alt": {
+          "en-US": "No border, rounded"
+        },
+        "variants": [
+          {
+            "src": "https://picsum.photos/id/117/1280/720",
+            "w": 1280,
+            "h": 720,
+            "mime": "image/jpeg"
+          }
+        ]
+      }
+    ]
+  },
+  "settings": {
+    "typography": {
+      "default_page_bg_color": "#FFFFFF",
+      "panel_border_style": {
+        "color": "#1b1b1b",
+        "thickness": 3,
+        "style": "solid"
+      }
+    },
+    "ui": {
+      "autoplayDefault": true,
+      "audioDefault": false
+    }
+  },
+  "chapters": [
+    {
+      "id": "ch-1",
+      "title": {
+        "en-US": "Chapter One"
+      },
+      "pages": [
+        {
+          "id": "pg-1",
+          "title": {
+            "en-US": "Page 1"
+          },
+          "layout": {
+            "format": "a4-portrait",
+            "canvasSize": {
+              "width": 794,
+              "height": 1123
+            },
+            "placements": [
+              {
+                "panelId": "p1",
+                "x": 0.04,
+                "y": 0.04,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p2",
+                "x": 0.52,
+                "y": 0.04,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p3",
+                "x": 0.04,
+                "y": 0.275,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p4",
+                "x": 0.52,
+                "y": 0.275,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p5",
+                "x": 0.04,
+                "y": 0.51,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p6",
+                "x": 0.52,
+                "y": 0.51,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p7",
+                "x": 0.04,
+                "y": 0.745,
+                "w": 0.44,
+                "h": 0.175
+              },
+              {
+                "panelId": "p8",
+                "x": 0.52,
+                "y": 0.745,
+                "w": 0.44,
+                "h": 0.175
+              }
+            ]
+          },
+          "readingOrder": [
+            "p1",
+            "p2",
+            "p3",
+            "p4",
+            "p5",
+            "p6",
+            "p7",
+            "p8"
+          ]
+        }
+      ],
+      "panels": {
+        "p1": {
+          "title": {
+            "en-US": "Work default (inherits)"
+          },
+          "durationMs": 2000,
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p1-bg",
+              "assetId": "img-p1",
+              "z": 0
+            }
+          ]
+        },
+        "p2": {
+          "title": {
+            "en-US": "Dashed"
+          },
+          "durationMs": 2000,
+          "border": {
+            "style": "dashed"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p2-bg",
+              "assetId": "img-p2",
+              "z": 0
+            }
+          ]
+        },
+        "p3": {
+          "title": {
+            "en-US": "Dotted"
+          },
+          "durationMs": 2000,
+          "border": {
+            "style": "dotted",
+            "thickness": 3
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p3-bg",
+              "assetId": "img-p3",
+              "z": 0
+            }
+          ]
+        },
+        "p4": {
+          "title": {
+            "en-US": "Double"
+          },
+          "durationMs": 2000,
+          "border": {
+            "style": "double",
+            "thickness": 1.5
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p4-bg",
+              "assetId": "img-p4",
+              "z": 0
+            }
+          ]
+        },
+        "p5": {
+          "title": {
+            "en-US": "Rough (hand-drawn)"
+          },
+          "durationMs": 2000,
+          "border": {
+            "style": "rough"
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p5-bg",
+              "assetId": "img-p5",
+              "z": 0
+            }
+          ]
+        },
+        "p6": {
+          "title": {
+            "en-US": "Wavy (dream)"
+          },
+          "durationMs": 2000,
+          "border": {
+            "style": "wavy",
+            "color": "#3b5bdb",
+            "thickness": 2
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p6-bg",
+              "assetId": "img-p6",
+              "z": 0
+            }
+          ]
+        },
+        "p7": {
+          "title": {
+            "en-US": "Rounded corners"
+          },
+          "durationMs": 2000,
+          "border": {
+            "radius": 24
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p7-bg",
+              "assetId": "img-p7",
+              "z": 0
+            }
+          ]
+        },
+        "p8": {
+          "title": {
+            "en-US": "No border, rounded"
+          },
+          "durationMs": 2000,
+          "border": {
+            "thickness": 0,
+            "radius": 16
+          },
+          "layers": [
+            {
+              "kind": "image",
+              "id": "ly-p8-bg",
+              "assetId": "img-p8",
+              "z": 0
+            }
+          ]
+        }
+      },
+      "graph": {
+        "entry": "p1",
+        "edges": [
+          {
+            "from": "p1",
+            "to": "p2",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p2",
+            "to": "p3",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p3",
+            "to": "p4",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p4",
+            "to": "p5",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p5",
+            "to": "p6",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p6",
+            "to": "p7",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          },
+          {
+            "from": "p7",
+            "to": "p8",
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

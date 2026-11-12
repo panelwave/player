@@ -385,25 +385,27 @@
   pointer-events: none;
 }
 
+/*
+ * The frame of a page-view panel. No border and no background of its own:
+ * the line around the panel is pw-panel-border (format 1.14.0), drawn inside
+ * the frame; artwork that does not fill the frame shows the page. (Before
+ * 1.14 a black background under a 90 % transparent 1 px border looked like a
+ * hairline that sat outside the frame and was cut off on phones.)
+ */
 .viewport-page .panel-container {
   position: absolute;
   overflow: hidden;
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; /* Smooth transitions */
+  transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth transitions */
   transform-origin: center center; /* Default transform origin */
   outline: none; /* Remove default outline, use custom focus indicator */
 }
 
 .viewport-page .panel-container:hover {
-  border-color: rgba(255, 255, 255, 0.3);
   cursor: pointer;
 }
 
 /* Focused panel styles */
 .viewport-page .panel-container.panel-focused {
-  border-color: rgba(0, 120, 215, 0.8);
   box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.3),
               0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 9999 !important; /* Bring focused panel to front for visibility */

@@ -104,6 +104,12 @@
           <!-- Unrevealed panel: dark veil, no content (spoiler protection) -->
           <div class="canvas-panel-veil" aria-hidden="true"></div>
         }
+        <pw-panel-border
+          [border]="panelBorderOf(entry.panel)"
+          [width]="entry.placement.w"
+          [height]="entry.placement.h"
+          [seed]="entry.panelId">
+        </pw-panel-border>
       </div>
     }
   </div>

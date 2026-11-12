@@ -66,6 +66,12 @@
                 }
               }
             </div>
+            <pw-panel-border
+              [border]="panelBorderOf(leavingPanel)"
+              [width]="panelBorderBox.width"
+              [height]="panelBorderBox.height"
+              [seed]="leavingPanelId || ''">
+            </pw-panel-border>
           </div>
         </div>
       }
@@ -133,6 +139,12 @@
                 }
               }
             </div>
+            <pw-panel-border
+              [border]="panelBorderOf(panel)"
+              [width]="panelBorderBox.width"
+              [height]="panelBorderBox.height"
+              [seed]="currentPanelId || ''">
+            </pw-panel-border>
           </div>
         } @else {
           <div class="no-panel">
@@ -220,6 +232,12 @@
                       </div>
                     </div>
                   }
+                  <pw-panel-border
+                    [border]="placementBorderOf(placement, true)"
+                    [width]="borderFrameOf(placement, leavingPage).width"
+                    [height]="borderFrameOf(placement, leavingPage).height"
+                    [seed]="placement.panelId">
+                  </pw-panel-border>
                 </div>
               }
             </div>
@@ -340,6 +358,13 @@
                 </div>
               }
               
+              <pw-panel-border
+                [border]="placementBorderOf(placement)"
+                [width]="borderFrameOf(placement, page).width"
+                [height]="borderFrameOf(placement, page).height"
+                [seed]="placement.panelId">
+              </pw-panel-border>
+
               <!-- Focus indicator for rotated panels -->
               @if (isPanelFocused(placement.panelId)) {
                 <div class="focus-rect" aria-hidden="true"></div>

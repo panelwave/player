@@ -44,6 +44,13 @@ import { resolvePageBackground } from '../../utils/page-background';
 import { panelArtworkAspect } from '../../utils/layer-reference';
 import { framesBounds, placementBoxStyle, placementFrame, type BoxStyle, type FrameRect } from '../../utils/placement-frame';
 import { artworkLetteringScale, pageLetteringScale } from '../../utils/balloon-config';
+import { PanelBorderComponent } from '../panel-border/panel-border.component';
+import {
+  formatFramePx,
+  pageScaleOnScreen,
+  resolvePanelBorder,
+  type ResolvedPanelBorder,
+} from '../../utils/panel-border';
 
 /**
  * Performance metrics interface
@@ -80,7 +87,7 @@ export interface ViewportPreloadTarget {
  */
 @Component({
     selector: 'pw-viewport',
-    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective, BubbleClockDirective, LockedPanelComponent],
+    imports: [LayerRendererComponent, SpeechBubblesComponent, HotspotsOverlayComponent, PwIconComponent, PanelAnimationDirective, BubbleClockDirective, LockedPanelComponent, PanelBorderComponent],
     templateUrl: './viewport.component.html',
     styleUrls: ['./viewport.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -409,6 +416,9 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    */
   panelBox: { width: number; height: number } | null = null;
 
+  /** Viewport size (CSS px) at the last panel-view measurement; scales the panel-view border. */
+  viewportSize: { width: number; height: number } | null = null;
+
   /**
    * Aspect ratio (w / h) of the current panel's artwork: its background
    * image's largest variant, else the first image or video asset with known
@@ -470,6 +480,12 @@ export class ViewportComponent implements OnChanges, OnDestroy {
         : ViewportComponent.fitBox(viewport.clientWidth, viewport.clientHeight, aspect);
       if (box && (box.width !== this.panelBox?.width || box.height !== this.panelBox?.height)) {
         this.panelBox = box;
+        changed = true;
+      }
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      if (vw > 0 && vh > 0 && (vw !== this.viewportSize?.width || vh !== this.viewportSize?.height)) {
+        this.viewportSize = { width: vw, height: vh };
         changed = true;
       }
       if (rect && box) {
@@ -1529,6 +1545,45 @@ export class ViewportComponent implements OnChanges, OnDestroy {
    */
   frameOf(placement: PanelPlacement): FrameRect {
     return placementFrame(placement);
+  }
+
+  /**
+   * The border a panel shows (format 1.14.0): its own `border` over the
+   * work's `settings.typography.panel_border_style` over the format default.
+   */
+  panelBorderOf(panel: Panel | null | undefined): ResolvedPanelBorder {
+    return resolvePanelBorder(this.manifestService.getManifest()?.settings?.typography?.panel_border_style, panel?.border);
+  }
+
+  /** Page-view border of a placement (current page, or the leaving page's panels). */
+  placementBorderOf(placement: PanelPlacement, leaving = false): ResolvedPanelBorder {
+    const panel = leaving ? this.getLeavingPanel(placement.panelId) : this.panels?.[placement.panelId];
+    return this.panelBorderOf(panel);
+  }
+
+  /**
+   * A page-view frame in frame px (the page's output-format frame, e.g. A4
+   * portrait 794 × 1123): the size `pw-panel-border` draws its line in, so
+   * the line scales with the page like the artwork does.
+   */
+  borderFrameOf(placement: PanelPlacement, page: Page | null | undefined): { width: number; height: number } {
+    const frame = placementFrame(placement);
+    const size = formatFramePx(page?.layout?.format, page?.layout?.canvasSize, pageAspectRatio(page ?? null));
+    return { width: frame.w * size.width, height: frame.h * size.height };
+  }
+
+  /**
+   * The panel-view box in frame px: the box divided by the scale the
+   * current page would have on this screen, so the line weighs the same in
+   * panel view as in page view on one screen.
+   */
+  get panelBorderBox(): { width: number; height: number } {
+    const box = this.panelBox;
+    if (!box) return { width: 0, height: 0 };
+    const frame = formatFramePx(this.page?.layout?.format, this.page?.layout?.canvasSize, pageAspectRatio(this.page ?? null));
+    const viewport = this.viewportSize;
+    const scale = viewport ? pageScaleOnScreen(frame, viewport.width, viewport.height) : 1;
+    return { width: box.width / scale, height: box.height / scale };
   }
 
   /**

@@ -6,6 +6,22 @@
 import type { LocalizedString, Transition, AssetRef } from './manifest.types';
 
 /**
+ * The line around a panel (schema 1.14.0 `PanelBorderStyle`): the work
+ * default in `settings.typography.panel_border_style`, overridden per field by
+ * `Panel.border`. Lengths are px of the page's output-format frame. Format
+ * defaults: `#000000`, thickness 2, `solid`, radius 0.
+ */
+export interface PanelBorderSettings {
+  /** CSS hex colour. */
+  color?: string;
+  /** Thickness 0–10 (0 = no border). */
+  thickness?: number;
+  style?: 'solid' | 'dashed' | 'dotted' | 'double' | 'rough' | 'wavy' | 'none';
+  /** Corner radius 0–200. */
+  radius?: number;
+}
+
+/**
  * Panel definition with layers, interactions, and metadata
  */
 export interface Panel {
@@ -58,7 +74,13 @@ export interface Panel {
   
   /** Override for age rating (optional) */
   age_rating_override?: string;
-  
+
+  /**
+   * This panel's border (schema 1.14.0 `Panel.border`): each field set here
+   * overrides the work's `settings.typography.panel_border_style`.
+   */
+  border?: PanelBorderSettings;
+
   /** Content warnings that apply to this panel (optional) */
   contentWarnings?: string[];
   

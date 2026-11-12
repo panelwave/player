@@ -6,6 +6,7 @@
 // Import types from other modules
 import type {
   Panel,
+  PanelBorderSettings,
   BalloonConfig,
   BalloonConfigOverride,
   TextStyle,
@@ -426,6 +427,12 @@ export interface Settings {
     default_page_bg_color?: string;
     /** Default balloon styling for all speech bubbles in this work */
     balloon_config?: BalloonConfig;
+    /**
+     * The work's panel border (schema 1.14.0): drawn around every panel unless
+     * `Panel.border` overrides a field. Absent = the format default
+     * (#000000, 2, solid, radius 0).
+     */
+    panel_border_style?: PanelBorderSettings;
     /**
      * Named reusable text style presets (schema 1.3+).
      * Referenced by TextLayer.styleRef; inline `style` fields win over the preset.
