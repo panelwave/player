@@ -51,6 +51,9 @@ export interface PanelWaveManifest {
   
   /** UI customization settings (optional) */
   ui?: UISettings;
+
+  /** Where the work lives and how channels may present it (schema 1.15.0, optional; not rendered yet) */
+  distribution?: Distribution;
   
   /** Custom extension properties starting with x- */
   [key: `x-${string}`]: unknown;
@@ -118,6 +121,54 @@ export interface Meta {
   
   /** Content warning definitions (optional) */
   content_warnings?: ContentWarning[];
+
+  // --- Distribution metadata (schema 1.15.0, all optional; carried, not rendered yet) ---
+  /** Subtitle */
+  subtitle?: LocalizedString;
+  /** Short synopsis; `description` stays the long text */
+  synopsis?: LocalizedString;
+  format?: 'comic' | 'manga' | 'manhwa' | 'manhua' | 'webtoon' | 'graphic_novel' | 'comic_strip' | 'bande_dessinee' | 'fumetti' | 'other';
+  publication_type?: 'serialized' | 'one_shot' | 'anthology' | 'web_original' | 'print_original';
+  release_kind?: 'issue' | 'chapter' | 'episode' | 'volume' | 'graphic_novel' | 'collected_edition' | 'one_shot' | 'special' | 'anthology' | 'other';
+  /** Genre codes (PanelWave vocabulary), at most 5 */
+  genres?: { code: string; primary?: boolean }[];
+  /** Keywords per locale, at most 7 each */
+  keywords?: Record<LocaleCode, string[]>;
+  /** Age rating; `age_rating` carries the same code */
+  rating?: { code: 'E' | 'T' | 'M' | 'A'; min_age?: number; regional?: { region: string; system: string; rating: string }[]; warnings?: string[] };
+  /** The series this work belongs to; `series` stays */
+  series_info?: { id: string; title: LocalizedString; number?: number; display?: string; volume?: string; url?: string };
+  identifiers?: { system: string; value: string; edition?: string }[];
+  publisher_info?: { name?: string; imprint?: string; url?: string; country?: string };
+  license_info?: { code: string; url?: string };
+  original_language?: LocaleCode;
+  translation?: { is_translation?: boolean; translators?: string[] };
+  /** Per craft area: none | assisted | generated_edited | generated; `statement` is the optional public line */
+  ai_disclosure?: { declared: boolean; areas?: Record<string, 'none' | 'assisted' | 'generated_edited' | 'generated'>; tools?: string; statement?: LocalizedString; declared_at?: string };
+  /** Computed when a release is frozen */
+  facts?: { chapter_count?: number; panel_count?: number; page_count?: number; reading_minutes?: number; features?: string[]; content_hash?: string };
+}
+
+/**
+ * Top-level `distribution` (schema 1.15.0): canonical address, the author's
+ * terms, checkout, editions. Players carry it; use comes with embed protocol 4.
+ */
+export interface Distribution {
+  canonical?: string;
+  listing?: { id: string; channel: string };
+  terms?: {
+    listing?: 'listed_channels' | 'open';
+    embedding?: 'anywhere' | 'listed_channels';
+    purchase?: { checkout?: string; min_price?: number; max_channel_fee_bps?: number };
+    preview?: 'as_paywall';
+    attribution?: string;
+    contact?: string;
+  };
+  checkout?: { provider?: string; url?: string };
+  unlock?: { url?: string };
+  editions?: { locale: LocaleCode; url: string }[];
+  integrity?: { algorithm?: 'sha256'; manifest?: string; signature?: string; keyId?: string };
+  [key: `x-${string}`]: unknown;
 }
 
 /**
@@ -132,6 +183,9 @@ export interface Creator {
   
   /** URL to creator's website or profile (optional) */
   url?: string;
+
+  /** Craft role code (schema 1.15.0); `role` stays the display text */
+  role_code?: string;
 }
 
 /**
