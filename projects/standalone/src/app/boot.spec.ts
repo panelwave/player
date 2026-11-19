@@ -141,6 +141,13 @@ describe('standalone boot', () => {
       expect(embedParamsFromSearch('', DEFAULT_CONFIG)).toEqual({ embed: false });
     });
 
+    it('embedParamsFromSearch reads the v4 privacy, purchase UI and bridge parameters (never a channel)', () => {
+      expect(embedParamsFromSearch('?embed=1&track=0&pui=link_out&bridge=abcdefgh12345678&ch=roadbeat', DEFAULT_CONFIG)).toEqual({
+        embed: true, track: false, purchaseUi: 'link_out', bridgeNonce: 'abcdefgh12345678',
+      });
+      expect(embedParamsFromSearch('?embed=1&pui=free&bridge=x', DEFAULT_CONFIG)).toEqual({ embed: true });
+    });
+
     it('autoplay falls back to the chapter default of the config', () => {
       const config = normalizeConfig({ chapters: { 'ch-2': { autoplay: true } } });
       expect(embedParamsFromSearch('?chapter=ch-2', config).autoplay).toBeTrue();

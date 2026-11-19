@@ -3,7 +3,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { PlayerEmbedBridge, PlayerShellComponent, PrintContextService, type EmbedOptions, type PanelWaveManifest } from 'player';
+import {
+  PlayerEmbedBridge,
+  PlayerShellComponent,
+  PrintContextService,
+  TrackingService,
+  type EmbedOptions,
+  type PanelWaveManifest,
+  type PurchaseUiPolicy,
+} from 'player';
 import {
   DEFAULT_CONFIG,
   PLACEHOLDER_TITLE,
@@ -43,6 +51,7 @@ export class StandaloneComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly bridge = inject(PlayerEmbedBridge);
   private readonly printContext = inject(PrintContextService);
+  private readonly tracking = inject(TrackingService);
 
   readonly state = signal<State>('loading');
   readonly manifest = signal<PanelWaveManifest | null>(null);
@@ -58,6 +67,9 @@ export class StandaloneComponent implements OnInit, OnDestroy {
   readonly showCover = signal(DEFAULT_CONFIG.showCover);
   readonly secondsPerPanel = signal(5);
   readonly imageCacheBudgetMb = signal<number | undefined>(undefined);
+  /** Embed protocol v4: purchase UI policy and host fullscreen. */
+  readonly purchaseUi = signal<PurchaseUiPolicy>('in_place');
+  readonly hostFullscreen = signal(false);
 
   /** The shell, once mounted: the embed bridge follows it. */
   @ViewChild(PlayerShellComponent)
@@ -93,6 +105,10 @@ export class StandaloneComponent implements OnInit, OnDestroy {
     if (typeof options.showCover === 'boolean') this.showCover.set(options.showCover);
     const seconds = Number(options.secondsPerPanel);
     if (Number.isFinite(seconds) && seconds > 0) this.secondsPerPanel.set(seconds);
+    if (options.purchaseUi === 'in_place' || options.purchaseUi === 'link_out' || options.purchaseUi === 'hidden') {
+      this.purchaseUi.set(options.purchaseUi);
+    }
+    if (typeof options.hostFullscreen === 'boolean') this.hostFullscreen.set(options.hostFullscreen);
   }
 
   private fetchPackage(): void {
@@ -128,11 +144,15 @@ export class StandaloneComponent implements OnInit, OnDestroy {
     this.showCover.set(embed.showCover ?? (embed.chapter ? false : config.showCover));
     if (embed.secondsPerPanel) this.secondsPerPanel.set(embed.secondsPerPanel);
     if (embed.embed && embed.chapter) this.imageCacheBudgetMb.set(32);
+    if (embed.purchaseUi) this.purchaseUi.set(embed.purchaseUi);
+    // v4 privacy mode: decided before the shell opens its analytics session.
+    if (embed.embed && embed.track === false) this.tracking.setSuppressed(true);
     const httpPage = window.location.protocol === 'http:' || window.location.protocol === 'https:';
     if (embed.embed && httpPage && !config.print) {
       this.bridge.connect({
         hostOrigin: embed.origin ?? window.location.origin,
         handlers: { setOptions: (options) => this.applyOptions(options) },
+        bridgeNonce: embed.bridgeNonce,
       });
     }
     // Print renders (CMS PDF export) get a hook for their print stylesheet.

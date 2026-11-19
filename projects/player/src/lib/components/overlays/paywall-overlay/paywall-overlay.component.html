@@ -41,11 +41,20 @@
         </div>
       }
 
+      <!-- Purchase UI policy (embed protocol v4): link out or nothing -->
+      @if (purchaseUi === 'link_out' && linkOutUrl) {
+        <p class="policy-note" data-testid="paywall-link-out">
+          <a class="policy-link" [href]="linkOutUrl" target="_blank" rel="noopener noreferrer">{{ t('paywall.available_at', { host: linkOutHost }) }}</a>
+        </p>
+      } @else if (!inPlace) {
+        <p class="policy-note" data-testid="paywall-hidden">{{ t('paywall.not_available_here') }}</p>
+      }
+
       <!-- Purchase Options -->
-      @if (purchaseOptions.length > 0) {
+      @if (shownOptions.length > 0) {
         <div class="purchase-options">
           <h3 class="options-title">{{ t('paywall.choose_option') }}</h3>
-          @for (option of purchaseOptions; track option.productId) {
+          @for (option of shownOptions; track option.productId) {
             <button
               class="purchase-option"
               type="button"
@@ -68,7 +77,7 @@
       }
 
       <!-- Login Option -->
-      @if (showLogin) {
+      @if (showLogin && inPlace) {
         <button
           class="login-btn"
           type="button"
@@ -79,7 +88,7 @@
 
       <!-- Actions -->
       <div class="paywall-actions">
-        @if (purchaseOptions.length === 0 && !showLogin) {
+        @if (shownOptions.length === 0 && !(showLogin && inPlace)) {
           <button
             class="action-btn primary"
             type="button"
@@ -87,7 +96,7 @@
             {{ t('paywall.go_back') }}
           </button>
         }
-        @if (purchaseOptions.length > 0 || showLogin) {
+        @if (shownOptions.length > 0 || (showLogin && inPlace)) {
           <button
             class="action-btn secondary"
             type="button"
@@ -98,6 +107,7 @@
       </div>
 
       <!-- Footer Info -->
+      @if (inPlace) {
       <div class="paywall-footer">
         <p class="footer-text">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
@@ -106,6 +116,7 @@
           {{ t('paywall.secure_payment') }}
         </p>
       </div>
+      }
     </div>
   </div>
 </div>

@@ -67,7 +67,8 @@ import { evaluateJsonLogic } from '../../utils/json-logic-utils';
 import { resolvePanelVariant, resolvePanels } from '../../utils/variant-utils';
 import { extrasFromManifest, type CatalogLike } from '../../utils/extras-utils';
 import { chapterReadingOrder, isChapterEndPanel } from '../../utils/reading-order';
-import { pageFormatsOf, pagesForFormat, pickPageFormat } from '../../utils/page-format-utils';
+import { pageAspectRatio, pageFormatsOf, pagesForFormat, pickPageFormat } from '../../utils/page-format-utils';
+import { OUTPUT_FORMAT_ASPECT } from '../../utils/focus-rect-utils';
 import { resolvePageBackground } from '../../utils/page-background';
 import { locationUrl, type PlayerLocation } from '../../utils/player-location';
 import { workLocales } from '../../utils/work-locales';
@@ -255,6 +256,13 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
   }>();
 
   /**
+   * The fullscreen button was used where the browser has no Fullscreen API
+   * (WebViews) and the host said it can enlarge the frame (`hostFullscreen`):
+   * `fullscreen` is the state the reader asked for (embed protocol v4).
+   */
+  @Output() fullscreenRequest = new EventEmitter<{ fullscreen: boolean }>();
+
+  /**
    * Host-supplied initial variable values, keyed by variable id and
    * applied once at initialization through a privileged path: unlike
    * runtime mutations, these MAY seed variables the manifest declares
@@ -403,6 +411,23 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
    * Read on (re)load.
    */
   @Input() trackingContext?: Record<string, string | number | boolean>;
+
+  /**
+   * Purchase UI policy (embed protocol v4 `pui`): `in_place` shows the
+   * paywall's options; `link_out` only a neutral link to `purchaseLinkUrl`;
+   * `hidden` a lock without price or link (app hosts under store rules).
+   */
+  @Input() purchaseUi: 'in_place' | 'link_out' | 'hidden' = 'in_place';
+
+  /** Where `link_out` sends the reader (the work on its reader site). */
+  @Input() purchaseLinkUrl?: string;
+
+  /**
+   * The host can enlarge the frame itself (embed protocol v4): where the
+   * browser has no Fullscreen API, the fullscreen button stays and emits
+   * `fullscreenRequest` instead.
+   */
+  @Input() hostFullscreen = false;
 
   /**
    * Host-side widget theme on top of the manifest's `ui.theme` (schema
@@ -2189,9 +2214,33 @@ export class PlayerShellComponent implements OnInit, OnChanges, AfterViewChecked
     this.setViewMode(modes[(modes.indexOf(this.viewMode) + 1) % modes.length]);
   }
 
+  /** The toolbar offers fullscreen: through the browser, or through a host that enlarges the frame. */
+  get fullscreenOffered(): boolean {
+    return this.fullscreenAvailable || this.hostFullscreen;
+  }
+
+  /**
+   * Width / height of what the reader sees now, for hosts that size the frame
+   * (embed protocol v4 `resize`): the current page in page view, else the
+   * active page format's shape, else 16:9.
+   */
+  layoutAspect(): number {
+    if (this.viewMode === 'page' && this.currentPage) {
+      return pageAspectRatio(this.currentPage);
+    }
+    return (this.activePageFormat && OUTPUT_FORMAT_ASPECT[this.activePageFormat]) || 16 / 9;
+  }
+
   /** Toolbar fullscreen button: show the player in fullscreen, or go back to the browser view. */
   toggleFullscreen(): void {
     if (typeof document === 'undefined') {
+      return;
+    }
+    if (!this.fullscreenAvailable && this.hostFullscreen) {
+      // A WebView without the Fullscreen API: the host enlarges the frame.
+      this.isFullscreen = !this.isFullscreen;
+      this.fullscreenRequest.emit({ fullscreen: this.isFullscreen });
+      this.cdr.markForCheck();
       return;
     }
     if (document.fullscreenElement) {

@@ -14,13 +14,44 @@
  * v3 (player 1.10, backward compatible): inbound `setTheme` (live widget
  * theme on top of the manifest's `ui.theme`, `null` clears it) and the
  * `widgetEvent` event (content widget layers).
+ * v4 (channels, backward compatible): channel context (`ch`, `lid`, `track`,
+ * `pui`, `bridge` boot parameters), the MessagePort handshake (`pw:connect`)
+ * for every host including app schemes, `pw:hello` with `capabilities`,
+ * inbound `setPrivacy` / `restore` / `purchaseHandled`, the events `progress`,
+ * `resize`, `fullscreenRequest`, and the purchase UI policy. Reader tokens
+ * (`setReaderToken`) follow with reader accounts and are not announced yet.
  *
  * Documented in docs/EMBED_PROTOCOL.md and docs/MULTI_CHAPTER_EMBED.md.
  */
 import type { PanelWaveManifest, UITheme } from '../types';
 
 /** Protocol version announced in `pw:hello`. */
-export const EMBED_PROTOCOL_VERSION = 3;
+export const EMBED_PROTOCOL_VERSION = 4;
+
+/** What a v4 frame offers, announced in `pw:hello.capabilities`. */
+export type EmbedCapability = 'port' | 'progress' | 'restore' | 'resize' | 'privacy' | 'purchaseUi' | 'fullscreenRequest';
+
+export const EMBED_CAPABILITIES: readonly EmbedCapability[] = ['port', 'progress', 'restore', 'resize', 'privacy', 'purchaseUi', 'fullscreenRequest'];
+
+/** `progress` is posted at most once per this many ms (and at once on `pagehide`). */
+export const EMBED_PROGRESS_DEBOUNCE_MS = 2000;
+
+/** Smallest height (CSS px) a host should give the frame; sent with `resize`. */
+export const EMBED_MIN_HEIGHT = 320;
+
+/**
+ * Purchase UI policy (`pui`): `in_place` shows the paywall with its options;
+ * `link_out` one neutral link to the work on the reader site, no prices;
+ * `hidden` a lock without price or link (app hosts under store rules).
+ */
+export type PurchaseUiPolicy = 'in_place' | 'link_out' | 'hidden';
+
+/**
+ * Origins of app hosts whose pages are not http(s) (Capacitor / Ionic on iOS).
+ * Accepted by `normalizeOrigin()` as they are; the port handshake is the
+ * reliable path for them, as `postMessage` cannot target such an origin.
+ */
+export const APP_HOST_ORIGINS: readonly string[] = ['capacitor://localhost', 'ionic://localhost'];
 
 /** Live state: how many panel ids the `history` carries at most. */
 export const EMBED_HISTORY_LIMIT = 50;
@@ -42,6 +73,38 @@ export interface EmbedOptions {
   reducedMotion?: boolean;
   /** Toolbar visible (v2). */
   showToolbar?: boolean;
+  /** v4: purchase UI policy. */
+  purchaseUi?: PurchaseUiPolicy;
+  /** v4: the host can enlarge the frame itself; the fullscreen button then asks it (`fullscreenRequest`) where the browser cannot. */
+  hostFullscreen?: boolean;
+}
+
+/** v4: where to start or continue (`config.resume`, `restore`). */
+export interface EmbedResume {
+  panelId: string;
+  /** Variable values keyed by variable id, seeded before the jump. */
+  variables?: Record<string, unknown>;
+}
+
+/** v4: the `progress` event. */
+export interface EmbedProgress {
+  chapterId: string | null;
+  /** CMS chapter uuid when the manifest carries it. */
+  chapterUuid: string | null;
+  panelId: string | null;
+  pageId: string | null;
+  /** Share (0–100) of the chapter's reachable panels seen on this visit. */
+  percent: number;
+  variables: Record<string, unknown>;
+  /** The chapter's end was reached on this visit. */
+  completed: boolean;
+}
+
+/** v4: the `resize` event — the shape the frame wants. */
+export interface EmbedResize {
+  /** Width / height of the current view. */
+  aspect: number;
+  minHeight: number;
 }
 
 /** Everything a `config` message may carry. */
@@ -60,6 +123,8 @@ export interface EmbedConfigData extends EmbedOptions {
   chapterScope?: string;
   /** Force a restart even when the manifest is unchanged. */
   restart?: boolean;
+  /** v4: where to start (applied once the work is ready). */
+  resume?: EmbedResume;
   [key: string]: unknown;
 }
 
@@ -73,7 +138,10 @@ export type EmbedInboundMessage =
   | { type: 'getState' }
   | { type: 'restart' }
   | { type: 'hostGesture' }
-  | { type: 'setTheme'; theme: UITheme | null };
+  | { type: 'setTheme'; theme: UITheme | null }
+  | { type: 'setPrivacy'; tracking: boolean }
+  | { type: 'restore'; panelId: string; variables?: Record<string, unknown> }
+  | { type: 'purchaseHandled'; productId?: string };
 
 const INBOUND_TYPES = new Set<EmbedInboundMessage['type']>([
   'config',
@@ -86,7 +154,27 @@ const INBOUND_TYPES = new Set<EmbedInboundMessage['type']>([
   'restart',
   'hostGesture',
   'setTheme',
+  'setPrivacy',
+  'restore',
+  'purchaseHandled',
 ]);
+
+/** v4: the port handshake message (host → frame, with one MessagePort in the transfer list). */
+export interface EmbedConnectMessage {
+  type: 'pw:connect';
+  nonce: string;
+  protocol?: number;
+}
+
+/** The message is a `pw:connect` with a nonce (the port is checked by the bridge). */
+export function isEmbedConnectMessage(data: unknown): data is EmbedConnectMessage {
+  return (
+    !!data &&
+    typeof data === 'object' &&
+    (data as { type?: unknown }).type === 'pw:connect' &&
+    typeof (data as { nonce?: unknown }).nonce === 'string'
+  );
+}
 
 /** Snapshot posted as `pw:state`. */
 export interface EmbedStateSnapshot {
@@ -118,8 +206,17 @@ export interface EmbedStateSnapshot {
   autoplayActive: boolean;
 }
 
+/** `pw:hello` (v4 adds the channel context and capabilities). */
+export interface EmbedHello {
+  type: 'pw:hello';
+  protocol: number;
+  channel?: string | null;
+  listing?: string | null;
+  capabilities?: readonly EmbedCapability[];
+}
+
 export type EmbedOutboundMessage =
-  | { type: 'pw:hello'; protocol: number }
+  | EmbedHello
   | { type: 'pw:ready' }
   | { type: 'pw:event'; name: string; data: unknown }
   | { type: 'pw:state'; data: EmbedStateSnapshot };
@@ -144,10 +241,18 @@ export function hostOriginFromSearch(search: string, fallback: string): string {
   return normalizeOrigin(raw) ?? fallback;
 }
 
-/** `https://a.example/x?y` → `https://a.example`; null for anything that is no http(s) origin. */
+/**
+ * `https://a.example/x?y` → `https://a.example`; the app host origins
+ * (`capacitor://localhost`, `ionic://localhost`) as they are; null for
+ * anything else.
+ */
 export function normalizeOrigin(raw: string | null | undefined): string | null {
   if (!raw) {
     return null;
+  }
+  const app = raw.trim().toLowerCase().replace(/\/+$/, '');
+  if (APP_HOST_ORIGINS.includes(app)) {
+    return app;
   }
   try {
     const url = new URL(raw);
@@ -220,6 +325,35 @@ export function parseEmbedFlag(value: string | null | undefined): boolean | unde
 /** A chapter reference from a URL / config: manifest id or uuid, else undefined. */
 export function parseChapterRef(value: unknown): string | undefined {
   return typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,64}$/.test(value) ? value : undefined;
+}
+
+/** v4: a channel key (`ch=`), else undefined. */
+export function parseChannelKey(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[a-z0-9][a-z0-9-]{0,59}$/.test(value) ? value : undefined;
+}
+
+/** v4: a listing id (`lid=`, a uuid), else undefined. */
+export function parseListingId(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) ? value.toLowerCase() : undefined;
+}
+
+/** v4: a purchase UI policy (`pui=`), else undefined. */
+export function parsePurchaseUi(value: unknown): PurchaseUiPolicy | undefined {
+  return value === 'in_place' || value === 'link_out' || value === 'hidden' ? value : undefined;
+}
+
+/** v4: a bridge nonce (`bridge=`, 16–128 URL-safe characters), else undefined. */
+export function parseBridgeNonce(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{16,128}$/.test(value) ? value : undefined;
+}
+
+/** v4: a `resume` / `restore` payload, else undefined. */
+export function parseResume(value: unknown): EmbedResume | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as { panelId?: unknown; variables?: unknown };
+  if (typeof v.panelId !== 'string' || !v.panelId) return undefined;
+  const variables = v.variables && typeof v.variables === 'object' && !Array.isArray(v.variables) ? (v.variables as Record<string, unknown>) : undefined;
+  return variables ? { panelId: v.panelId, variables } : { panelId: v.panelId };
 }
 
 /** Seconds per panel from a URL / config (0.5–120), else undefined. */

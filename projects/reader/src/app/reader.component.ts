@@ -13,11 +13,13 @@ import { HttpClient } from '@angular/common/http';
 import {
   PlayerEmbedBridge,
   PlayerShellComponent,
+  TrackingService,
   locationUrl,
   parseLocationSearch,
   type EmbedOptions,
   type PanelWaveManifest,
   type PlayerLocation,
+  type PurchaseUiPolicy,
 } from 'player';
 import { readBootConfig, readEmbedOptions, type ReaderBootConfig } from './boot-config';
 import { forReview } from './review-rules';
@@ -60,6 +62,7 @@ export class ReaderComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly bridge = inject(PlayerEmbedBridge);
+  private readonly tracking = inject(TrackingService);
   private inFlight = false;
 
   readonly config: ReaderBootConfig = readBootConfig(window);
@@ -71,10 +74,20 @@ export class ReaderComponent implements OnInit, OnDestroy {
   readonly showToolbar = signal(this.embedOptions.showToolbar ?? false);
   readonly showCover = signal(this.embedOptions.showCover ?? !this.chapterScope);
   readonly secondsPerPanel = signal(this.embedOptions.secondsPerPanel ?? 5);
-  /** Analytics: which site embeds the reader (dashboard split "embedded vs. reader"). */
+  /** Analytics: which site embeds the reader (dashboard split "embedded vs. reader") and, v4, on which channel. */
   readonly trackingContext = this.config.embed
-    ? { embedHost: this.embedOptions.embedOrigin ?? referrerOrigin() ?? 'unknown' }
+    ? {
+        embedHost: this.embedOptions.embedOrigin ?? referrerOrigin() ?? 'unknown',
+        ...(this.embedOptions.channel ? { channel: this.embedOptions.channel } : {}),
+        ...(this.embedOptions.listing ? { listing: this.embedOptions.listing } : {}),
+      }
     : undefined;
+  /** v4: purchase UI policy (`pui`, `setOptions.purchaseUi`). */
+  readonly purchaseUi = signal<PurchaseUiPolicy>(this.embedOptions.purchaseUi ?? 'in_place');
+  /** v4: the host enlarges the frame where the browser has no fullscreen (`setOptions.hostFullscreen`). */
+  readonly hostFullscreen = signal(false);
+  /** `link_out` sends the reader to this work on its reader site. */
+  readonly purchaseLinkUrl = `${window.location.origin}${window.location.pathname}`;
   /** Several chapter embeds share the device: each keeps a smaller image cache. */
   readonly imageCacheBudgetMb = this.config.embed && this.chapterScope ? 32 : undefined;
 
@@ -93,9 +106,16 @@ export class ReaderComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (this.config.embed) {
+      // v4 privacy mode: decided before the shell opens its analytics session.
+      if (this.embedOptions.track === false) {
+        this.tracking.setSuppressed(true);
+      }
       this.bridge.connect({
         hostOrigin: this.embedOptions.embedOrigin ?? window.location.origin,
         handlers: { setOptions: (options) => this.applyOptions(options) },
+        bridgeNonce: this.embedOptions.bridgeNonce,
+        channel: this.embedOptions.channel ?? null,
+        listing: this.embedOptions.listing ?? null,
       });
     }
     this.load();
@@ -112,6 +132,10 @@ export class ReaderComponent implements OnInit, OnDestroy {
     if (typeof options.showCover === 'boolean') this.showCover.set(options.showCover);
     const seconds = Number(options.secondsPerPanel);
     if (Number.isFinite(seconds) && seconds > 0) this.secondsPerPanel.set(seconds);
+    if (options.purchaseUi === 'in_place' || options.purchaseUi === 'link_out' || options.purchaseUi === 'hidden') {
+      this.purchaseUi.set(options.purchaseUi);
+    }
+    if (typeof options.hostFullscreen === 'boolean') this.hostFullscreen.set(options.hostFullscreen);
   }
 
   load(): void {

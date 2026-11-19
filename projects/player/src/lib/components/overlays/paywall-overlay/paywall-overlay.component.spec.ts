@@ -117,6 +117,37 @@ describe('PaywallOverlayComponent', () => {
     });
   });
 
+  describe('purchase UI policy (embed protocol v4)', () => {
+    it('in_place (default) shows the options and sign-in', () => {
+      set({ visible: true, purchaseOptions: options });
+      expect(qa('.purchase-option').length).toBe(3);
+      expect(q('.login-btn')).not.toBeNull();
+      expect(q('[data-testid="paywall-link-out"]')).toBeNull();
+    });
+
+    it('link_out shows one link to the reader site, no prices and no sign-in', () => {
+      set({ visible: true, purchaseOptions: options, purchaseUi: 'link_out', purchaseLinkUrl: 'https://read.panelwave.org/team/work' });
+      expect(qa('.purchase-option').length).toBe(0);
+      expect(q('.login-btn')).toBeNull();
+      expect(q('.paywall-footer')).toBeNull();
+      const link = q<HTMLAnchorElement>('[data-testid="paywall-link-out"] a')!;
+      expect(link.href).toBe('https://read.panelwave.org/team/work');
+      expect(link.rel).toContain('noopener');
+      expect(link.textContent).toContain('read.panelwave.org');
+      expect(fixture.nativeElement.textContent).not.toContain('2.99');
+    });
+
+    it('hidden, and link_out without a usable URL, say it is not available here', () => {
+      set({ visible: true, purchaseOptions: options, purchaseUi: 'hidden', purchaseLinkUrl: 'https://read.panelwave.org/team/work' });
+      expect(text('[data-testid="paywall-hidden"]')).toBe('Not available in this app');
+      expect(q('[data-testid="paywall-link-out"]')).toBeNull();
+      expect(qa('.purchase-option').length).toBe(0);
+      set({ purchaseUi: 'link_out', purchaseLinkUrl: 'javascript:alert(1)' });
+      expect(q('[data-testid="paywall-link-out"]')).toBeNull();
+      expect(q('[data-testid="paywall-hidden"]')).not.toBeNull();
+    });
+  });
+
   describe('purchase options', () => {
     beforeEach(() => set({ purchaseOptions: options }));
 

@@ -9,11 +9,41 @@ import {
   parseChapterRef,
   parseEmbedFlag,
   parseSecondsPerPanel,
+  isEmbedConnectMessage,
+  parseBridgeNonce,
+  parseChannelKey,
+  parseListingId,
+  parsePurchaseUi,
+  parseResume,
 } from './embed-protocol';
 
 describe('embed bridge protocol helpers', () => {
-  it('is protocol version 3', () => {
-    expect(EMBED_PROTOCOL_VERSION).toBe(3);
+  it('is protocol version 4', () => {
+    expect(EMBED_PROTOCOL_VERSION).toBe(4);
+  });
+
+  it('knows the v4 messages, and pw:connect only with a nonce', () => {
+    for (const type of ['setPrivacy', 'restore', 'purchaseHandled']) expect(isEmbedInboundMessage({ type })).toBeTrue();
+    expect(isEmbedInboundMessage({ type: 'setReaderToken' })).toBeFalse(); // with reader accounts
+    expect(isEmbedConnectMessage({ type: 'pw:connect', nonce: 'abc' })).toBeTrue();
+    expect(isEmbedConnectMessage({ type: 'pw:connect' })).toBeFalse();
+    expect(isEmbedInboundMessage({ type: 'pw:connect', nonce: 'abc' })).toBeFalse();
+  });
+
+  it('parses the v4 boot parameters strictly', () => {
+    expect(parseChannelKey('roadbeat')).toBe('roadbeat');
+    expect(parseChannelKey('Road Beat')).toBeUndefined();
+    expect(parseListingId('11111111-2222-3333-4444-555555555555')).toBe('11111111-2222-3333-4444-555555555555');
+    expect(parseListingId('1')).toBeUndefined();
+    expect(parsePurchaseUi('link_out')).toBe('link_out');
+    expect(parsePurchaseUi('buy')).toBeUndefined();
+    expect(parseBridgeNonce('abcdefgh12345678')).toBe('abcdefgh12345678');
+    expect(parseBridgeNonce('short')).toBeUndefined();
+    expect(parseBridgeNonce('has spaces in it!!!')).toBeUndefined();
+    expect(parseResume({ panelId: 'p1', variables: { a: 1 } })).toEqual({ panelId: 'p1', variables: { a: 1 } });
+    expect(parseResume({ panelId: 'p1', variables: [1] })).toEqual({ panelId: 'p1' });
+    expect(parseResume({ panelId: '' })).toBeUndefined();
+    expect(parseResume('p1')).toBeUndefined();
   });
 
   it('knows the v3 setTheme message', () => {
@@ -32,6 +62,12 @@ describe('embed bridge protocol helpers', () => {
       expect(normalizeOrigin('javascript:alert(1)')).toBeNull();
       expect(normalizeOrigin('nonsense')).toBeNull();
       expect(normalizeOrigin(null)).toBeNull();
+    });
+
+    it('accepts the app host origins as they are (v4)', () => {
+      expect(normalizeOrigin('capacitor://localhost')).toBe('capacitor://localhost');
+      expect(normalizeOrigin('ionic://localhost/')).toBe('ionic://localhost');
+      expect(normalizeOrigin('capacitor://evil.example')).toBeNull();
     });
   });
 

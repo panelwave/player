@@ -259,7 +259,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (params.get('embed') === '1' || this.isFramed()) {
       this.embedMode = true;
       this.loading = false;
-      this.postToHost({ type: 'pw:hello', protocol: EMBED_PROTOCOL_VERSION });
+      // The CMS preview speaks the v3 feature set: no v4 capabilities (port, progress, …).
+      this.postToHost({ type: 'pw:hello', protocol: EMBED_PROTOCOL_VERSION, capabilities: [] });
       return;
     }
 

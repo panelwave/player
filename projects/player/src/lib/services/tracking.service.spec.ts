@@ -46,6 +46,33 @@ describe('TrackingService', () => {
     });
   });
 
+  describe('privacy mode (embed protocol v4)', () => {
+    it('queues and sends nothing while suppressed, not even with consent', () => {
+      const fetchSpy = spyOn(window, 'fetch').and.returnValue(Promise.resolve(new Response('{}')));
+      const beacon = spyOn(navigator, 'sendBeacon').and.returnValue(true);
+      service.configure({ consentRequired: false, endpoint: 'https://analytics.example.com/e' });
+      service.setSuppressed(true);
+      service.track('session_start', { channel: 'roadbeat' });
+      service.track('panel_view', { panelId: 'p1' });
+      expect(service.getQueueSize()).toBe(0);
+      service.flushSync();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(beacon).not.toHaveBeenCalled();
+    });
+
+    it('sends the held session_start when the host opts in, and drops what was queued when it opts out', () => {
+      service.configure({ consentRequired: false });
+      service.setSuppressed(true);
+      service.track('session_start', { channel: 'roadbeat' });
+      service.setSuppressed(false);
+      expect(service.isSuppressed()).toBeFalse();
+      expect(service.getQueueSize()).toBe(1);
+      service.track('panel_view');
+      service.setSuppressed(true);
+      expect(service.getQueueSize()).toBe(0);
+    });
+  });
+
   describe('consent gating', () => {
     it('should not track without consent', () => {
       service.setConsent(false);

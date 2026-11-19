@@ -131,7 +131,43 @@ export class TrackingService {
 
   private chapterUuids = new Map<string, string>();
 
+  /** Privacy mode (embed protocol v4 `track=0`): nothing is queued or sent. */
+  private suppressed = false;
+
+  /** `session_start` while suppressed, kept in memory only, so a later opt-in still opens the session. */
+  private heldSessionStart: Record<string, unknown> | null = null;
+
+  /**
+   * Privacy mode for frames on hosts that decide about analytics themselves
+   * (embed protocol v4: `track=0`, `setPrivacy`). While on, no event is
+   * queued and no request leaves the player. Turning it off sends the held
+   * `session_start` (with the time of the opt-in); events from before are not
+   * recovered.
+   */
+  setSuppressed(suppressed: boolean): void {
+    this.suppressed = suppressed;
+    if (suppressed) {
+      this.eventQueue = [];
+      for (const timer of this.debounceTimers.values()) clearTimeout(timer);
+      this.debounceTimers.clear();
+      return;
+    }
+    const held = this.heldSessionStart;
+    this.heldSessionStart = null;
+    if (held) this.track('session_start', held);
+  }
+
+  /** Privacy mode is on. */
+  isSuppressed(): boolean {
+    return this.suppressed;
+  }
+
   track(type: string, data?: Record<string, unknown>): void {
+    if (this.suppressed) {
+      if (type === 'session_start') this.heldSessionStart = { ...(data ?? {}) };
+      return;
+    }
+
     const chapterId = data?.['chapterId'];
     if (typeof chapterId === 'string' && data?.['chapterUuid'] === undefined && this.chapterUuids.has(chapterId)) {
       data = { ...data, chapterUuid: this.chapterUuids.get(chapterId) };
@@ -309,6 +345,9 @@ export class TrackingService {
    * Falls back to fetch({keepalive}) where sendBeacon is unavailable.
    */
   flushSync(): void {
+    if (this.suppressed) {
+      return;
+    }
     if (this.eventQueue.length === 0 || !this.config.endpoint) {
       this.eventQueue = [];
       return;

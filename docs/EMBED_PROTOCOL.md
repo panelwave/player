@@ -1,7 +1,6 @@
-# Embed bridge protocol v2
+# Embed bridge protocol v4
 
-Three player pages speak this `postMessage` protocol with the page that
-frames them:
+Three player pages speak this protocol with the page that frames them:
 
 - the **demo app** (`projects/demo`) — the **CMS preview embed**: the CMS
   serves its build same-origin at `/player/index.html` and drives it,
@@ -17,8 +16,13 @@ story on every control change. **v2 (player 1.9) is backward compatible**:
 `config.chapterScope` / `showToolbar`, `setOptions.showToolbar`, the inbound
 `hostGesture`, the `chapterComplete` and `autoplayChange` events and three
 `pw:state` fields. **v3 (player 1.10)** adds the inbound `setTheme` and the
-`widgetEvent` event (content widget layers). `pw:hello` reports
-`protocol: 3`.
+`widgetEvent` event (content widget layers). **v4** (channels, backward
+compatible) adds the channel context, a MessagePort handshake that also works
+for app hosts (Capacitor / Ionic on iOS), privacy mode, `progress`,
+`restore`, `resize`, `fullscreenRequest` and the purchase UI policy — see
+[Protocol 4](#protocol-4) below. `pw:hello` reports `protocol: 4` and, from v4
+on, the `capabilities` the page offers; read them rather than the number. The
+demo app (CMS preview) announces `capabilities: []`: it speaks the v3 set.
 
 Source (library, exported from `@panelwave/player`):
 `projects/player/src/lib/embed/` — `embed-protocol.ts` (types, helpers),
@@ -53,9 +57,9 @@ standalone page speaks the bridge only over http(s), never from `file://`.
 
 | Message | When |
 |---------|------|
-| `{ type: 'pw:hello', protocol: 1 }` | On load, before any config. Hosts that get it know the bridge speaks v1. |
+| `{ type: 'pw:hello', protocol: 4, channel, listing, capabilities }` | On load, before any config (and again over the port after `pw:connect`). `channel` / `listing` are the v4 channel context or `null`; `capabilities` (v4) lists what the page offers: `port`, `progress`, `restore`, `resize`, `privacy`, `purchaseUi`, `fullscreenRequest`. A v1–v3 page sends `{ type, protocol }` only. |
 | `{ type: 'pw:ready' }` | The shell's `ready` output: the work is loaded and positioned. |
-| `{ type: 'pw:event', name, data }` | Every shell output: `ready`, `panelChange`, `chapterChange`, `chapterComplete` (v2), `autoplayChange` (v2), `widgetEvent` (v3), `locationChange`, `variableChange`, `localeChange`, `navigationAttempt`, `cameraChange`, `paywallAction`, `ageVerified`, `likeChange`, `bookmarkChange`, `error`. |
+| `{ type: 'pw:event', name, data }` | Every shell output: `ready`, `panelChange`, `chapterChange`, `chapterComplete` (v2), `autoplayChange` (v2), `widgetEvent` (v3), `fullscreenRequest` (v4), `locationChange`, `variableChange`, `localeChange`, `navigationAttempt`, `cameraChange`, `paywallAction`, `ageVerified`, `likeChange`, `bookmarkChange`, `error`; and from the bridge `progress` and `resize` (v4). |
 | `{ type: 'pw:state', data }` | In reply to `getState`, and ~100 ms (debounced) after `ready`, every navigation/event above (except `cameraChange`), every inbound change and every error. |
 
 Event payloads are the shell's, except where the shell emits whole manifest
@@ -103,6 +107,9 @@ unused copy) and `preloadStatus` from `PreloadService.getQueueStatus()`.
 | `{ type: 'restart' }` | Same work from the start with the current config (locale, entitlements, options, last `variables`). Reader / standalone: `reload()` of the shell. |
 | `{ type: 'setTheme', theme }` | v3: live widget theme (`UITheme`: `mode`, `colors`, `fonts`, `shape`, `density`) on top of the manifest's `ui.theme`; `theme: null` clears it. No restart. The CMS theme manager previews with it. |
 | `{ type: 'hostGesture' }` | v2: the reader interacted with the host page. Marks the player's `UserGestureService` as interacted, so sound the browser's autoplay policy held back is retried (the iframe needs `allow="autoplay"`). |
+| `{ type: 'setPrivacy', tracking }` | v4: analytics on (`true`) or off (`false`) in this frame, e.g. after the host's own consent step. See privacy mode. |
+| `{ type: 'restore', panelId, variables? }` | v4: continue where the host says — variables are seeded first, then the player jumps; waits for `ready` when sent earlier. Same as `config.resume`. |
+| `{ type: 'purchaseHandled', productId? }` | v4: the host took over a purchase after `paywallAction` (its own checkout). The fallback to PanelWave's hosted checkout follows with reader purchases; until then the message is only handed to the app. |
 
 ### `config`
 
@@ -111,7 +118,8 @@ unused copy) and `preloadStatus` from `PreloadService.getQueueStatus()`.
   manifest?, locale?, variables?, entitlements?,
   autoplay?, muted?, viewMode?, pageFormat?, secondsPerPanel?, showCover?, reducedMotion?,
   initialPanelId?, initialViewMode?, restart?,
-  chapterScope?, showToolbar?          // v2
+  chapterScope?, showToolbar?,         // v2
+  resume?, purchaseUi?, hostFullscreen? // v4
 } }
 ```
 
@@ -139,10 +147,96 @@ only updates the settings (and the seed for the first load).
 | `initialPanelId`, `initialViewMode` | `initialPanelId`, `initialViewMode` | restart only (`config` keys, not `setOptions`) |
 | `chapterScope` (v2) | `chapterScope` | restart only (`config` key). Reader / standalone take it from the URL. |
 | `showToolbar` (v2) | `showToolbar` | live |
+| `purchaseUi` (v4: `in_place` / `link_out` / `hidden`) | `purchaseUi` | live |
+| `hostFullscreen` (v4) | `hostFullscreen` | live: where the browser has no Fullscreen API (WebViews), the fullscreen button stays and emits `fullscreenRequest` |
 
 Note: `autoplay` and `viewMode` are input bindings; if the reader changed
 them inside the player (keyboard shortcut), re-posting the same value is a
 no-op. `setLocale` is immune (it also calls the shell directly).
+
+## Protocol 4
+
+Design source: panelwave-cms `docs/channel-manager/06_PLAYER_CHANNEL_SDK.md` §3.
+
+### Boot parameters (reader and standalone pages)
+
+| Parameter | Meaning |
+|---|---|
+| `bridge=<nonce>` | 16–128 URL-safe characters, random per mount. Enables the port handshake. |
+| `track=0` / `track=1` | Analytics in this frame. `0` = privacy mode. |
+| `pui=in_place` / `link_out` / `hidden` | Purchase UI policy. |
+| `ch=<channelKey>`, `lid=<listingId>` | The channel the frame runs in. **Reader only, and only through the reader server**, which checks that the work is live on that channel and injects the value; a channel in the page's own URL is ignored, so nobody else can attribute reads to a channel. The standalone page never has a channel. |
+
+The reader puts `channel` and `listing` into the analytics `session_start`
+(next to `embedHost`) and into `pw:hello`.
+
+### Port handshake
+
+1. The host creates the frame with `?embed=1&bridge=<nonce>`.
+2. After the frame's `load`, the host posts
+   `{ type: 'pw:connect', nonce, protocol: 4 }` with one `MessagePort` in the
+   transfer list — target origin `*` is fine: the nonce, not the origin, binds
+   the port.
+3. The page accepts the **first** `pw:connect` whose nonce matches its boot
+   parameter and carries a port. It records the sender's origin (diagnostics
+   only), answers `pw:hello` over the port — and `pw:ready` when the work is
+   already loaded — and from then on talks **only over the port**: window
+   messages are ignored, a second `pw:connect` is refused.
+4. All messages of this document flow over the port in both directions.
+
+Without `bridge=` the page speaks the window path as in v3 (origin-checked
+`postMessage`). `normalizeOrigin()` accepts `capacitor://localhost` and
+`ionic://localhost` as they are, but `postMessage` cannot target such
+origins: app hosts use the port.
+
+### Privacy mode
+
+`track=0` (or `setPrivacy { tracking: false }`) turns `TrackingService` into
+privacy mode: no event is queued, no beacon or request leaves the frame. The
+`session_start` is held in memory only; `setPrivacy { tracking: true }` sends
+it (with the time of the opt-in); events from before are not recovered.
+Without `track` the work's own consent setting applies as before. Autoplay
+stays off unless the host passes `autoplay=1`; sound needs `hostGesture`.
+
+### `progress` and `restore`
+
+`pw:event progress` — at most every 2 s after the position moved (panel,
+chapter, location, chapter end) and at once on `pagehide`:
+
+```ts
+{ chapterId, chapterUuid, panelId, pageId, percent, variables, completed }
+```
+
+`percent` is the share (0–100) of the chapter's reachable panels (graph walk
+from its entry) seen on this visit; a branching work has no single length, so
+the share follows the reader's own path. Reaching the chapter's end counts as
+100. A host that keeps the position for readers without an account sends it
+back with `restore` or `config.resume`.
+
+### `resize`
+
+`pw:event resize { aspect, minHeight }` after `ready` and whenever the view's
+shape changes: `aspect` = width / height of the current page in page view,
+else of the active page format, else 16:9; `minHeight` = 320 (CSS px). The
+host sizes the frame from it.
+
+### Purchase UI policy
+
+| `pui` | Paywall overlay |
+|---|---|
+| `in_place` (default) | Purchase options and sign-in; `paywallAction` reaches the host as before |
+| `link_out` | "Available at {reader host}" with one neutral link to the work (the reader page's own address); no prices, no buttons. Without a usable link it behaves like `hidden`. |
+| `hidden` | "Not available in this app"; no price, no link |
+
+Decided for app hosts until legal advice exists: `hidden` on iOS, `link_out`
+on Android.
+
+### Not in this version yet
+
+`setReaderToken` / `clearReaderToken`, `entitlementChange`,
+`readerTokenExpiring` and `checkoutReturn` come with reader accounts and
+checkout (channel manager docs 05 and 08); `pw:hello` does not announce them
+until they work.
 
 ## Backward compatibility
 

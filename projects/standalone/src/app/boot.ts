@@ -1,5 +1,13 @@
 import type { PanelWaveManifest, PrintOptions } from 'player';
-import { normalizeOrigin, parseChapterRef, parseEmbedFlag, parseSecondsPerPanel } from 'player';
+import {
+  normalizeOrigin,
+  parseBridgeNonce,
+  parseChapterRef,
+  parseEmbedFlag,
+  parsePurchaseUi,
+  parseSecondsPerPanel,
+  type PurchaseUiPolicy,
+} from 'player';
 
 /**
  * Boot rules of the standalone player (a self-contained package next to its
@@ -154,6 +162,12 @@ export interface EmbedParams {
   showToolbar?: boolean;
   showCover?: boolean;
   secondsPerPanel?: number;
+  /** Embed protocol v4 `track=0|1`: analytics in this frame. */
+  track?: boolean;
+  /** v4 `pui=`: purchase UI policy. */
+  purchaseUi?: PurchaseUiPolicy;
+  /** v4 `bridge=`: nonce of the port handshake. */
+  bridgeNonce?: string;
 }
 
 export function embedParamsFromSearch(search: string, config: StandaloneConfig): EmbedParams {
@@ -171,6 +185,12 @@ export function embedParamsFromSearch(search: string, config: StandaloneConfig):
   if (cover !== undefined) out.showCover = cover;
   const seconds = parseSecondsPerPanel(params.get('spp'));
   if (seconds !== undefined) out.secondsPerPanel = seconds;
+  const track = parseEmbedFlag(params.get('track'));
+  if (track !== undefined) out.track = track;
+  const purchaseUi = parsePurchaseUi(params.get('pui'));
+  if (purchaseUi) out.purchaseUi = purchaseUi;
+  const nonce = parseBridgeNonce(params.get('bridge'));
+  if (nonce) out.bridgeNonce = nonce;
   return out;
 }
 

@@ -125,4 +125,16 @@ describe('readEmbedOptions', () => {
     );
     expect(options).toEqual({ chapter: 'inj', autoplay: false });
   });
+
+  it('takes the channel only from the server, privacy, purchase UI and bridge nonce also from the URL (v4)', () => {
+    const fromUrl = readEmbedOptions(fakeWin('?ch=roadbeat&lid=11111111-2222-3333-4444-555555555555&track=0&pui=hidden&bridge=abcdefgh12345678'));
+    expect(fromUrl).toEqual({ track: false, purchaseUi: 'hidden', bridgeNonce: 'abcdefgh12345678' });
+    const injected = readEmbedOptions(
+      fakeWin('?pui=link_out', { manifestUrl: 'i.json', channel: 'roadbeat', listing: '11111111-2222-3333-4444-555555555555', track: true })
+    );
+    expect(injected).toEqual({
+      channel: 'roadbeat', listing: '11111111-2222-3333-4444-555555555555', track: true, purchaseUi: 'link_out',
+    });
+    expect(readEmbedOptions(fakeWin('', { manifestUrl: 'i.json', channel: 'Not A Key', listing: 'x' }))).toEqual({});
+  });
 });

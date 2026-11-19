@@ -46,6 +46,8 @@ const PAYWALL_TEXT_EN: Record<string, string> = {
   'paywall.reason_purchase_required': 'This part of the story is available to buy.',
   'paywall.reason_age_verification_required': 'This content is age-restricted. Confirm your age to continue.',
   'paywall.reason_entitlement_required': 'This content requires an entitlement to access.',
+  'paywall.available_at': 'Available at {{host}}',
+  'paywall.not_available_here': 'Not available in this app',
 };
 
 /**
@@ -110,6 +112,45 @@ export class PaywallOverlayComponent {
    * Show login option
    */
   @Input() showLogin = true;
+
+  /**
+   * Purchase UI policy (embed protocol v4): `in_place` shows options and sign-in;
+   * `link_out` only "Available at {host}" with one link to `purchaseLinkUrl`;
+   * `hidden` "Not available in this app" without price or link.
+   */
+  @Input() purchaseUi: 'in_place' | 'link_out' | 'hidden' = 'in_place';
+
+  /** The work on its reader site (for `link_out`). */
+  @Input() purchaseLinkUrl?: string;
+
+  /** Options and sign-in are offered (policy `in_place`). */
+  get inPlace(): boolean {
+    return this.purchaseUi !== 'link_out' && this.purchaseUi !== 'hidden';
+  }
+
+  /** The options shown under the current policy. */
+  get shownOptions(): PurchaseInfo[] {
+    return this.inPlace ? this.purchaseOptions : [];
+  }
+
+  /** `link_out` target, only an http(s) URL. */
+  get linkOutUrl(): string | null {
+    try {
+      const url = new URL(this.purchaseLinkUrl ?? '');
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Host name shown with `link_out`. */
+  get linkOutHost(): string {
+    try {
+      return new URL(this.linkOutUrl ?? '').host;
+    } catch {
+      return '';
+    }
+  }
 
   /**
    * Action taken

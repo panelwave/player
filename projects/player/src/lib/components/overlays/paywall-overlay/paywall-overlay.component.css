@@ -303,3 +303,15 @@
     font-size: 20px;
   }
 }
+
+/* Purchase UI policy (embed protocol v4): link out or nothing */
+.policy-note {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.policy-link {
+  color: inherit;
+  text-decoration: underline;
+}

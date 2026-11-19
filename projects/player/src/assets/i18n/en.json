@@ -197,7 +197,9 @@
     "reason_subscription_required": "This part of the story is included with a subscription.",
     "reason_purchase_required": "This part of the story is available to buy.",
     "reason_age_verification_required": "This content is age-restricted. Confirm your age to continue.",
-    "reason_entitlement_required": "This content requires an entitlement to access."
+    "reason_entitlement_required": "This content requires an entitlement to access.",
+    "available_at": "Available at {{host}}",
+    "not_available_here": "Not available in this app"
   },
   "loading": {
     "text": "Loading PanelWave..."
