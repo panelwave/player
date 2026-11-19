@@ -1,11 +1,15 @@
 /**
- * PanelWave embed loader — pure logic (no DOM): reading an element's
- * options, building the iframe URL, choosing when to mount, deciding which
- * iframes to unmount. Unit-tested by scripts/embed-loader.test.mjs.
- * See docs/MULTI_CHAPTER_EMBED.md.
+ * PanelWave embed loader / host SDK — pure logic (no DOM): reading an
+ * element's or a `mount()` call's options, building the iframe URL, choosing
+ * when to mount, deciding which iframes to unmount, the bridge nonce.
+ * Unit-tested by scripts/embed-loader.test.mjs. See docs/MULTI_CHAPTER_EMBED.md
+ * and docs/EMBEDDING.md.
+ *
+ * 2.0: whole-work mode (no chapter), `PanelWave.mount()`, channel / privacy /
+ * purchase UI / theme options and the embed protocol 4 port handshake.
  */
 
-export const LOADER_VERSION = '1.0.0';
+export const LOADER_VERSION = '2.0.0';
 
 /** `eager`: mount at once · `lazy`: when near the viewport · `auto`: first eager, rest lazy · `click`: on tap. */
 export type LoadingStrategy = 'eager' | 'lazy' | 'auto' | 'click';
@@ -16,11 +20,21 @@ export const LAZY_ROOT_MARGIN = '800px 0px';
 /** Default for how many iframes stay mounted at once (farther ones go back to their poster). */
 export const DEFAULT_MAX_LIVE = 3;
 
+export type PurchaseUi = 'in_place' | 'link_out' | 'hidden';
+
 export interface EmbedElementOptions {
   /** Player page: the reader URL of a work, or a package's index.html (relative to the page). */
   src: string;
-  /** Chapter: CMS chapter uuid (stable) or manifest chapter id. */
-  chapter: string;
+  /** Chapter: CMS chapter uuid (stable) or manifest chapter id. Absent = the whole work (2.0). */
+  chapter?: string;
+  /** 2.0: the channel the frame runs in (`?ch=`; the reader server checks it). */
+  channel?: string;
+  /** 2.0: analytics in the frame; false = privacy mode (`track=0`). Absent = the work's own setting. */
+  track?: boolean;
+  /** 2.0: purchase UI policy (`pui=`). */
+  purchaseUi?: PurchaseUi;
+  /** 2.0: `light` or `dark` widget theme, sent once the player is ready. */
+  theme?: 'light' | 'dark';
   /** Start autoplay; the player plays only while it is at least half on screen. */
   autoplay: boolean;
   loading: LoadingStrategy;
@@ -40,6 +54,7 @@ export interface EmbedElementOptions {
 export type OptionsResult = { ok: true; options: EmbedElementOptions } | { ok: false; error: string };
 
 const CHAPTER_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
+const CHANNEL_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
 const LOCALE_RE = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
 
 /** `true`/`1`/`yes`/'' → true, `false`/`0`/`no` → false, else the fallback. */
@@ -72,9 +87,14 @@ export function readOptions(get: (name: string) => string | null): OptionsResult
     return { ok: false, error: 'data-src is missing or not a page URL' };
   }
   const chapter = (get('chapter') ?? '').trim();
-  if (!CHAPTER_RE.test(chapter)) {
-    return { ok: false, error: 'data-chapter is missing or malformed' };
+  // 2.0: without a chapter the frame shows the whole work.
+  if (chapter && !CHAPTER_RE.test(chapter)) {
+    return { ok: false, error: 'data-chapter is malformed' };
   }
+  const channel = (get('channel') ?? '').trim();
+  const pui = (get('purchase-ui') ?? '').trim();
+  const theme = (get('theme') ?? '').trim();
+  const track = get('track');
   const loadingRaw = (get('loading') ?? 'auto').trim().toLowerCase();
   const loading: LoadingStrategy =
     loadingRaw === 'eager' || loadingRaw === 'lazy' || loadingRaw === 'click' ? loadingRaw : 'auto';
@@ -87,7 +107,11 @@ export function readOptions(get: (name: string) => string | null): OptionsResult
     ok: true,
     options: {
       src,
-      chapter,
+      ...(chapter ? { chapter } : {}),
+      ...(CHANNEL_RE.test(channel) ? { channel } : {}),
+      ...(track !== null ? { track: flag(track, true) } : {}),
+      ...(pui === 'in_place' || pui === 'link_out' || pui === 'hidden' ? { purchaseUi: pui } : {}),
+      ...(theme === 'light' || theme === 'dark' ? { theme } : {}),
       autoplay: flag(get('autoplay'), false),
       loading,
       ...(poster && !/^\s*javascript:/i.test(poster) ? { poster } : {}),
@@ -114,17 +138,22 @@ export function frameOrigin(src: string, baseHref: string): string | null {
 }
 
 /**
- * The iframe URL: the player page plus the chapter-embed parameters
- * (`embed=1`, `origin`, `chapter`, `autoplay`, `toolbar`, `cover`, `lang`,
- * `spp`). Existing query parameters of `src` are kept.
+ * The iframe URL: the player page plus the embed parameters (`embed=1`,
+ * `origin`, `chapter`, `autoplay`, `toolbar`, `cover`, `lang`, `spp`; 2.0:
+ * `ch`, `track`, `pui`, `bridge`). Existing query parameters of `src` are kept.
  */
-export function buildFrameUrl(options: EmbedElementOptions, baseHref: string, hostOrigin: string | null): string {
+export function buildFrameUrl(options: EmbedElementOptions, baseHref: string, hostOrigin: string | null, nonce?: string): string {
   const url = new URL(options.src, baseHref);
   const params = url.searchParams;
   params.set('embed', '1');
   if (hostOrigin && hostOrigin !== 'null') params.set('origin', hostOrigin);
   else params.delete('origin');
-  params.set('chapter', options.chapter);
+  if (options.chapter) params.set('chapter', options.chapter);
+  else params.delete('chapter');
+  if (options.channel) params.set('ch', options.channel);
+  if (options.track !== undefined) params.set('track', options.track ? '1' : '0');
+  if (options.purchaseUi) params.set('pui', options.purchaseUi);
+  if (nonce) params.set('bridge', nonce);
   params.set('autoplay', options.autoplay ? '1' : '0');
   params.set('toolbar', options.toolbar ? '1' : '0');
   params.set('cover', options.cover ? '1' : '0');
@@ -174,7 +203,67 @@ export function viewportDistance(top: number, bottom: number, viewportHeight: nu
   return 0;
 }
 
-/** Inbound bridge message from the player page (protocol v1–v3), loosely checked. */
+/** A bridge nonce: 16 random bytes as base64url (22 characters). */
+export function newNonce(random: (bytes: Uint8Array) => Uint8Array): string {
+  const bytes = random(new Uint8Array(16));
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** `PanelWave.mount()` options (2.0). */
+export interface MountOptions {
+  src: string;
+  chapter?: string;
+  channel?: string;
+  locale?: string;
+  theme?: 'light' | 'dark';
+  /** `eager` (default for mount()), `lazy` or `click` (poster first, nothing loads before the tap). */
+  loading?: 'eager' | 'lazy' | 'click';
+  poster?: { image?: string; title?: string; label?: string };
+  privacy?: { tracking?: boolean };
+  purchaseUi?: PurchaseUi;
+  /** Where to continue (`restore`, after the player is ready). */
+  resume?: { panelId: string; variables?: Record<string, unknown> };
+  autoplay?: boolean;
+  toolbar?: boolean;
+  cover?: boolean;
+  /** Initial box shape until the player reports its own (`resize`), e.g. `3/4`. */
+  aspect?: string;
+  secondsPerPanel?: number;
+}
+
+/** `mount()` options → the element options the loader works with (same validation as `data-*`). */
+export function fromMountOptions(o: MountOptions): OptionsResult {
+  const str = (v: unknown): string | null => (typeof v === 'string' ? v : v === undefined ? null : String(v));
+  const bool = (v: unknown): string | null => (typeof v === 'boolean' ? (v ? '1' : '0') : null);
+  const map: Record<string, string | null> = {
+    src: str(o.src),
+    chapter: str(o.chapter),
+    channel: str(o.channel),
+    locale: str(o.locale),
+    theme: str(o.theme),
+    loading: str(o.loading ?? 'eager'),
+    poster: str(o.poster?.image),
+    title: str(o.poster?.title),
+    track: bool(o.privacy?.tracking),
+    'purchase-ui': str(o.purchaseUi),
+    autoplay: bool(o.autoplay),
+    toolbar: bool(o.toolbar),
+    cover: bool(o.cover),
+    aspect: str(o.aspect),
+    'seconds-per-panel': o.secondsPerPanel === undefined ? null : String(o.secondsPerPanel),
+  };
+  return readOptions((name) => map[name] ?? null);
+}
+
+/** A `resize` event's `aspect` as a CSS aspect-ratio value, or null. */
+export function resizeAspect(data: unknown): string | null {
+  const aspect = Number((data as { aspect?: unknown } | null)?.aspect);
+  return Number.isFinite(aspect) && aspect > 0.1 && aspect < 10 ? `${Math.round(aspect * 10000) / 10000} / 1` : null;
+}
+
+/** Inbound bridge message from the player page (protocol v1–v4), loosely checked. */
 export interface PlayerMessage {
   type: 'pw:hello' | 'pw:ready' | 'pw:event' | 'pw:state';
   name?: string;

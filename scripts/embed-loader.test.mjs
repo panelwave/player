@@ -75,12 +75,59 @@ test('readOptions: every attribute', () => {
   });
 });
 
-test('readOptions: rejects missing or unsafe src and chapter', () => {
+test('readOptions: rejects missing or unsafe src and a malformed chapter', () => {
   assert.equal(core.readOptions(attrs({ chapter: 'c' })).ok, false);
   assert.equal(core.readOptions(attrs({ src: 'javascript:alert(1)', chapter: 'c' })).ok, false);
   assert.equal(core.readOptions(attrs({ src: 'data:text/html,x', chapter: 'c' })).ok, false);
-  assert.equal(core.readOptions(attrs({ src: 'a.html' })).ok, false);
   assert.equal(core.readOptions(attrs({ src: 'a.html', chapter: '<x>' })).ok, false);
+});
+
+test('readOptions 2.0: no chapter = the whole work; channel, privacy, purchase UI, theme', () => {
+  const whole = core.readOptions(attrs({ src: 'a.html' }));
+  assert.equal(whole.ok, true);
+  assert.equal(whole.options.chapter, undefined);
+  const { options } = core.readOptions(attrs({ src: 'a.html', channel: 'peoplecomics', track: '0', 'purchase-ui': 'link_out', theme: 'dark' }));
+  assert.equal(options.channel, 'peoplecomics');
+  assert.equal(options.track, false);
+  assert.equal(options.purchaseUi, 'link_out');
+  assert.equal(options.theme, 'dark');
+  const bad = core.readOptions(attrs({ src: 'a.html', channel: 'Not A Key', 'purchase-ui': 'buy', theme: 'pink' })).options;
+  assert.equal(bad.channel, undefined);
+  assert.equal(bad.purchaseUi, undefined);
+  assert.equal(bad.theme, undefined);
+  assert.equal(bad.track, undefined);
+});
+
+test('fromMountOptions: mount() options get the same validation, eager by default', () => {
+  const r = core.fromMountOptions({ src: 'https://read.panelwave.org/a/b', channel: 'roadbeat', privacy: { tracking: false }, purchaseUi: 'hidden', poster: { image: 'https://cdn/c.jpg', title: 'Night City' }, aspect: '3/4' });
+  assert.equal(r.ok, true);
+  assert.equal(r.options.loading, 'eager');
+  assert.equal(r.options.track, false);
+  assert.equal(r.options.purchaseUi, 'hidden');
+  assert.equal(r.options.poster, 'https://cdn/c.jpg');
+  assert.equal(r.options.title, 'Night City');
+  assert.equal(r.options.aspect, '3 / 4');
+  assert.equal(core.fromMountOptions({ src: 'javascript:alert(1)' }).ok, false);
+  assert.equal(core.fromMountOptions({ src: 'a.html', loading: 'click' }).options.loading, 'click');
+});
+
+test('buildFrameUrl 2.0: whole work, channel, privacy, purchase UI and the bridge nonce', () => {
+  const { options } = core.readOptions(attrs({ src: 'https://read.panelwave.org/acme/aid?chapter=old', channel: 'peoplecomics', track: '0', 'purchase-ui': 'hidden' }));
+  const url = new URL(core.buildFrameUrl(options, BASE, 'https://catalog.example', 'abcdefghijklmnopqrstuv'));
+  assert.equal(url.searchParams.has('chapter'), false);
+  assert.equal(url.searchParams.get('ch'), 'peoplecomics');
+  assert.equal(url.searchParams.get('track'), '0');
+  assert.equal(url.searchParams.get('pui'), 'hidden');
+  assert.equal(url.searchParams.get('bridge'), 'abcdefghijklmnopqrstuv');
+});
+
+test('newNonce and resizeAspect', () => {
+  const nonce = core.newNonce((bytes) => bytes.fill(255));
+  assert.match(nonce, /^[A-Za-z0-9_-]{22}$/);
+  assert.equal(core.resizeAspect({ aspect: 0.70710678, minHeight: 320 }), '0.7071 / 1');
+  assert.equal(core.resizeAspect({ aspect: 'x' }), null);
+  assert.equal(core.resizeAspect({ aspect: 50 }), null);
+  assert.equal(core.resizeAspect(null), null);
 });
 
 test('readOptions: drops malformed optional values', () => {

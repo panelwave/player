@@ -13,7 +13,7 @@
       "ignore": ["**/amespro-*"]
     },
     {
-      "glob": "panelwave-embed.js",
+      "glob": "{panelwave-embed.js,panelwave-embed.mjs,panelwave-embed.d.ts,core.d.ts}",
       "input": "embed-build",
       "output": "embed"
     }

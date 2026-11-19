@@ -273,13 +273,14 @@ Markup contract:
 | Attribute | Default | Meaning |
 |-----------|---------|---------|
 | `data-src` | required | Reader URL of the work (`https://read.panelwave.org/{team}/{slug}`) or the package page (`./course/index.html`). |
-| `data-chapter` | required | `chapterId` UUID (preferred) or manifest `id`. |
+| `data-chapter` | — | `chapterId` UUID (preferred) or manifest `id`. Loader 2.0: without it the frame shows the whole work. |
 | `data-autoplay` | `false` | Autoplay this chapter. The player plays only while at least half of it is on screen, pauses when it leaves, stops at the chapter's end (§6.1). |
 | `data-loading` | `auto` | `eager` \| `lazy` \| `auto` (first instance on the page eager, the rest lazy) \| `click` (poster until tapped). Lazy uses IntersectionObserver with `rootMargin: 800px 0px`. |
 | `data-poster` | — | Poster image URL for the placeholder (CMS fills it with the chapter's first panel thumbnail). |
 | `data-title` | — | Placeholder caption + iframe `title` (a11y). |
 | `data-aspect` | `16/9` | CSS aspect ratio of the box; CMS derives it from the work's page format. |
 | `data-locale`, `data-toolbar` (`true`), `data-cover` (`false`), `data-seconds-per-panel` | — | Passed through as URL params. |
+| `data-channel`, `data-track` (`0` = privacy mode), `data-purchase-ui` (`in_place` \| `link_out` \| `hidden`), `data-theme` (`light` \| `dark`) | — | Loader 2.0, embed protocol 4: see [EMBEDDING.md](EMBEDDING.md). |
 | `data-max-live` | `3` | v1.1: how many iframes stay mounted; farther ones return to the poster (state lost, acceptable for linear learning content; bookmark/variables persist via localStorage anyway). |
 
 Loader behaviour:

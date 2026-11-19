@@ -56,9 +56,34 @@ async function main() {
   const gz = gzipSync(size, { level: 9 }).length;
   writeFileSync(join(outDir, 'VERSION.json'), JSON.stringify({ loaderVersion: version, bytes: size.length, gzipBytes: gz }, null, 2) + '\n');
   if (gz > GZIP_BUDGET_BYTES) fail(`panelwave-embed.js is ${gz} B gzipped, budget ${GZIP_BUDGET_BYTES} B`);
+  // 2.0: the same SDK as an ES module with typings, for `import { mount } from '@panelwave/player/embed'`.
+  const esmFile = join(outDir, 'panelwave-embed.mjs');
+  await build({
+    entryPoints: [join(project, 'src', 'index.ts')],
+    outfile: esmFile,
+    bundle: true,
+    format: 'esm',
+    target: 'es2018',
+    minify: true,
+    legalComments: 'none',
+    banner: { js: `/*! panelwave-embed.mjs ${version} | MIT | https://github.com/panelwave/player */` },
+  });
+  const typesDir = join(outDir, 'types');
+  try {
+    execSync(
+      `npx tsc -p "${join(project, 'tsconfig.json')}" --noEmit false --declaration --emitDeclarationOnly --outDir "${typesDir}"`,
+      { cwd: root, stdio: 'inherit' }
+    );
+  } catch {
+    fail('declaration build failed');
+  }
+  copyFileSync(join(typesDir, 'index.d.ts'), join(outDir, 'panelwave-embed.d.ts'));
+  copyFileSync(join(typesDir, 'core.d.ts'), join(outDir, 'core.d.ts'));
   const libCopy = join(root, 'projects', 'player', 'embed-build');
   mkdirSync(libCopy, { recursive: true });
-  copyFileSync(outFile, join(libCopy, 'panelwave-embed.js'));
+  for (const name of ['panelwave-embed.js', 'panelwave-embed.mjs', 'panelwave-embed.d.ts', 'core.d.ts']) {
+    copyFileSync(join(outDir, name), join(libCopy, name));
+  }
   console.log(`panelwave-embed.js ${version}: ${size.length} B, ${gz} B gzipped → ${outFile}`);
 }
 
