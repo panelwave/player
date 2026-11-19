@@ -318,10 +318,12 @@ function mount(inst: Instance): void {
   const frame = document.createElement('iframe');
   inst.nonce = newNonce(random);
   frame.className = 'pwe-frame';
+  // Host-required attributes first, so they hold for the first navigation.
+  if (inst.options.sandbox !== undefined) frame.setAttribute('sandbox', inst.options.sandbox);
+  frame.allow = inst.options.allow ?? 'autoplay; fullscreen';
+  frame.setAttribute('allowfullscreen', '');
   frame.src = buildFrameUrl(inst.options, document.baseURI, window.location.origin, inst.nonce);
   frame.title = inst.options.title || (inst.options.chapter ? 'PanelWave chapter' : 'PanelWave comic');
-  frame.allow = 'autoplay; fullscreen';
-  frame.setAttribute('allowfullscreen', '');
   frame.referrerPolicy = 'strict-origin-when-cross-origin';
   frame.addEventListener('load', () => {
     if (inst.frame !== frame || inst.state !== 'loading') return;

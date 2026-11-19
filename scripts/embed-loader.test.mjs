@@ -111,6 +111,25 @@ test('fromMountOptions: mount() options get the same validation, eager by defaul
   assert.equal(core.fromMountOptions({ src: 'a.html', loading: 'click' }).options.loading, 'click');
 });
 
+test('frame attributes 2.0: sandbox and permissions policy from the host, malformed values dropped', () => {
+  const ok = core.fromMountOptions({
+    src: 'https://read.panelwave.org/a/b',
+    frame: { sandbox: ' allow-scripts  allow-same-origin allow-popups ', allow: "autoplay; fullscreen 'src'" },
+  }).options;
+  assert.equal(ok.sandbox, 'allow-scripts allow-same-origin allow-popups');
+  assert.equal(ok.allow, "autoplay; fullscreen 'src'");
+  const none = core.fromMountOptions({ src: 'a.html' }).options;
+  assert.equal('sandbox' in none, false);
+  assert.equal('allow' in none, false);
+  assert.equal(core.fromMountOptions({ src: 'a.html', frame: { sandbox: '' } }).options.sandbox, '');
+  const bad = core.fromMountOptions({ src: 'a.html', frame: { sandbox: 'scripts" onload="x', allow: 'autoplay" onload="x' } }).options;
+  assert.equal('sandbox' in bad, false);
+  assert.equal('allow' in bad, false);
+  const attr = core.readOptions(attrs({ src: 'a.html', sandbox: 'allow-scripts', allow: 'autoplay' })).options;
+  assert.equal(attr.sandbox, 'allow-scripts');
+  assert.equal(attr.allow, 'autoplay');
+});
+
 test('buildFrameUrl 2.0: whole work, channel, privacy, purchase UI and the bridge nonce', () => {
   const { options } = core.readOptions(attrs({ src: 'https://read.panelwave.org/acme/aid?chapter=old', channel: 'peoplecomics', track: '0', 'purchase-ui': 'hidden' }));
   const url = new URL(core.buildFrameUrl(options, BASE, 'https://catalog.example', 'abcdefghijklmnopqrstuv'));

@@ -47,6 +47,7 @@ with it and hands you typed events.
 | `resume` | `{ panelId, variables? }`: continue there once the player is ready. |
 | `autoplay`, `toolbar`, `cover`, `secondsPerPanel` | Player options as in the declarative form. |
 | `aspect` | Box shape until the player reports its own (`resize`), e.g. `3/4`. |
+| `frame` | `{ sandbox?, allow? }`: iframe attributes your platform must enforce, e.g. from a reader registry. Set before the frame loads. The player needs at least `allow-scripts allow-same-origin`; `allow` defaults to `autoplay; fullscreen`. Declarative: `data-sandbox`, `data-allow`. |
 
 ## The handle
 

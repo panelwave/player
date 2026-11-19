@@ -49,6 +49,10 @@ export interface EmbedElementOptions {
   maxLive: number;
   /** Mute instances while they are off screen. */
   exclusiveAudio: boolean;
+  /** 2.0: iframe `sandbox` tokens the host requires (absent = no sandbox attribute). */
+  sandbox?: string;
+  /** 2.0: iframe permissions policy; absent = `autoplay; fullscreen`. */
+  allow?: string;
 }
 
 export type OptionsResult = { ok: true; options: EmbedElementOptions } | { ok: false; error: string };
@@ -56,6 +60,10 @@ export type OptionsResult = { ok: true; options: EmbedElementOptions } | { ok: f
 const CHAPTER_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
 const CHANNEL_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
 const LOCALE_RE = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+/** `allow-scripts allow-same-origin …` (an empty value is a valid, fully locked sandbox). */
+const SANDBOX_RE = /^(allow-[a-z-]+( allow-[a-z-]+)*)?$/;
+/** `autoplay; fullscreen 'src'; picture-in-picture` — feature names with optional allow-lists. */
+const ALLOW_RE = /^[a-z][a-z0-9-]*( [^;"<>\s]+)*(; ?[a-z][a-z0-9-]*( [^;"<>\s]+)*)*;?$/;
 
 /** `true`/`1`/`yes`/'' → true, `false`/`0`/`no` → false, else the fallback. */
 export function flag(value: string | null, fallback: boolean): boolean {
@@ -103,6 +111,9 @@ export function readOptions(get: (name: string) => string | null): OptionsResult
   const maxLive = Math.floor(Number(get('max-live')));
   const poster = (get('poster') ?? '').trim();
   const title = (get('title') ?? '').trim();
+  const sandboxRaw = get('sandbox');
+  const sandbox = sandboxRaw === null ? null : sandboxRaw.trim().split(/\s+/).filter(Boolean).join(' ');
+  const allow = (get('allow') ?? '').trim();
   return {
     ok: true,
     options: {
@@ -123,6 +134,8 @@ export function readOptions(get: (name: string) => string | null): OptionsResult
       ...(Number.isFinite(seconds) && seconds >= 0.5 && seconds <= 120 ? { secondsPerPanel: seconds } : {}),
       maxLive: Number.isFinite(maxLive) && maxLive >= 1 ? maxLive : DEFAULT_MAX_LIVE,
       exclusiveAudio: flag(get('exclusive-audio'), false),
+      ...(sandbox !== null && SANDBOX_RE.test(sandbox) ? { sandbox } : {}),
+      ...(allow && allow.length <= 500 && ALLOW_RE.test(allow) ? { allow } : {}),
     },
   };
 }
@@ -231,6 +244,12 @@ export interface MountOptions {
   /** Initial box shape until the player reports its own (`resize`), e.g. `3/4`. */
   aspect?: string;
   secondsPerPanel?: number;
+  /**
+   * iframe attributes a host must enforce (e.g. from a reader registry): `sandbox` tokens and the
+   * permissions policy. Applied before the frame loads. The player needs at least
+   * `allow-scripts allow-same-origin`.
+   */
+  frame?: { sandbox?: string; allow?: string };
 }
 
 /** `mount()` options → the element options the loader works with (same validation as `data-*`). */
@@ -253,6 +272,8 @@ export function fromMountOptions(o: MountOptions): OptionsResult {
     cover: bool(o.cover),
     aspect: str(o.aspect),
     'seconds-per-panel': o.secondsPerPanel === undefined ? null : String(o.secondsPerPanel),
+    sandbox: str(o.frame?.sandbox),
+    allow: str(o.frame?.allow),
   };
   return readOptions((name) => map[name] ?? null);
 }

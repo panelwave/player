@@ -280,7 +280,7 @@ Markup contract:
 | `data-title` | — | Placeholder caption + iframe `title` (a11y). |
 | `data-aspect` | `16/9` | CSS aspect ratio of the box; CMS derives it from the work's page format. |
 | `data-locale`, `data-toolbar` (`true`), `data-cover` (`false`), `data-seconds-per-panel` | — | Passed through as URL params. |
-| `data-channel`, `data-track` (`0` = privacy mode), `data-purchase-ui` (`in_place` \| `link_out` \| `hidden`), `data-theme` (`light` \| `dark`) | — | Loader 2.0, embed protocol 4: see [EMBEDDING.md](EMBEDDING.md). |
+| `data-channel`, `data-track` (`0` = privacy mode), `data-purchase-ui` (`in_place` \| `link_out` \| `hidden`), `data-theme` (`light` \| `dark`), `data-sandbox`, `data-allow` (iframe attributes) | — | Loader 2.0, embed protocol 4: see [EMBEDDING.md](EMBEDDING.md). |
 | `data-max-live` | `3` | v1.1: how many iframes stay mounted; farther ones return to the poster (state lost, acceptable for linear learning content; bookmark/variables persist via localStorage anyway). |
 
 Loader behaviour:
